@@ -394,7 +394,6 @@ private:
   EnvironmentManager                   EnvMgr;
   llvm::OwningPtr<StoreManager>        StoreMgr;
   llvm::OwningPtr<ConstraintManager>   ConstraintMgr;
-  GRState::IntSetTy::Factory           ISetFactory;
   
   GRState::GenericDataMap::Factory     GDMFactory;
   
@@ -441,7 +440,6 @@ public:
                  llvm::BumpPtrAllocator& alloc, CFG& c,
                  const Decl& cd, LiveVariables& L) 
   : EnvMgr(alloc),
-    ISetFactory(alloc),
     GDMFactory(alloc),
     ValueMgr(alloc, Ctx, *this),
     Alloc(alloc),
@@ -454,7 +452,7 @@ public:
   
   ~GRStateManager();
 
-  const GRState *getInitialState();
+  const GRState *getInitialState(const LocationContext *InitLoc);
         
   ASTContext &getContext() { return ValueMgr.getContext(); }
   const ASTContext &getContext() const { return ValueMgr.getContext(); }
