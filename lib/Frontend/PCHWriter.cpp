@@ -235,12 +235,6 @@ void PCHTypeWriter::VisitQualifiedNameType(const QualifiedNameType *T) {
   assert(false && "Cannot serialize qualified name types");
 }
 
-void PCHTypeWriter::VisitInjectedClassNameType(const InjectedClassNameType *T) {
-  Writer.AddDeclRef(T->getDecl(), Record);
-  Writer.AddTypeRef(T->getUnderlyingType(), Record);
-  Code = pch::TYPE_INJECTED_CLASS_NAME;
-}
-
 void PCHTypeWriter::VisitObjCInterfaceType(const ObjCInterfaceType *T) {
   Writer.AddDeclRef(T->getDecl(), Record);
   Record.push_back(T->getNumProtocols());
@@ -398,9 +392,6 @@ void TypeLocWriter::VisitTemplateSpecializationTypeLoc(
     Writer.AddTemplateArgumentLoc(TL.getArgLoc(i), Record);
 }
 void TypeLocWriter::VisitQualifiedNameTypeLoc(QualifiedNameTypeLoc TL) {
-  Writer.AddSourceLocation(TL.getNameLoc(), Record);
-}
-void TypeLocWriter::VisitInjectedClassNameTypeLoc(InjectedClassNameTypeLoc TL) {
   Writer.AddSourceLocation(TL.getNameLoc(), Record);
 }
 void TypeLocWriter::VisitTypenameTypeLoc(TypenameTypeLoc TL) {
@@ -565,7 +556,7 @@ void PCHWriter::WriteBlockInfoBlock() {
   RECORD(EXT_VECTOR_DECLS);
   RECORD(COMMENT_RANGES);
   RECORD(VERSION_CONTROL_BRANCH_REVISION);
-
+  
   // SourceManager Block.
   BLOCK(SOURCE_MANAGER_BLOCK);
   RECORD(SM_SLOC_FILE_ENTRY);
@@ -573,6 +564,7 @@ void PCHWriter::WriteBlockInfoBlock() {
   RECORD(SM_SLOC_BUFFER_BLOB);
   RECORD(SM_SLOC_INSTANTIATION_ENTRY);
   RECORD(SM_LINE_TABLE);
+  RECORD(SM_HEADER_FILE_INFO);
 
   // Preprocessor Block.
   BLOCK(PREPROCESSOR_BLOCK);
@@ -709,17 +701,24 @@ void PCHWriter::WriteMetadata(ASTContext &Context, const char *isysroot) {
     unsigned FileAbbrevCode = Stream.EmitAbbrev(FileAbbrev);
 
     llvm::sys::Path MainFilePath(MainFile->getName());
+    std::string MainFileName;
 
-    MainFilePath.makeAbsolute();
+    if (!MainFilePath.isAbsolute()) {
+      llvm::sys::Path P = llvm::sys::Path::GetCurrentDirectory();
+      P.appendComponent(MainFilePath.str());
+      MainFileName = P.str();
+    } else {
+      MainFileName = MainFilePath.str();
+    }
 
-    const char *MainFileNameStr = MainFilePath.c_str();
+    const char *MainFileNameStr = MainFileName.c_str();
     MainFileNameStr = adjustFilenameForRelocatablePCH(MainFileNameStr,
                                                       isysroot);
     RecordData Record;
     Record.push_back(pch::ORIGINAL_FILE_NAME);
     Stream.EmitRecordWithBlob(FileAbbrevCode, Record, MainFileNameStr);
   }
-
+  
   // Repository branch/version information.
   BitCodeAbbrev *RepoAbbrev = new BitCodeAbbrev();
   RepoAbbrev->Add(BitCodeAbbrevOp(pch::VERSION_CONTROL_BRANCH_REVISION));
@@ -750,9 +749,9 @@ void PCHWriter::WriteLanguageOptions(const LangOptions &LangOpts) {
 
   Record.push_back(LangOpts.ObjC1);  // Objective-C 1 support enabled.
   Record.push_back(LangOpts.ObjC2);  // Objective-C 2 support enabled.
-  Record.push_back(LangOpts.ObjCNonFragileABI);  // Objective-C
+  Record.push_back(LangOpts.ObjCNonFragileABI);  // Objective-C 
                                                  // modern abi enabled.
-  Record.push_back(LangOpts.ObjCNonFragileABI2); // Objective-C enhanced
+  Record.push_back(LangOpts.ObjCNonFragileABI2); // Objective-C enhanced 
                                                  // modern abi enabled.
 
   Record.push_back(LangOpts.PascalStrings);  // Allow Pascal strings
@@ -917,11 +916,6 @@ static unsigned CreateSLocFileAbbrev(llvm::BitstreamWriter &Stream) {
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // Include location
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 2)); // Characteristic
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 1)); // Line directives
-  // HeaderFileInfo fields.
-  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 1)); // isImport
-  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 2)); // DirInfo
-  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // NumIncludes
-  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // ControllingMacro
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob)); // File name
   return Stream.EmitAbbrev(Abbrev);
 }
@@ -1023,6 +1017,20 @@ void PCHWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
     Stream.EmitRecord(pch::SM_LINE_TABLE, Record);
   }
 
+  // Write out entries for all of the header files we know about.
+  HeaderSearch &HS = PP.getHeaderSearchInfo();
+  Record.clear();
+  for (HeaderSearch::header_file_iterator I = HS.header_file_begin(),
+                                          E = HS.header_file_end();
+       I != E; ++I) {
+    Record.push_back(I->isImport);
+    Record.push_back(I->DirInfo);
+    Record.push_back(I->NumIncludes);
+    AddIdentifierRef(I->ControllingMacro, Record);
+    Stream.EmitRecord(pch::SM_HEADER_FILE_INFO, Record);
+    Record.clear();
+  }
+
   // Write out the source location entry table. We skip the first
   // entry, which is always the same dummy entry.
   std::vector<uint32_t> SLocEntryOffsets;
@@ -1031,7 +1039,7 @@ void PCHWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
   for (unsigned I = 1, N = SourceMgr.sloc_entry_size(); I != N; ++I) {
     // Get this source location entry.
     const SrcMgr::SLocEntry *SLoc = &SourceMgr.getSLocEntry(I);
-
+    
     // Record the offset of this source-location entry.
     SLocEntryOffsets.push_back(Stream.GetCurrentBitNo());
 
@@ -1059,21 +1067,16 @@ void PCHWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
         // The source location entry is a file. The blob associated
         // with this entry is the file name.
 
-        // Emit header-search information associated with this file.
-        HeaderFileInfo HFI;
-        HeaderSearch &HS = PP.getHeaderSearchInfo();
-        if (Content->Entry->getUID() < HS.header_file_size())
-          HFI = HS.header_file_begin()[Content->Entry->getUID()];
-        Record.push_back(HFI.isImport);
-        Record.push_back(HFI.DirInfo);
-        Record.push_back(HFI.NumIncludes);
-        AddIdentifierRef(HFI.ControllingMacro, Record);
-
         // Turn the file name into an absolute path, if it isn't already.
         const char *Filename = Content->Entry->getName();
         llvm::sys::Path FilePath(Filename, strlen(Filename));
-        FilePath.makeAbsolute();
-        Filename = FilePath.c_str();
+        std::string FilenameStr;
+        if (!FilePath.isAbsolute()) {
+          llvm::sys::Path P = llvm::sys::Path::GetCurrentDirectory();
+          P.appendComponent(FilePath.str());
+          FilenameStr = P.str();
+          Filename = FilenameStr.c_str();
+        }
 
         Filename = adjustFilenameForRelocatablePCH(Filename, isysroot);
         Stream.EmitRecordWithBlob(SLocFileAbbrv, Record, Filename);
@@ -1089,8 +1092,7 @@ void PCHWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
         // We add one to the size so that we capture the trailing NULL
         // that is required by llvm::MemoryBuffer::getMemBuffer (on
         // the reader side).
-        const llvm::MemoryBuffer *Buffer
-          = Content->getBuffer(PP.getDiagnostics());
+        const llvm::MemoryBuffer *Buffer = Content->getBuffer();
         const char *Name = Buffer->getBufferIdentifier();
         Stream.EmitRecordWithBlob(SLocBufferAbbrv, Record,
                                   llvm::StringRef(Name, strlen(Name) + 1));
@@ -1987,9 +1989,9 @@ void PCHWriter::WritePCH(Sema &SemaRef, MemorizeStatCalls *StatCalls,
 
   // Build a record containing all of the static unused functions in this file.
   RecordData UnusedStaticFuncs;
-  for (unsigned i=0, e = SemaRef.UnusedStaticFuncs.size(); i !=e; ++i)
+  for (unsigned i=0, e = SemaRef.UnusedStaticFuncs.size(); i !=e; ++i) 
     AddDeclRef(SemaRef.UnusedStaticFuncs[i], UnusedStaticFuncs);
-
+              
   // Build a record containing all of the locally-scoped external
   // declarations in this header file. Generally, this record will be
   // empty.
@@ -2052,7 +2054,7 @@ void PCHWriter::WritePCH(Sema &SemaRef, MemorizeStatCalls *StatCalls,
       WriteDecl(Context, DOT.getDecl());
   }
   Stream.ExitBlock();
-
+  
   WritePreprocessor(PP);
   WriteMethodPool(SemaRef);
   WriteIdentifierTable(PP);
@@ -2094,7 +2096,7 @@ void PCHWriter::WritePCH(Sema &SemaRef, MemorizeStatCalls *StatCalls,
   // Write the record containing unused static functions.
   if (!UnusedStaticFuncs.empty())
     Stream.EmitRecord(pch::UNUSED_STATIC_FUNCS, UnusedStaticFuncs);
-
+  
   // Write the record containing locally-scoped external definitions.
   if (!LocallyScopedExternalDecls.empty())
     Stream.EmitRecord(pch::LOCALLY_SCOPED_EXTERNAL_DECLS,
@@ -2195,7 +2197,7 @@ void PCHWriter::AddTypeSourceInfo(TypeSourceInfo *TInfo, RecordData &Record) {
   AddTypeRef(TInfo->getType(), Record);
   TypeLocWriter TLW(*this, Record);
   for (TypeLoc TL = TInfo->getTypeLoc(); !TL.isNull(); TL = TL.getNextTypeLoc())
-    TLW.Visit(TL);
+    TLW.Visit(TL);  
 }
 
 void PCHWriter::AddTypeRef(QualType T, RecordData &Record) {
@@ -2216,14 +2218,14 @@ void PCHWriter::AddTypeRef(QualType T, RecordData &Record) {
       ID = NextTypeID++;
       DeclTypesToEmit.push(T);
     }
-
+    
     // Encode the type qualifiers in the type reference.
     Record.push_back((ID << Qualifiers::FastWidth) | FastQuals);
     return;
   }
 
   assert(!T.hasLocalQualifiers());
-
+  
   if (const BuiltinType *BT = dyn_cast<BuiltinType>(T.getTypePtr())) {
     pch::TypeID ID = 0;
     switch (BT->getKind()) {

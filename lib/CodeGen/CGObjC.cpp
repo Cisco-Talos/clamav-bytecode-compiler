@@ -59,7 +59,7 @@ RValue CodeGenFunction::EmitObjCMessageExpr(const ObjCMessageExpr *E) {
   // Find the receiver
   llvm::Value *Receiver;
   if (!ReceiverExpr) {
-    const ObjCInterfaceDecl *OID = E->getClassInfo().Decl;
+    const ObjCInterfaceDecl *OID = E->getClassInfo().first;
 
     // Very special case, super send in class method. The receiver is
     // self (the class object) and the send uses super semantics.

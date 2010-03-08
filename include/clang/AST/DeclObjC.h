@@ -136,12 +136,8 @@ private:
   /// in, inout, etc.
   unsigned objcDeclQualifier : 6;
 
-  // Result type of this method.
+  // Type of this method.
   QualType MethodDeclType;
-  
-  // Type source information for the result type.
-  TypeSourceInfo *ResultTInfo;
-
   /// ParamInfo - List of pointers to VarDecls for the formal parameters of this
   /// Method.
   ObjCList<ParmVarDecl> ParamInfo;
@@ -162,7 +158,6 @@ private:
 
   ObjCMethodDecl(SourceLocation beginLoc, SourceLocation endLoc,
                  Selector SelInfo, QualType T,
-                 TypeSourceInfo *ResultTInfo,
                  DeclContext *contextDecl,
                  bool isInstance = true,
                  bool isVariadic = false,
@@ -173,7 +168,7 @@ private:
     IsInstance(isInstance), IsVariadic(isVariadic),
     IsSynthesized(isSynthesized),
     DeclImplementation(impControl), objcDeclQualifier(OBJC_TQ_None),
-    MethodDeclType(T), ResultTInfo(ResultTInfo),
+    MethodDeclType(T),
     EndLoc(endLoc), Body(0), SelfDecl(0), CmdDecl(0) {}
 
   virtual ~ObjCMethodDecl() {}
@@ -191,9 +186,7 @@ public:
   static ObjCMethodDecl *Create(ASTContext &C,
                                 SourceLocation beginLoc,
                                 SourceLocation endLoc, Selector SelInfo,
-                                QualType T, 
-                                TypeSourceInfo *ResultTInfo,
-                                DeclContext *contextDecl,
+                                QualType T, DeclContext *contextDecl,
                                 bool isInstance = true,
                                 bool isVariadic = false,
                                 bool isSynthesized = false,
@@ -226,9 +219,6 @@ public:
 
   QualType getResultType() const { return MethodDeclType; }
   void setResultType(QualType T) { MethodDeclType = T; }
-
-  TypeSourceInfo *getResultTypeSourceInfo() const { return ResultTInfo; }
-  void setResultTypeSourceInfo(TypeSourceInfo *TInfo) { ResultTInfo = TInfo; }
 
   // Iterator access to formal parameters.
   unsigned param_size() const { return ParamInfo.size(); }
@@ -381,6 +371,8 @@ public:
   ObjCIvarDecl *getIvarDecl(IdentifierInfo *Id) const;
 
   ObjCPropertyDecl *FindPropertyDeclaration(IdentifierInfo *PropertyId) const;
+  ObjCPropertyDecl *FindPropertyVisibleInPrimaryClass(
+                                            IdentifierInfo *PropertyId) const;
 
   // Marks the end of the container.
   SourceRange getAtEndRange() const {
@@ -442,6 +434,9 @@ class ObjCInterfaceDecl : public ObjCContainerDecl {
 
   /// Protocols referenced in interface header declaration
   ObjCProtocolList ReferencedProtocols;
+
+  /// Instance variables in the interface. This list is completely redundant.
+  ObjCList<ObjCIvarDecl> IVars;
 
   /// List of categories defined for this class.
   /// FIXME: Why is this a linked list??
@@ -533,10 +528,7 @@ public:
   }
 
   ObjCCategoryDecl* getClassExtension() const;
-
-  ObjCPropertyDecl
-    *FindPropertyVisibleInPrimaryClass(IdentifierInfo *PropertyId) const;
-
+  
   /// isSuperClassOf - Return true if this class is the specified class or is a
   /// super class of the specified interface class.
   bool isSuperClassOf(const ObjCInterfaceDecl *I) const {
@@ -1327,10 +1319,6 @@ public:
   ObjCIvarDecl *getPropertyIvarDecl() const {
     return PropertyIvarDecl;
   }
-
-  /// Lookup a property by name in the specified DeclContext.
-  static ObjCPropertyDecl *findPropertyDecl(const DeclContext *DC,
-                                            IdentifierInfo *propertyID);
 
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }
   static bool classof(const ObjCPropertyDecl *D) { return true; }

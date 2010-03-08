@@ -325,7 +325,7 @@ void TokenLexer::Lex(Token &Tok) {
     // returned by PasteTokens, not the pasted token.
     if (PasteTokens(Tok))
       return;
-
+    
     TokenIsFromPaste = true;
   }
 
@@ -379,7 +379,7 @@ void TokenLexer::Lex(Token &Tok) {
 /// are more ## after it, chomp them iteratively.  Return the result as Tok.
 /// If this returns true, the caller should immediately return the token.
 bool TokenLexer::PasteTokens(Token &Tok) {
-  llvm::SmallString<128> Buffer;
+  llvm::SmallVector<char, 128> Buffer;
   const char *ResultTokStrPtr = 0;
   do {
     // Consume the ## operator.
@@ -396,17 +396,12 @@ bool TokenLexer::PasteTokens(Token &Tok) {
 
     // Get the spelling of the LHS token in Buffer.
     const char *BufPtr = &Buffer[0];
-    bool Invalid = false;
-    unsigned LHSLen = PP.getSpelling(Tok, BufPtr, &Invalid);
+    unsigned LHSLen = PP.getSpelling(Tok, BufPtr);
     if (BufPtr != &Buffer[0])   // Really, we want the chars in Buffer!
       memcpy(&Buffer[0], BufPtr, LHSLen);
-    if (Invalid)
-      return true;
-    
+
     BufPtr = &Buffer[LHSLen];
-    unsigned RHSLen = PP.getSpelling(RHS, BufPtr, &Invalid);
-    if (Invalid)
-      return true;
+    unsigned RHSLen = PP.getSpelling(RHS, BufPtr);
     if (BufPtr != &Buffer[LHSLen])   // Really, we want the chars in Buffer!
       memcpy(&Buffer[LHSLen], BufPtr, RHSLen);
 
@@ -444,11 +439,7 @@ bool TokenLexer::PasteTokens(Token &Tok) {
       SourceManager &SourceMgr = PP.getSourceManager();
       FileID LocFileID = SourceMgr.getFileID(ResultTokLoc);
 
-      bool Invalid = false;
-      const char *ScratchBufStart
-        = SourceMgr.getBufferData(LocFileID, &Invalid).data();
-      if (Invalid)
-        return false;
+      const char *ScratchBufStart = SourceMgr.getBufferData(LocFileID).first;
 
       // Make a lexer to lex this string from.  Lex just this one token.
       // Make a lexer object so that we lex and expand the paste result.
@@ -515,7 +506,8 @@ bool TokenLexer::PasteTokens(Token &Tok) {
   if (Tok.is(tok::identifier)) {
     // Look up the identifier info for the token.  We disabled identifier lookup
     // by saying we're skipping contents, so we need to do this manually.
-    PP.LookUpIdentifierInfo(Tok, ResultTokStrPtr);
+    IdentifierInfo *II = PP.LookUpIdentifierInfo(Tok, ResultTokStrPtr);
+    Tok.setIdentifierInfo(II);
   }
   return false;
 }

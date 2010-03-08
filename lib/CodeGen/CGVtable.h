@@ -149,12 +149,10 @@ private:
   typedef std::pair<const CXXRecordDecl *,
                     const CXXRecordDecl *> ClassPairTy;
 
-  /// VirtualBaseClassOffsetOffsets - Contains the vtable offset (relative to 
-  /// the address point) in bytes where the offsets for virtual bases of a class
-  /// are stored.
-  typedef llvm::DenseMap<ClassPairTy, int64_t> 
-    VirtualBaseClassOffsetOffsetsMapTy;
-  VirtualBaseClassOffsetOffsetsMapTy VirtualBaseClassOffsetOffsets;
+  /// VirtualBaseClassIndicies - Contains the index into the vtable where the
+  /// offsets for virtual bases of a class are stored.
+  typedef llvm::DenseMap<ClassPairTy, int64_t> VirtualBaseClassIndiciesTy;
+  VirtualBaseClassIndiciesTy VirtualBaseClassIndicies;
 
   /// Vtables - All the vtables which have been defined.
   llvm::DenseMap<const CXXRecordDecl *, llvm::GlobalVariable *> Vtables;
@@ -175,7 +173,15 @@ private:
   uint64_t getNumVirtualFunctionPointers(const CXXRecordDecl *RD);
   
   void ComputeMethodVtableIndices(const CXXRecordDecl *RD);
-   
+  
+  /// GenerateClassData - Generate all the class data requires to be generated
+  /// upon definition of a KeyFunction.  This includes the vtable, the
+  /// rtti data structure and the VTT.
+  /// 
+  /// \param Linkage - The desired linkage of the vtable, the RTTI and the VTT.
+  void GenerateClassData(llvm::GlobalVariable::LinkageTypes Linkage,
+                         const CXXRecordDecl *RD);
+ 
   llvm::GlobalVariable *
   GenerateVtable(llvm::GlobalVariable::LinkageTypes Linkage,
                  bool GenerateDefinition, const CXXRecordDecl *LayoutClass, 
@@ -204,13 +210,13 @@ public:
   /// stored.
   uint64_t getMethodVtableIndex(GlobalDecl GD);
 
-  /// getVirtualBaseOffsetOffset - Return the offset in bytes (relative to the
-  /// vtable address point) where the offset of the virtual base that contains 
-  /// the given base is stored, otherwise, if no virtual base contains the given
+  /// getVirtualBaseOffsetIndex - Return the index (relative to the vtable
+  /// address point) where the offset of the virtual base that contains the
+  /// given Base is stored, otherwise, if no virtual base contains the given
   /// class, return 0.  Base must be a virtual base class or an unambigious
   /// base.
-  int64_t getVirtualBaseOffsetOffset(const CXXRecordDecl *RD,
-                                     const CXXRecordDecl *VBase);
+  int64_t getVirtualBaseOffsetIndex(const CXXRecordDecl *RD,
+                                    const CXXRecordDecl *VBase);
 
   AdjustmentVectorTy *getAdjustments(GlobalDecl GD);
 
@@ -239,14 +245,6 @@ public:
   llvm::GlobalVariable *getVTT(const CXXRecordDecl *RD);
   
   void MaybeEmitVtable(GlobalDecl GD);
-
-  /// GenerateClassData - Generate all the class data requires to be generated
-  /// upon definition of a KeyFunction.  This includes the vtable, the
-  /// rtti data structure and the VTT.
-  ///
-  /// \param Linkage - The desired linkage of the vtable, the RTTI and the VTT.
-  void GenerateClassData(llvm::GlobalVariable::LinkageTypes Linkage,
-                         const CXXRecordDecl *RD);
 };
 
 } // end namespace CodeGen

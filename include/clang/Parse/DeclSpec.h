@@ -228,8 +228,7 @@ public:
       AttrList(0),
       ProtocolQualifiers(0),
       NumProtocolQualifiers(0),
-      ProtocolLocs(0),
-      writtenBS() {
+      ProtocolLocs(0) {
   }
   ~DeclSpec() {
     delete AttrList;

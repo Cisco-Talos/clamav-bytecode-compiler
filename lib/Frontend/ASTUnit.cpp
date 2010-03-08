@@ -35,9 +35,8 @@
 #include "llvm/System/Path.h"
 using namespace clang;
 
-ASTUnit::ASTUnit(Diagnostic &Diag, bool _MainFileIsAST)
-  : SourceMgr(Diag), MainFileIsAST(_MainFileIsAST), 
-    ConcurrencyCheckValue(CheckUnlocked) {
+ASTUnit::ASTUnit(bool _MainFileIsAST)
+  : MainFileIsAST(_MainFileIsAST), ConcurrencyCheckValue(CheckUnlocked) {
 }
 ASTUnit::~ASTUnit() {
   ConcurrencyCheckValue = CheckLocked;
@@ -83,7 +82,7 @@ public:
     return false;
   }
 
-  virtual void ReadHeaderFileInfo(const HeaderFileInfo &HFI, unsigned ID) {
+  virtual void ReadHeaderFileInfo(const HeaderFileInfo &HFI) {
     HSI.setHeaderFileInfoForUID(HFI, NumHeaderInfos++);
   }
 
@@ -147,7 +146,7 @@ ASTUnit *ASTUnit::LoadFromPCHFile(const std::string &Filename,
                                   RemappedFile *RemappedFiles,
                                   unsigned NumRemappedFiles,
                                   bool CaptureDiagnostics) {
-  llvm::OwningPtr<ASTUnit> AST(new ASTUnit(Diags, true));
+  llvm::OwningPtr<ASTUnit> AST(new ASTUnit(true));
   AST->OnlyLocalDecls = OnlyLocalDecls;
   AST->HeaderInfo.reset(new HeaderSearch(AST->getFileManager()));
 
@@ -278,8 +277,7 @@ public:
 ASTUnit *ASTUnit::LoadFromCompilerInvocation(CompilerInvocation *CI,
                                              Diagnostic &Diags,
                                              bool OnlyLocalDecls,
-                                             bool CaptureDiagnostics,
-                                             bool WantPreprocessingRecord) {
+                                             bool CaptureDiagnostics) {
   // Create the compiler instance to use for building the AST.
   CompilerInstance Clang;
   llvm::OwningPtr<ASTUnit> AST;
@@ -294,6 +292,8 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocation(CompilerInvocation *CI,
   Clang.setTarget(TargetInfo::CreateTargetInfo(Clang.getDiagnostics(),
                                                Clang.getTargetOpts()));
   if (!Clang.hasTarget()) {
+    Clang.takeSourceManager();
+    Clang.takeFileManager();
     Clang.takeDiagnosticClient();
     Clang.takeDiagnostics();
     return 0;
@@ -311,7 +311,7 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocation(CompilerInvocation *CI,
          "FIXME: AST inputs not yet supported here!");
 
   // Create the AST unit.
-  AST.reset(new ASTUnit(Diags, false));
+  AST.reset(new ASTUnit(false));
   AST->OnlyLocalDecls = OnlyLocalDecls;
   AST->OriginalSourceFile = Clang.getFrontendOpts().Inputs[0].second;
 
@@ -329,15 +329,6 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocation(CompilerInvocation *CI,
   // Create the preprocessor.
   Clang.createPreprocessor();
 
-  // If the ASTUnit was requested to store information about preprocessing,
-  // create storage for that information and attach an appropriate callback to 
-  // populate that storage.
-  if (WantPreprocessingRecord) {
-    AST->Preprocessing.reset(new PreprocessingRecord);
-    Clang.getPreprocessor().addPPCallbacks(
-                          new PopulatePreprocessingRecord(*AST->Preprocessing));
-  }
-      
   Act.reset(new TopLevelDeclTrackerAction(*AST));
   if (!Act->BeginSourceFile(Clang, Clang.getFrontendOpts().Inputs[0].second,
                            /*IsAST=*/false))
@@ -377,8 +368,7 @@ ASTUnit *ASTUnit::LoadFromCommandLine(const char **ArgBegin,
                                       bool OnlyLocalDecls,
                                       RemappedFile *RemappedFiles,
                                       unsigned NumRemappedFiles,
-                                      bool CaptureDiagnostics,
-                                      bool WantPreprocessingRecord) {
+                                      bool CaptureDiagnostics) {
   llvm::SmallVector<const char *, 16> Args;
   Args.push_back("<clang>"); // FIXME: Remove dummy argument.
   Args.insert(Args.end(), ArgBegin, ArgEnd);
@@ -430,6 +420,5 @@ ASTUnit *ASTUnit::LoadFromCommandLine(const char **ArgBegin,
 
   CI->getFrontendOpts().DisableFree = true;
   return LoadFromCompilerInvocation(CI.take(), Diags, OnlyLocalDecls,
-                                    CaptureDiagnostics, 
-                                    WantPreprocessingRecord);
+                                    CaptureDiagnostics);
 }

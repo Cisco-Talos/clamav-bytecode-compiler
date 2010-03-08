@@ -106,7 +106,7 @@ Expr *Sema::BuildObjCEncodeExpression(SourceLocation AtLoc,
     // which is an array type.
     StrTy = Context.CharTy;
     // A C++ string literal has a const-qualified element type (C++ 2.13.4p1).
-    if (getLangOptions().CPlusPlus || getLangOptions().ConstStrings)
+    if (getLangOptions().CPlusPlus)
       StrTy.addConst();
     StrTy = Context.getConstantArrayType(StrTy, llvm::APInt(32, Str.size()+1),
                                          ArrayType::Normal, 0);
@@ -470,13 +470,13 @@ Sema::ExprResult Sema::ActOnClassMessage(
   // now, we simply pass the "super" identifier through (which isn't consistent
   // with instance methods.
   if (isSuper)
-    return new (Context) ObjCMessageExpr(Context, receiverName, receiverLoc,
-                                         Sel, returnType, Method, lbrac, rbrac, 
-                                         ArgExprs, NumArgs);
+    return new (Context) ObjCMessageExpr(Context, receiverName, Sel, returnType,
+                                         Method, lbrac, rbrac, ArgExprs,
+                                         NumArgs);
   else
-    return new (Context) ObjCMessageExpr(Context, ClassDecl, receiverLoc,
-                                         Sel, returnType, Method, lbrac, rbrac, 
-                                         ArgExprs, NumArgs);
+    return new (Context) ObjCMessageExpr(Context, ClassDecl, Sel, returnType,
+                                         Method, lbrac, rbrac, ArgExprs,
+                                         NumArgs);
 }
 
 // ActOnInstanceMessage - used for both unary and keyword messages.

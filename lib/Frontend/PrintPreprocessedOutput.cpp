@@ -61,7 +61,7 @@ static void PrintMacroDefinition(const IdentifierInfo &II, const MacroInfo &MI,
   if (MI.tokens_empty() || !MI.tokens_begin()->hasLeadingSpace())
     OS << ' ';
 
-  llvm::SmallString<128> SpellingBuffer;
+  llvm::SmallVector<char, 128> SpellingBuffer;
   for (MacroInfo::tokens_iterator I = MI.tokens_begin(), E = MI.tokens_end();
        I != E; ++I) {
     if (I->hasLeadingSpace())
@@ -448,8 +448,7 @@ static int MacroIDCompare(const void* a, const void* b) {
 static void DoPrintMacros(Preprocessor &PP, llvm::raw_ostream *OS) {
   // -dM mode just scans and ignores all tokens in the files, then dumps out
   // the macro table at the end.
-  if (PP.EnterMainSourceFile())
-    return;
+  PP.EnterMainSourceFile();
 
   Token Tok;
   do PP.Lex(Tok);
@@ -496,8 +495,7 @@ void clang::DoPrintPreprocessedInput(Preprocessor &PP, llvm::raw_ostream *OS,
   PP.addPPCallbacks(Callbacks);
 
   // After we have configured the preprocessor, enter the main file.
-  if (PP.EnterMainSourceFile())
-    return;
+  PP.EnterMainSourceFile();
 
   // Consume all of the tokens that come from the predefines buffer.  Those
   // should not be emitted into the output and are guaranteed to be at the

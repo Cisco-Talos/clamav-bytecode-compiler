@@ -112,14 +112,13 @@ private:
     /// PrimaryBase - The primary base info for this record.
     PrimaryBaseInfo PrimaryBase;
     
-    /// FIXME: This should really use a SmallPtrMap, once we have one in LLVM :)
-    typedef llvm::DenseMap<const CXXRecordDecl *, uint64_t> BaseOffsetsMapTy;
-    
     /// BaseOffsets - Contains a map from base classes to their offset.
-    BaseOffsetsMapTy BaseOffsets;
+    /// FIXME: This should really use a SmallPtrMap, once we have one in LLVM :)
+    llvm::DenseMap<const CXXRecordDecl *, uint64_t> BaseOffsets;
 
     /// VBaseOffsets - Contains a map from vbase classes to their offset.
-    BaseOffsetsMapTy VBaseOffsets;
+    /// FIXME: This should really use a SmallPtrMap, once we have one in LLVM :)
+    llvm::DenseMap<const CXXRecordDecl *, uint64_t> VBaseOffsets;
   };
 
   /// CXXInfo - If the record layout is for a C++ record, this will have
@@ -129,23 +128,47 @@ private:
   friend class ASTContext;
   friend class ASTRecordLayoutBuilder;
 
-  ASTRecordLayout(ASTContext &Ctx, uint64_t size, unsigned alignment,
-                  unsigned datasize, const uint64_t *fieldoffsets,
-                  unsigned fieldcount);
+  ASTRecordLayout(uint64_t size, unsigned alignment, unsigned datasize,
+                  const uint64_t *fieldoffsets, unsigned fieldcount)
+  : Size(size), DataSize(datasize), FieldOffsets(0), Alignment(alignment),
+    FieldCount(fieldcount), CXXInfo(0) {
+    if (FieldCount > 0)  {
+      FieldOffsets = new uint64_t[FieldCount];
+      for (unsigned i = 0; i < FieldCount; ++i)
+        FieldOffsets[i] = fieldoffsets[i];
+    }
+  }
 
   // Constructor for C++ records.
-  typedef CXXRecordLayoutInfo::BaseOffsetsMapTy BaseOffsetsMapTy;
-  ASTRecordLayout(ASTContext &Ctx,
-                  uint64_t size, unsigned alignment, uint64_t datasize,
+  ASTRecordLayout(uint64_t size, unsigned alignment, uint64_t datasize,
                   const uint64_t *fieldoffsets, unsigned fieldcount,
                   uint64_t nonvirtualsize, unsigned nonvirtualalign,
                   const PrimaryBaseInfo &PrimaryBase,
-                  const BaseOffsetsMapTy& BaseOffsets,
-                  const BaseOffsetsMapTy& VBaseOffsets);
+                  const std::pair<const CXXRecordDecl *, uint64_t> *bases,
+                  unsigned numbases,
+                  const std::pair<const CXXRecordDecl *, uint64_t> *vbases,
+                  unsigned numvbases)
+  : Size(size), DataSize(datasize), FieldOffsets(0), Alignment(alignment),
+  FieldCount(fieldcount), CXXInfo(new CXXRecordLayoutInfo) {
+    if (FieldCount > 0)  {
+      FieldOffsets = new uint64_t[FieldCount];
+      for (unsigned i = 0; i < FieldCount; ++i)
+        FieldOffsets[i] = fieldoffsets[i];
+    }
 
-  ~ASTRecordLayout() {}
+    CXXInfo->PrimaryBase = PrimaryBase;
+    CXXInfo->NonVirtualSize = nonvirtualsize;
+    CXXInfo->NonVirtualAlign = nonvirtualalign;
+    for (unsigned i = 0; i != numbases; ++i)
+      CXXInfo->BaseOffsets[bases[i].first] = bases[i].second;
+    for (unsigned i = 0; i != numvbases; ++i)
+      CXXInfo->VBaseOffsets[vbases[i].first] = vbases[i].second;
+  }
 
-  void Destroy(ASTContext &Ctx);
+  ~ASTRecordLayout() {
+    delete [] FieldOffsets;
+    delete CXXInfo;
+  }
 
   ASTRecordLayout(const ASTRecordLayout&);   // DO NOT IMPLEMENT
   void operator=(const ASTRecordLayout&); // DO NOT IMPLEMENT

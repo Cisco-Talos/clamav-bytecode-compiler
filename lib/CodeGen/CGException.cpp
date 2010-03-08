@@ -486,6 +486,8 @@ void CodeGenFunction::ExitCXXTryStmt(const CXXTryStmt &S,
   llvm::Value *Exc = Builder.CreateCall(llvm_eh_exception, "exc");
   llvm::Value *RethrowPtr = CreateTempAlloca(Exc->getType(), "_rethrow");
 
+  llvm::SmallVector<llvm::Value*, 8> Args;
+  Args.clear();
   SelectorArgs.push_back(Exc);
   SelectorArgs.push_back(Personality);
 
@@ -582,11 +584,12 @@ void CodeGenFunction::ExitCXXTryStmt(const CXXTryStmt &S,
     llvm::Value *Exc = Builder.CreateCall(llvm_eh_exception, "exc");
     // We are required to emit this call to satisfy LLVM, even
     // though we don't use the result.
-    llvm::Value *Args[] = {
-      Exc, Personality,
-      llvm::ConstantInt::getNullValue(llvm::Type::getInt32Ty(VMContext))
-    };
-    Builder.CreateCall(llvm_eh_selector, &Args[0], llvm::array_endof(Args));
+    Args.clear();
+    Args.push_back(Exc);
+    Args.push_back(Personality);
+    Args.push_back(llvm::ConstantInt::get(llvm::Type::getInt32Ty(VMContext),
+                                          0));
+    Builder.CreateCall(llvm_eh_selector, Args.begin(), Args.end());
     Builder.CreateStore(Exc, RethrowPtr);
     EmitBranchThroughCleanup(FinallyRethrow);
 
@@ -597,7 +600,7 @@ void CodeGenFunction::ExitCXXTryStmt(const CXXTryStmt &S,
     llvm::BasicBlock *Cont = createBasicBlock("invoke.cont");
     Builder.CreateInvoke(getEndCatchFn(*this),
                          Cont, TerminateHandler,
-                         &Args[0], &Args[0]);
+                         Args.begin(), Args.begin());
     EmitBlock(Cont);
     if (Info.SwitchBlock)
       EmitBlock(Info.SwitchBlock);
@@ -674,8 +677,12 @@ CodeGenFunction::EHCleanupBlock::~EHCleanupBlock() {
   // C string type.  Used in lots of places.
   PtrToInt8Ty = llvm::PointerType::getUnqual(Int8Ty);
   llvm::Constant *Null = llvm::ConstantPointerNull::get(PtrToInt8Ty);
-  llvm::Value *Args[] = { Exc, Personality, Null };
-  CGF.Builder.CreateCall(llvm_eh_selector, &Args[0], llvm::array_endof(Args));
+  llvm::SmallVector<llvm::Value*, 8> Args;
+  Args.clear();
+  Args.push_back(Exc);
+  Args.push_back(Personality);
+  Args.push_back(Null);
+  CGF.Builder.CreateCall(llvm_eh_selector, Args.begin(), Args.end());
 
   CGF.EmitBlock(CleanupEntryBB);
 
@@ -724,11 +731,12 @@ llvm::BasicBlock *CodeGenFunction::getTerminateHandler() {
   llvm::Value *Exc = Builder.CreateCall(llvm_eh_exception, "exc");
   // We are required to emit this call to satisfy LLVM, even
   // though we don't use the result.
-  llvm::Value *Args[] = {
-    Exc, Personality,
-    llvm::ConstantInt::get(llvm::Type::getInt32Ty(VMContext), 1)
-  };
-  Builder.CreateCall(llvm_eh_selector, &Args[0], llvm::array_endof(Args));
+  llvm::SmallVector<llvm::Value*, 8> Args;
+  Args.push_back(Exc);
+  Args.push_back(Personality);
+  Args.push_back(llvm::ConstantInt::get(llvm::Type::getInt32Ty(VMContext),
+                                        1));
+  Builder.CreateCall(llvm_eh_selector, Args.begin(), Args.end());
   llvm::CallInst *TerminateCall =
     Builder.CreateCall(getTerminateFn(*this));
   TerminateCall->setDoesNotReturn();

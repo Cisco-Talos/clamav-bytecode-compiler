@@ -46,8 +46,8 @@
 //  U   -> unsigned
 //
 // Types may be postfixed with the following modifiers:
-// * -> pointer (optionally followed by an address space number)
-// & -> reference (optionally followed by an address space number)
+// * -> pointer
+// & -> reference
 // C -> const
 // D -> volatile
 

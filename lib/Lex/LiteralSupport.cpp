@@ -806,14 +806,7 @@ StringLiteralParser(const Token *StringToks, unsigned NumStringToks,
     // Get the spelling of the token, which eliminates trigraphs, etc.  We know
     // that ThisTokBuf points to a buffer that is big enough for the whole token
     // and 'spelled' tokens can only shrink.
-    bool StringInvalid = false;
-    unsigned ThisTokLen = PP.getSpelling(StringToks[i], ThisTokBuf, 
-                                         &StringInvalid);
-    if (StringInvalid) {
-      hadError = 1;
-      continue;
-    }
-
+    unsigned ThisTokLen = PP.getSpelling(StringToks[i], ThisTokBuf);
     const char *ThisTokEnd = ThisTokBuf+ThisTokLen-1;  // Skip end quote.
 
     // TODO: Input character set mapping support.
@@ -911,12 +904,8 @@ unsigned StringLiteralParser::getOffsetOfStringByte(const Token &Tok,
   llvm::SmallString<16> SpellingBuffer;
   SpellingBuffer.resize(Tok.getLength());
 
-  bool StringInvalid = false;
   const char *SpellingPtr = &SpellingBuffer[0];
-  unsigned TokLen = PP.getSpelling(Tok, SpellingPtr, &StringInvalid);
-  if (StringInvalid) {
-    return 0;
-  }
+  unsigned TokLen = PP.getSpelling(Tok, SpellingPtr);
 
   assert(SpellingPtr[0] != 'L' && "Doesn't handle wide strings yet");
 

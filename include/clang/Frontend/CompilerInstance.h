@@ -34,6 +34,7 @@ class ExternalASTSource;
 class FileManager;
 class FrontendAction;
 class Preprocessor;
+class Source;
 class SourceManager;
 class TargetInfo;
 

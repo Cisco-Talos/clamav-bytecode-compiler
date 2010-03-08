@@ -4,14 +4,13 @@ add_clang_library(clangAST
   APValue.cpp
   ASTConsumer.cpp
   ASTContext.cpp
-  ASTDiagnostic.cpp
   ASTImporter.cpp
+  ASTDiagnostic.cpp
   AttrImpl.cpp
   CXXInheritance.cpp
   Decl.cpp
   DeclBase.cpp
   DeclCXX.cpp
-  DeclFriend.cpp
   DeclGroup.cpp
   DeclObjC.cpp
   DeclPrinter.cpp
@@ -24,7 +23,6 @@ add_clang_library(clangAST
   InheritViz.cpp
   NestedNameSpecifier.cpp
   ParentMap.cpp
-  RecordLayout.cpp
   RecordLayoutBuilder.cpp
   Stmt.cpp
   StmtDumper.cpp

@@ -181,6 +181,7 @@ std::string PredefinedExpr::ComputeName(IdentType IT, const Decl *CurrentDecl) {
     }
 
     PrintingPolicy Policy(Context.getLangOptions());
+    Policy.SuppressTagKind = true;
 
     std::string Proto = FD->getQualifiedNameAsString(Policy);
 
@@ -227,12 +228,7 @@ std::string PredefinedExpr::ComputeName(IdentType IT, const Decl *CurrentDecl) {
     llvm::raw_svector_ostream Out(Name);
     Out << (MD->isInstanceMethod() ? '-' : '+');
     Out << '[';
-
-    // For incorrect code, there might not be an ObjCInterfaceDecl.  Do
-    // a null check to avoid a crash.
-    if (const ObjCInterfaceDecl *ID = MD->getClassInterface())
-      Out << ID->getNameAsString();
-
+    Out << MD->getClassInterface()->getNameAsString();
     if (const ObjCCategoryImplDecl *CID =
         dyn_cast<ObjCCategoryImplDecl>(MD->getDeclContext())) {
       Out << '(';
@@ -793,8 +789,6 @@ bool Expr::isUnusedResultAWarning(SourceLocation &Loc, SourceRange &R1,
 
   switch (getStmtClass()) {
   default:
-    if (getType()->isVoidType())
-      return false;
     Loc = getExprLoc();
     R1 = getSourceRange();
     return true;
@@ -841,8 +835,8 @@ bool Expr::isUnusedResultAWarning(SourceLocation &Loc, SourceRange &R1,
         if (IE->getValue() == 0)
           return false;
 
-      return (BO->getLHS()->isUnusedResultAWarning(Loc, R1, R2, Ctx) ||
-              BO->getRHS()->isUnusedResultAWarning(Loc, R1, R2, Ctx));
+      return (BO->getRHS()->isUnusedResultAWarning(Loc, R1, R2, Ctx) ||
+              BO->getLHS()->isUnusedResultAWarning(Loc, R1, R2, Ctx));
     }
 
     if (BO->isAssignmentOp())
@@ -943,8 +937,6 @@ bool Expr::isUnusedResultAWarning(SourceLocation &Loc, SourceRange &R1,
       if (const Expr *E = dyn_cast<Expr>(CS->body_back()))
         return E->isUnusedResultAWarning(Loc, R1, R2, Ctx);
 
-    if (getType()->isVoidType())
-      return false;
     Loc = cast<StmtExpr>(this)->getLParenLoc();
     R1 = getSourceRange();
     return true;
@@ -958,8 +950,6 @@ bool Expr::isUnusedResultAWarning(SourceLocation &Loc, SourceRange &R1,
     R1 = cast<CStyleCastExpr>(this)->getSubExpr()->getSourceRange();
     return true;
   case CXXFunctionalCastExprClass: {
-    if (getType()->isVoidType())
-      return false;
     const CastExpr *CE = cast<CastExpr>(this);
     
     // If this is a cast to void or a constructor conversion, check the operand.
@@ -1109,11 +1099,11 @@ Expr::isLvalueResult Expr::isLvalueInternal(ASTContext &Ctx) const {
     if (m->isArrow())
       return LV_Valid;
     Expr *BaseExp = m->getBase();
-    if (BaseExp->getStmtClass() == ObjCPropertyRefExprClass ||
-        BaseExp->getStmtClass() == ObjCImplicitSetterGetterRefExprClass)
+    if (BaseExp->getStmtClass() == ObjCPropertyRefExprClass)
           return LV_SubObjCPropertySetting;
     return 
-       BaseExp->isLvalue(Ctx);        
+      (BaseExp->getStmtClass() == ObjCImplicitSetterGetterRefExprClass) ?
+       LV_SubObjCPropertyGetterSetting : BaseExp->isLvalue(Ctx);        
   }
   case UnaryOperatorClass:
     if (cast<UnaryOperator>(this)->getOpcode() == UnaryOperator::Deref)
@@ -1329,6 +1319,8 @@ Expr::isModifiableLvalue(ASTContext &Ctx, SourceLocation *Loc) const {
     return MLV_InvalidExpression;
   case LV_MemberFunction: return MLV_MemberFunction;
   case LV_SubObjCPropertySetting: return MLV_SubObjCPropertySetting;
+  case LV_SubObjCPropertyGetterSetting: 
+    return MLV_SubObjCPropertyGetterSetting;
   case LV_ClassTemporary:
     return MLV_ClassTemporary;
   }
@@ -2123,12 +2115,12 @@ ObjCMessageExpr::ObjCMessageExpr(ASTContext &C, Expr *receiver,
 // constructor for class messages.
 // FIXME: clsName should be typed to ObjCInterfaceType
 ObjCMessageExpr::ObjCMessageExpr(ASTContext &C, IdentifierInfo *clsName,
-                                 SourceLocation clsNameLoc, Selector selInfo, 
-                                 QualType retType, ObjCMethodDecl *mproto,
+                                 Selector selInfo, QualType retType,
+                                 ObjCMethodDecl *mproto,
                                  SourceLocation LBrac, SourceLocation RBrac,
                                  Expr **ArgExprs, unsigned nargs)
-  : Expr(ObjCMessageExprClass, retType, false, false), ClassNameLoc(clsNameLoc),
-    SelName(selInfo), MethodProto(mproto) {
+  : Expr(ObjCMessageExprClass, retType, false, false), SelName(selInfo),
+    MethodProto(mproto) {
   NumArgs = nargs;
   SubExprs = new (C) Stmt*[NumArgs+1];
   SubExprs[RECEIVER] = (Expr*) ((uintptr_t) clsName | IsClsMethDeclUnknown);
@@ -2142,14 +2134,12 @@ ObjCMessageExpr::ObjCMessageExpr(ASTContext &C, IdentifierInfo *clsName,
 
 // constructor for class messages.
 ObjCMessageExpr::ObjCMessageExpr(ASTContext &C, ObjCInterfaceDecl *cls,
-                                 SourceLocation clsNameLoc, Selector selInfo, 
-                                 QualType retType,
+                                 Selector selInfo, QualType retType,
                                  ObjCMethodDecl *mproto, SourceLocation LBrac,
                                  SourceLocation RBrac, Expr **ArgExprs,
                                  unsigned nargs)
-  : Expr(ObjCMessageExprClass, retType, false, false), ClassNameLoc(clsNameLoc),
-    SelName(selInfo), MethodProto(mproto) 
-{
+: Expr(ObjCMessageExprClass, retType, false, false), SelName(selInfo),
+MethodProto(mproto) {
   NumArgs = nargs;
   SubExprs = new (C) Stmt*[NumArgs+1];
   SubExprs[RECEIVER] = (Expr*) ((uintptr_t) cls | IsClsMethDeclKnown);
@@ -2167,27 +2157,23 @@ ObjCMessageExpr::ClassInfo ObjCMessageExpr::getClassInfo() const {
     default:
       assert(false && "Invalid ObjCMessageExpr.");
     case IsInstMeth:
-      return ClassInfo(0, 0, SourceLocation());
+      return ClassInfo(0, 0);
     case IsClsMethDeclUnknown:
-      return ClassInfo(0, (IdentifierInfo*) (x & ~Flags), ClassNameLoc);
+      return ClassInfo(0, (IdentifierInfo*) (x & ~Flags));
     case IsClsMethDeclKnown: {
       ObjCInterfaceDecl* D = (ObjCInterfaceDecl*) (x & ~Flags);
-      return ClassInfo(D, D->getIdentifier(), ClassNameLoc);
+      return ClassInfo(D, D->getIdentifier());
     }
   }
 }
 
 void ObjCMessageExpr::setClassInfo(const ObjCMessageExpr::ClassInfo &CI) {
-  if (CI.Decl == 0 && CI.Name == 0) {
+  if (CI.first == 0 && CI.second == 0)
     SubExprs[RECEIVER] = (Expr*)((uintptr_t)0 | IsInstMeth);
-    return;
-  }
-
-  if (CI.Decl == 0)
-    SubExprs[RECEIVER] = (Expr*)((uintptr_t)CI.Name | IsClsMethDeclUnknown);
+  else if (CI.first == 0)
+    SubExprs[RECEIVER] = (Expr*)((uintptr_t)CI.second | IsClsMethDeclUnknown);
   else
-    SubExprs[RECEIVER] = (Expr*)((uintptr_t)CI.Decl | IsClsMethDeclKnown);
-  ClassNameLoc = CI.Loc;
+    SubExprs[RECEIVER] = (Expr*)((uintptr_t)CI.first | IsClsMethDeclKnown);
 }
 
 void ObjCMessageExpr::DoDestroy(ASTContext &C) {

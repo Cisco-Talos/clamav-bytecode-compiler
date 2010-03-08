@@ -100,9 +100,7 @@ private:
 
 public:
   PipedJob();
-  virtual ~PipedJob();
 
-  /// Add a command to the piped job (taking ownership).
   void addCommand(Command *C) { Commands.push_back(C); }
 
   const list_type &getCommands() const { return Commands; }
@@ -132,9 +130,7 @@ private:
 
 public:
   JobList();
-  virtual ~JobList();
 
-  /// Add a job to the list (taking ownership).
   void addJob(Job *J) { Jobs.push_back(J); }
 
   const list_type &getJobs() const { return Jobs; }

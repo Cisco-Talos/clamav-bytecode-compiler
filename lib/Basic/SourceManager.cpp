@@ -13,16 +13,12 @@
 
 #include "clang/Basic/SourceManager.h"
 #include "clang/Basic/SourceManagerInternals.h"
-#include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/System/Path.h"
 #include <algorithm>
-#include <string>
-#include <cstring>
-
 using namespace clang;
 using namespace SrcMgr;
 using llvm::MemoryBuffer;
@@ -32,14 +28,14 @@ using llvm::MemoryBuffer;
 //===----------------------------------------------------------------------===//
 
 ContentCache::~ContentCache() {
-  delete Buffer.getPointer();
+  delete Buffer;
 }
 
 /// getSizeBytesMapped - Returns the number of bytes actually mapped for
 ///  this ContentCache.  This can be 0 if the MemBuffer was not actually
 ///  instantiated.
 unsigned ContentCache::getSizeBytesMapped() const {
-  return Buffer.getPointer() ? Buffer.getPointer()->getBufferSize() : 0;
+  return Buffer ? Buffer->getBufferSize() : 0;
 }
 
 /// getSize - Returns the size of the content encapsulated by this ContentCache.
@@ -47,31 +43,21 @@ unsigned ContentCache::getSizeBytesMapped() const {
 ///  scratch buffer.  If the ContentCache encapsulates a source file, that
 ///  file is not lazily brought in from disk to satisfy this query.
 unsigned ContentCache::getSize() const {
-  return Buffer.getPointer() ? (unsigned) Buffer.getPointer()->getBufferSize()
-                             : (unsigned) Entry->getSize();
+  return Buffer ? Buffer->getBufferSize() : Entry->getSize();
 }
 
 void ContentCache::replaceBuffer(const llvm::MemoryBuffer *B) {
-  assert(B != Buffer.getPointer());
+  assert(B != Buffer);
   
-  delete Buffer.getPointer();
-  Buffer.setPointer(B);
-  Buffer.setInt(false);
+  delete Buffer;
+  Buffer = B;
 }
 
-const llvm::MemoryBuffer *ContentCache::getBuffer(Diagnostic &Diag,
-                                                  bool *Invalid) const {
-  if (Invalid)
-    *Invalid = false;
-      
+const llvm::MemoryBuffer *ContentCache::getBuffer(std::string *ErrorStr) const {
   // Lazily create the Buffer for ContentCaches that wrap files.
-  if (!Buffer.getPointer() && Entry) {
-    std::string ErrorStr;
-    struct stat FileInfo;
-    Buffer.setPointer(MemoryBuffer::getFile(Entry->getName(), &ErrorStr,
-                                            Entry->getSize(), &FileInfo));
-    Buffer.setInt(false);
-    
+  if (!Buffer && Entry) {
+    Buffer = MemoryBuffer::getFile(Entry->getName(), ErrorStr,Entry->getSize());
+
     // If we were unable to open the file, then we are in an inconsistent
     // situation where the content cache referenced a file which no longer
     // exists. Most likely, we were using a stat cache with an invalid entry but
@@ -82,31 +68,15 @@ const llvm::MemoryBuffer *ContentCache::getBuffer(Diagnostic &Diag,
     // currently handle returning a null entry here. Ideally we should detect
     // that we are in an inconsistent situation and error out as quickly as
     // possible.
-    if (!Buffer.getPointer()) {
+    if (!Buffer) {
       const llvm::StringRef FillStr("<<<MISSING SOURCE FILE>>>\n");
-      Buffer.setPointer(MemoryBuffer::getNewMemBuffer(Entry->getSize(), 
-                                                      "<invalid>"));
-      char *Ptr = const_cast<char*>(Buffer.getPointer()->getBufferStart());
+      Buffer = MemoryBuffer::getNewMemBuffer(Entry->getSize(), "<invalid>");
+      char *Ptr = const_cast<char*>(Buffer->getBufferStart());
       for (unsigned i = 0, e = Entry->getSize(); i != e; ++i)
         Ptr[i] = FillStr[i % FillStr.size()];
-      Diag.Report(diag::err_cannot_open_file)
-        << Entry->getName() << ErrorStr;
-      Buffer.setInt(true);
-    } else if (FileInfo.st_size != Entry->getSize() ||
-               FileInfo.st_mtime != Entry->getModificationTime() ||
-               FileInfo.st_ino != Entry->getInode()) {
-      // Check that the file's size, modification time, and inode are
-      // the same as in the file entry (which may have come from a
-      // stat cache).
-      Diag.Report(diag::err_file_modified) << Entry->getName();
-      Buffer.setInt(true);
     }
   }
-  
-  if (Invalid)
-    *Invalid = Buffer.getInt();
-  
-  return Buffer.getPointer();
+  return Buffer;
 }
 
 unsigned LineTableInfo::getLineTableFilenameID(const char *Ptr, unsigned Len) {
@@ -456,11 +426,12 @@ SourceLocation SourceManager::createInstantiationLoc(SourceLocation SpellingLoc,
 }
 
 const llvm::MemoryBuffer *
-SourceManager::getMemoryBufferForFile(const FileEntry *File,
-                                      bool *Invalid) {
+SourceManager::getMemoryBufferForFile(const FileEntry *File) {
   const SrcMgr::ContentCache *IR = getOrCreateContentCache(File);
-  assert(IR && "getOrCreateContentCache() cannot return NULL");
-  return IR->getBuffer(Diag, Invalid);
+  if (IR == 0)
+    return 0;
+
+  return IR->getBuffer();
 }
 
 bool SourceManager::overrideFileContents(const FileEntry *SourceFile,
@@ -473,17 +444,14 @@ bool SourceManager::overrideFileContents(const FileEntry *SourceFile,
   return false;
 }
 
-llvm::StringRef SourceManager::getBufferData(FileID FID, bool *Invalid) const {
-  bool MyInvalid = false;
-  const llvm::MemoryBuffer *Buf = getBuffer(FID, &MyInvalid);
-  if (Invalid)
-    *Invalid = MyInvalid;
-
-  if (MyInvalid)
-    return "";
-  
-  return Buf->getBuffer();
+/// getBufferData - Return a pointer to the start and end of the source buffer
+/// data for the specified FileID.
+std::pair<const char*, const char*>
+SourceManager::getBufferData(FileID FID) const {
+  const llvm::MemoryBuffer *Buf = getBuffer(FID);
+  return std::make_pair(Buf->getBufferStart(), Buf->getBufferEnd());
 }
+
 
 //===----------------------------------------------------------------------===//
 // SourceLocation manipulation methods.
@@ -698,34 +666,21 @@ SourceManager::getInstantiationRange(SourceLocation Loc) const {
 
 /// getCharacterData - Return a pointer to the start of the specified location
 /// in the appropriate MemoryBuffer.
-const char *SourceManager::getCharacterData(SourceLocation SL,
-                                            bool *Invalid) const {
+const char *SourceManager::getCharacterData(SourceLocation SL) const {
   // Note that this is a hot function in the getSpelling() path, which is
   // heavily used by -E mode.
   std::pair<FileID, unsigned> LocInfo = getDecomposedSpellingLoc(SL);
 
   // Note that calling 'getBuffer()' may lazily page in a source file.
-  bool CharDataInvalid = false;
-  const llvm::MemoryBuffer *Buffer
-    = getSLocEntry(LocInfo.first).getFile().getContentCache()->getBuffer(Diag, 
-                                                              &CharDataInvalid);
-  if (Invalid)
-    *Invalid = CharDataInvalid;
-  return Buffer->getBufferStart() + (CharDataInvalid? 0 : LocInfo.second);
+  return getSLocEntry(LocInfo.first).getFile().getContentCache()
+              ->getBuffer()->getBufferStart() + LocInfo.second;
 }
 
 
 /// getColumnNumber - Return the column # for the specified file position.
 /// this is significantly cheaper to compute than the line number.
-unsigned SourceManager::getColumnNumber(FileID FID, unsigned FilePos,
-                                        bool *Invalid) const {
-  bool MyInvalid = false;
-  const char *Buf = getBuffer(FID, &MyInvalid)->getBufferStart();
-  if (Invalid)
-    *Invalid = MyInvalid;
-
-  if (MyInvalid)
-    return 1;
+unsigned SourceManager::getColumnNumber(FileID FID, unsigned FilePos) const {
+  const char *Buf = getBuffer(FID)->getBufferStart();
 
   unsigned LineStart = FilePos;
   while (LineStart && Buf[LineStart-1] != '\n' && Buf[LineStart-1] != '\r')
@@ -733,30 +688,25 @@ unsigned SourceManager::getColumnNumber(FileID FID, unsigned FilePos,
   return FilePos-LineStart+1;
 }
 
-unsigned SourceManager::getSpellingColumnNumber(SourceLocation Loc,
-                                                bool *Invalid) const {
+unsigned SourceManager::getSpellingColumnNumber(SourceLocation Loc) const {
   if (Loc.isInvalid()) return 0;
   std::pair<FileID, unsigned> LocInfo = getDecomposedSpellingLoc(Loc);
-  return getColumnNumber(LocInfo.first, LocInfo.second, Invalid);
+  return getColumnNumber(LocInfo.first, LocInfo.second);
 }
 
-unsigned SourceManager::getInstantiationColumnNumber(SourceLocation Loc,
-                                                     bool *Invalid) const {
+unsigned SourceManager::getInstantiationColumnNumber(SourceLocation Loc) const {
   if (Loc.isInvalid()) return 0;
   std::pair<FileID, unsigned> LocInfo = getDecomposedInstantiationLoc(Loc);
-  return getColumnNumber(LocInfo.first, LocInfo.second, Invalid);
+  return getColumnNumber(LocInfo.first, LocInfo.second);
 }
 
-static DISABLE_INLINE void ComputeLineNumbers(Diagnostic &Diag,
-                                              ContentCache* FI,
-                                              llvm::BumpPtrAllocator &Alloc,
-                                              bool &Invalid);
-static void ComputeLineNumbers(Diagnostic &Diag, ContentCache* FI, 
-                               llvm::BumpPtrAllocator &Alloc, bool &Invalid) {
+
+
+static DISABLE_INLINE void ComputeLineNumbers(ContentCache* FI,
+                                              llvm::BumpPtrAllocator &Alloc);
+static void ComputeLineNumbers(ContentCache* FI, llvm::BumpPtrAllocator &Alloc){
   // Note that calling 'getBuffer()' may lazily page in the file.
-  const MemoryBuffer *Buffer = FI->getBuffer(Diag, &Invalid);
-  if (Invalid)
-    return;
+  const MemoryBuffer *Buffer = FI->getBuffer();
 
   // Find the file offsets of all of the *physical* source lines.  This does
   // not look at trigraphs, escaped newlines, or anything else tricky.
@@ -802,8 +752,7 @@ static void ComputeLineNumbers(Diagnostic &Diag, ContentCache* FI,
 /// for the position indicated.  This requires building and caching a table of
 /// line offsets for the MemoryBuffer, so this is not cheap: use only when
 /// about to emit a diagnostic.
-unsigned SourceManager::getLineNumber(FileID FID, unsigned FilePos, 
-                                      bool *Invalid) const {
+unsigned SourceManager::getLineNumber(FileID FID, unsigned FilePos) const {
   ContentCache *Content;
   if (LastLineNoFileIDQuery == FID)
     Content = LastLineNoContentCache;
@@ -813,15 +762,8 @@ unsigned SourceManager::getLineNumber(FileID FID, unsigned FilePos,
 
   // If this is the first use of line information for this buffer, compute the
   /// SourceLineCache for it on demand.
-  if (Content->SourceLineCache == 0) {
-    bool MyInvalid = false;
-    ComputeLineNumbers(Diag, Content, ContentCacheAlloc, MyInvalid);
-    if (Invalid)
-      *Invalid = MyInvalid;
-    if (MyInvalid)
-      return 1;
-  } else if (Invalid)
-    *Invalid = false;
+  if (Content->SourceLineCache == 0)
+    ComputeLineNumbers(Content, ContentCacheAlloc);
 
   // Okay, we know we have a line number table.  Do a binary search to find the
   // line number that this character position lands on.
@@ -907,14 +849,12 @@ unsigned SourceManager::getLineNumber(FileID FID, unsigned FilePos,
   return LineNo;
 }
 
-unsigned SourceManager::getInstantiationLineNumber(SourceLocation Loc, 
-                                                   bool *Invalid) const {
+unsigned SourceManager::getInstantiationLineNumber(SourceLocation Loc) const {
   if (Loc.isInvalid()) return 0;
   std::pair<FileID, unsigned> LocInfo = getDecomposedInstantiationLoc(Loc);
   return getLineNumber(LocInfo.first, LocInfo.second);
 }
-unsigned SourceManager::getSpellingLineNumber(SourceLocation Loc, 
-                                              bool *Invalid) const {
+unsigned SourceManager::getSpellingLineNumber(SourceLocation Loc) const {
   if (Loc.isInvalid()) return 0;
   std::pair<FileID, unsigned> LocInfo = getDecomposedSpellingLoc(Loc);
   return getLineNumber(LocInfo.first, LocInfo.second);
@@ -954,11 +894,10 @@ SourceManager::getFileCharacteristic(SourceLocation Loc) const {
 /// Return the filename or buffer identifier of the buffer the location is in.
 /// Note that this name does not respect #line directives.  Use getPresumedLoc
 /// for normal clients.
-const char *SourceManager::getBufferName(SourceLocation Loc, 
-                                         bool *Invalid) const {
+const char *SourceManager::getBufferName(SourceLocation Loc) const {
   if (Loc.isInvalid()) return "<invalid loc>";
 
-  return getBuffer(getFileID(Loc), Invalid)->getBufferIdentifier();
+  return getBuffer(getFileID(Loc))->getBufferIdentifier();
 }
 
 
@@ -982,7 +921,7 @@ PresumedLoc SourceManager::getPresumedLoc(SourceLocation Loc) const {
   // before the MemBuffer as this will avoid unnecessarily paging in the
   // MemBuffer.
   const char *Filename =
-    C->Entry ? C->Entry->getName() : C->getBuffer(Diag)->getBufferIdentifier();
+    C->Entry ? C->Entry->getName() : C->getBuffer()->getBufferIdentifier();
   unsigned LineNo = getLineNumber(LocInfo.first, LocInfo.second);
   unsigned ColNo  = getColumnNumber(LocInfo.first, LocInfo.second);
   SourceLocation IncludeLoc = FI.getIncludeLoc();
@@ -1038,12 +977,8 @@ SourceLocation SourceManager::getLocation(const FileEntry *SourceFile,
 
   // If this is the first use of line information for this buffer, compute the
   /// SourceLineCache for it on demand.
-  if (Content->SourceLineCache == 0) {
-    bool MyInvalid = false;
-    ComputeLineNumbers(Diag, Content, ContentCacheAlloc, MyInvalid);
-    if (MyInvalid)
-      return SourceLocation();
-  }
+  if (Content->SourceLineCache == 0)
+    ComputeLineNumbers(Content, ContentCacheAlloc);
 
   // Find the first file ID that corresponds to the given file.
   FileID FirstFID;
@@ -1072,15 +1007,15 @@ SourceLocation SourceManager::getLocation(const FileEntry *SourceFile,
     return SourceLocation();
 
   if (Line > Content->NumLines) {
-    unsigned Size = Content->getBuffer(Diag)->getBufferSize();
+    unsigned Size = Content->getBuffer()->getBufferSize();
     if (Size > 0)
       --Size;
     return getLocForStartOfFile(FirstFID).getFileLocWithOffset(Size);
   }
 
   unsigned FilePos = Content->SourceLineCache[Line - 1];
-  const char *Buf = Content->getBuffer(Diag)->getBufferStart() + FilePos;
-  unsigned BufLength = Content->getBuffer(Diag)->getBufferEnd() - Buf;
+  const char *Buf = Content->getBuffer()->getBufferStart() + FilePos;
+  unsigned BufLength = Content->getBuffer()->getBufferEnd() - Buf;
   unsigned i = 0;
 
   // Check that the given column is valid.

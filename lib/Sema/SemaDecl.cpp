@@ -188,6 +188,18 @@ Sema::TypeTy *Sema::getTypeName(IdentifierInfo &II, SourceLocation NameLoc,
   if (TypeDecl *TD = dyn_cast<TypeDecl>(IIDecl)) {
     DiagnoseUseOfDecl(IIDecl, NameLoc);
 
+    // C++ [temp.local]p2:
+    //   Within the scope of a class template specialization or
+    //   partial specialization, when the injected-class-name is
+    //   not followed by a <, it is equivalent to the
+    //   injected-class-name followed by the template-argument s
+    //   of the class template specialization or partial
+    //   specialization enclosed in <>.
+    if (CXXRecordDecl *RD = dyn_cast<CXXRecordDecl>(TD))
+      if (RD->isInjectedClassName())
+        if (ClassTemplateDecl *Template = RD->getDescribedClassTemplate())
+          T = Template->getInjectedClassNameType(Context);
+
     if (T.isNull())
       T = Context.getTypeDeclType(TD);
     
@@ -1761,7 +1773,12 @@ DeclarationName Sema::GetNameFromUnqualifiedId(const UnqualifiedId &Name) {
         return DeclarationName();
 
       // Determine the type of the class being constructed.
-      QualType CurClassType = Context.getTypeDeclType(CurClass);
+      QualType CurClassType;
+      if (ClassTemplateDecl *ClassTemplate
+            = CurClass->getDescribedClassTemplate())
+        CurClassType = ClassTemplate->getInjectedClassNameType(Context);
+      else
+        CurClassType = Context.getTypeDeclType(CurClass);
 
       // FIXME: Check two things: that the template-id names the same type as
       // CurClassType, and that the template-id does not occur when the name
@@ -2262,13 +2279,6 @@ isOutOfScopePreviousDeclaration(NamedDecl *PrevDecl, DeclContext *DC,
   return true;
 }
 
-static void SetNestedNameSpecifier(DeclaratorDecl *DD, Declarator &D) {
-  CXXScopeSpec &SS = D.getCXXScopeSpec();
-  if (!SS.isSet()) return;
-  DD->setQualifierInfo(static_cast<NestedNameSpecifier*>(SS.getScopeRep()),
-                       SS.getRange());
-}
-
 NamedDecl*
 Sema::ActOnVariableDeclarator(Scope* S, Declarator& D, DeclContext* DC,
                               QualType R, TypeSourceInfo *TInfo,
@@ -2378,8 +2388,6 @@ Sema::ActOnVariableDeclarator(Scope* S, Declarator& D, DeclContext* DC,
   if (D.isInvalidType())
     NewVD->setInvalidDecl();
 
-  SetNestedNameSpecifier(NewVD, D);
-
   if (D.getDeclSpec().isThreadSpecified()) {
     if (NewVD->hasLocalStorage())
       Diag(D.getDeclSpec().getThreadSpecLoc(), diag::err_thread_non_global);
@@ -2402,9 +2410,6 @@ Sema::ActOnVariableDeclarator(Scope* S, Declarator& D, DeclContext* DC,
     StringLiteral *SE = cast<StringLiteral>(E);
     NewVD->addAttr(::new (Context) AsmLabelAttr(Context, SE->getString()));
   }
-
-  // Diagnose shadowed variables before filtering for scope.
-  DiagnoseShadow(NewVD, Previous);
 
   // Don't consider existing declarations that are in a different
   // scope and are out-of-semantic-context declarations (if the new
@@ -2455,57 +2460,6 @@ Sema::ActOnVariableDeclarator(Scope* S, Declarator& D, DeclContext* DC,
     RegisterLocallyScopedExternCDecl(NewVD, Previous, S);
 
   return NewVD;
-}
-
-/// \brief Diagnose variable or built-in function shadowing.
-///
-/// This method is called as soon as a NamedDecl materializes to check
-/// if it shadows another local or global variable, or a built-in function.
-///
-/// For performance reasons, the lookup results are reused from the calling
-/// context.
-///
-/// \param D variable decl to diagnose. Must be a variable.
-/// \param R cached previous lookup of \p D.
-///
-void Sema::DiagnoseShadow(NamedDecl* D, const LookupResult& R) {
-  assert(D->getKind() == Decl::Var && "Expecting variable.");
-
-  // Return if warning is ignored.
-  if (Diags.getDiagnosticLevel(diag::warn_decl_shadow) == Diagnostic::Ignored)
-    return;
-
-  // Return if not local decl.
-  if (!D->getDeclContext()->isFunctionOrMethod())
-    return;
-
-  DeclarationName Name = D->getDeclName();
-
-  // Return if lookup has no result.
-  if (R.getResultKind() != LookupResult::Found)
-    return;
-
-  // Return if not variable decl.
-  NamedDecl* ShadowedDecl = R.getFoundDecl();
-  if (!isa<VarDecl>(ShadowedDecl) && !isa<FieldDecl>(ShadowedDecl))
-    return;
-
-  // Determine kind of declaration.
-  DeclContext *DC = ShadowedDecl->getDeclContext();
-  unsigned Kind;
-  if (isa<RecordDecl>(DC)) {
-    if (isa<FieldDecl>(ShadowedDecl))
-      Kind = 3; // field
-    else
-      Kind = 2; // static data member
-  } else if (DC->isFileContext())
-    Kind = 1; // global
-  else
-    Kind = 0; // local
-
-  // Emit warning and note.
-  Diag(D->getLocation(), diag::warn_decl_shadow) << Name << Kind << DC;
-  Diag(ShadowedDecl->getLocation(), diag::note_previous_declaration);
 }
 
 /// \brief Perform semantic checking on a newly-created variable
@@ -2781,7 +2735,6 @@ Sema::ActOnFunctionDeclarator(Scope* S, Declarator& D, DeclContext* DC,
                                         D.getIdentifierLoc(), Name, R,
                                         isInline,
                                         /*isImplicitlyDeclared=*/false);
-      NewFD->setTypeSourceInfo(TInfo);
 
       isVirtualOkay = true;
     } else {
@@ -2861,8 +2814,6 @@ Sema::ActOnFunctionDeclarator(Scope* S, Declarator& D, DeclContext* DC,
 
   if (D.isInvalidType())
     NewFD->setInvalidDecl();
-
-  SetNestedNameSpecifier(NewFD, D);
 
   // Set the lexical context. If the declarator has a C++
   // scope specifier, or is the object of a friend declaration, the
@@ -3950,11 +3901,7 @@ Sema::ActOnParamDeclarator(Scope *S, Declarator &D) {
   // Check for redeclaration of parameters, e.g. int foo(int x, int x);
   IdentifierInfo *II = D.getIdentifier();
   if (II) {
-    LookupResult R(*this, II, D.getIdentifierLoc(), LookupOrdinaryName,
-                   ForRedeclaration);
-    LookupName(R, S);
-    if (R.isSingleResult()) {
-      NamedDecl *PrevDecl = R.getFoundDecl();
+    if (NamedDecl *PrevDecl = LookupSingleName(S, II, LookupOrdinaryName)) {
       if (PrevDecl->isTemplateParameter()) {
         // Maybe we will complain about the shadowed template parameter.
         DiagnoseTemplateParameterShadow(D.getIdentifierLoc(), PrevDecl);
@@ -4318,10 +4265,9 @@ Sema::DeclPtrTy Sema::ActOnFinishFunctionBody(DeclPtrTy D, StmtArg BodyArg,
     CompoundStmt *Compound = isa<CXXTryStmt>(Body) ?
                                cast<CXXTryStmt>(Body)->getTryBlock() :
                                cast<CompoundStmt>(Body);
-    llvm::SmallVector<Stmt*, 64> Elements(Compound->body_begin(),
-                                          Compound->body_end());
+    std::vector<Stmt*> Elements(Compound->body_begin(), Compound->body_end());
     Elements.push_back(L);
-    Compound->setStmts(Context, Elements.data(), Elements.size());
+    Compound->setStmts(Context, &Elements[0], Elements.size());
   }
 
   if (Body) {
@@ -4339,8 +4285,7 @@ Sema::DeclPtrTy Sema::ActOnFinishFunctionBody(DeclPtrTy D, StmtArg BodyArg,
       DiagnoseInvalidJumps(Body);
 
     if (CXXDestructorDecl *Destructor = dyn_cast<CXXDestructorDecl>(dcl))
-      MarkBaseAndMemberDestructorsReferenced(Destructor->getLocation(),
-                                             Destructor->getParent());
+      MarkBaseAndMemberDestructorsReferenced(Destructor);
     
     // If any errors have occurred, clear out any temporaries that may have
     // been leftover. This ensures that these temporaries won't be picked up for
@@ -4917,13 +4862,6 @@ CreateNewDecl:
                                cast_or_null<RecordDecl>(PrevDecl));
   }
 
-  // Maybe add qualifier info.
-  if (SS.isNotEmpty()) {
-    NestedNameSpecifier *NNS
-      = static_cast<NestedNameSpecifier*>(SS.getScopeRep());
-    New->setQualifierInfo(NNS, SS.getRange());
-  }
-
   if (Kind != TagDecl::TK_enum) {
     // Handle #pragma pack: if the #pragma pack stack has non-default
     // alignment, make up a packed attribute for this decl. These
@@ -5112,18 +5050,6 @@ void Sema::ActOnTagFinishDefinition(Scope *S, DeclPtrTy TagD,
                                           
   // Notify the consumer that we've defined a tag.
   Consumer.HandleTagDeclDefinition(Tag);
-}
-
-void Sema::ActOnTagDefinitionError(Scope *S, DeclPtrTy TagD) {
-  AdjustDeclIfTemplate(TagD);
-  TagDecl *Tag = cast<TagDecl>(TagD.getAs<Decl>());
-  Tag->setInvalidDecl();
-
-  // We're undoing ActOnTagStartDefinition here, not
-  // ActOnStartCXXMemberDeclarations, so we don't have to mess with
-  // the FieldCollector.
-
-  PopDeclContext();  
 }
 
 // Note that FieldName may be null for anonymous bitfields.

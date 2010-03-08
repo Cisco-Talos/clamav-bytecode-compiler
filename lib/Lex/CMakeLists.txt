@@ -16,7 +16,6 @@ add_clang_library(clangLex
   PPMacroExpansion.cpp
   PTHLexer.cpp
   Pragma.cpp
-  PreprocessingRecord.cpp
   Preprocessor.cpp
   PreprocessorLexer.cpp
   ScratchBuffer.cpp

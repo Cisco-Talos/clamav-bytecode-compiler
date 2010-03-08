@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -faccess-control -verify %s
+// RUN: %clang_cc1 -fsyntax-only -verify %s
 
 // C++'0x [class.friend] p1:
 //   A friend of a class is a function or class that is given permission to use
@@ -22,10 +22,10 @@ void test1() {
   S s;
   g()->f();
   S::f();
-  X::g(); // expected-error{{no member named 'g' in 'X'}}
-  X::S x_s; // expected-error{{no member named 'S' in 'X'}}
+  X::g(); // expected-error{{no member named 'g' in 'struct X'}}
+  X::S x_s; // expected-error{{no member named 'S' in 'struct X'}}
   X x;
-  x.g(); // expected-error{{no member named 'g' in 'X'}}
+  x.g(); // expected-error{{no member named 'g' in 'struct X'}}
 }
 
 // Test that we recurse through namespaces to find already declared names, but
@@ -46,106 +46,17 @@ namespace N {
     g()->f();
     S s;
     S::f();
-    X::g(); // expected-error{{no member named 'g' in 'N::X'}}
-    X::S x_s; // expected-error{{no member named 'S' in 'N::X'}}
+    X::g(); // expected-error{{no member named 'g' in 'struct N::X'}}
+    X::S x_s; // expected-error{{no member named 'S' in 'struct N::X'}}
     X x;
-    x.g(); // expected-error{{no member named 'g' in 'N::X'}}
+    x.g(); // expected-error{{no member named 'g' in 'struct N::X'}}
 
     g2();
     S2 s2;
     ::g2(); // expected-error{{no member named 'g2' in the global namespace}}
     ::S2 g_s2; // expected-error{{no member named 'S2' in the global namespace}}
-    X::g2(); // expected-error{{no member named 'g2' in 'N::X'}}
-    X::S2 x_s2; // expected-error{{no member named 'S2' in 'N::X'}}
-    x.g2(); // expected-error{{no member named 'g2' in 'N::X'}}
+    X::g2(); // expected-error{{no member named 'g2' in 'struct N::X'}}
+    X::S2 x_s2; // expected-error{{no member named 'S2' in 'struct N::X'}}
+    x.g2(); // expected-error{{no member named 'g2' in 'struct N::X'}}
   }
-}
-
-namespace test0 {
-  class ClassFriend {
-    void test();
-  };
-
-  class MemberFriend {
-    void test();
-  };
-
-  void declared_test();
-
-  class Class {
-    static void member(); // expected-note 2 {{declared private here}}
-
-    friend class ClassFriend;
-    friend class UndeclaredClassFriend;
-
-    friend void undeclared_test();
-    friend void declared_test();
-    friend void MemberFriend::test();
-  };
-
-  void declared_test() {
-    Class::member();
-  }
-
-  void undeclared_test() {
-    Class::member();
-  }
-
-  void unfriended_test() {
-    Class::member(); // expected-error {{'member' is a private member of 'test0::Class'}}
-  }
-
-  void ClassFriend::test() {
-    Class::member();
-  }
-
-  void MemberFriend::test() {
-    Class::member();
-  }
-
-  class UndeclaredClassFriend {
-    void test() {
-      Class::member();
-    }
-  };
-
-  class ClassNonFriend {
-    void test() {
-      Class::member(); // expected-error {{'member' is a private member of 'test0::Class'}}
-    }
-  };
-}
-
-// Make sure that friends have access to inherited protected members.
-namespace test2 {
-  struct X;
-
-  class ilist_half_node {
-    friend struct ilist_walker_bad;
-    X *Prev;
-  protected:
-    X *getPrev() { return Prev; }
-  };
-
-  class ilist_node : private ilist_half_node { // expected-note {{declared private here}} expected-note {{constrained by private inheritance here}}
-    friend struct ilist_walker;
-    X *Next;
-    X *getNext() { return Next; } // expected-note {{declared private here}}
-  };
-
-  struct X : ilist_node {};
-
-  struct ilist_walker {
-    static X *getPrev(X *N) { return N->getPrev(); }
-    static X *getNext(X *N) { return N->getNext(); }
-  };  
-
-  struct ilist_walker_bad {
-    static X *getPrev(X *N) { return N->getPrev(); } // \
-    // expected-error {{'getPrev' is a private member of 'test2::ilist_half_node'}} \
-    // expected-error {{cannot cast 'test2::X' to its private base class 'test2::ilist_half_node'}}
-
-    static X *getNext(X *N) { return N->getNext(); } // \
-    // expected-error {{'getNext' is a private member of 'test2::ilist_node'}}
-  };  
 }

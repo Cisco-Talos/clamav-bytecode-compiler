@@ -80,24 +80,24 @@ FullSourceLoc FullSourceLoc::getSpellingLoc() const {
   return FullSourceLoc(SrcMgr->getSpellingLoc(*this), *SrcMgr);
 }
 
-unsigned FullSourceLoc::getInstantiationLineNumber(bool *Invalid) const {
+unsigned FullSourceLoc::getInstantiationLineNumber() const {
   assert(isValid());
-  return SrcMgr->getInstantiationLineNumber(*this, Invalid);
+  return SrcMgr->getInstantiationLineNumber(*this);
 }
 
-unsigned FullSourceLoc::getInstantiationColumnNumber(bool *Invalid) const {
+unsigned FullSourceLoc::getInstantiationColumnNumber() const {
   assert(isValid());
-  return SrcMgr->getInstantiationColumnNumber(*this, Invalid);
+  return SrcMgr->getInstantiationColumnNumber(*this);
 }
 
-unsigned FullSourceLoc::getSpellingLineNumber(bool *Invalid) const {
+unsigned FullSourceLoc::getSpellingLineNumber() const {
   assert(isValid());
-  return SrcMgr->getSpellingLineNumber(*this, Invalid);
+  return SrcMgr->getSpellingLineNumber(*this);
 }
 
-unsigned FullSourceLoc::getSpellingColumnNumber(bool *Invalid) const {
+unsigned FullSourceLoc::getSpellingColumnNumber() const {
   assert(isValid());
-  return SrcMgr->getSpellingColumnNumber(*this, Invalid);
+  return SrcMgr->getSpellingColumnNumber(*this);
 }
 
 bool FullSourceLoc::isInSystemHeader() const {
@@ -105,18 +105,19 @@ bool FullSourceLoc::isInSystemHeader() const {
   return SrcMgr->isInSystemHeader(*this);
 }
 
-const char *FullSourceLoc::getCharacterData(bool *Invalid) const {
+const char *FullSourceLoc::getCharacterData() const {
   assert(isValid());
-  return SrcMgr->getCharacterData(*this, Invalid);
+  return SrcMgr->getCharacterData(*this);
 }
 
-const llvm::MemoryBuffer* FullSourceLoc::getBuffer(bool *Invalid) const {
+const llvm::MemoryBuffer* FullSourceLoc::getBuffer() const {
   assert(isValid());
-  return SrcMgr->getBuffer(SrcMgr->getFileID(*this), Invalid);
+  return SrcMgr->getBuffer(SrcMgr->getFileID(*this));
 }
 
-llvm::StringRef FullSourceLoc::getBufferData(bool *Invalid) const {
-  return getBuffer(Invalid)->getBuffer();
+std::pair<const char*, const char*> FullSourceLoc::getBufferData() const {
+  const llvm::MemoryBuffer *Buf = getBuffer();
+  return std::make_pair(Buf->getBufferStart(), Buf->getBufferEnd());
 }
 
 std::pair<FileID, unsigned> FullSourceLoc::getDecomposedLoc() const {

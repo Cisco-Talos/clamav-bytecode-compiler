@@ -59,12 +59,9 @@ SourceLocation Sema::getLocationOfStringLiteralByte(const StringLiteral *SL,
     // Re-lex the token to get its length and original spelling.
     std::pair<FileID, unsigned> LocInfo =
       SourceMgr.getDecomposedLoc(StrTokSpellingLoc);
-    bool Invalid = false;
-    llvm::StringRef Buffer = SourceMgr.getBufferData(LocInfo.first, &Invalid);
-    if (Invalid)
-      return StrTokSpellingLoc;
-      
-    const char *StrData = Buffer.data()+LocInfo.second;
+    std::pair<const char *,const char *> Buffer =
+      SourceMgr.getBufferData(LocInfo.first);
+    const char *StrData = Buffer.first+LocInfo.second;
 
     // Create a langops struct and enable trigraphs.  This is sufficient for
     // relexing tokens.
@@ -72,8 +69,8 @@ SourceLocation Sema::getLocationOfStringLiteralByte(const StringLiteral *SL,
     LangOpts.Trigraphs = true;
 
     // Create a lexer starting at the beginning of this token.
-    Lexer TheLexer(StrTokSpellingLoc, LangOpts, Buffer.begin(), StrData,
-                   Buffer.end());
+    Lexer TheLexer(StrTokSpellingLoc, LangOpts, Buffer.first, StrData,
+                   Buffer.second);
     Token TheTok;
     TheLexer.LexFromRawLexer(TheTok);
 
@@ -2014,9 +2011,10 @@ bool IsSameFloatAfterCast(const APValue &value,
 /// \param lex the left-hand expression
 /// \param rex the right-hand expression
 /// \param OpLoc the location of the joining operator
-/// \param BinOpc binary opcode or 0
+/// \param Equality whether this is an "equality-like" join, which
+///   suppresses the warning in some cases
 void Sema::CheckSignCompare(Expr *lex, Expr *rex, SourceLocation OpLoc,
-                            const BinaryOperator::Opcode* BinOpc) {
+                            const PartialDiagnostic &PD, bool Equality) {
   // Don't warn if we're in an unevaluated context.
   if (ExprEvalContexts.back().Context == Unevaluated)
     return;
@@ -2077,51 +2075,17 @@ void Sema::CheckSignCompare(Expr *lex, Expr *rex, SourceLocation OpLoc,
 
   // If the signed operand is non-negative, then the signed->unsigned
   // conversion won't change it.
-  if (signedRange.NonNegative) {
-    // Emit warnings for comparisons of unsigned to integer constant 0.
-    //   always false: x < 0  (or 0 > x)
-    //   always true:  x >= 0 (or 0 <= x)
-    llvm::APSInt X;
-    if (BinOpc && signedOperand->isIntegerConstantExpr(X, Context) && X == 0) {
-      if (signedOperand != lex) {
-        if (*BinOpc == BinaryOperator::LT) {
-          Diag(OpLoc, diag::warn_lunsigned_always_true_comparison)
-            << "< 0" << "false"
-            << lex->getSourceRange() << rex->getSourceRange();
-        }
-        else if (*BinOpc == BinaryOperator::GE) {
-          Diag(OpLoc, diag::warn_lunsigned_always_true_comparison)
-            << ">= 0" << "true"
-            << lex->getSourceRange() << rex->getSourceRange();
-        }
-      }
-      else {
-        if (*BinOpc == BinaryOperator::GT) {
-          Diag(OpLoc, diag::warn_runsigned_always_true_comparison)
-            << "0 >" << "false" 
-            << lex->getSourceRange() << rex->getSourceRange();
-        } 
-        else if (*BinOpc == BinaryOperator::LE) {
-          Diag(OpLoc, diag::warn_runsigned_always_true_comparison)
-            << "0 <=" << "true" 
-            << lex->getSourceRange() << rex->getSourceRange();
-        }
-      }
-    }
+  if (signedRange.NonNegative)
     return;
-  }
 
   // For (in)equality comparisons, if the unsigned operand is a
   // constant which cannot collide with a overflowed signed operand,
   // then reinterpreting the signed operand as unsigned will not
   // change the result of the comparison.
-  if (BinOpc &&
-      (*BinOpc == BinaryOperator::EQ || *BinOpc == BinaryOperator::NE) &&
-      unsignedRange.Width < unsignedWidth)
+  if (Equality && unsignedRange.Width < unsignedWidth)
     return;
 
-  Diag(OpLoc, BinOpc ? diag::warn_mixed_sign_comparison
-                     : diag::warn_mixed_sign_conditional)
+  Diag(OpLoc, PD)
     << lt << rt << lex->getSourceRange() << rex->getSourceRange();
 }
 

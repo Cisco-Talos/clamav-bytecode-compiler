@@ -40,7 +40,6 @@ namespace clang {
   class ASTRecordLayout;
   class BlockExpr;
   class CharUnits;
-  class Diagnostic;
   class Expr;
   class ExternalASTSource;
   class IdentifierTable;
@@ -406,8 +405,6 @@ private:
   /// getExtQualType - Return a type with extended qualifiers.
   QualType getExtQualType(const Type *Base, Qualifiers Quals);
 
-  QualType getTypeDeclTypeSlow(const TypeDecl *Decl);
-
 public:
   /// getAddSpaceQualType - Return the uniqued reference to the type for an
   /// address space qualified type with the specified type and address space.
@@ -583,25 +580,11 @@ public:
 
   /// getTypeDeclType - Return the unique reference to the type for
   /// the specified type declaration.
-  QualType getTypeDeclType(const TypeDecl *Decl,
-                           const TypeDecl *PrevDecl = 0) {
-    assert(Decl && "Passed null for Decl param");
-    if (Decl->TypeForDecl) return QualType(Decl->TypeForDecl, 0);
-
-    if (PrevDecl) {
-      assert(PrevDecl->TypeForDecl && "previous decl has no TypeForDecl");
-      Decl->TypeForDecl = PrevDecl->TypeForDecl;
-      return QualType(PrevDecl->TypeForDecl, 0);
-    }
-
-    return getTypeDeclTypeSlow(Decl);
-  }
+  QualType getTypeDeclType(const TypeDecl *Decl, const TypeDecl* PrevDecl=0);
 
   /// getTypedefType - Return the unique reference to the type for the
   /// specified typename decl.
   QualType getTypedefType(const TypedefDecl *Decl);
-
-  QualType getInjectedClassNameType(CXXRecordDecl *Decl, QualType TST);
 
   QualType getSubstTemplateTypeParmType(const TemplateTypeParmType *Replaced,
                                         QualType Replacement);
@@ -618,11 +601,6 @@ public:
   QualType getTemplateSpecializationType(TemplateName T,
                                          const TemplateArgumentListInfo &Args,
                                          QualType Canon = QualType());
-
-  TypeSourceInfo *
-  getTemplateSpecializationTypeInfo(TemplateName T, SourceLocation TLoc,
-                                    const TemplateArgumentListInfo &Args,
-                                    QualType Canon = QualType());
 
   QualType getQualifiedNameType(NestedNameSpecifier *NNS,
                                 QualType NamedType);
@@ -951,6 +929,8 @@ public:
                                llvm::SmallVectorImpl<ObjCIvarDecl*> &Ivars);
   void CollectNonClassIvars(const ObjCInterfaceDecl *OI,
                                llvm::SmallVectorImpl<ObjCIvarDecl*> &Ivars);
+  void CollectProtocolSynthesizedIvars(const ObjCProtocolDecl *PD,
+                               llvm::SmallVectorImpl<ObjCIvarDecl*> &Ivars);
   unsigned CountSynthesizedIvars(const ObjCInterfaceDecl *OI);
   unsigned CountProtocolSynthesizedIvars(const ObjCProtocolDecl *PD);
   void CollectInheritedProtocols(const Decl *CDecl,
@@ -1161,8 +1141,6 @@ public:
   /// Compatibility predicates used to check assignment expressions.
   bool typesAreCompatible(QualType, QualType); // C99 6.2.7p1
 
-  bool typesAreBlockPointerCompatible(QualType, QualType); 
-
   bool isObjCIdType(QualType T) const {
     return T == ObjCIdTypedefType;
   }
@@ -1181,16 +1159,13 @@ public:
                                const ObjCObjectPointerType *RHSOPT);
   bool canAssignObjCInterfaces(const ObjCInterfaceType *LHS,
                                const ObjCInterfaceType *RHS);
-  bool canAssignObjCInterfacesInBlockPointer(
-                                          const ObjCObjectPointerType *LHSOPT,
-                                          const ObjCObjectPointerType *RHSOPT);
   bool areComparableObjCPointerTypes(QualType LHS, QualType RHS);
   QualType areCommonBaseCompatible(const ObjCObjectPointerType *LHSOPT,
                                    const ObjCObjectPointerType *RHSOPT);
   
   // Functions for calculating composite types
-  QualType mergeTypes(QualType, QualType, bool OfBlockPointer=false);
-  QualType mergeFunctionTypes(QualType, QualType, bool OfBlockPointer=false);
+  QualType mergeTypes(QualType, QualType);
+  QualType mergeFunctionTypes(QualType, QualType);
 
   /// UsualArithmeticConversionsType - handles the various conversions
   /// that are common to binary operators (C99 6.3.1.8, C++ [expr]p9)
@@ -1317,10 +1292,10 @@ static inline Selector GetUnarySelector(const char* name, ASTContext& Ctx) {
 /// this ever changes, this operator will have to be changed, too.)
 /// Usage looks like this (assuming there's an ASTContext 'Context' in scope):
 /// @code
-/// // Default alignment (8)
+/// // Default alignment (16)
 /// IntegerLiteral *Ex = new (Context) IntegerLiteral(arguments);
 /// // Specific alignment
-/// IntegerLiteral *Ex2 = new (Context, 4) IntegerLiteral(arguments);
+/// IntegerLiteral *Ex2 = new (Context, 8) IntegerLiteral(arguments);
 /// @endcode
 /// Please note that you cannot use delete on the pointer; it must be
 /// deallocated using an explicit destructor call followed by
@@ -1351,10 +1326,10 @@ inline void operator delete(void *Ptr, clang::ASTContext &C, size_t)
 /// null on error.
 /// Usage looks like this (assuming there's an ASTContext 'Context' in scope):
 /// @code
-/// // Default alignment (8)
+/// // Default alignment (16)
 /// char *data = new (Context) char[10];
 /// // Specific alignment
-/// char *data = new (Context, 4) char[10];
+/// char *data = new (Context, 8) char[10];
 /// @endcode
 /// Please note that you cannot use delete on the pointer; it must be
 /// deallocated using an explicit destructor call followed by
@@ -1366,7 +1341,7 @@ inline void operator delete(void *Ptr, clang::ASTContext &C, size_t)
 ///                  allocator supports it).
 /// @return The allocated memory. Could be NULL.
 inline void *operator new[](size_t Bytes, clang::ASTContext& C,
-                            size_t Alignment = 8) throw () {
+                            size_t Alignment = 16) throw () {
   return C.Allocate(Bytes, Alignment);
 }
 

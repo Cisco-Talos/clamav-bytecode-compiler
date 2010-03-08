@@ -72,9 +72,7 @@ public:
 
   /// RemoveDeadBindings - Scans a BasicStore of 'state' for dead values.
   ///  It updatees the GRState object in place with the values removed.
-  Store RemoveDeadBindings(Store store, Stmt* Loc, 
-                           const StackFrameContext *LCtx,
-                           SymbolReaper& SymReaper,
+  Store RemoveDeadBindings(Store store, Stmt* Loc, SymbolReaper& SymReaper,
                           llvm::SmallVectorImpl<const MemRegion*>& RegionRoots);
 
   void iterBindings(Store store, BindingsHandler& f);
@@ -144,8 +142,7 @@ SVal BasicStoreManager::LazyRetrieve(Store store, const TypedRegion *R) {
 
   // Globals and parameters start with symbolic values.
   // Local variables initially are undefined.
-  if (VR->hasGlobalsOrParametersStorage() ||
-      isa<UnknownSpaceRegion>(VR->getMemorySpace()))
+  if (VR->hasGlobalsOrParametersStorage())
     return ValMgr.getRegionValueSymbolVal(R);
   return UndefinedVal();
 }
@@ -252,7 +249,6 @@ Store BasicStoreManager::Remove(Store store, Loc loc) {
 }
 
 Store BasicStoreManager::RemoveDeadBindings(Store store, Stmt* Loc,
-                                            const StackFrameContext *LCtx,
                                             SymbolReaper& SymReaper,
                            llvm::SmallVectorImpl<const MemRegion*>& RegionRoots)
 {

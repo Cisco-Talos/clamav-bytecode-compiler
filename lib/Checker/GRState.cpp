@@ -35,7 +35,6 @@ GRStateManager::~GRStateManager() {
 
 const GRState*
 GRStateManager::RemoveDeadBindings(const GRState* state, Stmt* Loc,
-                                   const StackFrameContext *LCtx,
                                    SymbolReaper& SymReaper) {
 
   // This code essentially performs a "mark-and-sweep" of the VariableBindings.
@@ -51,7 +50,7 @@ GRStateManager::RemoveDeadBindings(const GRState* state, Stmt* Loc,
                                            state, RegionRoots);
 
   // Clean up the store.
-  NewState.St = StoreMgr->RemoveDeadBindings(NewState.St, Loc, LCtx, SymReaper, 
+  NewState.St = StoreMgr->RemoveDeadBindings(NewState.St, Loc, SymReaper, 
                                              RegionRoots);
 
   return ConstraintMgr->RemoveDeadBindings(getPersistentState(NewState),

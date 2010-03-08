@@ -24,6 +24,7 @@ def AddressOfTemporary : DiagGroup<"address-of-temporary">;
 def : DiagGroup<"aggregate-return">;
 def : DiagGroup<"attributes">;
 def : DiagGroup<"bad-function-cast">;
+def BadLiteral : DiagGroup<"bad-literal">;
 def : DiagGroup<"c++-compat">;
 def : DiagGroup<"cast-align">;
 def : DiagGroup<"cast-qual">;
@@ -48,7 +49,6 @@ def : DiagGroup<"init-self">;
 def : DiagGroup<"inline">;
 def : DiagGroup<"int-to-pointer-cast">;
 def : DiagGroup<"invalid-pch">;
-def LiteralRange : DiagGroup<"literal-range">;
 def MissingBraces : DiagGroup<"missing-braces">;
 def : DiagGroup<"missing-declarations">;
 def : DiagGroup<"missing-format-attribute">;
@@ -59,7 +59,7 @@ def : DiagGroup<"nested-externs">;
 def : DiagGroup<"newline-eof">;
 def LongLong : DiagGroup<"long-long">;
 def MismatchedTags : DiagGroup<"mismatched-tags">;
-def MissingFieldInitializers : DiagGroup<"missing-field-initializers">;
+def : DiagGroup<"missing-field-initializers">;
 def NonNull : DiagGroup<"nonnull">;
 def : DiagGroup<"nonportable-cfstrings">;
 def : DiagGroup<"non-virtual-dtor">;
@@ -73,7 +73,7 @@ def : DiagGroup<"redundant-decls">;
 def ReturnType : DiagGroup<"return-type">;
 def SemiBeforeMethodBody : DiagGroup<"semicolon-before-method-body">;
 def : DiagGroup<"sequence-point">;
-def Shadow : DiagGroup<"shadow">;
+def : DiagGroup<"shadow">;
 def : DiagGroup<"shorten-64-to-32">;
 def SignCompare : DiagGroup<"sign-compare">;
 def : DiagGroup<"synth">;
@@ -147,7 +147,6 @@ def Format2 : DiagGroup<"format=2",
                         [FormatNonLiteral, FormatSecurity, FormatY2K]>;
 
 def Extra : DiagGroup<"extra", [
-    MissingFieldInitializers,
     SemiBeforeMethodBody,
     SignCompare,
     UnusedParameter
@@ -184,4 +183,4 @@ def : DiagGroup<"comments", [Comment]>;         // -Wcomments = -Wcomment
 // A warning group for warnings that we want to have on by default in clang,
 // but which aren't on by default in GCC.
 def NonGCC : DiagGroup<"non-gcc",
-    [SignCompare, Conversion, LiteralRange]>;
+    [SignCompare, Conversion, BadLiteral]>;

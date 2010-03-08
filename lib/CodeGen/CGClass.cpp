@@ -98,7 +98,7 @@ CodeGenModule::ComputeThunkAdjustment(const CXXRecordDecl *ClassDecl,
   }
   if (VBase)
     VirtualOffset = 
-      getVtableInfo().getVirtualBaseOffsetOffset(ClassDecl, BaseClassDecl);
+      getVtableInfo().getVirtualBaseOffsetIndex(ClassDecl, BaseClassDecl);
   
   uint64_t Offset = 
     ComputeNonVirtualBaseClassOffset(getContext(), Paths.front(), Start);
@@ -1540,11 +1540,11 @@ CodeGenFunction::GetVirtualBaseClassOffset(llvm::Value *This,
                                                  Int8PtrTy->getPointerTo());
   VTablePtr = Builder.CreateLoad(VTablePtr, "vtable");
 
-  int64_t VBaseOffsetOffset = 
-    CGM.getVtableInfo().getVirtualBaseOffsetOffset(ClassDecl, BaseClassDecl);
+  int64_t VBaseOffsetIndex = 
+    CGM.getVtableInfo().getVirtualBaseOffsetIndex(ClassDecl, BaseClassDecl);
   
   llvm::Value *VBaseOffsetPtr = 
-    Builder.CreateConstGEP1_64(VTablePtr, VBaseOffsetOffset, "vbase.offset.ptr");
+    Builder.CreateConstGEP1_64(VTablePtr, VBaseOffsetIndex, "vbase.offset.ptr");
   const llvm::Type *PtrDiffTy = 
     ConvertType(getContext().getPointerDiffType());
   

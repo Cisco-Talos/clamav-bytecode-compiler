@@ -131,11 +131,10 @@ void PCHDeclReader::VisitTagDecl(TagDecl *TD) {
   TD->setTagKind((TagDecl::TagKind)Record[Idx++]);
   TD->setDefinition(Record[Idx++]);
   TD->setEmbeddedInDeclarator(Record[Idx++]);
-  TD->setRBraceLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
-  TD->setTagKeywordLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
-  // FIXME: maybe read optional qualifier and its range.
   TD->setTypedefForAnonDecl(
                     cast_or_null<TypedefDecl>(Reader.GetDecl(Record[Idx++])));
+  TD->setRBraceLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TD->setTagKeywordLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
 }
 
 void PCHDeclReader::VisitEnumDecl(EnumDecl *ED) {
@@ -169,7 +168,6 @@ void PCHDeclReader::VisitDeclaratorDecl(DeclaratorDecl *DD) {
   TypeSourceInfo *TInfo = Reader.GetTypeSourceInfo(Record, Idx);
   if (TInfo)
     DD->setTypeSourceInfo(TInfo);
-  // FIXME: read optional qualifier and its range.
 }
 
 void PCHDeclReader::VisitFunctionDecl(FunctionDecl *FD) {
@@ -213,7 +211,6 @@ void PCHDeclReader::VisitObjCMethodDecl(ObjCMethodDecl *MD) {
   MD->setDeclImplementation((ObjCMethodDecl::ImplementationControl)Record[Idx++]);
   MD->setObjCDeclQualifier((Decl::ObjCDeclQualifier)Record[Idx++]);
   MD->setResultType(Reader.GetType(Record[Idx++]));
-  MD->setResultTypeSourceInfo(Reader.GetTypeSourceInfo(Record, Idx));
   MD->setEndLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
   unsigned NumParams = Record[Idx++];
   llvm::SmallVector<ParmVarDecl *, 16> Params;
@@ -413,7 +410,6 @@ void PCHDeclReader::VisitImplicitParamDecl(ImplicitParamDecl *PD) {
 void PCHDeclReader::VisitParmVarDecl(ParmVarDecl *PD) {
   VisitVarDecl(PD);
   PD->setObjCDeclQualifier((Decl::ObjCDeclQualifier)Record[Idx++]);
-  PD->setHasInheritedDefaultArg(Record[Idx++]);
 }
 
 void PCHDeclReader::VisitFileScopeAsmDecl(FileScopeAsmDecl *AD) {
@@ -694,7 +690,7 @@ Decl *PCHReader::ReadDeclRecord(uint64_t Offset, unsigned Index) {
     break;
   case pch::DECL_OBJC_METHOD:
     D = ObjCMethodDecl::Create(*Context, SourceLocation(), SourceLocation(),
-                               Selector(), QualType(), 0, 0);
+                               Selector(), QualType(), 0);
     break;
   case pch::DECL_OBJC_INTERFACE:
     D = ObjCInterfaceDecl::Create(*Context, 0, SourceLocation(), 0);

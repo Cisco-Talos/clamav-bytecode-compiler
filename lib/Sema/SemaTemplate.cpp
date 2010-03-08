@@ -15,7 +15,6 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
-#include "clang/AST/DeclFriend.h"
 #include "clang/AST/DeclTemplate.h"
 #include "clang/Parse/DeclSpec.h"
 #include "clang/Parse/Template.h"
@@ -697,12 +696,6 @@ Sema::ActOnTemplateParameterList(unsigned Depth,
                                        RAngleLoc);
 }
 
-static void SetNestedNameSpecifier(TagDecl *T, const CXXScopeSpec &SS) {
-  if (SS.isSet())
-    T->setQualifierInfo(static_cast<NestedNameSpecifier*>(SS.getScopeRep()),
-                        SS.getRange());
-}
-
 Sema::DeclResult
 Sema::CheckClassTemplate(Scope *S, unsigned TagSpec, TagUseKind TUK,
                          SourceLocation KWLoc, const CXXScopeSpec &SS,
@@ -870,7 +863,6 @@ Sema::CheckClassTemplate(Scope *S, unsigned TagSpec, TagUseKind TUK,
                           PrevClassTemplate?
                             PrevClassTemplate->getTemplatedDecl() : 0,
                           /*DelayTypeCreation=*/true);
-  SetNestedNameSpecifier(NewClass, SS);
 
   ClassTemplateDecl *NewTemplate
     = ClassTemplateDecl::Create(Context, SemanticContext, NameLoc,
@@ -879,8 +871,10 @@ Sema::CheckClassTemplate(Scope *S, unsigned TagSpec, TagUseKind TUK,
   NewClass->setDescribedClassTemplate(NewTemplate);
 
   // Build the type for the class template declaration now.
-  QualType T = NewTemplate->getInjectedClassNameSpecialization(Context);
-  T = Context.getInjectedClassNameType(NewClass, T);
+  QualType T =
+    Context.getTypeDeclType(NewClass,
+                            PrevClassTemplate?
+                              PrevClassTemplate->getTemplatedDecl() : 0);
   assert(T->isDependentType() && "Class template type is not dependent?");
   (void)T;
 
@@ -1312,7 +1306,7 @@ Sema::MatchTemplateParametersToScopeSpecifier(SourceLocation DeclStartLoc,
         TemplateParameterList *ExpectedTemplateParams = 0;
         // Is this template-id naming the primary template?
         if (Context.hasSameType(TemplateId,
-                 ClassTemplate->getInjectedClassNameSpecialization(Context)))
+                             ClassTemplate->getInjectedClassNameType(Context)))
           ExpectedTemplateParams = ClassTemplate->getTemplateParameters();
         // ... or a partial specialization?
         else if (ClassTemplatePartialSpecializationDecl *PartialSpec
@@ -1437,8 +1431,6 @@ QualType Sema::CheckTemplateIdType(TemplateName Name,
     }
 
     CanonType = Context.getTypeDeclType(Decl);
-    assert(isa<RecordType>(CanonType) &&
-           "type of non-dependent specialization is not a RecordType");
   }
 
   // Build the fully-sugared type for this class template
@@ -3496,9 +3488,7 @@ Sema::ActOnClassTemplateSpecialization(Scope *S, unsigned TagSpec,
                                                        ClassTemplate,
                                                        Converted,
                                                        TemplateArgs,
-                                                       CanonType,
                                                        PrevPartial);
-    SetNestedNameSpecifier(Partial, SS);
 
     if (PrevPartial) {
       ClassTemplate->getPartialSpecializations().RemoveNode(PrevPartial);
@@ -3555,7 +3545,6 @@ Sema::ActOnClassTemplateSpecialization(Scope *S, unsigned TagSpec,
                                                 ClassTemplate,
                                                 Converted,
                                                 PrevDecl);
-    SetNestedNameSpecifier(Specialization, SS);
 
     if (PrevDecl) {
       ClassTemplate->getSpecializations().RemoveNode(PrevDecl);
@@ -3620,9 +3609,8 @@ Sema::ActOnClassTemplateSpecialization(Scope *S, unsigned TagSpec,
   // actually wrote the specialization, rather than formatting the
   // name based on the "canonical" representation used to store the
   // template arguments in the specialization.
-  TypeSourceInfo *WrittenTy
-    = Context.getTemplateSpecializationTypeInfo(Name, TemplateNameLoc,
-                                                TemplateArgs, CanonType);
+  QualType WrittenTy
+    = Context.getTemplateSpecializationType(Name, TemplateArgs, CanonType);
   if (TUK != TUK_Friend)
     Specialization->setTypeAsWritten(WrittenTy);
   TemplateArgsIn.release();
@@ -3644,7 +3632,7 @@ Sema::ActOnClassTemplateSpecialization(Scope *S, unsigned TagSpec,
   if (TUK == TUK_Friend) {
     FriendDecl *Friend = FriendDecl::Create(Context, CurContext,
                                             TemplateNameLoc,
-                                            WrittenTy->getType().getTypePtr(),
+                                            WrittenTy.getTypePtr(),
                                             /*FIXME:*/KWLoc);
     Friend->setAccess(AS_public);
     CurContext->addDecl(Friend);
@@ -4337,7 +4325,6 @@ Sema::ActOnExplicitInstantiation(Scope *S,
                                                 TemplateNameLoc,
                                                 ClassTemplate,
                                                 Converted, PrevDecl);
-    SetNestedNameSpecifier(Specialization, SS);
 
     if (PrevDecl) {
       // Remove the previous declaration from the folding set, since we want
@@ -4357,9 +4344,8 @@ Sema::ActOnExplicitInstantiation(Scope *S,
   // the explicit instantiation, rather than formatting the name based
   // on the "canonical" representation used to store the template
   // arguments in the specialization.
-  TypeSourceInfo *WrittenTy
-    = Context.getTemplateSpecializationTypeInfo(Name, TemplateNameLoc,
-                                                TemplateArgs,
+  QualType WrittenTy
+    = Context.getTemplateSpecializationType(Name, TemplateArgs,
                                   Context.getTypeDeclType(Specialization));
   Specialization->setTypeAsWritten(WrittenTy);
   TemplateArgsIn.release();

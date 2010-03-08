@@ -430,10 +430,7 @@ std::string NamedDecl::getQualifiedNameAsString(const PrintingPolicy &P) const {
   for (; I!=End; ++I)
     QualName += *I + "::";
 
-  if (getDeclName())
-    QualName += getNameAsString();
-  else
-    QualName += "<anonymous>";
+  QualName += getNameAsString();
 
   return QualName;
 }
@@ -498,16 +495,9 @@ NamedDecl *NamedDecl::getUnderlyingDecl() {
 // DeclaratorDecl Implementation
 //===----------------------------------------------------------------------===//
 
-DeclaratorDecl::~DeclaratorDecl() {}
-void DeclaratorDecl::Destroy(ASTContext &C) {
-  if (hasExtInfo())
-    C.Deallocate(getExtInfo());
-  ValueDecl::Destroy(C);
-}
-
 SourceLocation DeclaratorDecl::getTypeSpecStartLoc() const {
   if (DeclInfo) {
-    TypeLoc TL = getTypeSourceInfo()->getTypeLoc();
+    TypeLoc TL = DeclInfo->getTypeLoc();
     while (true) {
       TypeLoc NextTL = TL.getNextTypeLoc();
       if (!NextTL)
@@ -516,36 +506,6 @@ SourceLocation DeclaratorDecl::getTypeSpecStartLoc() const {
     }
   }
   return SourceLocation();
-}
-
-void DeclaratorDecl::setQualifierInfo(NestedNameSpecifier *Qualifier,
-                                      SourceRange QualifierRange) {
-  if (Qualifier) {
-    // Make sure the extended decl info is allocated.
-    if (!hasExtInfo()) {
-      // Save (non-extended) type source info pointer.
-      TypeSourceInfo *savedTInfo = DeclInfo.get<TypeSourceInfo*>();
-      // Allocate external info struct.
-      DeclInfo = new (getASTContext()) ExtInfo;
-      // Restore savedTInfo into (extended) decl info.
-      getExtInfo()->TInfo = savedTInfo;
-    }
-    // Set qualifier info.
-    getExtInfo()->NNS = Qualifier;
-    getExtInfo()->NNSRange = QualifierRange;
-  }
-  else {
-    // Here Qualifier == 0, i.e., we are removing the qualifier (if any).
-    assert(QualifierRange.isInvalid());
-    if (hasExtInfo()) {
-      // Save type source info pointer.
-      TypeSourceInfo *savedTInfo = getExtInfo()->TInfo;
-      // Deallocate the extended decl info.
-      getASTContext().Deallocate(getExtInfo());
-      // Restore savedTInfo into (non-extended) decl info.
-      DeclInfo = savedTInfo;
-    }
-  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -582,7 +542,7 @@ void VarDecl::Destroy(ASTContext& C) {
     }
   }
   this->~VarDecl();
-  DeclaratorDecl::Destroy(C);
+  C.Deallocate((void *)this);
 }
 
 VarDecl::~VarDecl() {
@@ -858,7 +818,7 @@ void FunctionDecl::Destroy(ASTContext& C) {
   
   C.Deallocate(ParamInfo);
 
-  DeclaratorDecl::Destroy(C);
+  Decl::Destroy(C);
 }
 
 void FunctionDecl::getNameForDiagnostic(std::string &S,
@@ -1388,12 +1348,6 @@ bool FieldDecl::isAnonymousStructOrUnion() const {
 // TagDecl Implementation
 //===----------------------------------------------------------------------===//
 
-void TagDecl::Destroy(ASTContext &C) {
-  if (hasExtInfo())
-    C.Deallocate(getExtInfo());
-  TypeDecl::Destroy(C);
-}
-
 SourceRange TagDecl::getSourceRange() const {
   SourceLocation E = RBraceLoc.isValid() ? RBraceLoc : getLocation();
   return SourceRange(TagKeywordLoc, E);
@@ -1455,26 +1409,6 @@ TagDecl::TagKind TagDecl::getTagKindForTypeSpec(unsigned TypeSpec) {
   }
 }
 
-void TagDecl::setQualifierInfo(NestedNameSpecifier *Qualifier,
-                               SourceRange QualifierRange) {
-  if (Qualifier) {
-    // Make sure the extended qualifier info is allocated.
-    if (!hasExtInfo())
-      TypedefDeclOrQualifier = new (getASTContext()) ExtInfo;
-    // Set qualifier info.
-    getExtInfo()->NNS = Qualifier;
-    getExtInfo()->NNSRange = QualifierRange;
-  }
-  else {
-    // Here Qualifier == 0, i.e., we are removing the qualifier (if any).
-    assert(QualifierRange.isInvalid());
-    if (hasExtInfo()) {
-      getASTContext().Deallocate(getExtInfo());
-      TypedefDeclOrQualifier = (TypedefDecl*) 0;
-    }
-  }
-}
-
 //===----------------------------------------------------------------------===//
 // EnumDecl Implementation
 //===----------------------------------------------------------------------===//
@@ -1488,7 +1422,7 @@ EnumDecl *EnumDecl::Create(ASTContext &C, DeclContext *DC, SourceLocation L,
 }
 
 void EnumDecl::Destroy(ASTContext& C) {
-  TagDecl::Destroy(C);
+  Decl::Destroy(C);
 }
 
 void EnumDecl::completeDefinition(QualType NewType,
@@ -1595,7 +1529,7 @@ void NamespaceDecl::Destroy(ASTContext& C) {
   // together. They are all top-level Decls.
 
   this->~NamespaceDecl();
-  Decl::Destroy(C);
+  C.Deallocate((void *)this);
 }
 
 
@@ -1629,7 +1563,7 @@ EnumConstantDecl *EnumConstantDecl::Create(ASTContext &C, EnumDecl *CD,
 
 void EnumConstantDecl::Destroy(ASTContext& C) {
   if (Init) Init->Destroy(C);
-  ValueDecl::Destroy(C);
+  Decl::Destroy(C);
 }
 
 TypedefDecl *TypedefDecl::Create(ASTContext &C, DeclContext *DC,

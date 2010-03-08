@@ -89,69 +89,47 @@ ObjCContainerDecl::getMethod(Selector Sel, bool isInstance) const {
   return 0;
 }
 
-ObjCPropertyDecl *
-ObjCPropertyDecl::findPropertyDecl(const DeclContext *DC,
-                                   IdentifierInfo *propertyID) {
-
-  DeclContext::lookup_const_iterator I, E;
-  llvm::tie(I, E) = DC->lookup(propertyID);
-  for ( ; I != E; ++I)
-    if (ObjCPropertyDecl *PD = dyn_cast<ObjCPropertyDecl>(*I))
-      return PD;
-
-  return 0;
-}
-
 /// FindPropertyDeclaration - Finds declaration of the property given its name
 /// in 'PropertyId' and returns it. It returns 0, if not found.
+/// FIXME: Convert to DeclContext lookup...
+///
 ObjCPropertyDecl *
 ObjCContainerDecl::FindPropertyDeclaration(IdentifierInfo *PropertyId) const {
+  for (prop_iterator I = prop_begin(), E = prop_end(); I != E; ++I)
+    if ((*I)->getIdentifier() == PropertyId)
+      return *I;
 
-  if (ObjCPropertyDecl *PD =
-        ObjCPropertyDecl::findPropertyDecl(cast<DeclContext>(this), PropertyId))
-    return PD;
+  const ObjCProtocolDecl *PID = dyn_cast<ObjCProtocolDecl>(this);
+  if (PID) {
+    for (ObjCProtocolDecl::protocol_iterator I = PID->protocol_begin(),
+         E = PID->protocol_end(); I != E; ++I)
+      if (ObjCPropertyDecl *P = (*I)->FindPropertyDeclaration(PropertyId))
+        return P;
+  }
 
-  switch (getKind()) {
-    default:
-      break;
-    case Decl::ObjCProtocol: {
-      const ObjCProtocolDecl *PID = cast<ObjCProtocolDecl>(this);
-      for (ObjCProtocolDecl::protocol_iterator I = PID->protocol_begin(),
-           E = PID->protocol_end(); I != E; ++I)
-        if (ObjCPropertyDecl *P = (*I)->FindPropertyDeclaration(PropertyId))
+  if (const ObjCInterfaceDecl *OID = dyn_cast<ObjCInterfaceDecl>(this)) {
+    // Look through categories.
+    for (ObjCCategoryDecl *Category = OID->getCategoryList();
+         Category; Category = Category->getNextClassCategory()) {
+      if (!Category->IsClassExtension())
+        if (ObjCPropertyDecl *P = Category->FindPropertyDeclaration(PropertyId))
           return P;
-      break;
     }
-    case Decl::ObjCInterface: {
-      const ObjCInterfaceDecl *OID = cast<ObjCInterfaceDecl>(this);
-      // Look through categories.
-      for (ObjCCategoryDecl *Cat = OID->getCategoryList();
-           Cat; Cat = Cat->getNextClassCategory())
-        if (!Cat->IsClassExtension())
-          if (ObjCPropertyDecl *P = Cat->FindPropertyDeclaration(PropertyId))
-            return P;
-
-      // Look through protocols.
-      for (ObjCInterfaceDecl::protocol_iterator
-            I = OID->protocol_begin(), E = OID->protocol_end(); I != E; ++I)
-        if (ObjCPropertyDecl *P = (*I)->FindPropertyDeclaration(PropertyId))
-          return P;
-
-      // Finally, check the super class.
-      if (const ObjCInterfaceDecl *superClass = OID->getSuperClass())
-        return superClass->FindPropertyDeclaration(PropertyId);
-      break;
+    // Look through protocols.
+    for (ObjCInterfaceDecl::protocol_iterator I = OID->protocol_begin(),
+         E = OID->protocol_end(); I != E; ++I) {
+      if (ObjCPropertyDecl *P = (*I)->FindPropertyDeclaration(PropertyId))
+        return P;
     }
-    case Decl::ObjCCategory: {
-      const ObjCCategoryDecl *OCD = cast<ObjCCategoryDecl>(this);
-      // Look through protocols.
-      if (!OCD->IsClassExtension())
-        for (ObjCCategoryDecl::protocol_iterator
-              I = OCD->protocol_begin(), E = OCD->protocol_end(); I != E; ++I)
+    if (OID->getSuperClass())
+      return OID->getSuperClass()->FindPropertyDeclaration(PropertyId);
+  } else if (const ObjCCategoryDecl *OCD = dyn_cast<ObjCCategoryDecl>(this)) {
+    // Look through protocols.
+    if (!OCD->IsClassExtension())
+      for (ObjCInterfaceDecl::protocol_iterator I = OCD->protocol_begin(),
+           E = OCD->protocol_end(); I != E; ++I) {
         if (ObjCPropertyDecl *P = (*I)->FindPropertyDeclaration(PropertyId))
           return P;
-
-      break;
     }
   }
   return 0;
@@ -159,21 +137,22 @@ ObjCContainerDecl::FindPropertyDeclaration(IdentifierInfo *PropertyId) const {
 
 /// FindPropertyVisibleInPrimaryClass - Finds declaration of the property
 /// with name 'PropertyId' in the primary class; including those in protocols
-/// (direct or indirect) used by the primary class.
+/// (direct or indirect) used by the promary class.
+/// FIXME: Convert to DeclContext lookup...
 ///
 ObjCPropertyDecl *
-ObjCInterfaceDecl::FindPropertyVisibleInPrimaryClass(
+ObjCContainerDecl::FindPropertyVisibleInPrimaryClass(
                                             IdentifierInfo *PropertyId) const {
-  if (ObjCPropertyDecl *PD =
-      ObjCPropertyDecl::findPropertyDecl(cast<DeclContext>(this), PropertyId))
-    return PD;
-
+  assert(isa<ObjCInterfaceDecl>(this) && "FindPropertyVisibleInPrimaryClass");
+  for (prop_iterator I = prop_begin(), E = prop_end(); I != E; ++I)
+    if ((*I)->getIdentifier() == PropertyId)
+      return *I;
+  const ObjCInterfaceDecl *OID = dyn_cast<ObjCInterfaceDecl>(this);
   // Look through protocols.
-  for (ObjCInterfaceDecl::protocol_iterator
-        I = protocol_begin(), E = protocol_end(); I != E; ++I)
+  for (ObjCInterfaceDecl::protocol_iterator I = OID->protocol_begin(),
+       E = OID->protocol_end(); I != E; ++I)
     if (ObjCPropertyDecl *P = (*I)->FindPropertyDeclaration(PropertyId))
       return P;
-
   return 0;
 }
 
@@ -325,16 +304,15 @@ ObjCMethodDecl *ObjCMethodDecl::Create(ASTContext &C,
                                        SourceLocation beginLoc,
                                        SourceLocation endLoc,
                                        Selector SelInfo, QualType T,
-                                       TypeSourceInfo *ResultTInfo,
                                        DeclContext *contextDecl,
                                        bool isInstance,
                                        bool isVariadic,
                                        bool isSynthesized,
                                        ImplementationControl impControl) {
   return new (C) ObjCMethodDecl(beginLoc, endLoc,
-                                SelInfo, T, ResultTInfo, contextDecl,
-                                isInstance,
-                                isVariadic, isSynthesized, impControl);
+                                  SelInfo, T, contextDecl,
+                                  isInstance,
+                                  isVariadic, isSynthesized, impControl);
 }
 
 void ObjCMethodDecl::Destroy(ASTContext &C) {
@@ -462,6 +440,7 @@ void ObjCInterfaceDecl::Destroy(ASTContext &C) {
   for (ivar_iterator I = ivar_begin(), E = ivar_end(); I != E; ++I)
     if (*I) (*I)->Destroy(C);
 
+  IVars.Destroy(C);
   // FIXME: CategoryList?
 
   // FIXME: Because there is no clear ownership

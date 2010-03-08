@@ -172,6 +172,14 @@ Action::TypeTy *Sema::getDestructorName(SourceLocation TildeLoc,
 
     if (TypeDecl *Type = Found.getAsSingle<TypeDecl>()) {
       QualType T = Context.getTypeDeclType(Type);
+      // If we found the injected-class-name of a class template, retrieve the
+      // type of that template.
+      // FIXME: We really shouldn't need to do this.
+      if (CXXRecordDecl *Record = dyn_cast<CXXRecordDecl>(Type))
+        if (Record->isInjectedClassName())
+          if (Record->getDescribedClassTemplate())
+            T = Record->getDescribedClassTemplate()
+                                           ->getInjectedClassNameType(Context);
 
       if (SearchType.isNull() || SearchType->isDependentType() ||
           Context.hasSameUnqualifiedType(T, SearchType)) {
@@ -192,8 +200,16 @@ Action::TypeTy *Sema::getDestructorName(SourceLocation TildeLoc,
       if (SS.isSet()) {
         if (DeclContext *Ctx = computeDeclContext(SS, EnteringContext)) {
           // Figure out the type of the context, if it has one.
-          if (CXXRecordDecl *Record = dyn_cast<CXXRecordDecl>(Ctx))
-            MemberOfType = Context.getTypeDeclType(Record);
+          if (ClassTemplateSpecializationDecl *Spec
+                          = dyn_cast<ClassTemplateSpecializationDecl>(Ctx))
+            MemberOfType = Context.getTypeDeclType(Spec);
+          else if (CXXRecordDecl *Record = dyn_cast<CXXRecordDecl>(Ctx)) {
+            if (Record->getDescribedClassTemplate())
+              MemberOfType = Record->getDescribedClassTemplate()
+                                          ->getInjectedClassNameType(Context);
+            else
+              MemberOfType = Context.getTypeDeclType(Record);
+          }
         }
       }
       if (MemberOfType.isNull())
@@ -912,8 +928,6 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
       = cast<CXXRecordDecl>(AllocType->getAs<RecordType>()->getDecl());
     LookupQualifiedName(FoundDelete, RD);
   }
-  if (FoundDelete.isAmbiguous())
-    return true; // FIXME: clean up expressions?
 
   if (FoundDelete.empty()) {
     DeclareGlobalNewDelete();
@@ -921,8 +935,8 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
   }
 
   FoundDelete.suppressDiagnostics();
-  UnresolvedSet<4> Matches;
-  if (NumPlaceArgs > 0) {
+  llvm::SmallVector<NamedDecl *, 4> Matches;
+  if (NumPlaceArgs > 1) {
     // C++ [expr.new]p20:
     //   A declaration of a placement deallocation function matches the
     //   declaration of a placement allocation function if it has the
@@ -964,7 +978,7 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
         Fn = cast<FunctionDecl>((*D)->getUnderlyingDecl());
 
       if (Context.hasSameType(Fn->getType(), ExpectedFunctionType))
-        Matches.addDecl(Fn, D.getAccess());
+        Matches.push_back(Fn);
     }
   } else {
     // C++ [expr.new]p20:
@@ -975,7 +989,7 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
          D != DEnd; ++D) {
       if (FunctionDecl *Fn = dyn_cast<FunctionDecl>((*D)->getUnderlyingDecl()))
         if (isNonPlacementDeallocationFunction(Fn))
-          Matches.addDecl(D.getDecl(), D.getAccess());
+          Matches.push_back(*D);
     }
   }
 
@@ -984,6 +998,7 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
   //   function, that function will be called; otherwise, no
   //   deallocation function will be called.
   if (Matches.size() == 1) {
+    // FIXME: Drops access, using-declaration info!
     OperatorDelete = cast<FunctionDecl>(Matches[0]->getUnderlyingDecl());
 
     // C++0x [expr.new]p20:
@@ -999,9 +1014,6 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
                        PlaceArgs[NumPlaceArgs - 1]->getLocEnd());
       Diag(OperatorDelete->getLocation(), diag::note_previous_decl)
         << DeleteName;
-    } else {
-      CheckAllocationAccess(StartLoc, Range, FoundDelete.getNamingClass(),
-                            Matches[0].getDecl(), Matches[0].getAccess());
     }
   }
 
@@ -1023,10 +1035,7 @@ bool Sema::FindAllocationOverload(SourceLocation StartLoc, SourceRange Range,
       << Name << Range;
   }
 
-  if (R.isAmbiguous())
-    return true;
-
-  R.suppressDiagnostics();
+  // FIXME: handle ambiguity
 
   OverloadCandidateSet Candidates(StartLoc);
   for (LookupResult::iterator Alloc = R.begin(), AllocEnd = R.end(); 
@@ -1057,7 +1066,7 @@ bool Sema::FindAllocationOverload(SourceLocation StartLoc, SourceRange Range,
     // The first argument is size_t, and the first parameter must be size_t,
     // too. This is checked on declaration and can be assumed. (It can't be
     // asserted on, though, since invalid decls are left in there.)
-    // Watch out for variadic allocator function.
+    // Whatch out for variadic allocator function.
     unsigned NumArgsInFnDecl = FnDecl->getNumParams();
     for (unsigned i = 0; (i < NumArgs && i < NumArgsInFnDecl); ++i) {
       if (PerformCopyInitialization(Args[i],
@@ -1066,8 +1075,6 @@ bool Sema::FindAllocationOverload(SourceLocation StartLoc, SourceRange Range,
         return true;
     }
     Operator = FnDecl;
-    CheckAllocationAccess(StartLoc, Range, R.getNamingClass(),
-                          FnDecl, Best->getAccess());
     return false;
   }
 
@@ -2094,7 +2101,7 @@ QualType Sema::CXXCheckConditionalOperands(Expr *&Cond, Expr *&LHS, Expr *&RHS,
   if (LHS->isTypeDependent() || RHS->isTypeDependent())
     return Context.DependentTy;
 
-  CheckSignCompare(LHS, RHS, QuestionLoc);
+  CheckSignCompare(LHS, RHS, QuestionLoc, diag::warn_mixed_sign_conditional);
 
   // C++0x 5.16p2
   //   If either the second or the third operand has type (cv) void, ...

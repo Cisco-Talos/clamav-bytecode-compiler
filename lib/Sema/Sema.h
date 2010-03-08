@@ -300,38 +300,60 @@ public:
   /// \brief The set of static functions seen so far that have not been used.
   std::vector<FunctionDecl*> UnusedStaticFuncs;
   
+  /// An enum describing the kind of diagnostics to use when checking
+  /// access.
+  enum AccessDiagnosticsKind {
+    /// Suppress diagnostics.
+    ADK_quiet,
+
+    /// Use the normal diagnostics.
+    ADK_normal,
+
+    /// Use the diagnostics appropriate for checking a covariant
+    /// return type.
+    ADK_covariance
+  };
+
   class AccessedEntity {
   public:
-    /// A member declaration found through lookup.  The target is the
-    /// member.
-    enum MemberNonce { Member };
+    enum Kind {
+      /// A member declaration found through lookup.  The target is the
+      /// member.
+      Member,
 
-    /// A hierarchy (base-to-derived or derived-to-base) conversion.
-    /// The target is the base class.
-    enum BaseNonce { Base };
+      /// A base-to-derived conversion.  The target is the base class.
+      BaseToDerivedConversion,
 
-    bool isMemberAccess() const { return IsMember; }
+      /// A derived-to-base conversion.  The target is the base class.
+      DerivedToBaseConversion
+    };
 
-    AccessedEntity(MemberNonce _,
-                   CXXRecordDecl *NamingClass,
-                   AccessSpecifier Access,
-                   NamedDecl *Target)
-      : Access(Access), IsMember(true), 
-        Target(Target), NamingClass(NamingClass),
-        Diag(0) {
+    bool isMemberAccess() const { return K == Member; }
+
+    static AccessedEntity makeMember(CXXRecordDecl *NamingClass,
+                                     AccessSpecifier Access,
+                                     NamedDecl *Target) {
+      AccessedEntity E;
+      E.K = Member;
+      E.Access = Access;
+      E.Target = Target;
+      E.NamingClass = NamingClass;
+      return E;
     }
 
-    AccessedEntity(BaseNonce _,
-                   CXXRecordDecl *BaseClass,
-                   CXXRecordDecl *DerivedClass,
-                   AccessSpecifier Access)
-      : Access(Access), IsMember(false),
-        Target(BaseClass), NamingClass(DerivedClass),
-        Diag(0) {
+    static AccessedEntity makeBaseClass(bool BaseToDerived,
+                                        CXXRecordDecl *BaseClass,
+                                        CXXRecordDecl *DerivedClass,
+                                        AccessSpecifier Access) {
+      AccessedEntity E;
+      E.K = BaseToDerived ? BaseToDerivedConversion : DerivedToBaseConversion;
+      E.Access = Access;
+      E.Target = BaseClass;
+      E.NamingClass = DerivedClass;
+      return E;
     }
 
-    bool isQuiet() const { return Diag.getDiagID() == 0; }
-
+    Kind getKind() const { return Kind(K); }
     AccessSpecifier getAccess() const { return AccessSpecifier(Access); }
 
     // These apply to member decls...
@@ -342,32 +364,11 @@ public:
     CXXRecordDecl *getBaseClass() const { return cast<CXXRecordDecl>(Target); }
     CXXRecordDecl *getDerivedClass() const { return NamingClass; }
 
-    /// Sets a diagnostic to be performed.  The diagnostic is given
-    /// four (additional) arguments:
-    ///   %0 - 0 if the entity was private, 1 if protected
-    ///   %1 - the DeclarationName of the entity
-    ///   %2 - the TypeDecl type of the naming class
-    ///   %3 - the TypeDecl type of the declaring class
-    void setDiag(const PartialDiagnostic &PDiag) {
-      assert(isQuiet() && "partial diagnostic already defined");
-      Diag = PDiag;
-    }
-    PartialDiagnostic &setDiag(unsigned DiagID) {
-      assert(isQuiet() && "partial diagnostic already defined");
-      assert(DiagID && "creating null diagnostic");
-      Diag = PartialDiagnostic(DiagID);
-      return Diag;
-    }
-    const PartialDiagnostic &getDiag() const {
-      return Diag;
-    }
-
   private:
+    unsigned K : 2;
     unsigned Access : 2;
-    bool IsMember;
     NamedDecl *Target;
     CXXRecordDecl *NamingClass;    
-    PartialDiagnostic Diag;
   };
 
   struct DelayedDiagnostic {
@@ -383,15 +384,8 @@ public:
       struct { NamedDecl *Decl; } DeprecationData;
 
       /// Access control.
-      char AccessData[sizeof(AccessedEntity)];
+      AccessedEntity AccessData;
     };
-
-    void destroy() {
-      switch (Kind) {
-      case Access: getAccessData().~AccessedEntity(); break;
-      case Deprecation: break;
-      }
-    }
 
     static DelayedDiagnostic makeDeprecation(SourceLocation Loc,
                                              NamedDecl *D) {
@@ -409,16 +403,10 @@ public:
       DD.Kind = Access;
       DD.Triggered = false;
       DD.Loc = Loc;
-      new (&DD.getAccessData()) AccessedEntity(Entity);
+      DD.AccessData = Entity;
       return DD;
     }
 
-    AccessedEntity &getAccessData() {
-      return *reinterpret_cast<AccessedEntity*>(AccessData);
-    }
-    const AccessedEntity &getAccessData() const {
-      return *reinterpret_cast<const AccessedEntity*>(AccessData);
-    }
   };
 
   /// \brief The stack of diagnostics that were delayed due to being
@@ -778,7 +766,6 @@ public:
                                         const LookupResult &Previous,
                                         Scope *S);
   void DiagnoseFunctionSpecifiers(Declarator& D);
-  void DiagnoseShadow(NamedDecl* D, const LookupResult& R);
   NamedDecl* ActOnTypedefDeclarator(Scope* S, Declarator& D, DeclContext* DC,
                                     QualType R, TypeSourceInfo *TInfo,
                                     LookupResult &Previous, bool &Redeclaration);
@@ -938,10 +925,6 @@ public:
   /// the definition of a tag (enumeration, class, struct, or union).
   virtual void ActOnTagFinishDefinition(Scope *S, DeclPtrTy TagDecl,
                                         SourceLocation RBraceLoc);
-
-  /// ActOnTagDefinitionError - Invoked when there was an unrecoverable
-  /// error parsing the definition of a tag.
-  virtual void ActOnTagDefinitionError(Scope *S, DeclPtrTy TagDecl);
 
   EnumConstantDecl *CheckEnumConstant(EnumDecl *Enum,
                                       EnumConstantDecl *LastEnumConst,
@@ -1486,7 +1469,7 @@ public:
   void DiagnoseUnimplementedProperties(ObjCImplDecl* IMPDecl,
                                        ObjCContainerDecl *CDecl,
                                        const llvm::DenseSet<Selector>& InsMap);
-
+  
   /// CollectImmediateProperties - This routine collects all properties in
   /// the class and its conforming protocols; but not those it its super class.
   void CollectImmediateProperties(ObjCContainerDecl *CDecl,
@@ -1499,35 +1482,7 @@ public:
   
   ObjCIvarDecl *SynthesizeNewPropertyIvar(ObjCInterfaceDecl *IDecl,
                                           IdentifierInfo *NameII);
-
-  /// Called by ActOnProperty to handle @property declarations in
-  ////  class extensions.
-  DeclPtrTy HandlePropertyInClassExtension(Scope *S,
-                                           ObjCCategoryDecl *CDecl,
-                                           SourceLocation AtLoc,
-                                           FieldDeclarator &FD,
-                                           Selector GetterSel,
-                                           Selector SetterSel,
-                                           const bool isAssign,
-                                           const bool isReadWrite,
-                                           const unsigned Attributes,
-                                           bool *isOverridingProperty,
-                                           QualType T,
-                                           tok::ObjCKeywordKind MethodImplKind);
-
-  /// Called by ActOnProperty and HandlePropertyInClassExtension to
-  ///  handle creating the ObjcPropertyDecl for a category or @interface.
-  ObjCPropertyDecl *CreatePropertyDecl(Scope *S,
-                                       ObjCContainerDecl *CDecl,
-                                       SourceLocation AtLoc,
-                                       FieldDeclarator &FD,
-                                       Selector GetterSel,
-                                       Selector SetterSel,
-                                       const bool isAssign,
-                                       const bool isReadWrite,
-                                       const unsigned Attributes, QualType T,
-                                       tok::ObjCKeywordKind MethodImplKind);
-
+  
   /// AtomicPropertySetterGetterRules - This routine enforces the rule (via
   /// warning) when atomic property has one but not the other user-declared
   /// setter or getter.
@@ -2478,11 +2433,10 @@ public:
                                    bool IsImplicitConstructor,
                                    bool AnyErrors);
 
-  /// MarkBaseAndMemberDestructorsReferenced - Given a record decl,
-  /// mark all the non-trivial destructors of its members and bases as
-  /// referenced.
-  void MarkBaseAndMemberDestructorsReferenced(SourceLocation Loc,
-                                              CXXRecordDecl *Record);
+  /// MarkBaseAndMemberDestructorsReferenced - Given a destructor decl,
+  /// mark all its non-trivial member and base destructor declarations
+  /// as referenced.
+  void MarkBaseAndMemberDestructorsReferenced(CXXDestructorDecl *Destructor);
 
   /// ClassesWithUnmarkedVirtualMembers - Contains record decls whose virtual
   /// members need to be marked as referenced at the end of the translation
@@ -2584,7 +2538,7 @@ public:
                                     SourceLocation Loc, SourceRange Range,
                                     bool IgnoreAccess = false);
   bool CheckDerivedToBaseConversion(QualType Derived, QualType Base,
-                                    unsigned InaccessibleBaseID,
+                                    AccessDiagnosticsKind ADK,
                                     unsigned AmbigiousBaseConvID,
                                     SourceLocation Loc, SourceRange Range,
                                     DeclarationName Name);
@@ -2628,31 +2582,22 @@ public:
   AccessResult CheckUnresolvedLookupAccess(UnresolvedLookupExpr *E,
                                            NamedDecl *D,
                                            AccessSpecifier Access);
-  AccessResult CheckAllocationAccess(SourceLocation OperatorLoc,
-                                     SourceRange PlacementRange,
-                                     CXXRecordDecl *NamingClass,
-                                     NamedDecl *Allocator,
-                                     AccessSpecifier Access);
   AccessResult CheckConstructorAccess(SourceLocation Loc,
                                       CXXConstructorDecl *D,
                                       AccessSpecifier Access);
   AccessResult CheckDestructorAccess(SourceLocation Loc,
-                                     CXXDestructorDecl *Dtor,
-                                     const PartialDiagnostic &PDiag);
-  AccessResult CheckDirectMemberAccess(SourceLocation Loc,
-                                       NamedDecl *D,
-                                       const PartialDiagnostic &PDiag);
+                                     const RecordType *Record);
   AccessResult CheckMemberOperatorAccess(SourceLocation Loc,
                                          Expr *ObjectExpr,
-                                         Expr *ArgExpr,
                                          NamedDecl *D,
                                          AccessSpecifier Access);
   AccessResult CheckBaseClassAccess(SourceLocation AccessLoc,
+                                    bool IsBaseToDerived,
                                     QualType Base, QualType Derived,
                                     const CXXBasePath &Path,
-                                    unsigned DiagID,
                                     bool ForceCheck = false,
-                                    bool ForceUnprivileged = false);
+                                    bool ForceUnprivileged = false,
+                                    AccessDiagnosticsKind ADK = ADK_normal);
                             
   void CheckLookupAccess(const LookupResult &R);
 
@@ -3648,8 +3593,6 @@ public:
   DeclContext *FindInstantiatedContext(SourceLocation Loc, DeclContext *DC,
                           const MultiLevelTemplateArgumentList &TemplateArgs);
 
-  bool CheckInstantiatedParams(llvm::SmallVectorImpl<ParmVarDecl *> &Params);
-
   // Objective-C declarations.
   virtual DeclPtrTy ActOnStartClassInterface(SourceLocation AtInterfaceLoc,
                                              IdentifierInfo *ClassName,
@@ -4300,7 +4243,8 @@ private:
                             SourceLocation ReturnLoc);
   void CheckFloatComparison(SourceLocation loc, Expr* lex, Expr* rex);
   void CheckSignCompare(Expr *LHS, Expr *RHS, SourceLocation Loc,
-                        const BinaryOperator::Opcode* BinOpc = 0);
+                        const PartialDiagnostic &PD,
+                        bool Equality = false);
   void CheckImplicitConversion(Expr *E, QualType Target);
 };
 

@@ -79,7 +79,7 @@ static void LexRawTokensFromMainFile(Preprocessor &PP,
     // up the indentifier info.  This is important for equality comparison of
     // identifier tokens.
     if (RawTok.is(tok::identifier) && !RawTok.getIdentifierInfo())
-      PP.LookUpIdentifierInfo(RawTok);
+      RawTok.setIdentifierInfo(PP.LookUpIdentifierInfo(RawTok));
 
     RawTokens.push_back(RawTok);
   } while (RawTok.isNot(tok::eof));
@@ -101,8 +101,7 @@ void clang::RewriteMacrosInInput(Preprocessor &PP, llvm::raw_ostream *OS) {
 
 
   // Get the first preprocessing token.
-  if (PP.EnterMainSourceFile())
-    return;
+  PP.EnterMainSourceFile();
   Token PPTok;
   PP.Lex(PPTok);
 

@@ -187,9 +187,6 @@ struct AllocatedCXCodeCompleteResults : public CXCodeCompleteResults {
   /// \brief Diagnostics produced while performing code completion.
   llvm::SmallVector<StoredDiagnostic, 8> Diagnostics;
 
-  /// \brief Diag object
-  Diagnostic Diag;
-  
   /// \brief Language options used to adjust source locations.
   LangOptions LangOpts;
 
@@ -205,7 +202,7 @@ struct AllocatedCXCodeCompleteResults : public CXCodeCompleteResults {
 };
 
 AllocatedCXCodeCompleteResults::AllocatedCXCodeCompleteResults() 
-  : CXCodeCompleteResults(), Buffer(0), SourceMgr(Diag) { }
+  : CXCodeCompleteResults(), Buffer(0) { }
   
 AllocatedCXCodeCompleteResults::~AllocatedCXCodeCompleteResults() {
   for (unsigned I = 0, N = NumResults; I != N; ++I)

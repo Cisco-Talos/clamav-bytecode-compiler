@@ -71,7 +71,9 @@ Entity EntityGetter::VisitNamedDecl(NamedDecl *D) {
   DeclarationName GlobName;
 
   if (IdentifierInfo *II = LocalName.getAsIdentifierInfo()) {
-    IdentifierInfo *GlobII = &ProgImpl.getIdents().get(II->getName());
+    IdentifierInfo *GlobII =
+      &ProgImpl.getIdents().get(II->getNameStart(),
+                                II->getNameStart() + II->getLength());
     GlobName = DeclarationName(GlobII);
   } else {
     Selector LocalSel = LocalName.getObjCSelector();
@@ -138,7 +140,9 @@ Decl *EntityImpl::getDecl(ASTContext &AST) {
   DeclarationName LocalName;
 
   if (IdentifierInfo *GlobII = Name.getAsIdentifierInfo()) {
-    IdentifierInfo &II = AST.Idents.get(GlobII->getName());
+    IdentifierInfo &II =
+      AST.Idents.get(GlobII->getNameStart(),
+                     GlobII->getNameStart() + GlobII->getLength());
     LocalName = DeclarationName(&II);
   } else {
     Selector GlobSel = Name.getObjCSelector();

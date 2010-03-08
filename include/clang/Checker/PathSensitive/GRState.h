@@ -453,7 +453,6 @@ public:
   ConstraintManager& getConstraintManager() { return *ConstraintMgr; }
 
   const GRState* RemoveDeadBindings(const GRState* St, Stmt* Loc,
-                                    const StackFrameContext *LCtx,
                                     SymbolReaper& SymReaper);
 
 public:

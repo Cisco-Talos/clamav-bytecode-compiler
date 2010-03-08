@@ -43,13 +43,8 @@ void html::HighlightRange(Rewriter &R, SourceLocation B, SourceLocation E,
   // Include the whole end token in the range.
   EOffset += Lexer::MeasureTokenLength(E, R.getSourceMgr(), R.getLangOpts());
 
-  bool Invalid = false;
-  const char *BufferStart = SM.getBufferData(FID, &Invalid).data();
-  if (Invalid)
-    return;
-  
   HighlightRange(R.getEditBuffer(FID), BOffset, EOffset,
-                 BufferStart, StartTag, EndTag);
+                 SM.getBufferData(FID).first, StartTag, EndTag);
 }
 
 /// HighlightRange - This is the same as the above method, but takes

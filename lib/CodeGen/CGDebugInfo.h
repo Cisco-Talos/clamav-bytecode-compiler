@@ -43,14 +43,16 @@ namespace CodeGen {
 /// the backend.
 class CGDebugInfo {
   CodeGenModule &CGM;
+  bool isMainCompileUnitCreated;
   llvm::DIFactory DebugFactory;
-  llvm::DICompileUnit TheCU;
+
   SourceLocation CurLoc, PrevLoc;
-  llvm::DIType VTablePtrType;
-  /// FwdDeclCount - This counter is used to ensure unique names for forward
-  /// record decls.
-  unsigned FwdDeclCount;
   
+  llvm::DIType VTablePtrType;
+
+  /// CompileUnitCache - Cache of previously constructed CompileUnits.
+  llvm::DenseMap<unsigned, llvm::DICompileUnit> CompileUnitCache;
+
   /// TypeCache - Cache of previously constructed Types.
   // FIXME: Eliminate this map.  Be careful of iterator invalidation.
   std::map<void *, llvm::WeakVH> TypeCache;
@@ -69,52 +71,52 @@ class CGDebugInfo {
   llvm::DenseMap<const NamespaceDecl *, llvm::WeakVH> NameSpaceCache;
 
   /// Helper functions for getOrCreateType.
-  llvm::DIType CreateType(const BuiltinType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const ComplexType *Ty, llvm::DIFile F);
-  llvm::DIType CreateQualifiedType(QualType Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const TypedefType *Ty, llvm::DIFile F);
+  llvm::DIType CreateType(const BuiltinType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const ComplexType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateQualifiedType(QualType Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const TypedefType *Ty, llvm::DICompileUnit U);
   llvm::DIType CreateType(const ObjCObjectPointerType *Ty,
-                          llvm::DIFile F);
-  llvm::DIType CreateType(const PointerType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const BlockPointerType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const FunctionType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const TagType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const RecordType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const ObjCInterfaceType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const EnumType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const VectorType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const ArrayType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const LValueReferenceType *Ty, llvm::DIFile F);
-  llvm::DIType CreateType(const MemberPointerType *Ty, llvm::DIFile F);
+                          llvm::DICompileUnit Unit);
+  llvm::DIType CreateType(const PointerType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const BlockPointerType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const FunctionType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const TagType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const RecordType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const ObjCInterfaceType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const EnumType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const VectorType *Ty, llvm::DICompileUnit Unit);
+  llvm::DIType CreateType(const ArrayType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const LValueReferenceType *Ty, llvm::DICompileUnit U);
+  llvm::DIType CreateType(const MemberPointerType *Ty, llvm::DICompileUnit U);
   llvm::DIType getOrCreateMethodType(const CXXMethodDecl *Method,
-                                     llvm::DIFile F);
-  llvm::DIType getOrCreateVTablePtrType(llvm::DIFile F);
+                                     llvm::DICompileUnit Unit);
+  llvm::DIType getOrCreateVTablePtrType(llvm::DICompileUnit Unit);
   llvm::DINameSpace getOrCreateNameSpace(const NamespaceDecl *N, 
                                          llvm::DIDescriptor Unit);
 
   llvm::DIType CreatePointerLikeType(unsigned Tag,
                                      const Type *Ty, QualType PointeeTy,
-                                     llvm::DIFile F);
+                                     llvm::DICompileUnit U);
   
   llvm::DISubprogram CreateCXXMemberFunction(const CXXMethodDecl *Method,
-                                             llvm::DIFile F,
+                                             llvm::DICompileUnit Unit,
                                              llvm::DICompositeType &RecordTy);
   
   void CollectCXXMemberFunctions(const CXXRecordDecl *Decl,
-                                 llvm::DIFile F,
+                                 llvm::DICompileUnit U,
                                  llvm::SmallVectorImpl<llvm::DIDescriptor> &E,
                                  llvm::DICompositeType &T);
   void CollectCXXBases(const CXXRecordDecl *Decl,
-                       llvm::DIFile F,
+                       llvm::DICompileUnit Unit,
                        llvm::SmallVectorImpl<llvm::DIDescriptor> &EltTys,
                        llvm::DICompositeType &RecordTy);
 
 
-  void CollectRecordFields(const RecordDecl *Decl, llvm::DIFile F,
+  void CollectRecordFields(const RecordDecl *Decl, llvm::DICompileUnit U,
                            llvm::SmallVectorImpl<llvm::DIDescriptor> &E);
 
   void CollectVtableInfo(const CXXRecordDecl *Decl,
-                         llvm::DIFile F,
+                         llvm::DICompileUnit Unit,
                          llvm::SmallVectorImpl<llvm::DIDescriptor> &EltTys);
 
 public:
@@ -183,19 +185,16 @@ private:
   llvm::DIDescriptor getContextDescriptor(const Decl *Decl,
                                           llvm::DIDescriptor &CU);
 
-  /// CreateCompileUnit - Create new compile unit.
-  void CreateCompileUnit();
-
-  /// getOrCreateFile - Get the file debug info descriptor for the input 
-  /// location.
-  llvm::DIFile getOrCreateFile(SourceLocation Loc);
+  /// getOrCreateCompileUnit - Get the compile unit from the cache or create a
+  /// new one if necessary.
+  llvm::DICompileUnit getOrCreateCompileUnit(SourceLocation Loc);
 
   /// getOrCreateType - Get the type from the cache or create a new type if
   /// necessary.
-  llvm::DIType getOrCreateType(QualType Ty, llvm::DIFile F);
+  llvm::DIType getOrCreateType(QualType Ty, llvm::DICompileUnit Unit);
 
   /// CreateTypeNode - Create type metadata for a source language type.
-  llvm::DIType CreateTypeNode(QualType Ty, llvm::DIFile F);
+  llvm::DIType CreateTypeNode(QualType Ty, llvm::DICompileUnit Unit);
 
   /// getFunctionName - Get function name for the given FunctionDecl. If the
   /// name is constructred on demand (e.g. C++ destructor) then the name

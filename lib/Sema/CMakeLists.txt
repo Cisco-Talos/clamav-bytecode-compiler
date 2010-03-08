@@ -22,7 +22,6 @@ add_clang_library(clangSema
   SemaExprObjC.cpp
   SemaInit.cpp
   SemaLookup.cpp
-  SemaObjCProperty.cpp
   SemaOverload.cpp
   SemaStmt.cpp
   SemaTemplate.cpp

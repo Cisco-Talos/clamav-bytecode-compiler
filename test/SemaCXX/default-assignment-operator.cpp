@@ -1,10 +1,10 @@
 // RUN: %clang_cc1 -fsyntax-only -verify %s
 
-class Base { // expected-error {{cannot define the implicit default assignment operator for 'Base', because non-static reference member 'ref' can't use default assignment operator}}
+class Base { // expected-error {{cannot define the implicit default assignment operator for 'class Base'}}
   int &ref;  // expected-note {{declared at}}
 };
 
-class X  : Base {  // // expected-error {{cannot define the implicit default assignment operator for 'X', because non-static const member 'cint' can't use default assignment operator}}
+class X  : Base {  // // expected-error {{cannot define the implicit default assignment operator for 'class X'}}
 public:
   X();
   const int cint;  // expected-note {{declared at}}
@@ -70,7 +70,7 @@ void i() {
 
 // Test5
 
-class E1 { // expected-error{{cannot define the implicit default assignment operator for 'E1', because non-static const member 'a' can't use default assignment operator}}
+class E1 { // expected-error{{cannot define the implicit default assignment operator for 'class E1', because non-static const member 'a' can't use default assignment operator}}
 public:
   const int a; // expected-note{{declared at}}
   E1() : a(0) {}  

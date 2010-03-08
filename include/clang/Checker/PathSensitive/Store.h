@@ -144,7 +144,6 @@ public:
   }
 
   virtual Store RemoveDeadBindings(Store store, Stmt* Loc,
-                                   const StackFrameContext *LCtx,
                                    SymbolReaper& SymReaper,
                       llvm::SmallVectorImpl<const MemRegion*>& RegionRoots) = 0;
 

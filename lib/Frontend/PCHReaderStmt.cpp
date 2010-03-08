@@ -792,9 +792,8 @@ unsigned PCHStmtReader::VisitObjCMessageExpr(ObjCMessageExpr *E) {
          cast_or_null<Expr>(StmtStack[StmtStack.size() - E->getNumArgs() - 1]));
   if (!E->getReceiver()) {
     ObjCMessageExpr::ClassInfo CI;
-    CI.Decl = cast_or_null<ObjCInterfaceDecl>(Reader.GetDecl(Record[Idx++]));
-    CI.Name = Reader.GetIdentifierInfo(Record, Idx);
-    CI.Loc = SourceLocation::getFromRawEncoding(Record[Idx++]);
+    CI.first = cast_or_null<ObjCInterfaceDecl>(Reader.GetDecl(Record[Idx++]));
+    CI.second = Reader.GetIdentifierInfo(Record, Idx);
     E->setClassInfo(CI);
   }
 

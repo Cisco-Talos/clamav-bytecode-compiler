@@ -296,45 +296,6 @@ cxcursor::getCursorTypeRef(CXCursor C) {
                                       reinterpret_cast<uintptr_t>(C.data[1])));
 }
 
-CXCursor cxcursor::MakePreprocessingDirectiveCursor(SourceRange Range, 
-                                                    ASTUnit *TU) {
-  CXCursor C = { CXCursor_PreprocessingDirective, 
-                 { reinterpret_cast<void *>(Range.getBegin().getRawEncoding()),
-                   reinterpret_cast<void *>(Range.getEnd().getRawEncoding()),
-                   TU }
-               };
-  return C;
-}
-
-SourceRange cxcursor::getCursorPreprocessingDirective(CXCursor C) {
-  assert(C.kind == CXCursor_PreprocessingDirective);
-  return SourceRange(SourceLocation::getFromRawEncoding(
-                                      reinterpret_cast<uintptr_t> (C.data[0])),
-                     SourceLocation::getFromRawEncoding(
-                                      reinterpret_cast<uintptr_t> (C.data[1])));
-}
-
-CXCursor cxcursor::MakeMacroDefinitionCursor(MacroDefinition *MI, ASTUnit *TU) {
-  CXCursor C = { CXCursor_MacroDefinition, { MI, 0, TU } };
-  return C;
-}
-
-MacroDefinition *cxcursor::getCursorMacroDefinition(CXCursor C) {
-  assert(C.kind == CXCursor_MacroDefinition);
-  return static_cast<MacroDefinition *>(C.data[0]);
-}
-
-CXCursor cxcursor::MakeMacroInstantiationCursor(MacroInstantiation *MI, 
-                                                ASTUnit *TU) {
-  CXCursor C = { CXCursor_MacroInstantiation, { MI, 0, TU } };
-  return C;
-}
-
-MacroInstantiation *cxcursor::getCursorMacroInstantiation(CXCursor C) {
-  assert(C.kind == CXCursor_MacroInstantiation);
-  return static_cast<MacroInstantiation *>(C.data[0]);
-}
-
 Decl *cxcursor::getCursorDecl(CXCursor Cursor) {
   return (Decl *)Cursor.data[0];
 }

@@ -437,8 +437,7 @@ public:
     GVA_C99Inline,
     GVA_CXXInline,
     GVA_StrongExternal,
-    GVA_TemplateInstantiation,
-    GVA_ExplicitTemplateInstantiation
+    GVA_TemplateInstantiation
   };
 
   llvm::GlobalVariable::LinkageTypes
@@ -452,9 +451,7 @@ public:
   /// GetTargetTypeStoreSize - Return the store size, in character units, of
   /// the given LLVM type.
   CharUnits GetTargetTypeStoreSize(const llvm::Type *Ty) const;
-
-  std::vector<const CXXRecordDecl*> DeferredVtables;
-
+  
 private:
   /// UniqueMangledName - Unique a name by (if necessary) inserting it into the
   /// MangledNames string map.

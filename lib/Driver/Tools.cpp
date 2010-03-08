@@ -1034,12 +1034,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   Args.AddLastArg(CmdArgs, options::OPT_femit_all_decls);
   Args.AddLastArg(CmdArgs, options::OPT_ffreestanding);
   Args.AddLastArg(CmdArgs, options::OPT_fheinous_gnu_extensions);
-
-  // -flax-vector-conversions is default.
-  if (!Args.hasFlag(options::OPT_flax_vector_conversions,
-                    options::OPT_fno_lax_vector_conversions))
-    CmdArgs.push_back("-fno-lax-vector-conversions");
-
+  Args.AddLastArg(CmdArgs, options::OPT_flax_vector_conversions);
   Args.AddLastArg(CmdArgs, options::OPT_fno_caret_diagnostics);
   Args.AddLastArg(CmdArgs, options::OPT_fno_show_column);
   Args.AddLastArg(CmdArgs, options::OPT_fobjc_gc_only);
@@ -1084,12 +1079,6 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                    getToolChain().IsBlocksDefault())) {
     CmdArgs.push_back("-fblocks");
   }
-
-  // -fno-access-control is default (for now).
-  if (Args.hasFlag(options::OPT_faccess_control,
-                   options::OPT_fno_access_control,
-                   false))
-    CmdArgs.push_back("-faccess-control");
 
   // -fexceptions=0 is default.
   if (needsExceptions(Args, InputType, getToolChain().getTriple()))

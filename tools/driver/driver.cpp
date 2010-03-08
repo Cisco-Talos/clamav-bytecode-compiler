@@ -194,9 +194,9 @@ int main(int argc, const char **argv) {
   Diagnostic Diags(&DiagClient);
 
 #ifdef CLANG_IS_PRODUCTION
-  const bool IsProduction = true;
+  bool IsProduction = true;
 #else
-  const bool IsProduction = false;
+  bool IsProduction = false;
 #endif
   Driver TheDriver(Path.getBasename(), Path.getDirname(),
                    llvm::sys::getHostTriple(),

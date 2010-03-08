@@ -285,7 +285,8 @@ GetLinkageForFunction(ASTContext &Context, const FunctionDecl *FD,
       break;
 
     case TSK_ExplicitInstantiationDefinition:
-      return CodeGenModule::GVA_ExplicitTemplateInstantiation;
+      // FIXME: explicit instantiation definitions should use weak linkage
+      return CodeGenModule::GVA_StrongExternal;
 
     case TSK_ExplicitInstantiationDeclaration:
     case TSK_ImplicitInstantiation:
@@ -342,12 +343,6 @@ CodeGenModule::getFunctionLinkage(const FunctionDecl *D) {
     // merged with other definitions. c) C++ has the ODR, so we know the
     // definition is dependable.
     return llvm::Function::LinkOnceODRLinkage;
-  } else if (Linkage == GVA_ExplicitTemplateInstantiation) {
-    // An explicit instantiation of a template has weak linkage, since
-    // explicit instantiations can occur in multiple translation units
-    // and must all be equivalent. However, we are not allowed to
-    // throw away these explicit instantiations.
-    return llvm::Function::WeakODRLinkage;
   } else {
     assert(Linkage == GVA_StrongExternal);
     // Otherwise, we have strong external linkage.
@@ -493,15 +488,7 @@ void CodeGenModule::EmitDeferred() {
   // Emit code for any potentially referenced deferred decls.  Since a
   // previously unused static decl may become used during the generation of code
   // for a static function, iterate until no  changes are made.
-
-  while (!DeferredDeclsToEmit.empty() || !DeferredVtables.empty()) {
-    if (!DeferredVtables.empty()) {
-      const CXXRecordDecl *RD = DeferredVtables.back();
-      DeferredVtables.pop_back();
-      getVtableInfo().GenerateClassData(getVtableLinkage(RD), RD);
-      continue;
-    }
-
+  while (!DeferredDeclsToEmit.empty()) {
     GlobalDecl D = DeferredDeclsToEmit.back();
     DeferredDeclsToEmit.pop_back();
 
@@ -594,7 +581,6 @@ bool CodeGenModule::MayDeferGeneration(const ValueDecl *Global) {
 
     // static, static inline, always_inline, and extern inline functions can
     // always be deferred.  Normal inline functions can be deferred in C99/C++.
-    // Implicit template instantiations can also be deferred in C++.
     if (Linkage == GVA_Internal || Linkage == GVA_C99Inline ||
         Linkage == GVA_CXXInline || Linkage == GVA_TemplateInstantiation)
       return true;
@@ -1049,15 +1035,15 @@ GetLinkageForVariable(ASTContext &Context, const VarDecl *VD) {
     switch (TSK) {
     case TSK_Undeclared:
     case TSK_ExplicitSpecialization:
-      return CodeGenModule::GVA_StrongExternal;
 
+      // FIXME: ExplicitInstantiationDefinition should be weak!
+    case TSK_ExplicitInstantiationDefinition:
+      return CodeGenModule::GVA_StrongExternal;
+      
     case TSK_ExplicitInstantiationDeclaration:
       llvm_unreachable("Variable should not be instantiated");
       // Fall through to treat this like any other instantiation.
         
-    case TSK_ExplicitInstantiationDefinition:
-      return CodeGenModule::GVA_ExplicitTemplateInstantiation;
-
     case TSK_ImplicitInstantiation:
       return CodeGenModule::GVA_TemplateInstantiation;      
     }
@@ -1177,10 +1163,7 @@ void CodeGenModule::EmitGlobalVarDefinition(const VarDecl *D) {
       GV->setLinkage(llvm::GlobalVariable::WeakODRLinkage);
     else
       GV->setLinkage(llvm::GlobalVariable::WeakAnyLinkage);
-  } else if (Linkage == GVA_TemplateInstantiation ||
-             Linkage == GVA_ExplicitTemplateInstantiation)
-    // FIXME: It seems like we can provide more specific linkage here
-    // (LinkOnceODR, WeakODR).
+  } else if (Linkage == GVA_TemplateInstantiation)
     GV->setLinkage(llvm::GlobalVariable::WeakAnyLinkage);   
   else if (!getLangOptions().CPlusPlus && !CodeGenOpts.NoCommon &&
            !D->hasExternalStorage() && !D->getInit() &&

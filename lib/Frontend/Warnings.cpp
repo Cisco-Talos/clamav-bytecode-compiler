@@ -31,7 +31,7 @@
 #include <algorithm>
 using namespace clang;
 
-void clang::ProcessWarningOptions(Diagnostic &Diags,
+bool clang::ProcessWarningOptions(Diagnostic &Diags,
                                   const DiagnosticOptions &Opts) {
   Diags.setSuppressSystemWarnings(true);  // Default to -Wno-system-headers
   Diags.setIgnoreAllWarnings(Opts.IgnoreWarnings);
@@ -122,4 +122,6 @@ void clang::ProcessWarningOptions(Diagnostic &Diags,
     if (Diags.setDiagnosticGroupMapping(OptStart, Mapping))
       Diags.Report(diag::warn_unknown_warning_option) << ("-W" + Opt);
   }
+
+  return false;
 }

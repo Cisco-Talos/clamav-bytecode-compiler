@@ -20,7 +20,6 @@
 namespace llvm {
   class MemoryBuffer;
   class raw_ostream;
-  class StringRef;
   template <typename T> struct DenseMapInfo;
   template <typename T> struct isPodLike;
 }
@@ -200,19 +199,19 @@ public:
   FullSourceLoc getInstantiationLoc() const;
   FullSourceLoc getSpellingLoc() const;
 
-  unsigned getInstantiationLineNumber(bool *Invalid = 0) const;
-  unsigned getInstantiationColumnNumber(bool *Invalid = 0) const;
+  unsigned getInstantiationLineNumber() const;
+  unsigned getInstantiationColumnNumber() const;
 
-  unsigned getSpellingLineNumber(bool *Invalid = 0) const;
-  unsigned getSpellingColumnNumber(bool *Invalid = 0) const;
+  unsigned getSpellingLineNumber() const;
+  unsigned getSpellingColumnNumber() const;
 
-  const char *getCharacterData(bool *Invalid = 0) const;
+  const char *getCharacterData() const;
 
-  const llvm::MemoryBuffer* getBuffer(bool *Invalid = 0) const;
+  const llvm::MemoryBuffer* getBuffer() const;
 
-  /// getBufferData - Return a StringRef to the source buffer data for the
-  /// specified FileID.
-  llvm::StringRef getBufferData(bool *Invalid = 0) const;
+  /// getBufferData - Return a pointer to the start and end of the source buffer
+  /// data for the specified FileID.
+  std::pair<const char*, const char*> getBufferData() const;
 
   /// getDecomposedLoc - Decompose the specified location into a raw FileID +
   /// Offset pair.  The first element is the FileID, the second is the

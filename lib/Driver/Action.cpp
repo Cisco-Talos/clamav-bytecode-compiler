@@ -13,10 +13,8 @@
 using namespace clang::driver;
 
 Action::~Action() {
-  if (OwnsInputs) {
-    for (iterator it = begin(), ie = end(); it != ie; ++it)
-      delete *it;
-  }
+  // FIXME: Free the inputs. The problem is that BindArchAction shares
+  // inputs; so we can't just walk the inputs.
 }
 
 const char *Action::getClassName(ActionClass AC) {

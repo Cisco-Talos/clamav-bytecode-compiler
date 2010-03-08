@@ -66,22 +66,16 @@ private:
 
   ActionList Inputs;
 
-  unsigned OwnsInputs : 1;
-
 protected:
-  Action(ActionClass _Kind, types::ID _Type)
-    : Kind(_Kind), Type(_Type), OwnsInputs(true)  {}
+  Action(ActionClass _Kind, types::ID _Type) : Kind(_Kind), Type(_Type) {}
   Action(ActionClass _Kind, Action *Input, types::ID _Type)
-    : Kind(_Kind), Type(_Type), Inputs(&Input, &Input + 1), OwnsInputs(true) {}
+    : Kind(_Kind), Type(_Type), Inputs(&Input, &Input + 1) {}
   Action(ActionClass _Kind, const ActionList &_Inputs, types::ID _Type)
-    : Kind(_Kind), Type(_Type), Inputs(_Inputs), OwnsInputs(true) {}
+    : Kind(_Kind), Type(_Type), Inputs(_Inputs) {}
 public:
   virtual ~Action();
 
   const char *getClassName() const { return Action::getClassName(getKind()); }
-
-  bool getOwnsInputs() { return OwnsInputs; }
-  void setOwnsInputs(bool Value) { OwnsInputs = Value; }
 
   ActionClass getKind() const { return Kind; }
   types::ID getType() const { return Type; }

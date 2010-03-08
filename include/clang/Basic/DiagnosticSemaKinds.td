@@ -31,10 +31,10 @@ def ext_predef_outside_function : Warning<
   "predefined identifier is only valid inside function">;
 def warn_float_overflow : Warning<
   "magnitude of floating-point constant too large for type %0; maximum is %1">,
-   InGroup<LiteralRange>;
+   InGroup<BadLiteral>;
 def warn_float_underflow : Warning<
   "magnitude of floating-point constant too small for type %0; minimum is %1">,
-  InGroup<LiteralRange>;
+  InGroup<BadLiteral>;
 
 // C99 Designated Initializers
 def err_array_designator_negative : Error<
@@ -107,15 +107,7 @@ def warn_use_out_of_scope_declaration : Warning<
   "use of out-of-scope declaration of %0">;
 def err_inline_non_function : Error<
   "'inline' can only appear on functions">;
-
-def warn_decl_shadow :
-  Warning<"declaration shadows a %select{"
-          "local variable|"
-          "variable in %2|"
-          "static data member of %2|"
-          "field of %2}1">,
-  InGroup<Shadow>, DefaultIgnore;
-
+  
 // C++ using declarations
 def err_using_requires_qualname : Error<
   "using declaration requires a qualified name">;
@@ -436,39 +428,11 @@ def err_deep_exception_specs_differ : Error<
 // C++ access checking
 def err_class_redeclared_with_different_access : Error<
   "%0 redeclared with '%1' access">;
-def err_access :
-    Error<"%1 is a %select{private|protected}0 member of %3">,
-    NoSFINAE;
-def err_access_ctor :
-    Error<"calling a %select{private|protected}0 constructor of class %2">,
-    NoSFINAE;
-def err_access_dtor_base :
-    Error<"base class %0 has %select{private|protected}1 destructor">,
-    NoSFINAE;
-def err_access_dtor_vbase :
-    Error<"inherited virtual base class %0 has "
-    "%select{private|protected}1 destructor">,
-    NoSFINAE;
-def err_access_dtor_field :
-    Error<"field of type %1 has %select{private|protected}2 destructor">,
-    NoSFINAE;
-def err_access_dtor_var :
-    Error<"variable of type %1 has %select{private|protected}2 destructor">,
-    NoSFINAE;
-def err_access_assign_field :
-    Error<"field of type %1 has %select{private|protected}2 copy assignment"
-          " operator">,
-    NoSFINAE;
-def err_access_assign_base :
-    Error<"base class %0 has %select{private|protected}1 copy assignment"
-          " operator">,
-    NoSFINAE;
-def err_access_copy_field :
-    Error<"field of type %1 has %select{private|protected}2 copy constructor">,
-    NoSFINAE;
-def err_access_copy_base :
-    Error<"base class %0 has %select{private|protected}1 copy constructor">,
-    NoSFINAE;
+def err_access_private : Error<"%0 is a private member of %1">;
+def err_access_ctor_private : Error<"calling a private constructor of %0">;
+// Say something about the context for these?
+def err_access_protected : Error<"%0 is a protected member of %1">;
+def err_access_ctor_protected : Error<"calling a protected constructor of %0">;
 def note_previous_access_declaration : Note<
   "previously declared '%1' here">;
 def err_access_outside_class : Error<
@@ -1287,7 +1251,7 @@ def err_not_class_template_specialization : Error<
 def err_template_spec_needs_header : Error<
   "template specialization requires 'template<>'">;
 def err_template_spec_needs_template_parameters : Error<
-  "template specialization or definition requires a template parameter list "
+  "template specialization or definition requires a template parameter list"
   "corresponding to the nested type %0">;
 def err_template_param_list_matches_nontemplate : Error<
   "template parameter list matching the non-templated nested type %0 should "
@@ -1598,9 +1562,6 @@ def warn_excess_initializers_in_char_array_initializer : ExtWarn<
   "excess elements in char array initializer">;
 def warn_initializer_string_for_char_array_too_long : ExtWarn<
   "initializer-string for char array is too long">;
-def warn_missing_field_initializers : Warning<
-  "missing field '%0' initializer">,
-  InGroup<MissingFieldInitializers>, DefaultIgnore;
 def warn_braces_around_scalar_init : Warning<
   "braces around scalar initializer">;
 def err_many_braces_around_scalar_init : Error<
@@ -1893,12 +1854,6 @@ def warn_mixed_sign_comparison : Warning<
 def warn_mixed_sign_conditional : Warning<
   "operands of ? are integers of different signs: %0 and %1">,
   InGroup<DiagGroup<"sign-compare">>, DefaultIgnore;
-def warn_lunsigned_always_true_comparison : Warning<
-  "comparison of unsigned expression %0 is always %1">,
-  InGroup<DiagGroup<"sign-compare">>, DefaultIgnore;
-def warn_runsigned_always_true_comparison : Warning<
-  "comparison of %0 unsigned expression is always %1">,
-  InGroup<DiagGroup<"sign-compare">>, DefaultIgnore;
 
 def err_invalid_this_use : Error<
   "invalid use of 'this' outside of a nonstatic member function">;
@@ -1952,7 +1907,11 @@ def ext_integer_complement_complex : Extension<
 def error_nosetter_property_assignment : Error<
   "setter method is needed to assign to object using property" " assignment syntax">;
 def error_no_subobject_property_setting : Error<
-  "expression is not assignable using property assignment syntax">;
+  "cannot assign to a sub-structure of an ivar using property" 
+  " assignment syntax">;
+def error_no_subobject_property_getter_setting : Error<
+  "cannot assign to a sub-structure returned via a getter using property" 
+  " assignment syntax">;
 
 def ext_freestanding_complex : Extension<
   "complex numbers are an extension in a freestanding C99 implementation">;
