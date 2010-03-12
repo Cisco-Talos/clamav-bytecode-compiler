@@ -1,0 +1,84 @@
+\chapter{Bytecode libclamav hooks}
+\section{Logical Signature hooks}
+\section{PE hooks}
+
+\section{Adding a new hook}
+A bytecode hook consists of the following:
+\begin{itemize}
+\item special global variables mapped to clamav internal structures,
+\item bytecode invoked at certain points in libclamav
+\item bytecode APIcalls specific to the hook
+\end{itemize}
+
+\subsection{Adding new special globals for hooks}
+In the bytecode there are several special global variables named
+\verb+__clambc_*+, which are mapped to libclamav internal variables.
+
+These are globals from the bytecode's point of view to make bytecode writing
+easier, but they are not real globals in libclamav (it wouldn't be threadsafe).
+Instead in libclamav these "special globals" are stored in \verb+struct cli_bc_ctx.hooks+,
+and the JIT/interpreter inserts special code to access fields of this struct as
+if they were globals.
+
+Steps to add a new global to the bytecode compiler:
+\begin{itemize}
+\item Choose a unique name for the global
+(have a look at \verb+clang/lib/Headers/bytecode_api.h+)
+
+\item Add a new value to \verb+enum bc_global+ in \verb+ClamBC/clambc.h+ named
+\verb+GLOBAL_+ followed by the uppercase name of the global. Make sure you add a
+new global before \verb+_LAST_GLOBAL+, and don't change the order of the other
+enum values (this ensures that bytecodes that don't use the new global continue
+to work properly on old versions of libclamav that don't have the new global).
+
+\item Declare the global's name in \verb+ClamBC/ClamBCModule.cpp+: 
+ 
+\verb+globalsMap["__clambc_<name>"] = GLOBAL_<NAME>;+ where \verb+<name>+
+and \verb+<NAME>+ are the lowercase/uppercase names of the global.
+
+\item Declare the new global in \verb+clang/lib/Headers/bytecode_api.h+, order
+of declaration  of globals doesn't matter here. The global must be declared as
+\verb+extern const+ and named \verb+__clambc_+ followed by the lowercase name of
+the global.
+
+\item Run \verb+./sync_clamav.sh+ to generate \verb+bytecode_api_decl.c.h+,
+\verb+bytecode_api_impl.h+, \verb+bytecode_hooks.h+.
+\end{itemize}
+
+Steps to add a new global to libclamav (needed if you add to compiler):
+\begin{itemize}
+\item In \verb+libclamav/bytecode.c:cli_bytecode_context_alloc()+ initialize the
+field of \verb+ctx->hooks+ corressponding to the new global
+\item Set the field coresponding to the global in the struct \verb+ctx->hooks+
+in one of the API hooks, or introduce a new API hook that sets it.
+\item Note that the pointer set must be valid during the entire execution of the
+bytecode.
+\end{itemize}
+
+\subsection{Adding new bytecode APIs}
+Bytecode APIs are external function calls from the bytecode into special
+entrypoints in libclamav.
+
+To add a new API follow these steps:
+\begin{itemize}
+\item Add the prototype for the new API to
+\verb+clang/lib/Headers/bytecode_api.h+, inside \verb+#ifdef __CLAMBC__+
+\item Run \verb+./sync_clamav.sh+ to synchronize with libclamav
+\item Implement the new \verb+cli_bcapi_+ in \verb+libclamav/bytecode_api.c+
+\item You can store values in fields of \verb+ctx+, which is a hidden parameter,
+    not accessible from bytecode.
+\item You can introduce new fields in \verb+ctx+ if needed to implement the API
+\item Do validation on input parameters, and any necessary security checks in
+the implementation of the API
+\item Create a new test in \verb+examples/in/+, with the extension \verb+.o1.c+,
+    and update \verb+sync_clamav.sh+ to copy it to \verb+unit_tests/input+
+\item Add a new testcase to \verb+unit_tests/check_bytecode.c+:
+  \begin{itemize}
+  \item Add a new \verb+test_+ function, and add it to the testcase with
+  \verb+tcase_add_test+
+  \item Call \verb+cl_init+ and \verb+runtest+ similar to other existing unit
+  tests, but change the filename to the newly added unittest's name
+  \item Run make check, make sure it passes
+  \end{itemize}
+\end{itemize}
+

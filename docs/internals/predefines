@@ -1,0 +1,122 @@
+#define __llvm__ 1
+#define __clang__ 1
+#define __GNUC_MINOR__ 2
+#define __GNUC_PATCHLEVEL__ 1
+#define __GNUC__ 4
+#define __GXX_ABI_VERSION 1002
+#define __VERSION__ "4.2.1 Compatible Clang Compiler"
+#define __STDC__ 1
+#define __STDC_VERSION__ 199901L
+#define __STDC_HOSTED__ 0
+#define __CONSTANT_CFSTRINGS__ 1
+#define __CHAR_BIT__ 8
+#define __SCHAR_MAX__ 127
+#define __SHRT_MAX__ 32767
+#define __INT_MAX__ 2147483647
+#define __LONG_MAX__ 9223372036854775807L
+#define __LONG_LONG_MAX__ 9223372036854775807LL
+#define __WCHAR_MAX__ 2147483647
+#define __INTMAX_MAX__ 9223372036854775807L
+#define __INTMAX_TYPE__ long int
+#define __UINTMAX_TYPE__ long unsigned int
+#define __INTMAX_WIDTH__ 64
+#define __PTRDIFF_TYPE__ int
+#define __PTRDIFF_WIDTH__ 32
+#define __INTPTR_TYPE__ int
+#define __INTPTR_WIDTH__ 32
+#define __SIZE_TYPE__ unsigned int
+#define __SIZE_WIDTH__ 32
+#define __WCHAR_TYPE__ int
+#define __WCHAR_WIDTH__ 32
+#define __WINT_TYPE__ int
+#define __WINT_WIDTH__ 32
+#define __SIG_ATOMIC_WIDTH__ 32
+#define __FLT_DENORM_MIN__ 1.40129846e-45F
+#define __FLT_DIG__ 6
+#define __FLT_EPSILON__ 1.19209290e-7F
+#define __FLT_HAS_INFINITY__ 1
+#define __FLT_HAS_QUIET_NAN__ 1
+#define __FLT_MANT_DIG__ 24
+#define __FLT_MAX_10_EXP__ 38
+#define __FLT_MAX_EXP__ 128
+#define __FLT_MAX__ 3.40282347e+38F
+#define __FLT_MIN_10_EXP__ (-37)
+#define __FLT_MIN_EXP__ (-125)
+#define __FLT_MIN__ 1.17549435e-38F
+#define __FLT_HAS_DENORM__ 1
+#define __DBL_DENORM_MIN__ 4.9406564584124654e-324
+#define __DBL_DIG__ 15
+#define __DBL_EPSILON__ 2.2204460492503131e-16
+#define __DBL_HAS_INFINITY__ 1
+#define __DBL_HAS_QUIET_NAN__ 1
+#define __DBL_MANT_DIG__ 53
+#define __DBL_MAX_10_EXP__ 308
+#define __DBL_MAX_EXP__ 1024
+#define __DBL_MAX__ 1.7976931348623157e+308
+#define __DBL_MIN_10_EXP__ (-307)
+#define __DBL_MIN_EXP__ (-1021)
+#define __DBL_MIN__ 2.2250738585072014e-308
+#define __DBL_HAS_DENORM__ 1
+#define __LDBL_DENORM_MIN__ 4.9406564584124654e-324
+#define __LDBL_DIG__ 15
+#define __LDBL_EPSILON__ 2.2204460492503131e-16
+#define __LDBL_HAS_INFINITY__ 1
+#define __LDBL_HAS_QUIET_NAN__ 1
+#define __LDBL_MANT_DIG__ 53
+#define __LDBL_MAX_10_EXP__ 308
+#define __LDBL_MAX_EXP__ 1024
+#define __LDBL_MAX__ 1.7976931348623157e+308
+#define __LDBL_MIN_10_EXP__ (-307)
+#define __LDBL_MIN_EXP__ (-1021)
+#define __LDBL_MIN__ 2.2250738585072014e-308
+#define __LDBL_HAS_DENORM__ 1
+#define __POINTER_WIDTH__ 32
+#define __INT8_TYPE__ char
+#define __INT16_TYPE__ short
+#define __INT32_TYPE__ int
+#define __INT64_TYPE__ long int
+#define __INT64_C_SUFFIX__ L
+#define __USER_LABEL_PREFIX__ _
+#define __FINITE_MATH_ONLY__ 0
+#define __GNUC_STDC_INLINE__ 1
+#define __NO_INLINE__ 1
+#define __FLT_EVAL_METHOD__ 0
+#define __FLT_RADIX__ 2
+#define __DECIMAL_DIG__ 17
+#define __CLAMBC__ 1
+#define BYTECODE_API_H 
+#define __EXECS_H 
+#define BC_FEATURES_H 
+#define EBOUNDS(fieldname) __attribute__((bounds(fieldname)))
+#define __PE_H 
+#define DISASM_BC_H 
+#define __STDBOOL_H 
+#define bool _Bool
+#define true 1
+#define false 0
+#define __bool_true_false_are_defined 1
+#define force_inline inline __attribute__((always_inline))
+#define VIRUSNAME_PREFIX(name) const char __clambc_virusname_prefix[] = name;
+#define VIRUSNAMES(...) const char *const __clambc_virusnames[] = {__VA_ARGS__};
+#define PE_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_PE_UNPACKER;
+#define SIGNATURES_DECL_BEGIN struct __Signatures {
+#define DECLARE_SIGNATURE(name) const char *name##_sig; __Signature name;
+#define SIGNATURES_DECL_END };
+#define TARGET(tgt) const unsigned short __Target = (tgt);
+#define SIGNATURES_DEF_BEGIN static const unsigned __signature_bias = __COUNTER__+1;const struct __Signatures Signatures = {
+#define DEFINE_SIGNATURE(name,hex) .name##_sig = (hex), .name = {__COUNTER__ - __signature_bias},
+#define SIGNATURES_END };
+#define RE2C_BSIZE 128
+#define YYCTYPE unsigned char
+#define YYCURSOR re2c_scur
+#define YYLIMIT re2c_slim
+#define YYMARKER re2c_smrk
+#define YYCTXMARKER re2c_sctx
+#define YYFILL(n) { RE2C_FILLBUFFER(n) if (re2c_sres >= 0) break; }
+#define REGEX_SCANNER unsigned char *re2c_scur, *re2c_slim, *re2c_smrk, *re2c_sctx, *re2c_seof, *re2c_stok; int re2c_sres; int32_t re2c_stokstart; unsigned char re2c_sbuffer[RE2C_BSIZE]; re2c_scur = re2c_slim = re2c_smrk = re2c_sctx = re2c_seof = re2c_stok = re2c_sbuffer; re2c_seof = 0; re2c_sres = 0; RE2C_FILLBUFFER(0);
+#define REGEX_POS (-(re2c_slim - re2c_scur) + seek(0, SEEK_CUR))
+#define REGEX_LOOP_BEGIN do { re2c_stok = re2c_scur; re2c_stokstart = REGEX_POS;} while (0);
+#define REGEX_RESULT (re2c_sres)
+#define RE2C_DEBUG_PRINT do { char buf[81]; uint32_t here = seek(0, SEEK_CUR); uint32_t d = re2c_slim - re2c_scur; uint32_t end = here - d; unsigned len = end - re2c_stokstart; if (len > 80) { unsigned skipped = len - 74; seek(re2c_stokstart, SEEK_SET); if (read(buf, 37) == 37) break; memcpy(buf+37, "[...]", 5); seek(end-37, SEEK_SET); if (read(buf, 37) != 37) break; buf[80] = '\0'; } else { seek(re2c_stokstart, SEEK_SET); if (read(buf, len) != len) break; buf[len] = '\0'; } buf[80] = '\0'; debug_print_str(buf, 0); seek(here, SEEK_SET);} while (0)
+#define DEBUG_PRINT_REGEX_MATCH RE2C_DEBUG_PRINT
+#define RE2C_FILLBUFFER(len) { if (!re2c_seof) { int got, cnt = re2c_stok - re2c_sbuffer; if (cnt > re2c_slim - re2c_sbuffer) { cnt = 0; re2c_slim = re2c_sbuffer; } if (cnt > 0) { memmove(re2c_sbuffer, re2c_stok, re2c_slim - re2c_stok); re2c_stok -= cnt; re2c_scur -= cnt; re2c_slim -= cnt; re2c_smrk -= cnt; re2c_sctx -= cnt; } cnt = RE2C_BSIZE - (re2c_slim - re2c_sbuffer); if ((got = read(re2c_slim, cnt)) != cnt) { re2c_seof = &re2c_slim[got]; } if (got < 0) { re2c_sres = 1; } else { re2c_slim += got; } } else if (re2c_scur + len > re2c_seof) { re2c_sres = 0; } else re2c_sres = -1;}

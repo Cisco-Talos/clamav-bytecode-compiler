@@ -1,0 +1,45 @@
+\chapter{Publishing ClamAV bytecode}
+\section{Pre-publish tests}
+
+The following tests are automatically performed prepublish:
+%TODO: this will have to be implemented on the SI
+\begin{itemize}
+ \item Compile the source code using the latest version of the ClamAV bytecode compiler (with user-specified optimization level):
+\begin{verbatim}
+$ clambc-compiler bytecode-726914.c -o testdir/bytecode-726914.cbc -O<N>
+\end{verbatim}
+ \item Try to load the bytecode using the latest 2 stable version of ClamAV, both in JIT and interpreter mode
+\footnote{Since there is no stable version supporting bytecode, and the bytecode will be distributed in a separate cvd,
+for now we should test with latest nightly snapshot of ClamAV-devel. 
+For 0.97 we should test with: 0.97, 0.96.1 (assuming those are latest 2 versions)}
+\begin{verbatim}
+$ export STABLEBIN=/usr/local/clamav-stable/bin
+$ export DEVBIN=/usr/local/clamav-devel/bin
+$ $STABLEBIN/clamscan -dtestdir/ -r /path/to/clamav-testfiles/
+$ $DEVBIN/clamscan -dtestdir/ -r /path/to/clamav-testfiles/
+$ $STABLEBIN/clamscan --force-interpreter -dtestdir/\
+ -r /path/to/clamav-testfiles/
+$ $DEVBIN/clamscan --force-interpreter -dtestdir/\
+ -r /path/to/clamav-testfiles/
+\end{verbatim}
+ \item Scan the sample(s) that will have this bytecode associated with the bytecode loaded (both interpreter and JIT mode):
+ \item Scan the FPfarm
+\begin{verbatim}
+$ $STABLEBIN/clamscan -dtestdir/ -r /path/to/fpfarm/
+$ $DEVBIN/clamscan -dtestdir/ -r /path/to/fpfarm/
+\end{verbatim}
+\end{itemize}
+
+\section{Building bytecode.cvd}
+Sigtool will perform some minimal checks on the bytecode prior to creating CVD:
+\begin{itemize}
+\item writes its own version in the header
+\item load the bytecode using libclamav API
+\item check that the interpreter and JIT can load it
+\item check that it is compilable to all configured targets (x86, ppc at least)
+\item check that the bytecode is production version (no debug metadata, all
+header fields are filled out, has associated virusname)
+\end{itemize}
+\begin{verbatim}
+%TODO: sigtool commandline
+\end{verbatim}
