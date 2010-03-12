@@ -1,0 +1,153 @@
+//===--- CGVtable.h - Emit LLVM Code for C++ vtables ----------------------===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+//
+// This contains code dealing with C++ code generation of virtual tables.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef CLANG_CODEGEN_CGVTABLE_H
+#define CLANG_CODEGEN_CGVTABLE_H
+
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/GlobalVariable.h"
+#include "GlobalDecl.h"
+
+namespace clang {
+  class CXXRecordDecl;
+
+namespace CodeGen {
+  class CodeGenModule;
+
+/// ThunkAdjustment - Virtual and non-virtual adjustment for thunks.
+class ThunkAdjustment {
+public:
+  ThunkAdjustment(int64_t NonVirtual, int64_t Virtual)
+  : NonVirtual(NonVirtual),
+    Virtual(Virtual) { }
+
+  ThunkAdjustment()
+    : NonVirtual(0), Virtual(0) { }
+
+  // isEmpty - Return whether this thunk adjustment is empty.
+  bool isEmpty() const {
+    return NonVirtual == 0 && Virtual == 0;
+  }
+
+  /// NonVirtual - The non-virtual adjustment.
+  int64_t NonVirtual;
+
+  /// Virtual - The virtual adjustment.
+  int64_t Virtual;
+};
+
+/// CovariantThunkAdjustment - Adjustment of the 'this' pointer and the
+/// return pointer for covariant thunks.
+class CovariantThunkAdjustment {
+public:
+  CovariantThunkAdjustment(const ThunkAdjustment &ThisAdjustment,
+                           const ThunkAdjustment &ReturnAdjustment)
+  : ThisAdjustment(ThisAdjustment), ReturnAdjustment(ReturnAdjustment) { }
+
+  CovariantThunkAdjustment() { }
+
+  ThunkAdjustment ThisAdjustment;
+  ThunkAdjustment ReturnAdjustment;
+};
+
+class CGVtableInfo {
+public:
+  typedef std::vector<std::pair<GlobalDecl, ThunkAdjustment> >
+      AdjustmentVectorTy;
+
+private:
+  CodeGenModule &CGM;
+
+  /// MethodVtableIndices - Contains the index (relative to the vtable address
+  /// point) where the function pointer for a virtual function is stored.
+  typedef llvm::DenseMap<GlobalDecl, int64_t> MethodVtableIndicesTy;
+  MethodVtableIndicesTy MethodVtableIndices;
+
+  typedef std::pair<const CXXRecordDecl *,
+                    const CXXRecordDecl *> ClassPairTy;
+
+  /// VirtualBaseClassIndicies - Contains the index into the vtable where the
+  /// offsets for virtual bases of a class are stored.
+  typedef llvm::DenseMap<ClassPairTy, int64_t> VirtualBaseClassIndiciesTy;
+  VirtualBaseClassIndiciesTy VirtualBaseClassIndicies;
+
+  /// Vtables - All the vtables which have been defined.
+  llvm::DenseMap<const CXXRecordDecl *, llvm::GlobalVariable *> Vtables;
+  
+  /// NumVirtualFunctionPointers - Contains the number of virtual function 
+  /// pointers in the vtable for a given record decl.
+  llvm::DenseMap<const CXXRecordDecl *, uint64_t> NumVirtualFunctionPointers;
+
+  typedef llvm::DenseMap<GlobalDecl, AdjustmentVectorTy> SavedAdjustmentsTy;
+  SavedAdjustmentsTy SavedAdjustments;
+  llvm::DenseSet<const CXXRecordDecl*> SavedAdjustmentRecords;
+
+  /// getNumVirtualFunctionPointers - Return the number of virtual function
+  /// pointers in the vtable for a given record decl.
+  uint64_t getNumVirtualFunctionPointers(const CXXRecordDecl *RD);
+  
+  void ComputeMethodVtableIndices(const CXXRecordDecl *RD);
+  
+  /// GenerateClassData - Generate all the class data requires to be generated
+  /// upon definition of a KeyFunction.  This includes the vtable, the
+  /// rtti data structure and the VTT.
+  /// 
+  /// \param Linkage - The desired linkage of the vtable, the RTTI and the VTT.
+  void GenerateClassData(llvm::GlobalVariable::LinkageTypes Linkage,
+                         const CXXRecordDecl *RD);
+ 
+  llvm::GlobalVariable *
+  GenerateVtable(llvm::GlobalVariable::LinkageTypes Linkage,
+                 bool GenerateDefinition, const CXXRecordDecl *LayoutClass, 
+                 const CXXRecordDecl *RD, uint64_t Offset);
+
+  llvm::GlobalVariable *GenerateVTT(llvm::GlobalVariable::LinkageTypes Linkage,
+                                    const CXXRecordDecl *RD);
+
+public:
+  CGVtableInfo(CodeGenModule &CGM)
+    : CGM(CGM) { }
+
+  /// getMethodVtableIndex - Return the index (relative to the vtable address
+  /// point) where the function pointer for the given virtual function is
+  /// stored.
+  uint64_t getMethodVtableIndex(GlobalDecl GD);
+
+  /// getVirtualBaseOffsetIndex - Return the index (relative to the vtable
+  /// address point) where the offset of the virtual base that contains the
+  /// given Base is stored, otherwise, if no virtual base contains the given
+  /// class, return 0.  Base must be a virtual base class or an unambigious
+  /// base.
+  int64_t getVirtualBaseOffsetIndex(const CXXRecordDecl *RD,
+                                    const CXXRecordDecl *VBase);
+
+  AdjustmentVectorTy *getAdjustments(GlobalDecl GD);
+
+  /// getVtableAddressPoint - returns the address point of the vtable for the
+  /// given record decl.
+  /// FIXME: This should return a list of address points.
+  uint64_t getVtableAddressPoint(const CXXRecordDecl *RD);
+  
+  llvm::GlobalVariable *getVtable(const CXXRecordDecl *RD);
+  llvm::GlobalVariable *getCtorVtable(const CXXRecordDecl *RD,
+                                      const CXXRecordDecl *Class, 
+                                      uint64_t Offset);
+  
+  
+  void MaybeEmitVtable(GlobalDecl GD);
+};
+
+}
+}
+#endif
