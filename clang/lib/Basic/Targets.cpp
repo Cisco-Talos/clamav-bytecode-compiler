@@ -1732,6 +1732,65 @@ namespace {
   }
 }
 
+namespace {
+  class ClamBCTargetInfo : public TargetInfo {
+  public:
+    ClamBCTargetInfo(const std::string& triple) : TargetInfo(triple) {
+      TLSSupported = false;
+      /* FIXME: 64 crashes on pe*.c */
+      PointerWidth = 32;
+      PointerAlign = 32;
+      IntWidth = IntAlign = 32;
+      LongWidth = LongLongWidth = 64;
+      LongAlign = LongLongAlign = 64;
+      SizeType = UnsignedInt;
+      PtrDiffType = SignedInt;
+      IntPtrType = SignedInt;
+      IntMaxType = SignedLong;
+      UIntMaxType = UnsignedLong;
+      /* FIXME: e-p:64:64:64 crashes on yc_bytecode */
+      DescriptionString = "e-p:32:8:8-i1:8:8-i8:8:8-i16:16:16-i32:32:32-"
+        "i64:64:64:a0:0:64";
+    }
+
+    virtual void getTargetDefines(const LangOptions &Opts,
+                                 std::vector<char> &Defines) const {
+      Define(Defines, "__CLAMBC__");
+    }
+    virtual void getTargetBuiltins(const Builtin::Info *&Records,
+                                   unsigned &NumRecords) const {
+      Records = 0;
+      NumRecords = 0;
+    }
+    virtual const char *getTargetPrefix() const {
+      return "clambc";
+    }
+    virtual void getGCCRegNames(const char * const *&Names,
+                                unsigned &NumNames) const
+    {
+      // No inline assembly supported
+      NumNames = 0;
+    }
+    virtual void getGCCRegAliases(const GCCRegAlias *&Aliases,
+                                  unsigned &NumAliases) const {
+      // No aliases.
+      Aliases = 0;
+      NumAliases = 0;
+    }
+    virtual bool validateAsmConstraint(const char *&Name,
+                                       TargetInfo::ConstraintInfo &info) const {
+      // No inline asm is supported
+      return false;
+    }
+    virtual const char *getClobbers() const {
+      return "";
+    }
+    virtual const char *getVAListDeclaration() const {
+      // FIXME: implement
+      return "typedef char* __builtin_va_list;";
+   }
+  };
+}
 
 namespace {
   class SystemZTargetInfo : public TargetInfo {
@@ -2085,6 +2144,9 @@ static TargetInfo *AllocateTarget(const std::string &T) {
 
   case llvm::Triple::bfin:
     return new BlackfinTargetInfo(T);
+
+  case llvm::Triple::clambc:
+    return new ClamBCTargetInfo(T);
 
   case llvm::Triple::msp430:
     return new MSP430TargetInfo(T);

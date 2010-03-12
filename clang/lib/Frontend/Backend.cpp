@@ -297,7 +297,6 @@ bool BackendConsumer::AddEmitPasses() {
     // as a separate "pass" after that happens.
     // FIXME: This is disabled right now until bugs can be worked out.  Reenable
     // this for fast -O0 compiles!
-    FunctionPassManager *PM = getCodeGenPasses();
     CodeGenOpt::Level OptLevel = CodeGenOpt::Default;
 
     switch (CodeGenOpts.OptimizationLevel) {
@@ -306,6 +305,16 @@ bool BackendConsumer::AddEmitPasses() {
     case 3: OptLevel = CodeGenOpt::Aggressive; break;
     }
 
+    if (TM->WantsWholeFile()) {
+      if (TM->addPassesToEmitWholeFile(*PerModulePasses, FormattedOutStream,
+                                       TargetMachine::AssemblyFile, OptLevel)) {
+        Error = "Unable to interface with target machine!\n";
+        return false;
+      }
+      return true;
+    }
+
+    FunctionPassManager *PM = getCodeGenPasses();
     // Normal mode, emit a .s file by running the code generator.
     // Note, this also adds codegenerator level optimization passes.
     switch (TM->addPassesToEmitFile(*PM, FormattedOutStream,
