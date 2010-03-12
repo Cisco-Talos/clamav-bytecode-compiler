@@ -177,7 +177,7 @@ HAVE_PTHREAD := @HAVE_PTHREAD@
 LIBS       := @LIBS@
 
 # Targets that we should build
-TARGETS_TO_BUILD=@TARGETS_TO_BUILD@
+TARGETS_TO_BUILD=@TARGETS_TO_BUILD@ ClamBC
 
 # Path to location for LLVM C/C++ front-end. You can modify this if you
 # want to override the value set by configure.

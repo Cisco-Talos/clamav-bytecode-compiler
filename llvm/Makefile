@@ -71,8 +71,22 @@ ifeq ($(MAKECMDGOALS),install-clang)
   NO_INSTALL = 1
 endif
 
+ifeq ($(MAKECMDGOALS),install-clambc)
+  DIRS := projects/clamdriver tools/clang/lib/Headers
+  OPTIONAL_DIRS :=
+  NO_INSTALL = 1
+endif
+
 ifeq ($(MAKECMDGOALS),clang-only)
   DIRS := $(filter-out tools runtime docs unittests, $(DIRS)) tools/clang
+  OPTIONAL_DIRS :=
+endif
+
+ifeq ($(MAKECMDGOALS),clambc-only)
+  DIRS := lib/System lib/Support utils lib/VMCore lib/Bitcode lib/Analysis \
+          lib/Transforms lib/Target lib/MC tools/llvm-config\
+	  tools/clang/include tools/clang/lib\
+	  projects/clamdriver projects/ifacegen
   OPTIONAL_DIRS :=
 endif
 
@@ -141,11 +155,19 @@ dist-hook::
 	  $(TopDistDir)/include/llvm/Config/config.h  \
 	  $(TopDistDir)/include/llvm/System/DataTypes.h
 
+ifneq ($(TARGETS_TO_BUILD),ClamBC)
+clambc-only: 
+	$(MAKE) clambc-only TARGETS_TO_BUILD=ClamBC
+else
+clambc-only: all
+endif
+
 clang-only: all
 tools-only: all
 libs-only: all
 install-clang: install
 install-libs: install
+install-clambc: clambc-only install
 
 #------------------------------------------------------------------------
 # Make sure the generated headers are up-to-date. This must be kept in

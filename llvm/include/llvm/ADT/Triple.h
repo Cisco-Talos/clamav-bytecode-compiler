@@ -59,6 +59,7 @@ public:
     arm,     // ARM; arm, armv.*, xscale
     bfin,    // Blackfin: bfin
     cellspu, // CellSPU: spu, cellspu
+    clambc,  // ClamAV bytecode
     mips,    // MIPS: mips, mipsallegrex
     mipsel,  // MIPSEL: mipsel, mipsallegrexel, psp
     msp430,  // MSP430: msp430

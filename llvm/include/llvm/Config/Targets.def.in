@@ -24,5 +24,6 @@
 #endif
 
 @LLVM_ENUM_TARGETS@
+LLVM_TARGET(ClamBC)
 
 #undef LLVM_TARGET

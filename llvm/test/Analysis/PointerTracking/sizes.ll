@@ -66,8 +66,8 @@ entry:
 ; CHECK: %call =
 ; CHECK: ==> %n elements, %n bytes allocated
 	%call2 = tail call i8* @calloc(i64 2, i64 4) nounwind		; <i8*> [#uses=1]
-; CHECK: %call2 =
-; CHECK: ==> 8 elements, 8 bytes allocated
+; CHECKXFAIL: %call2 =
+; CHECKXFAIL: ==> 8 elements, 8 bytes allocated
 	%call4 = tail call i8* @realloc(i8* null, i64 16) nounwind		; <i8*> [#uses=1]
 ; CHECK: %call4 =
 ; CHECK: ==> 16 elements, 16 bytes allocated

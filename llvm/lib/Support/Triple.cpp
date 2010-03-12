@@ -26,6 +26,7 @@ const char *Triple::getArchTypeName(ArchType Kind) {
   case arm:     return "arm";
   case bfin:    return "bfin";
   case cellspu: return "cellspu";
+  case clambc:  return "clambc";
   case mips:    return "mips";
   case mipsel:  return "mipsel";
   case msp430:  return "msp430";
@@ -113,6 +114,8 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     return bfin;
   if (Name == "cellspu")
     return cellspu;
+  if (Name == "clambc")
+    return clambc;
   if (Name == "mips")
     return mips;
   if (Name == "mipsel")
@@ -224,6 +227,8 @@ void Triple::Parse() const {
     Arch = x86_64;
   else if (ArchName == "bfin")
     Arch = bfin;
+  else if (ArchName == "clambc")
+    Arch = clambc;
   else if (ArchName == "pic16")
     Arch = pic16;
   else if (ArchName == "powerpc")
