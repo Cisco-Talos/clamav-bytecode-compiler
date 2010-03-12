@@ -20,6 +20,7 @@
 #include "llvm/Module.h"
 #include "llvm/Support/CallSite.h"
 #include "llvm/Support/LeakDetector.h"
+#include "llvm/Support/GetElementPtrTypeIterator.h"
 using namespace llvm;
 
 Instruction::Instruction(const Type *ty, unsigned it, Use *Ops, unsigned NumOps,
@@ -436,7 +437,33 @@ bool Instruction::isSafeToSpeculativelyExecute() const {
       return false;
     if (isa<AllocaInst>(getOperand(0)) || isMalloc(getOperand(0)))
       return true;
-    if (GlobalVariable *GV = dyn_cast<GlobalVariable>(getOperand(0)))
+    Value *Op = getOperand(0);
+    if (GEPOperator *GEP = dyn_cast<GEPOperator>(Op)) {
+      // FIXME: Handle more cases involving GEPs.
+      ConstantInt *CI = dyn_cast<ConstantInt>(GEP->getOperand(1));
+      if (!CI || !CI->isZero())
+        return false;
+      gep_type_iterator GEPI = gep_type_begin(GEP), E = gep_type_end(GEP);
+      User::const_op_iterator OI = GEP->op_begin();
+      ++OI;
+
+      // Skip the first index, as it has no static limit.
+      ++GEPI;
+      ++OI;
+      // The remaining indices must be compile-time known integers within the
+      // bounds of the corresponding notional static array types.
+      for (; GEPI != E; ++GEPI, ++OI) {
+        ConstantInt *CI = dyn_cast<ConstantInt>(*OI);
+        if (!CI)
+          return false;
+        if (const ArrayType *ATy = dyn_cast<ArrayType>(*GEPI))
+          if (CI->getValue().getActiveBits() > 64 ||
+              CI->getZExtValue() >= ATy->getNumElements())
+            return false;
+      }
+      Op = GEP->getPointerOperand();
+    }
+    if (GlobalVariable *GV = dyn_cast<GlobalVariable>(Op))
       return !GV->hasExternalWeakLinkage();
     // FIXME: Handle cases involving GEPs.  We have to be careful because
     // a load of a out-of-bounds GEP has undefined behavior.
