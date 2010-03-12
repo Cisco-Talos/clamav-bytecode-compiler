@@ -1,0 +1,271 @@
+\hypertarget{bytecode__api_8h}{
+\subsection{bytecode\_\-api.h File Reference}
+\label{bytecode__api_8h}\index{bytecode\_\-api.h@{bytecode\_\-api.h}}
+}
+\subsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91}{BytecodeKind} \{ \hyperlink{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91aff84fbd05d167a1cf9e146d155ac90b7}{BC\_\-GENERIC} = 0
+, \hyperlink{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91aa6c849ba6dbd80a2af04a38eeea8d5c3}{BC\_\-LOGICAL} = 256, 
+\hyperlink{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91ae6b6910f9706526e49807a022b7125f1}{BC\_\-PE\_\-UNPACKER}
+ \}
+\item 
+enum \{ \hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05}{SEEK\_\-SET} = 0, 
+\hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c}{SEEK\_\-CUR}, 
+\hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63}{SEEK\_\-END}
+ \}
+\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_afa4f1c799291804204aea54ce23077d6}{read} (uint8\_\-t $\ast$data, int32\_\-t size)
+\begin{DoxyCompactList}\small\item\em Reads specified amount of bytes from the current file into a buffer. Also moves current position in the file. \item\end{DoxyCompactList}\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a01d98e416d08e0eabd02d2e8aa56f28e}{write} (uint8\_\-t $\ast$data, int32\_\-t size)
+\begin{DoxyCompactList}\small\item\em Writes the specified amount of bytes from a buffer to the current temporary file. \item\end{DoxyCompactList}\item 
+int32\_\-t \hyperlink{bytecode__api_8h_aac5ea598a656985291c56321ad2140ea}{seek} (int32\_\-t pos, uint32\_\-t whence)
+\begin{DoxyCompactList}\small\item\em Changes the current file position to the specified one. \item\end{DoxyCompactList}\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a77cd19560715e7a2f658fc3ac519d18e}{setvirusname} (const uint8\_\-t $\ast$name, uint32\_\-t len)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_aa6d82179ea15d32450fefbc6d1bd8934}{debug\_\-print\_\-str} (const uint8\_\-t $\ast$str, uint32\_\-t len)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a6e0cdd4d4c76ed46a8627bee56eee1c1}{debug\_\-print\_\-uint} (uint32\_\-t a)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a95e7d1048a56c98dec19335a6aa7afca}{disasm\_\-x86} (struct \hyperlink{struct_d_i_s_a_s_m___r_e_s_u_l_t}{DISASM\_\-RESULT} $\ast$result, uint32\_\-t len)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a0d081f8f58263eb99d68690f1f9b2a81}{pe\_\-rawaddr} (uint32\_\-t rva)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a56355a07d9fb739dd483dd756f7fe821}{file\_\-find} (const uint8\_\-t $\ast$data, uint32\_\-t len)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a1e192cd4fe94e68dbac5023a1e2481c9}{file\_\-byteat} (uint32\_\-t offset)
+\item 
+void $\ast$ \hyperlink{bytecode__api_8h_a8704c31c2d7a73953f3c1c320447c24a}{malloc} (uint32\_\-t size)
+\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const uint32\_\-t \hyperlink{bytecode__api_8h_a35a0a4f1219a792c77b7207924c3c4ec}{\_\-\_\-clambc\_\-match\_\-counts} \mbox{[}64\mbox{]}
+\begin{DoxyCompactList}\small\item\em Logical signature match counts. \item\end{DoxyCompactList}\item 
+struct \hyperlink{structcli__pe__hook__data}{cli\_\-pe\_\-hook\_\-data} \hyperlink{bytecode__api_8h_a3d386181912bdbc2b90ee559b0cccde3}{\_\-\_\-clambc\_\-pedata}
+\item 
+const uint32\_\-t \hyperlink{bytecode__api_8h_ab8d6c50474be3ba69906161a3e520ce7}{\_\-\_\-clambc\_\-filesize} \mbox{[}1\mbox{]}
+\item 
+const uint16\_\-t \hyperlink{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}{\_\-\_\-clambc\_\-kind}
+\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+
+
+\subsubsection{Enumeration Type Documentation}
+\hypertarget{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7}{
+\paragraph[{"@1}]{\setlength{\rightskip}{0pt plus 5cm}anonymous enum}\hfill}
+\label{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7}
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{SEEK\_\-SET@{SEEK\_\-SET}!bytecode\_\-api.h@{bytecode\_\-api.h}}\index{bytecode\_\-api.h@{bytecode\_\-api.h}!SEEK\_\-SET@{SEEK\_\-SET}}\item[{\em 
+\hypertarget{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05}{
+SEEK\_\-SET}
+\label{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05}
+}]set file position to specified absolute position \index{SEEK\_\-CUR@{SEEK\_\-CUR}!bytecode\_\-api.h@{bytecode\_\-api.h}}\index{bytecode\_\-api.h@{bytecode\_\-api.h}!SEEK\_\-CUR@{SEEK\_\-CUR}}\item[{\em 
+\hypertarget{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c}{
+SEEK\_\-CUR}
+\label{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c}
+}]set file position relative to current position \index{SEEK\_\-END@{SEEK\_\-END}!bytecode\_\-api.h@{bytecode\_\-api.h}}\index{bytecode\_\-api.h@{bytecode\_\-api.h}!SEEK\_\-END@{SEEK\_\-END}}\item[{\em 
+\hypertarget{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63}{
+SEEK\_\-END}
+\label{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63}
+}]set file position relative to file end \end{description}
+\end{Desc}
+
+\hypertarget{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!BytecodeKind@{BytecodeKind}}
+\index{BytecodeKind@{BytecodeKind}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{BytecodeKind}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf BytecodeKind}}\hfill}
+\label{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91}
+Bytecode trigger kind \begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{BC\_\-GENERIC@{BC\_\-GENERIC}!bytecode\_\-api.h@{bytecode\_\-api.h}}\index{bytecode\_\-api.h@{bytecode\_\-api.h}!BC\_\-GENERIC@{BC\_\-GENERIC}}\item[{\em 
+\hypertarget{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91aff84fbd05d167a1cf9e146d155ac90b7}{
+BC\_\-GENERIC}
+\label{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91aff84fbd05d167a1cf9e146d155ac90b7}
+}]generic bytecode, not tied a specific hook \index{BC\_\-LOGICAL@{BC\_\-LOGICAL}!bytecode\_\-api.h@{bytecode\_\-api.h}}\index{bytecode\_\-api.h@{bytecode\_\-api.h}!BC\_\-LOGICAL@{BC\_\-LOGICAL}}\item[{\em 
+\hypertarget{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91aa6c849ba6dbd80a2af04a38eeea8d5c3}{
+BC\_\-LOGICAL}
+\label{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91aa6c849ba6dbd80a2af04a38eeea8d5c3}
+}]triggered by a logical signature \index{BC\_\-PE\_\-UNPACKER@{BC\_\-PE\_\-UNPACKER}!bytecode\_\-api.h@{bytecode\_\-api.h}}\index{bytecode\_\-api.h@{bytecode\_\-api.h}!BC\_\-PE\_\-UNPACKER@{BC\_\-PE\_\-UNPACKER}}\item[{\em 
+\hypertarget{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91ae6b6910f9706526e49807a022b7125f1}{
+BC\_\-PE\_\-UNPACKER}
+\label{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91ae6b6910f9706526e49807a022b7125f1}
+}]a PE unpacker \end{description}
+\end{Desc}
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{bytecode__api_8h_aa6d82179ea15d32450fefbc6d1bd8934}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!debug\_\-print\_\-str@{debug\_\-print\_\-str}}
+\index{debug\_\-print\_\-str@{debug\_\-print\_\-str}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{debug\_\-print\_\-str}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t debug\_\-print\_\-str (const uint8\_\-t $\ast$ {\em str}, \/  uint32\_\-t {\em len})}\hfill}
+\label{bytecode__api_8h_aa6d82179ea15d32450fefbc6d1bd8934}
+Prints a debug message.
+
+
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em str}]Message to print \item[\mbox{$\leftarrow$} {\em len}]length of message to print \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a6e0cdd4d4c76ed46a8627bee56eee1c1}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!debug\_\-print\_\-uint@{debug\_\-print\_\-uint}}
+\index{debug\_\-print\_\-uint@{debug\_\-print\_\-uint}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{debug\_\-print\_\-uint}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t debug\_\-print\_\-uint (uint32\_\-t {\em a})}\hfill}
+\label{bytecode__api_8h_a6e0cdd4d4c76ed46a8627bee56eee1c1}
+Prints a number as a debug message.
+
+
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em a}]number to print \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a95e7d1048a56c98dec19335a6aa7afca}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!disasm\_\-x86@{disasm\_\-x86}}
+\index{disasm\_\-x86@{disasm\_\-x86}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{disasm\_\-x86}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t disasm\_\-x86 (struct {\bf DISASM\_\-RESULT} $\ast$ {\em result}, \/  uint32\_\-t {\em len})}\hfill}
+\label{bytecode__api_8h_a95e7d1048a56c98dec19335a6aa7afca}
+Disassembles starting from current file position, the specified amount of bytes. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em result}]pointer to struct holding result \item[\mbox{$\leftarrow$} {\em len}]how many bytes to disassemble \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 for success
+\end{DoxyReturn}
+You can use lseek to disassemble starting from a different location. This is a low-\/level API, the result is in ClamAV type-\/8 signature format (64 bytes/instruction). \begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{DisassembleAt} 
+\end{DoxySeeAlso}
+\hypertarget{bytecode__api_8h_a1e192cd4fe94e68dbac5023a1e2481c9}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!file\_\-byteat@{file\_\-byteat}}
+\index{file\_\-byteat@{file\_\-byteat}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{file\_\-byteat}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t file\_\-byteat (uint32\_\-t {\em offset})}\hfill}
+\label{bytecode__api_8h_a1e192cd4fe94e68dbac5023a1e2481c9}
+Read a single byte from current file 
+\begin{DoxyParams}{Parameters}
+\item[{\em offset}]file offset \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+byte at offset {\ttfamily off} in the current file, or -\/1 if offset is invalid 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a56355a07d9fb739dd483dd756f7fe821}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!file\_\-find@{file\_\-find}}
+\index{file\_\-find@{file\_\-find}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{file\_\-find}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t file\_\-find (const uint8\_\-t $\ast$ {\em data}, \/  uint32\_\-t {\em len})}\hfill}
+\label{bytecode__api_8h_a56355a07d9fb739dd483dd756f7fe821}
+Looks for the specified sequence of bytes in the current file. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em data}]the sequence of bytes to look for \item[{\em len}]length of {\ttfamily data}, cannot be more than 1024 \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+offset in the current file if match is found, -\/1 otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a8704c31c2d7a73953f3c1c320447c24a}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!malloc@{malloc}}
+\index{malloc@{malloc}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{malloc}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ malloc (uint32\_\-t {\em size})}\hfill}
+\label{bytecode__api_8h_a8704c31c2d7a73953f3c1c320447c24a}
+Allocates memory. Currently this memory is freed automatically on exit from the bytecode, and there is no way to free it sooner. 
+\begin{DoxyParams}{Parameters}
+\item[{\em size}]amount of memory to allocate in bytes \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+pointer to allocated memory 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a0d081f8f58263eb99d68690f1f9b2a81}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!pe\_\-rawaddr@{pe\_\-rawaddr}}
+\index{pe\_\-rawaddr@{pe\_\-rawaddr}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{pe\_\-rawaddr}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t pe\_\-rawaddr (uint32\_\-t {\em rva})}\hfill}
+\label{bytecode__api_8h_a0d081f8f58263eb99d68690f1f9b2a81}
+Converts a RVA (Relative Virtual Address) to an absolute PE file offset. 
+\begin{DoxyParams}{Parameters}
+\item[{\em rva}]a rva address from the PE file \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+absolute file offset mapped to the {\ttfamily rva}, or PE\_\-INVALID\_\-RVA if the {\ttfamily rva} is invalid. 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_afa4f1c799291804204aea54ce23077d6}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!read@{read}}
+\index{read@{read}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{read}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t read (uint8\_\-t $\ast$ {\em data}, \/  int32\_\-t {\em size})}\hfill}
+\label{bytecode__api_8h_afa4f1c799291804204aea54ce23077d6}
+
+
+Reads specified amount of bytes from the current file into a buffer. Also moves current position in the file. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em size}]amount of bytes to read \item[\mbox{$\rightarrow$} {\em data}]pointer to buffer where data is read into \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+amount read. 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_aac5ea598a656985291c56321ad2140ea}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!seek@{seek}}
+\index{seek@{seek}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{seek}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t seek (int32\_\-t {\em pos}, \/  uint32\_\-t {\em whence})}\hfill}
+\label{bytecode__api_8h_aac5ea598a656985291c56321ad2140ea}
+
+
+Changes the current file position to the specified one. \begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05}{SEEK\_\-SET}, \hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c}{SEEK\_\-CUR}, \hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63}{SEEK\_\-END} 
+\end{DoxySeeAlso}
+
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em pos}]offset (absolute or relative depending on {\ttfamily whence} param) \item[\mbox{$\leftarrow$} {\em whence}]one of {\ttfamily SEEK\_\-SET}, {\ttfamily SEEK\_\-CUR}, {\ttfamily SEEK\_\-END} \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+absolute position in file 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a77cd19560715e7a2f658fc3ac519d18e}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!setvirusname@{setvirusname}}
+\index{setvirusname@{setvirusname}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{setvirusname}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t setvirusname (const uint8\_\-t $\ast$ {\em name}, \/  uint32\_\-t {\em len})}\hfill}
+\label{bytecode__api_8h_a77cd19560715e7a2f658fc3ac519d18e}
+Sets the name of the virus found.
+
+
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em name}]the name of the virus \item[\mbox{$\leftarrow$} {\em len}]length of the virusname \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a01d98e416d08e0eabd02d2e8aa56f28e}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!write@{write}}
+\index{write@{write}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{write}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t write (uint8\_\-t $\ast$ {\em data}, \/  int32\_\-t {\em size})}\hfill}
+\label{bytecode__api_8h_a01d98e416d08e0eabd02d2e8aa56f28e}
+
+
+Writes the specified amount of bytes from a buffer to the current temporary file. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em data}]pointer to buffer of data to write \item[\mbox{$\leftarrow$} {\em size}]amount of bytes to write {\ttfamily size} bytes to temporary file, from the buffer pointed to byte \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+amount of bytes successfully written 
+\end{DoxyReturn}
+
+
+\subsubsection{Variable Documentation}
+\hypertarget{bytecode__api_8h_ab8d6c50474be3ba69906161a3e520ce7}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!\_\-\_\-clambc\_\-filesize@{\_\-\_\-clambc\_\-filesize}}
+\index{\_\-\_\-clambc\_\-filesize@{\_\-\_\-clambc\_\-filesize}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{\_\-\_\-clambc\_\-filesize}]{\setlength{\rightskip}{0pt plus 5cm}const uint32\_\-t {\bf \_\-\_\-clambc\_\-filesize}\mbox{[}1\mbox{]}}\hfill}
+\label{bytecode__api_8h_ab8d6c50474be3ba69906161a3e520ce7}
+File size (max 4G) \hypertarget{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!\_\-\_\-clambc\_\-kind@{\_\-\_\-clambc\_\-kind}}
+\index{\_\-\_\-clambc\_\-kind@{\_\-\_\-clambc\_\-kind}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{\_\-\_\-clambc\_\-kind}]{\setlength{\rightskip}{0pt plus 5cm}const uint16\_\-t {\bf \_\-\_\-clambc\_\-kind}}\hfill}
+\label{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}
+Kind of the bytecode \hypertarget{bytecode__api_8h_a35a0a4f1219a792c77b7207924c3c4ec}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!\_\-\_\-clambc\_\-match\_\-counts@{\_\-\_\-clambc\_\-match\_\-counts}}
+\index{\_\-\_\-clambc\_\-match\_\-counts@{\_\-\_\-clambc\_\-match\_\-counts}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{\_\-\_\-clambc\_\-match\_\-counts}]{\setlength{\rightskip}{0pt plus 5cm}const uint32\_\-t {\bf \_\-\_\-clambc\_\-match\_\-counts}\mbox{[}64\mbox{]}}\hfill}
+\label{bytecode__api_8h_a35a0a4f1219a792c77b7207924c3c4ec}
+
+
+Logical signature match counts. This is a low-\/level variable, use the Macros in \hyperlink{bytecode__local_8h}{bytecode\_\-local.h} instead to access it. \hypertarget{bytecode__api_8h_a3d386181912bdbc2b90ee559b0cccde3}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!\_\-\_\-clambc\_\-pedata@{\_\-\_\-clambc\_\-pedata}}
+\index{\_\-\_\-clambc\_\-pedata@{\_\-\_\-clambc\_\-pedata}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{\_\-\_\-clambc\_\-pedata}]{\setlength{\rightskip}{0pt plus 5cm}struct {\bf cli\_\-pe\_\-hook\_\-data} {\bf \_\-\_\-clambc\_\-pedata}}\hfill}
+\label{bytecode__api_8h_a3d386181912bdbc2b90ee559b0cccde3}
+PE data, if this is a PE hook 

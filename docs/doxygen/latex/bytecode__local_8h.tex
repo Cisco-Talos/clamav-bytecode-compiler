@@ -1,0 +1,363 @@
+\hypertarget{bytecode__local_8h}{
+\subsection{bytecode\_\-local.h File Reference}
+\label{bytecode__local_8h}\index{bytecode\_\-local.h@{bytecode\_\-local.h}}
+}
+\subsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{struct_d_i_s__mem__arg}{DIS\_\-mem\_\-arg}
+\item 
+struct \hyperlink{struct_d_i_s__arg}{DIS\_\-arg}
+\item 
+struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed}
+\end{DoxyCompactItemize}
+\subsubsection*{Defines}
+\begin{DoxyCompactItemize}
+\item 
+\#define \hyperlink{bytecode__local_8h_af46256c8838bde91b834ae7323f325c9}{VIRUSNAME\_\-PREFIX}(name)~const char \_\-\_\-clambc\_\-virusname\_\-prefix\mbox{[}$\,$\mbox{]} = name;
+\item 
+\#define \hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES}(...)~const char $\ast$const \_\-\_\-clambc\_\-virusnames\mbox{[}$\,$\mbox{]} = \{\_\-\_\-VA\_\-ARGS\_\-\_\-\};
+\item 
+\#define \hyperlink{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{SIGNATURES\_\-DECL\_\-BEGIN}~struct \_\-\_\-Signatures \{
+\item 
+\#define \hyperlink{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{DECLARE\_\-SIGNATURE}(name)
+\item 
+\#define \hyperlink{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}{SIGNATURES\_\-DECL\_\-END}~\};
+\item 
+\#define \hyperlink{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{TARGET}(tgt)~const unsigned short \_\-\_\-Target = (tgt);
+\item 
+\#define \hyperlink{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}{SIGNATURES\_\-DEF\_\-BEGIN}
+\item 
+\#define \hyperlink{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}{DEFINE\_\-SIGNATURE}(name, hex)
+\item 
+\#define \hyperlink{bytecode__local_8h_ac9b976f78a0dac8a6996cbb31571044f}{SIGNATURES\_\-END}~\};$\backslash$
+\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3bee86d89c2e0d16b706f62ec0c2d716}{count\_\-match} (\_\-\_\-Signature sig)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}{matches} (\_\-\_\-Signature sig)
+\item 
+static force\_\-inline void \hyperlink{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}{foundVirus} (const char $\ast$virusname)
+\item 
+static force\_\-inline bool \hyperlink{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{hasExeInfo} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{getFilesize} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{getEntryPoint} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}{getExeOffset} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{getNumberOfSections} (void)
+\item 
+bool \hyperlink{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{\_\-\_\-is\_\-bigendian} (void) \_\-\_\-attribute\_\-\_\-((const )) \_\-\_\-attribute\_\-\_\-((nothrow))
+\item 
+static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}{le32\_\-to\_\-host} (uint32\_\-t v)
+\item 
+static uint16\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}{le16\_\-to\_\-host} (uint16\_\-t v)
+\item 
+static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a3d6a38ce39dd509a2526a67f8f00f845}{cli\_\-readint32} (const void $\ast$buff)
+\item 
+static uint16\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a50ecabc9fb33d2194b257d68fc136eed}{cli\_\-readint16} (const void $\ast$buff)
+\item 
+static void force\_\-inline \hyperlink{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}{cli\_\-writeint32} (void $\ast$offset, uint32\_\-t v)
+\item 
+static void $\ast$ \hyperlink{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}{memchr} (const void $\ast$s, int c, size\_\-t n)
+\item 
+void $\ast$ \hyperlink{bytecode__local_8h_ae8b469c17c2517af747cfc9dc1992af9}{memset} (void $\ast$src, int c, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((nothrow)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-((1))))
+\item 
+void $\ast$ \hyperlink{bytecode__local_8h_aaa7068aedf20b3c0da2e967277f2de66}{memmove} (void $\ast$dst, const void $\ast$src, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+\item 
+void $\ast$void $\ast$ \hyperlink{bytecode__local_8h_afe26a59b2e7ebaa9520dcf45344fc045}{memcpy} (void $\ast$restrict dst, const void $\ast$restrict src, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+\item 
+void $\ast$void $\ast$int \hyperlink{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}{memcmp} (const void $\ast$s1, const void $\ast$s2, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-pure\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{DisassembleAt} (struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed} $\ast$result, uint32\_\-t offset, uint32\_\-t len)
+\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+
+
+\subsubsection{Define Documentation}
+\hypertarget{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!DECLARE\_\-SIGNATURE@{DECLARE\_\-SIGNATURE}}
+\index{DECLARE\_\-SIGNATURE@{DECLARE\_\-SIGNATURE}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{DECLARE\_\-SIGNATURE}]{\setlength{\rightskip}{0pt plus 5cm}\#define DECLARE\_\-SIGNATURE(name)}\hfill}
+\label{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}
+{\bfseries Value:}
+\begin{DoxyCode}
+const char *name##_sig;\
+    __Signature name;
+\end{DoxyCode}
+Declares a name for a subsignature \hypertarget{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!DEFINE\_\-SIGNATURE@{DEFINE\_\-SIGNATURE}}
+\index{DEFINE\_\-SIGNATURE@{DEFINE\_\-SIGNATURE}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{DEFINE\_\-SIGNATURE}]{\setlength{\rightskip}{0pt plus 5cm}\#define DEFINE\_\-SIGNATURE(name, \/  hex)}\hfill}
+\label{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}
+{\bfseries Value:}
+\begin{DoxyCode}
+.name##_sig = (hex),\
+    .name = {__COUNTER__ - __signature_bias},
+\end{DoxyCode}
+Defines the pattern for a previously declared subsignature. \begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{DECLARE\_\-SIGNATURE} 
+\end{DoxySeeAlso}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em name}]the name of a previously declared subsignature \item[{\em hex}]the pattern for this subsignature \end{DoxyParams}
+\hypertarget{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}}
+\index{SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{SIGNATURES\_\-DECL\_\-BEGIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-BEGIN~struct \_\-\_\-Signatures \{}\hfill}
+\label{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}
+Marks the beginning of the subsignature name declaration section \hypertarget{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-END@{SIGNATURES\_\-DECL\_\-END}}
+\index{SIGNATURES\_\-DECL\_\-END@{SIGNATURES\_\-DECL\_\-END}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{SIGNATURES\_\-DECL\_\-END}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-END~\};}\hfill}
+\label{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}
+Marks the end of the subsignature name declaration section \hypertarget{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DEF\_\-BEGIN@{SIGNATURES\_\-DEF\_\-BEGIN}}
+\index{SIGNATURES\_\-DEF\_\-BEGIN@{SIGNATURES\_\-DEF\_\-BEGIN}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{SIGNATURES\_\-DEF\_\-BEGIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DEF\_\-BEGIN}\hfill}
+\label{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}
+{\bfseries Value:}
+\begin{DoxyCode}
+static const unsigned __signature_bias = __COUNTER__+1;\
+const struct __Signatures Signatures = {\
+\end{DoxyCode}
+Marks the beginning of subsignature pattern definitions. \begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{SIGNATURES\_\-DECL\_\-BEGIN} 
+\end{DoxySeeAlso}
+\hypertarget{bytecode__local_8h_ac9b976f78a0dac8a6996cbb31571044f}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-END@{SIGNATURES\_\-END}}
+\index{SIGNATURES\_\-END@{SIGNATURES\_\-END}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{SIGNATURES\_\-END}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-END~\};$\backslash$}\hfill}
+\label{bytecode__local_8h_ac9b976f78a0dac8a6996cbb31571044f}
+Marks the end of the subsignature pattern definitions. \hypertarget{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!TARGET@{TARGET}}
+\index{TARGET@{TARGET}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{TARGET}]{\setlength{\rightskip}{0pt plus 5cm}\#define TARGET(tgt)~const unsigned short \_\-\_\-Target = (tgt);}\hfill}
+\label{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}
+Defines the ClamAV file target. 
+\begin{DoxyParams}{Parameters}
+\item[{\em tgt}]ClamAV signature type (0 -\/ raw, 1 -\/ PE, etc.) \end{DoxyParams}
+\hypertarget{bytecode__local_8h_af46256c8838bde91b834ae7323f325c9}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!VIRUSNAME\_\-PREFIX@{VIRUSNAME\_\-PREFIX}}
+\index{VIRUSNAME\_\-PREFIX@{VIRUSNAME\_\-PREFIX}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{VIRUSNAME\_\-PREFIX}]{\setlength{\rightskip}{0pt plus 5cm}\#define VIRUSNAME\_\-PREFIX(name)~const char \_\-\_\-clambc\_\-virusname\_\-prefix\mbox{[}$\,$\mbox{]} = name;}\hfill}
+\label{bytecode__local_8h_af46256c8838bde91b834ae7323f325c9}
+Declares the virusname prefix. 
+\begin{DoxyParams}{Parameters}
+\item[{\em name}]the prefix common to all viruses reported by this bytecode \end{DoxyParams}
+\hypertarget{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!VIRUSNAMES@{VIRUSNAMES}}
+\index{VIRUSNAMES@{VIRUSNAMES}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{VIRUSNAMES}]{\setlength{\rightskip}{0pt plus 5cm}\#define VIRUSNAMES( {\em ...})~const char $\ast$const \_\-\_\-clambc\_\-virusnames\mbox{[}$\,$\mbox{]} = \{\_\-\_\-VA\_\-ARGS\_\-\_\-\};}\hfill}
+\label{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}
+Declares all the virusnames that this bytecode can report. 
+\begin{DoxyParams}{Parameters}
+\item[{\em ...}]a comma-\/separated list of strings interpreted as virusnames \end{DoxyParams}
+
+
+\subsubsection{Function Documentation}
+\hypertarget{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!\_\-\_\-is\_\-bigendian@{\_\-\_\-is\_\-bigendian}}
+\index{\_\-\_\-is\_\-bigendian@{\_\-\_\-is\_\-bigendian}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{\_\-\_\-is\_\-bigendian}]{\setlength{\rightskip}{0pt plus 5cm}bool \_\-\_\-is\_\-bigendian (void) const}\hfill}
+\label{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}
+Returns true if the bytecode is executing on a big-\/endian CPU. \begin{DoxyReturn}{Returns}
+true if executing on bigendian CPU, false otherwise
+\end{DoxyReturn}
+This will be optimized away in libclamav, but it must be used when dealing with endianess for portability reasons. For example whenever you read a 32-\/bit integer from a file, it can be written in little-\/endian convention (x86 CPU for example), or big-\/endian convention (PowerPC CPU for example). If the file always contains little-\/endian integers, then conversion might be needed. ClamAV bytecodes by their nature must only handle known-\/endian integers, if endianness can change, then both situations must be taken into account (based on a 1-\/byte field for example). \hypertarget{bytecode__local_8h_a50ecabc9fb33d2194b257d68fc136eed}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!cli\_\-readint16@{cli\_\-readint16}}
+\index{cli\_\-readint16@{cli\_\-readint16}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{cli\_\-readint16}]{\setlength{\rightskip}{0pt plus 5cm}static uint16\_\-t force\_\-inline cli\_\-readint16 (const void $\ast$ {\em buff})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a50ecabc9fb33d2194b257d68fc136eed}
+Reads from the specified buffer a 16-\/bit of little-\/endian integer. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em buff}]pointer to buffer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+16-\/bit little-\/endian integer converted to host endianness 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a3d6a38ce39dd509a2526a67f8f00f845}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!cli\_\-readint32@{cli\_\-readint32}}
+\index{cli\_\-readint32@{cli\_\-readint32}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{cli\_\-readint32}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline cli\_\-readint32 (const void $\ast$ {\em buff})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a3d6a38ce39dd509a2526a67f8f00f845}
+Reads from the specified buffer a 32-\/bit of little-\/endian integer. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em buff}]pointer to buffer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+32-\/bit little-\/endian integer converted to host endianness 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!cli\_\-writeint32@{cli\_\-writeint32}}
+\index{cli\_\-writeint32@{cli\_\-writeint32}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{cli\_\-writeint32}]{\setlength{\rightskip}{0pt plus 5cm}static void force\_\-inline cli\_\-writeint32 (void $\ast$ {\em offset}, \/  uint32\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}
+Writes the specified value into the specified buffer in little-\/endian order 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em offset}]pointer to buffer to write to \item[\mbox{$\leftarrow$} {\em v}]value to write \end{DoxyParams}
+\hypertarget{bytecode__local_8h_a3bee86d89c2e0d16b706f62ec0c2d716}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!count\_\-match@{count\_\-match}}
+\index{count\_\-match@{count\_\-match}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{count\_\-match}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t count\_\-match (\_\-\_\-Signature {\em sig})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a3bee86d89c2e0d16b706f62ec0c2d716}
+Returns how many times the specified signature matched. 
+\begin{DoxyParams}{Parameters}
+\item[{\em sig}]name of subsignature queried \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+number of times this subsignature matched in the entire file
+\end{DoxyReturn}
+This is a constant-\/time operation, the counts for all subsignatures are already computed. \hypertarget{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!DisassembleAt@{DisassembleAt}}
+\index{DisassembleAt@{DisassembleAt}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{DisassembleAt}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t DisassembleAt (struct {\bf DIS\_\-fixed} $\ast$ {\em result}, \/  uint32\_\-t {\em offset}, \/  uint32\_\-t {\em len})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}
+Disassembles one X86 instruction starting at the specified offset. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em result}]disassembly result \item[\mbox{$\leftarrow$} {\em offset}]start disassembling from this offset, in the current file \item[\mbox{$\leftarrow$} {\em len}]max amount of bytes to disassemble \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+offset where disassembly ended 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!foundVirus@{foundVirus}}
+\index{foundVirus@{foundVirus}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{foundVirus}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void foundVirus (const char $\ast$ {\em virusname})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}
+Sets the specified virusname as the virus detected by this bytecode. 
+\begin{DoxyParams}{Parameters}
+\item[{\em virusname}]the name of the virus, excluding the prefix, must be one of the virusnames declared in {\ttfamily VIRUSNAMES}. \end{DoxyParams}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES} 
+\end{DoxySeeAlso}
+\hypertarget{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getEntryPoint@{getEntryPoint}}
+\index{getEntryPoint@{getEntryPoint}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getEntryPoint}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getEntryPoint (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}
+Returns the offset of the EntryPoint in the executable file. \begin{DoxyReturn}{Returns}
+offset of EP as 32-\/bit unsigned integer 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getExeOffset@{getExeOffset}}
+\index{getExeOffset@{getExeOffset}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getExeOffset}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getExeOffset (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}
+Returns the offset of the executable in the file. \begin{DoxyReturn}{Returns}
+offset of embedded executable inside file. 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getFilesize@{getFilesize}}
+\index{getFilesize@{getFilesize}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getFilesize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getFilesize (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}
+Returns the currently scanned file's size. \begin{DoxyReturn}{Returns}
+file size as 32-\/bit unsigned integer 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getNumberOfSections@{getNumberOfSections}}
+\index{getNumberOfSections@{getNumberOfSections}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getNumberOfSections}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getNumberOfSections (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_acc59dfc3eb084259883225674083e553}
+Returns the number of sections in this executable file. \begin{DoxyReturn}{Returns}
+number of sections as 16-\/bit unsigned integer 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!hasExeInfo@{hasExeInfo}}
+\index{hasExeInfo@{hasExeInfo}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{hasExeInfo}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool hasExeInfo (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a6241ff42b1300527c64034931f027738}
+Returns whether the current file has executable information. \begin{DoxyReturn}{Returns}
+true if the file has exe info, false otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!le16\_\-to\_\-host@{le16\_\-to\_\-host}}
+\index{le16\_\-to\_\-host@{le16\_\-to\_\-host}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{le16\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint16\_\-t force\_\-inline le16\_\-to\_\-host (uint16\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}
+Converts the specified value if needed, knowing it is in little endian order. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em v}]16-\/bit integer as read from a file \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+integer converted to host's endianess 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!le32\_\-to\_\-host@{le32\_\-to\_\-host}}
+\index{le32\_\-to\_\-host@{le32\_\-to\_\-host}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{le32\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline le32\_\-to\_\-host (uint32\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}
+Converts the specified value if needed, knowing it is in little endian order. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em v}]32-\/bit integer as read from a file \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+integer converted to host's endianess 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!matches@{matches}}
+\index{matches@{matches}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{matches}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t matches (\_\-\_\-Signature {\em sig})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}
+Returns whether the specified subsignature has matched at least once. 
+\begin{DoxyParams}{Parameters}
+\item[{\em sig}]name of subsignature queried \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if subsignature one or more times, 0 otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!memchr@{memchr}}
+\index{memchr@{memchr}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{memchr}]{\setlength{\rightskip}{0pt plus 5cm}static void$\ast$ memchr (const void $\ast$ {\em s}, \/  int {\em c}, \/  size\_\-t {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}
+Scan the first {\ttfamily n} bytes of the buffer {\ttfamily s}, for the character {\ttfamily c}. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em s}]buffer to scan \item[{\em c}]character to look for \item[{\em n}]size of buffer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+a pointer to the first byte to match, or NULL if not found. 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!memcmp@{memcmp}}
+\index{memcmp@{memcmp}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{memcmp}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ int memcmp (const void $\ast$ {\em s1}, \/  const void $\ast$ {\em s2}, \/  uint32\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}
+Compares two memory buffers. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em s1}]buffer one \item[\mbox{$\leftarrow$} {\em s2}]buffer two \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+an integer less than, equal to, or greater than zero if the first {\ttfamily n} bytes of {\ttfamily s1} are found, respectively, to be less than, to match, or be greater than the first {\ttfamily n} bytes of {\ttfamily s2}. 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_afe26a59b2e7ebaa9520dcf45344fc045}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!memcpy@{memcpy}}
+\index{memcpy@{memcpy}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{memcpy}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ memcpy (void $\ast$restrict {\em dst}, \/  const void $\ast$restrict {\em src}, \/  uint32\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_afe26a59b2e7ebaa9520dcf45344fc045}
+Copies data between two non-\/overlapping buffers. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em dst}]destination buffer \item[\mbox{$\leftarrow$} {\em src}]source buffer \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+dst 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_aaa7068aedf20b3c0da2e967277f2de66}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!memmove@{memmove}}
+\index{memmove@{memmove}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{memmove}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memmove (void $\ast$ {\em dst}, \/  const void $\ast$ {\em src}, \/  uint32\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_aaa7068aedf20b3c0da2e967277f2de66}
+Copies data between two possibly overlapping buffers. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em dst}]destination buffer \item[\mbox{$\leftarrow$} {\em src}]source buffer \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+dst 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ae8b469c17c2517af747cfc9dc1992af9}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!memset@{memset}}
+\index{memset@{memset}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{memset}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memset (void $\ast$ {\em src}, \/  int {\em c}, \/  uint32\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_ae8b469c17c2517af747cfc9dc1992af9}
+Fills the specified buffer to the specified value. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em src}]pointer to buffer \item[\mbox{$\leftarrow$} {\em c}]character to fill buffer with \item[\mbox{$\leftarrow$} {\em n}]length of buffer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily src} 
+\end{DoxyReturn}
