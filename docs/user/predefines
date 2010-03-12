@@ -87,7 +87,7 @@
 #define BYTECODE_API_H 
 #define __EXECS_H 
 #define BC_FEATURES_H 
-#define EBOUNDS(fieldname) __attribute__((bounds(fieldname)))
+#define EBOUNDS(x) 
 #define __PE_H 
 #define DISASM_BC_H 
 #define __STDBOOL_H 
@@ -113,10 +113,10 @@
 #define YYMARKER re2c_smrk
 #define YYCTXMARKER re2c_sctx
 #define YYFILL(n) { RE2C_FILLBUFFER(n) if (re2c_sres >= 0) break; }
-#define REGEX_SCANNER unsigned char *re2c_scur, *re2c_slim, *re2c_smrk, *re2c_sctx, *re2c_seof, *re2c_stok; int re2c_sres; int32_t re2c_stokstart; unsigned char re2c_sbuffer[RE2C_BSIZE]; re2c_scur = re2c_slim = re2c_smrk = re2c_sctx = re2c_seof = re2c_stok = re2c_sbuffer; re2c_seof = 0; re2c_sres = 0; RE2C_FILLBUFFER(0);
+#define REGEX_SCANNER unsigned char *re2c_scur, *re2c_slim, *re2c_smrk, *re2c_sctx, *re2c_seof, *re2c_stok; int re2c_sres; int32_t re2c_stokstart; unsigned char re2c_sbuffer[RE2C_BSIZE]; re2c_scur = re2c_slim = re2c_smrk = re2c_sctx = re2c_seof = re2c_stok = &re2c_sbuffer[0]; re2c_seof = 0; re2c_sres = 0; RE2C_FILLBUFFER(0);
 #define REGEX_POS (-(re2c_slim - re2c_scur) + seek(0, SEEK_CUR))
 #define REGEX_LOOP_BEGIN do { re2c_stok = re2c_scur; re2c_stokstart = REGEX_POS;} while (0);
 #define REGEX_RESULT (re2c_sres)
 #define RE2C_DEBUG_PRINT do { char buf[81]; uint32_t here = seek(0, SEEK_CUR); uint32_t d = re2c_slim - re2c_scur; uint32_t end = here - d; unsigned len = end - re2c_stokstart; if (len > 80) { unsigned skipped = len - 74; seek(re2c_stokstart, SEEK_SET); if (read(buf, 37) == 37) break; memcpy(buf+37, "[...]", 5); seek(end-37, SEEK_SET); if (read(buf, 37) != 37) break; buf[80] = '\0'; } else { seek(re2c_stokstart, SEEK_SET); if (read(buf, len) != len) break; buf[len] = '\0'; } buf[80] = '\0'; debug_print_str(buf, 0); seek(here, SEEK_SET);} while (0)
 #define DEBUG_PRINT_REGEX_MATCH RE2C_DEBUG_PRINT
-#define RE2C_FILLBUFFER(len) { if (!re2c_seof) { int got, cnt = re2c_stok - re2c_sbuffer; if (cnt > re2c_slim - re2c_sbuffer) { cnt = 0; re2c_slim = re2c_sbuffer; } if (cnt > 0) { memmove(re2c_sbuffer, re2c_stok, re2c_slim - re2c_stok); re2c_stok -= cnt; re2c_scur -= cnt; re2c_slim -= cnt; re2c_smrk -= cnt; re2c_sctx -= cnt; } cnt = RE2C_BSIZE - (re2c_slim - re2c_sbuffer); if ((got = read(re2c_slim, cnt)) != cnt) { re2c_seof = &re2c_slim[got]; } if (got < 0) { re2c_sres = 1; } else { re2c_slim += got; } } else if (re2c_scur + len > re2c_seof) { re2c_sres = 0; } else re2c_sres = -1;}
+#define RE2C_FILLBUFFER(len) { if (!re2c_seof) { int got, cnt = re2c_stok - &re2c_sbuffer[0]; if (cnt > re2c_slim - &re2c_sbuffer[0]) { cnt = 0; re2c_slim = &re2c_sbuffer[0]; } if (cnt > 0) { memmove(&re2c_sbuffer[0], re2c_stok, re2c_slim - re2c_stok); re2c_stok -= cnt; re2c_scur -= cnt; re2c_slim -= cnt; re2c_smrk -= cnt; re2c_sctx -= cnt; } cnt = RE2C_BSIZE - (re2c_slim - &re2c_sbuffer[0]); if ((got = read(re2c_slim, cnt)) != cnt) { re2c_seof = &re2c_slim[got]; } if (got < 0) { re2c_sres = 1; } else { re2c_slim += got; } } else if (re2c_scur + len > re2c_seof) { re2c_sres = 0; } else re2c_sres = -1;}
