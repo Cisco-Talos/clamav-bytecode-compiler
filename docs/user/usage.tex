@@ -1,0 +1,110 @@
+\chapter{Usage}
+\section{Invoking the compiler}
+Compiling is similar to gcc \footnote{Note that the ClamAV bytecode compiler will refuse to compile code it considers insecure}:
+\begin{verbatim}
+$ /usr/local/clamav/bin/clambc-compiler foo.c -o foo.cbc -O2
+\end{verbatim}
+
+This will compile the file \verb+foo.c+ into a file called \verb+foo.cbc+,
+that can be loaded by ClamAV, and packed inside a \verb+.cvd+ file.
+
+The compiler by default has all warnings turned on.
+
+Supported optimization levels: \verb+-O0, -O1, -O2, -O3+. \footnote{Currently -O0 doesn't work}
+It is recommended that you always compile with at least \verb+-O1+.
+
+Warning options: \verb+-Werror+ (transforms all warnings into errors).
+
+Preprocessor flags:
+\begin{description}
+ \item[-I <directory>] Searches in the given directory when it encounters a \verb+#include "headerfile"+ directive in the source code, in addition
+to the system defined header search directories.
+ \item[-D <MACRONAME>=<VALUE>] Predefine given \verb+<MACRONAME>+ to be equal to \verb+<VALUE>+.
+ \item[-U <MACRONAME>] Undefine a predefined macro
+\end{description}
+
+The compiler also supports some other commandline options (see \verb+clambc-compiler --help+ for a full list),
+however some of them have no effect when using the ClamAV bytecode backend (such as the X86 backend options).
+You shouldn't need to use any flags not documented above.
+
+\subsection{Compiling C++ files}
+Filenames with a \verb+.cpp+ extension are compiled as C++ files, however \verb|clang++| is not yet
+ready for production use, so this is EXPERIMENTAL currently.
+For now write bytecodes in C.
+
+\section{Running compiled bytecode}
+After compiling a C source file to bytecode, you can load it in ClamAV:
+\subsection{ClamBC}
+ClamBC is a tool you can use to test whether the bytecode loads, compiles, and can execute its entrypoint successfully.
+Usage:
+\begin{verbatim}
+ clambc <file> [function] [param1 ...]
+\end{verbatim}
+
+For example loading a simple bytecode with 2 functions is done like this:
+\begin{verbatim}
+$ clambc foo.cbc
+LibClamAV debug: searching for unrar, user-searchpath: /usr/local/lib
+LibClamAV debug: unrar support loaded from libclamunrar_iface.so.6.0.4 libclamunrar_iface_so_6_0
+LibClamAV debug: bytecode: Parsed 0 APIcalls, maxapi 0
+LibClamAV debug: Parsed 1 BBs, 2 instructions
+LibClamAV debug: Parsed 1 BBs, 2 instructions
+LibClamAV debug: Parsed 2 functions
+Bytecode loaded
+Running bytecode function :0
+Bytecode run finished
+Bytecode returned: 0x8
+Exiting
+\end{verbatim}
+
+\subsection{clamscan, clamd}
+You can tell clamscan to load the bytecode as a database directly:
+\begin{verbatim}
+$ clamscan -dfoo.cbc
+\end{verbatim}
+Or you can instruct it to load all databases from a directory, then clamscan will
+load all supported formats, including files with bytecode, which have the \verb+.cbc+ extension.
+\begin{verbatim}
+$ clamscan -ddirectory
+\end{verbatim}
+
+% TODO: we should describe or point to the security levels here when they get implemented
+You can also put the bytecode files into the default database directory of ClamAV
+(usually \verb+/usr/local/share/clamav+) to have it loaded automatically from there.
+Of course, the bytecode can be stored inside CVD files, too.
+
+\section{Debugging bytecode}
+\subsection{``printf'' style debugging}
+You can use \verb+debug_print_str+ and \verb+debug_print_int+ API %TODO: link to API section
+calls to print debug messages during the execution of the bytecode.
+
+\subsection{Single-stepping}
+%TODO: some glue code missing here: LLVM supports generation of dwarf debug info (including variable and line number info),
+%however variable debug info is lost during the most simple transform (mem2reg), and is undergoing a major redesign now,
+%and line number debug info is only emited when compiling statically.
+%Although line number debug info IS available in the JIT (assuming the loaded bytecode has it, by default it doesn't),
+%it currently doesn't emit dwarf debug info at all when JITing.
+% So what works is call frame info, i.e. backtraces, and function names in backtraces
+If you have GDB 7.0 (or newer) you can single-step \footnote{not yet implemented in libclamav} \footnote{assuming you have JIT support}
+during the execution of the bytecode.
+\begin{itemize}
+ \item Run clambc or clamscan under gdb:
+\begin{verbatim}
+$ ./libtool --mode=execute gdb clamscan/clamscan
+...
+(gdb) b cli_vm_execute_jit
+Are you sure ....? y
+(gdb) run -dfoo.cbc
+...
+Breakpoint ....
+
+(gdb) step
+(gdb) next
+\end{verbatim}
+
+You can single-step through the execution of the bytecode, however you can't (yet) print values of individual variables,
+you'll need to add debug statements in the bytecode to print interesting values.
+
+\end{itemize}
+
+

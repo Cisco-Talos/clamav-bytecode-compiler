@@ -1,0 +1,122 @@
+\chapter{Installation}
+\section{Requirements}
+The ClamAV Bytecode Compiler uses the LLVM compiler framework, thus requires an Operating System
+where building LLVM is supported:
+\begin{itemize}
+ \item FreeBSD/x86
+ \item Linux/\{x86,x86\_64,ppc\}
+ \item Mac OS X/\{x86,ppc\}
+ \item Solaris/sparcv9
+ \item Windows/x86 using mingw32 or Visual Studio
+\end{itemize}
+
+The following packages are required to compile the ClamAV Bytecode Compiler:
+\begin{itemize}
+ \item GCC C and C++ compilers (minimum 4.1.3, recommended: 4.3.4 or newer)
+\footnote{Note that several versions of GCC have bugs when compiling LLVM, see \url{http://llvm.org/docs/GettingStarted.html\#brokengcc} for a full list.
+Also LLVM requires support for atomic builtins for multithreaded mode, which gcc 3.4.x doesn't have}.
+ \item Perl (version 5.6.0+)
+ \item GNU make (version 3.79+, recommended 3.81)
+\end{itemize}
+
+The following packages are optional, but highly recommended:
+\begin{itemize}
+ \item Python (version 2.5.4+?) - for running the tests
+\end{itemize}
+
+\section{Obtaining the ClamAV Bytecode Compiler}
+You can obtain the source code in one of the following ways \footnote{For now the use the internal clamtools repository:\\
+git clone username@git.clam.sourcefire.com:/var/lib/git/clamtools.git}
+\begin{itemize}
+ \item Check out the source code using git native protocol:
+
+ \verb+git clone git://git.clamav.net/git/clamav-bytecode-compiler+
+ \item Check out the source code using HTTP:
+
+ \verb+git clone http://git.clamav.net/git/clamav-bytecode-compiler.git+
+\end{itemize}
+
+You can keep the source code updated using:
+
+\verb+git pull+
+
+\section{Building}
+\subsection{Disk space}
+A minimalistic release build requires ~100M of disk space.
+
+Testing the compiler requires a full build, ~320M of disk space.
+A debug build requires significantly more disk space (1.4G for a minimalistic
+debug build).
+
+Note that this only needed during the build process, once installed only ~12M
+is needed.
+
+\subsection{Create build directory}
+Building requires a separate object directory, building in the source directory is not supported.
+Create a build directory:
+
+\verb+$ cd clamav-bytecode-compiler && mkdir obj+
+
+Run configure (you can use any prefix you want, this example uses \verb+/usr/local/clamav+):
+\begin{verbatim}
+$ cd obj && ../llvm/configure --enable-optimized \
+ --enable-targets=host-only --disable-bindings \
+--prefix=/usr/local/clamav
+\end{verbatim}
+
+Run the build under ulimit \footnote{compiling some files can be very memory intensive, especially with older compilers}:
+\begin{verbatim}
+$ (ulimit -t 3600 -v 512000 && make clambc-only -j4)
+\end{verbatim}
+
+\section{Testing}
+\begin{verbatim}
+$ (ulimit -t 3600 v 512000 && make -j4)
+$ make check-all
+\end{verbatim}
+
+If make check reports errors, check that your compiler is NOT on this list:
+\url{http://llvm.org/docs/GettingStarted.html#brokengcc}.
+
+If it is, then your compiler is buggy, and you need to do one of the following: upgrade your compiler
+to a non-buggy version, upgrade the OS to one that has a non-buggy compiler, compile with \verb|export OPTMIZE_OPTION=-O2|, or
+\verb|export OPTIMIZE_OPTION=-O1|, or \verb|export OPTIMIZE_OPTION=\-O1|.
+
+If not you probably found a bug, report it at \url{http://bugs.clamav.net}
+
+\section{Installing}
+Install it:
+\begin{verbatim}
+$ make install-clambc -j8
+\end{verbatim}
+
+\subsection{Structure of installed files}
+\begin{enumerate}
+\item The ClamAV Bytecode compiler driver:
+\verb+$PREFIX/bin/clambc-compiler+
+\item  ClamAV bytecode header files:
+\begin{verbatim}
+$PREFIX/lib/clang/1.1/include:
+bcfeatures.h
+bytecode_{api_decl.c,api,disasm,execs,features}.h
+bytecode.h
+bytecode_{local,pe,types}.h
+\end{verbatim}
+\item clang compiler (with ClamAV bytecode backend) compiler include files:
+\begin{verbatim}
+$PREFIX/lib/clang/1.1/include:
+emmintrin.h
+float.h
+iso646.h
+limits.h
+{,p,t,x}mmintrin.h
+mm_malloc.h
+std{arg,bool,def,int}.h
+tgmath.h
+\end{verbatim}
+\item User manual
+\begin{verbatim}
+$PREFIX/docs/clamav/clambc-user.pdf
+\end{verbatim}
+\end{enumerate}
+

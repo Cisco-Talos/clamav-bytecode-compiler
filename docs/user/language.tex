@@ -1,0 +1,174 @@
+\chapter{ClamAV bytecode language}
+The bytecode that ClamAV loads is a simplified form of the LLVM Intermediate Representation, and as such it is language-independent.
+
+However currently the only supported language from which such bytecode can be generated is a simplified form of C
+\footnote{In the future more languages could be supported, see the Internals Manual on language frontends}
+
+The language supported by the ClamAV bytecode compiler is a restricted set of C99 with some GNU extensions.
+
+\section{Differences from C99 and GNU C}
+\label{sec:diffc}
+These restrictions are enforced at compile time:
+\begin{itemize}
+ \item No standard include files. \footnote{For portability reasons: preprocessed C code is not portable}
+ \item The ClamAV API header files are preincluded.
+ \item No external function calls, except to the ClamAV API \footnote{For safety reasons we can't allow the bytecode to call arbitrary system functions}
+ \item No inline assembly \footnote{This is both for safety and portability reasons}
+ \item Globals can only be readonly constants \footnote{For thread safety reasons}
+ \item \verb+inline+ is C99 inline (equivalent to GNU C89 extern inline), thus it cannot be used outside of the definition of the ClamAV API,
+you should use \verb+static inline+
+ \item \verb+sizeof(int) == 4+ always
+ \item \verb+sizeof(long) == sizeof(long long) == 8+ always
+ \item \verb+ptr_diff_t = int+, \verb+intptr_t = int+, \verb+intmax_t = long+, \verb+uintmax_t = unsigned long+ 
+\footnote{Note that a pointer's sizeof is runtime-platform dependent, although at compile time sizeof(void*) == 4, at runtime it can be something else.
+Thus you should avoid using sizeof(pointer)}
+ \item No pointer to integer casts and integer to pointer casts (pointer arithmetic is allowed though)
+ \item No \verb+__thread+ support
+ \item Size of memory region associated with each pointer must be known in each function, thus if you pass a pointer to a function,
+you must also pass its allocated size as a parameter.
+ \item Endianness must be handled via the \verb+__is_bigendian()+ API function call, or via the \verb+cli_{read,write}int{16,32}+ wrappers,
+and not by casting pointers
+ \item Predefines \verb+__CLAMBC__+
+ \item All integer types have fixed width
+ \item \verb+main+ or \verb+entrypoint+ must have the following prototype: \verb+int main(void)+, the prototype
+\verb+int main(int argc, char *argv[])+ is not accepted %TODO: really reject this, for now its compiled but clamav won't find main when loading
+%TODO: The ClamBC backend should default to bigendian, so that such endianness bugs are caught soon, i.e. they will be immediately buggy when executing on x86,
+% unless the endian macros are used
+\end{itemize}
+
+They are meant to ensure the following:
+\begin{itemize}
+ \item Thread safe execution of multiple different bytecodes, and multiple instances of the same bytecode
+ \item Portability to multiple CPU architectures and OSes: the bytecode must execute on both the libclamav/LLVM JIT where that is supported (x86, x86\_64, ppc, arm?),
+and on the libclamav interpreter where that is not supported.
+ \item No external runtime dependency: libclamav should have everything needed to run the bytecode, thus no external calls are allowed, not even to libc!
+ \item Same behaviour on all platforms: fixed size integers. 
+\end{itemize}
+
+These restrictions are checked at runtime (checks are inserted at compile time):
+\begin{itemize}
+ \item Accessing an out-of-bounds pointer will result in a call to \verb+abort()+
+ \item Calling \verb+abort()+ interrupts the execution of the bytecode in a thread safe manner, and doesn't halt ClamAV
+\footnote{in fact it calls a ClamAV API function, and not the libc abort function.}.
+\end{itemize}
+
+The ClamAV API header has further restriction, see the Internals manual.
+
+Although the bytecode undergoes a series of automated tests (see Publishing chapter in Internals manual), the above restrictions don't guarantee
+that the resulting bytecode will execute correctly!
+You must still test the code yourself, these restrictions only avoid the most common errors.
+Although the compiler and verifier aims to accept only code that won't crash ClamAV, no code is 100\% perfect, and a bug in the verifier
+could allow unsafe code be executed by ClamAV.
+
+\section{Limitations}
+The bytecode format has the following limitations:
+\begin{itemize}
+ \item At most 64k bytecode kinds (hooks)
+ \item At most 64k types (including pointers, and all nested types)
+ \item At most 16 parameters to functions, no vararg functions
+ \item At most 64-bit integers
+ \item No vector types or vector operations
+ \item No opaque types
+ \item No floating point
+ \item Global variable initializer must be compile-time computable
+ \item At most 32k global variables (and at most 32k API globals)
+ \item Pointer indexing at most 15 levels deep (can be worked around if needed by using temporaries)
+ \item No struct return or byval parameters
+ \item At most 32k instructions in a single function
+ \item No Variable Length Arrays
+\end{itemize}
+
+
+
+\section{Logical signatures}
+\label{sec:lsigs}
+Logical signatures can be used as triggers for executing a bytecode. 
+Instead of describing a logical signatures as a \verb+.ldb+ pattern, you use C code which is then
+translated to a \verb+.ldb+-style logical signature.
+
+Logical signatures in ClamAV support the following operations:
+\begin{itemize}
+ \item Sum the count of logical subsignatures that matched inside a subexpression
+ \item Sum the number of different subsignatures that matched inside a subexpression
+ \item Compare the above counts using the $>,=,<$ relation operators
+ \item Perform logical $\&\&, ||$ operations on above boolean values
+ \item Nest subexpressions
+ \item Maximum 64 subexpressions
+\end{itemize}
+
+Out of the above operations the ClamAV Bytecode Compiler doesn't support computing sums of nested subexpressions,
+(it does support nesting though).
+
+The C code that can be converted into a logical signature must obey these restrictions:
+\begin{itemize}
+ \item a function named \verb+logical_trigger+ with the following prototype:
+\verb+bool logical_trigger(void)+
+ \item no function calls, except for \verb+count_match+ and \verb+matches+
+ \item no global variable access (except as done by the above 2 functions internally)
+ \item return true when signature should trigger, false otherwise
+ \item use only integer compare instructions, branches, integer \emph{add}, logical \emph{and}, logical \emph{or},
+logical \emph{xor}, zero extension, store/load from local variables
+ \item the final boolean expression must be convertible to disjunctive normal form without negation
+ \item the final logical expression must not have more than 64 subexpressions
+ \item it can have early returns (all true returns are unified using $||$)
+ \item you can freely use comments, they are ignored
+ \item the final boolean expression cannot be a \verb+true+ or \verb+false+ constant
+\end{itemize}
+
+The compiler does the following transformations (not necessarily in this order):
+\begin{itemize}
+ \item convert shortcircuit boolean operations into non-shortcircuit ones (since all operands are boolean expressions or local variables,
+it is safe to execute these unconditionally)
+ \item propagate constants
+ \item simplify control flow graph
+ \item (sparse) conditional constant propagation
+ \item dead store elimination
+ \item dead code elimination
+ \item instruction combining (arithmetic simplifications)
+ \item jump threading
+\end{itemize}
+
+If after this transformation the program meets the requirements outlined above, then it is converted to a logical signature.
+The resulting logical signature is simplified using basic properties of boolean operations, such as
+associativity, distributivity, De Morgan's law.
+
+The final logical signature is not unique (there might be another logical signature with identical behavior), however the boolean part is in a canonical form:
+it is in disjunctive normal form, with operands sorted in ascending order.
+
+For best results the C code should consist of:
+\begin{itemize}
+ \item local variables declaring the sums you want to use
+ \item a series of \verb+if+ branches that \verb+return true+, where the \verb+if+'s condition is a single comparison or a logical \emph{and} of comparisons
+ \item a final \verb+return false+
+\end{itemize}
+
+You can use $||$ in the \verb+if+ condition too, but be careful that after expanding to disjunctive normal form, the number of subexpressions doesn't exceed 64.
+
+Note that you do not have to use all the subsignatures you declared in \verb+logical_trigger+, you can
+do more complicated checks (that wouldn't obey the above restrictions) in the bytecode itself at runtime.
+The \verb+logical_trigger+ function is fully compiled into a logical signature, it won't be a runtime executed function (hence the restrictions).
+
+\section{Headers and runtime environment}
+When compiling a bytecode program, \verb+bytecode.h+ is automatically included, so you don't need to explicitly include it.
+These headers (and the compiler itself) predefine certain macros, see \prettyref{apdx:predefined} for a full list.
+In addition the following types are defined:
+\begin{lstlisting}
+typedef unsigned char uint8_t;
+typedef char int8_t;
+typedef unsigned short uint16_t;
+typedef short int16_t;
+typedef unsigned int uint32_t;
+typedef int int32_t;
+typedef unsigned long uint64_t;
+typedef long int64_t;
+typedef unsigned int size_t;
+typedef int off_t;
+typedef struct signature { unsigned id } __Signature;
+\end{lstlisting}
+As described in \prettyref{sec:diffc} the width of integer types are fixed, the above typedefs show that.
+
+A bytecode's entrypoint is the function \verb+entrypoint+ and it's required by ClamAV to load the bytecode.
+
+Bytecode that is triggered by a logical signature must have a list of virusnames and patterns defined.
+Bytecodes triggered via hooks can optionally have them, but for example a PE unpacker doesn't need virus
+names as it only processes the data.
