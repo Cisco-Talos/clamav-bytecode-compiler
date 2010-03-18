@@ -399,6 +399,7 @@ do {\
   uint32_t d = re2c_slim - re2c_scur;\
   uint32_t end = here - d;\
   unsigned len = end - re2c_stokstart;\
+  debug(len);\
   if (len > 80) {\
     unsigned skipped = len - 74;\
     seek(re2c_stokstart, SEEK_SET);\
@@ -448,6 +449,7 @@ do {\
       re2c_sres = 1;\
     } else {\
       re2c_slim += got;\
+      re2c_sres = -1;\
     }\
   }\
   else if (re2c_scur + len > re2c_seof)\
