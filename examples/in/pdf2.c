@@ -69,9 +69,9 @@ int entrypoint(void)
     PDFOBJECT = POSNUMBER WHITESPACE POSNUMBER WHITESPACE "obj";
     INDIRECTJS = NAME_JS WHITESPACE? INDIRECTPDFOBJECT;
 
-    DIRECTJSOBJECT { debug("pdfjs text at:"); DEBUG_PRINT_REGEX_MATCH; continue; }
-    DIRECTHEXJS { debug("pdfjs hextext at:"); DEBUG_PRINT_REGEX_MATCH; continue; }
-    INDIRECTJSOBJECT { debug("indirectjs at:"); DEBUG_PRINT_REGEX_MATCH; continue; }
+    DIRECTTEXTJS { debug("pdfjs text at:"); debug(REGEX_POS); continue; }
+    DIRECTHEXJS { debug("pdfjs hextext at:"); debug(REGEX_POS); continue; }
+    INDIRECTJSOBJECT { debug("indirectjs at:"); debug(REGEX_POS); continue; }
     ANY { continue; }
   */
 #if 0
