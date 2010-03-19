@@ -67,6 +67,20 @@ static void decode_js_indirect(unsigned pos)
   seek(back, SEEK_SET);
 }
 
+static void handle_pdfobj(unsigned pos)
+{
+  unsigned char buf[128];
+  unsigned back = seek(0, SEEK_CUR);
+  seek(pos, SEEK_SET);
+
+  int32_t obj0 = read_number(10);
+  int32_t obj1 = read_number(10);
+  debug("pdf obj");
+  debug_print_uint(obj0);
+  debug_print_uint(obj1);
+  seek(back, SEEK_SET);
+}
+
 int entrypoint(void)
 {
   seek(7, SEEK_SET);
@@ -112,6 +126,10 @@ int entrypoint(void)
 
     PDFOBJECT = POSNUMBER WHITESPACE POSNUMBER WHITESPACE "obj";
     INDIRECTJS = NAME_JS WHITESPACE? INDIRECTPDFOBJECT;
+
+    PDFOBJECT {
+        handle_pdfobj(re2c_stokstart, REGEX_POS); continue;
+    }
 
     DIRECTTEXTJS {
         debug("pdfjs text at:"); debug(REGEX_POS);
