@@ -4,24 +4,68 @@ TARGET(0)
 
 SIGNATURES_DECL_BEGIN
 DECLARE_SIGNATURE(PDF_header)
-DECLARE_SIGNATURE(PDF_eof)
 SIGNATURES_DECL_END
 
 SIGNATURES_DEF_BEGIN
 /* %PDF-, don't validate the version, since there are %PDF-1111 for example */
 DEFINE_SIGNATURE(PDF_header, "0:255044462d")
-DEFINE_SIGNATURE(PDF_eof,"EOF-10,4:2525454f46")
 SIGNATURES_END
 
 bool logical_trigger(void)
 {
-  return matches(Signatures.PDF_header) && matches(Signatures.PDF_eof);
+  return matches(Signatures.PDF_header);
+  //&& matches(Signatures.PDF_eof);
 }
 
 /*!max:re2c */
 #if RE2C_BSIZE < YYMAXFILL
 #error RE2C_BSIZE must be greated than YYMAXFILL
 #endif
+
+static void decode_js_text(unsigned pos)
+{
+  unsigned char buf[RE2C_BSIZE];
+  unsigned back = seek(0, SEEK_CUR);
+  unsigned paranthesis = 0;
+  int filled = 0;
+  unsigned i = 0;
+  seek(pos, SEEK_SET);
+  BUFFER_FILL(buf, 0, 1, filled);
+  extract_new(pos);
+  //TODO: decode PDFEncoding and UTF16
+  while (filled > 0) {
+    for (i=0;i<filled;i++) {
+      if (buf[i] == '(') paranthesis++;
+      if (buf[i] == ')') {
+        if (!--paranthesis)
+          break;
+      }
+    }
+    write(buf, i);
+    if (buf[i] == ')' && !paranthesis)
+      break;
+    BUFFER_FILL(buf, 0, 1, filled);
+  }
+  seek(back, SEEK_SET);
+}
+
+static void decode_js_hex(unsigned pos)
+{
+  unsigned char buf[RE2C_BSIZE];
+  unsigned back = seek(0, SEEK_CUR);
+  seek(pos, SEEK_SET);
+  extract_new(pos);
+  seek(back, SEEK_SET);
+}
+
+static void decode_js_indirect(unsigned pos)
+{
+  unsigned char buf[RE2C_BSIZE];
+  unsigned back = seek(0, SEEK_CUR);
+  seek(pos, SEEK_SET);
+  extract_new(pos);
+  seek(back, SEEK_SET);
+}
 
 int entrypoint(void)
 {
@@ -31,7 +75,7 @@ int entrypoint(void)
   for (;;) {
     REGEX_LOOP_BEGIN
   /*!re2c
-    
+
     EOL = "\r" | "\n" | "\r\n";
     SKIPNOTEOL = [^\r\n]?;
     WS = [\000\t\r\h\n ];
@@ -69,13 +113,21 @@ int entrypoint(void)
     PDFOBJECT = POSNUMBER WHITESPACE POSNUMBER WHITESPACE "obj";
     INDIRECTJS = NAME_JS WHITESPACE? INDIRECTPDFOBJECT;
 
-    DIRECTTEXTJS { debug("pdfjs text at:"); debug(REGEX_POS); continue; }
-    DIRECTHEXJS { debug("pdfjs hextext at:"); debug(REGEX_POS); continue; }
-    INDIRECTJSOBJECT { debug("indirectjs at:"); debug(REGEX_POS); continue; }
+    DIRECTTEXTJS {
+        debug("pdfjs text at:"); debug(REGEX_POS);
+        decode_js_text(REGEX_POS); continue;
+    }
+    DIRECTHEXJS {
+        debug("pdfjs hextext at:"); debug(REGEX_POS);
+        decode_js_hex(REGEX_POS); continue;
+    }
+    INDIRECTJSOBJECT {
+        debug("indirectjs at:"); debug(REGEX_POS);
+        decode_js_indirect(REGEX_POS); continue;
+    }
     ANY { continue; }
   */
 #if 0
-    PDFOBJECT { debug("pdf obj at:"); DEBUG_PRINT_REGEX_MATCH; continue; }
 #endif
   }
   return REGEX_RESULT;

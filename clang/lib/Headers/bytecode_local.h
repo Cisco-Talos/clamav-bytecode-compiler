@@ -425,13 +425,14 @@ do {\
 #define DEBUG_PRINT_REGEX_MATCH RE2C_DEBUG_PRINT
 
 #define BUFFER_FILL(buf, cursor, need, limit) do {\
-  (limit) = fill_buffer((buf), sizeof((buf)), (cursor), (need));\
-  (cursor) = 0;\
+  (limit) = fill_buffer((buf), sizeof((buf)), (limit), (cursor), (need));\
 } while (0);
 
 #define BUFFER_ENSURE(buf, cursor, need, limit) do {\
-  if ((cursor) + (need) >= (limit))\
+  if ((cursor) + (need) >= (limit)) {\
     BUFFER_FILL(buf, cursor, need, limit)\
+    (cursor) = 0;\
+  }\
 } while (0);
 
 /* Move stok to offset 0, and fill rest of buffer, at least with 'len' bytes.
