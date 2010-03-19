@@ -59,6 +59,8 @@ obj/Release/bin/ifacegen $HEADERS_DIR/bytecode_api.h \
 -gen-api-c $HEADERS_DIR/bytecode_api_decl.c.h -gen-hooks-h bytecode_hooks.h -gen-impl-h bytecode_api_impl.h ||
 { echo "Failed to compile API header"; exit 1; }
 
+make -C obj/tools/clang/lib/Headers
+
 # Sync compiler -> libclamav
 cp -v clang/lib/Headers/bytecode_api_decl.c.h $CLAMAV_PATH/libclamav/bytecode_api_decl.c
 cp -v clang/lib/Headers/bytecode_api.h $CLAMAV_PATH/libclamav/bytecode_api.h

@@ -377,14 +377,16 @@ typedef struct {
 #define YYCURSOR re2c_scur
 #define YYLIMIT re2c_slim
 #define YYMARKER re2c_smrk
-#define YYCTXMARKER re2c_sctx
-#define YYFILL(n) { RE2C_FILLBUFFER(n) if (re2c_sres >= 0) break; }
+#define YYCONTEXT re2c_sctx
+#define YYFILL(n) { \
+  RE2C_FILLBUFFER(n);\
+  if (re2c_sres <= 0) break;\
+}
 
-#define REGEX_SCANNER unsigned char *re2c_scur, *re2c_slim, *re2c_smrk,\
-  *re2c_sctx, *re2c_seof, *re2c_stok; int re2c_sres; int32_t re2c_stokstart;\
+#define REGEX_SCANNER unsigned char *re2c_scur, *re2c_stok, *re2c_smrk, *re2c_sctx, *re2c_slim;\
+  int re2c_sres; int32_t re2c_stokstart;\
   unsigned char re2c_sbuffer[RE2C_BSIZE];\
-  re2c_scur = re2c_slim = re2c_smrk = re2c_sctx = re2c_seof = re2c_stok = &re2c_sbuffer[0];\
-  re2c_seof = 0;\
+  re2c_scur = re2c_slim = re2c_smrk = re2c_sctx = &re2c_sbuffer[0];\
   re2c_sres = 0;\
   RE2C_FILLBUFFER(0);
 
@@ -421,39 +423,37 @@ do {\
 } while (0)
 
 #define DEBUG_PRINT_REGEX_MATCH RE2C_DEBUG_PRINT
-#define RE2C_FILLBUFFER(len) \
-{\
-  if (!re2c_seof)\
-  {\
-    int got, cnt = re2c_stok - &re2c_sbuffer[0];\
-    if (cnt > re2c_slim - &re2c_sbuffer[0]) {\
-      cnt = 0;\
-      re2c_slim = &re2c_sbuffer[0];\
-    }\
-    if (cnt > 0)\
-    {\
-      memmove(&re2c_sbuffer[0], re2c_stok, re2c_slim - re2c_stok);\
-      re2c_stok -= cnt;\
-      re2c_scur -= cnt;\
-      re2c_slim -= cnt;\
-      re2c_smrk -= cnt;\
-      re2c_sctx -= cnt;\
-    }\
-    cnt = RE2C_BSIZE - (re2c_slim - &re2c_sbuffer[0]);\
-    if ((got = read(re2c_slim, cnt)) != cnt)\
-    {\
-      re2c_seof = &re2c_slim[got];\
-    }\
-    if (got < 0) {\
-      re2c_sres = 1;\
-    } else {\
-      re2c_slim += got;\
-      re2c_sres = -1;\
-    }\
+
+#define BUFFER_FILL(buf, cursor, need, limit) do {\
+  (limit) = fill_buffer((buf), sizeof((buf)), (cursor), (need));\
+  (cursor) = 0;\
+} while (0);
+
+#define BUFFER_ENSURE(buf, cursor, need, limit) do {\
+  if ((cursor) + (need) >= (limit))\
+    BUFFER_FILL(buf, cursor, need, limit)\
+} while (0);
+
+/* Move stok to offset 0, and fill rest of buffer, at least with 'len' bytes.
+   Adjust the other pointers, which must be after the stok pointer!
+*/
+#define RE2C_FILLBUFFER(need) do {\
+  uint32_t cursor = re2c_stok - &re2c_sbuffer[0];\
+  int32_t limit = re2c_slim - &re2c_sbuffer[0];\
+  limit = fill_buffer(re2c_sbuffer, sizeof(re2c_sbuffer), limit, (cursor), (need));\
+  if (!limit) {\
+    re2c_sres = 0;\
+  } else if (limit <= (need)) {\
+     re2c_sres = -1;\
+  } else {\
+    uint32_t curoff = re2c_scur - re2c_stok;\
+    uint32_t mrkoff = re2c_smrk - re2c_stok;\
+    uint32_t ctxoff = re2c_sctx - re2c_stok;\
+    re2c_slim = &re2c_sbuffer[0] + limit;\
+    re2c_stok = &re2c_sbuffer[0];\
+    re2c_scur = &re2c_sbuffer[0] + curoff;\
+    re2c_smrk = &re2c_sbuffer[0] + mrkoff;\
+    re2c_sctx = &re2c_sbuffer[0] + ctxoff;\
+    re2c_sres = limit;\
   }\
-  else if (re2c_scur + len > re2c_seof)\
-  {\
-    re2c_sres = 0; /* not enough input data */\
-  } else \
-  re2c_sres = -1;\
-}
+} while (0);
