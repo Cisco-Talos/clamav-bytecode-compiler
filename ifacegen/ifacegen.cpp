@@ -168,6 +168,19 @@ public:
       params.push_back(Type::getInt32Ty(C));
       params.push_back(Type::getInt32Ty(C));
       Api4Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
+      
+      params.clear();
+      Api5Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
+
+      params.clear();
+      params.push_back(Type::getInt32Ty(C));
+      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
+      params.push_back(Type::getInt32Ty(C));
+      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
+      params.push_back(Type::getInt32Ty(C));
+
+      Api6Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
+
 
       BufferID = 0;
     }
@@ -208,6 +221,8 @@ private:
   const FunctionType *Api2Ty;
   const FunctionType *Api3Ty;
   const FunctionType *Api4Ty;
+  const FunctionType *Api5Ty;
+  const FunctionType *Api6Ty;
 
   void outputTypename(raw_ostream &Out, const Type *Ty,
                       unsigned TypeFlag, bool after=false);
@@ -966,14 +981,13 @@ void Parser::outputAPIcalls(raw_ostream &Out)
     const Type *Ty = FTy->getReturnType();
     outputTypename(Out, Ty, I->second.TypeFlags[0]);
     Out << " cli_bcapi_" << I->first << "(";
-    Out << "struct cli_bc_ctx *ctx, ";
+    Out << "struct cli_bc_ctx *ctx ";
     unsigned j=1;
     for (FunctionType::param_iterator J=FTy->param_begin(),
          JE=FTy->param_end(); J != JE;) {
+      Out << ", ";
       outputTypename(Out, *J, I->second.TypeFlags[j++]);
       ++J;
-      if (J != JE)
-        Out << ", ";
     }
     Out << ");\n";
   }
@@ -987,7 +1001,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
     typeNames[I->second] = I->first;
   }
 
-  FunctionListTy apicalls[5];
+  FunctionListTy apicalls[7];
   for (FunctionListTy::iterator I=functions.begin(), E=functions.end();
        I != E; ++I) {
 
@@ -1014,6 +1028,16 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
 
     if (FTy == Api4Ty) {
       apicalls[4].push_back(*I);
+      continue;
+    }
+
+    if (FTy == Api5Ty) {
+      apicalls[5].push_back(*I);
+      continue;
+    }
+
+    if (FTy == Api6Ty) {
+      apicalls[6].push_back(*I);
       continue;
     }
 
@@ -1162,7 +1186,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
 
   Out << "const struct cli_apicall cli_apicalls[]={\n";
   Out << clamav::apicall_begin << "\n";
-  uint16_t api0=0,api1=0,api2=0,api3=0,api4=0;
+  uint16_t api0=0,api1=0,api2=0,api3=0,api4=0,api5=0,api6=0;
   for (FunctionListTy::iterator I=functions.begin(), E=functions.end();
        I != E;) {
 
@@ -1179,6 +1203,10 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
       Out << api3++ << ", 3";
     } else if (FTy == Api4Ty) {
       Out << api4++ << ", 4";
+    } else if (FTy == Api5Ty) {
+      Out << api5++ << ", 5";
+    } else if (FTy == Api6Ty) {
+      Out << api6++ << ", 6";
     } else if (FTy == Api1Ty ||
             (FTy->getNumParams() == 2 &&
               FTy->getReturnType() == Type::getInt32Ty(C) &&
@@ -1201,6 +1229,8 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
   printApiCalls(Out, "cli_apicall_int1", apicalls[2], 2);
   printApiCalls(Out, "cli_apicall_malloclike", apicalls[3], 3);
   printApiCalls(Out, "cli_apicall_ptrbuffdata", apicalls[4], 4);
+  printApiCalls(Out, "cli_apicall_allocobj", apicalls[5], 5);
+  printApiCalls(Out, "cli_apicall_bufops", apicalls[6], 6);
   Out << "const unsigned cli_apicall_maxapi = sizeof(cli_apicalls)/sizeof(cli_apicalls[0]);\n";
   return true;
 }
