@@ -174,18 +174,15 @@ public:
 
       params.clear();
       params.push_back(Type::getInt32Ty(C));
-      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
-      params.push_back(Type::getInt32Ty(C));
-      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
       params.push_back(Type::getInt32Ty(C));
 
-      Api6Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
+      Api6Ty = FunctionType::get(PointerType::getUnqual(Type::getInt8Ty(C)), params, false);
 
       params.clear();
       params.push_back(Type::getInt32Ty(C));
       params.push_back(Type::getInt32Ty(C));
-
-      Api7Ty = FunctionType::get(PointerType::getUnqual(Type::getInt8Ty(C)), params, false);
+      params.push_back(Type::getInt32Ty(C));
+      Api7Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
 
       BufferID = 0;
     }
@@ -1243,8 +1240,8 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
   printApiCalls(Out, "cli_apicall_malloclike", apicalls[3], 3);
   printApiCalls(Out, "cli_apicall_ptrbuffdata", apicalls[4], 4);
   printApiCalls(Out, "cli_apicall_allocobj", apicalls[5], 5);
-  printApiCalls(Out, "cli_apicall_bufops", apicalls[6], 6);
-  printApiCalls(Out, "cli_apicall_bufget", apicalls[7], 7);
+  printApiCalls(Out, "cli_apicall_bufget", apicalls[6], 6);
+  printApiCalls(Out, "cli_apicall_int3", apicalls[7], 7);
   Out << "const unsigned cli_apicall_maxapi = sizeof(cli_apicalls)/sizeof(cli_apicalls[0]);\n";
   return true;
 }
