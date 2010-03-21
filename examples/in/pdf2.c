@@ -58,26 +58,82 @@ static void decode_js_hex(unsigned pos)
   seek(back, SEEK_SET);
 }
 
-static void decode_js_indirect(unsigned pos)
+static void decode_js_indirect(unsigned pos, int32_t jsobjs, int32_t extractobjs)
 {
   unsigned char buf[RE2C_BSIZE];
-  unsigned back = seek(0, SEEK_CUR);
-  seek(pos, SEEK_SET);
-  extract_new(pos);
-  seek(back, SEEK_SET);
-}
-
-static void handle_pdfobj(unsigned pos)
-{
-  unsigned char buf[128];
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
 
   int32_t obj0 = read_number(10);
   int32_t obj1 = read_number(10);
-  debug("pdf obj");
-  debug_print_uint(obj0);
-  debug_print_uint(obj1);
+  /* TODO: this is not right, obj1 can be max 99999 */
+  int32_t objid = (obj0 << 4) | (obj1&0xf);
+  debug("indirect JS object reference found at/to");
+  debug(pos);
+  debug(objid);
+
+  hashset_add(jsobjs, objid);
+  hashset_add(extractobjs, objid);
+
+  seek(back, SEEK_SET);
+}
+
+static void extract_obj(unsigned pos, unsigned jsnorm)
+{
+  unsigned back = seek(0, SEEK_CUR);
+  seek(pos, SEEK_SET);
+  extract_new(pos);
+  /* TODO: use state-machine here too,
+     for now we just decode assuming deflate encoding!*/
+  pos = file_find("stream", 6);
+  seek(pos, SEEK_SET);
+  unsigned char c = file_byteat(pos+6);
+  if (c == '\r')
+    pos += 8;
+  else
+    pos += 7;
+  unsigned endpos;
+  do {
+    endpos = file_find("endstream", 9);
+    if (endpos == -1)
+      break;
+    c = file_byteat(endpos-1);
+    seek(endpos+9, SEEK_SET);
+  } while (c != '\n' && c != '\r');
+  debug("trying to inflate X bytes");
+  debug(endpos - pos);
+  int32_t in = buffer_pipe_new_fromfile(pos);
+  int32_t out = buffer_pipe_new(4096);
+  int32_t inf = inflate_init(in, out, 15);
+  if (inf < 0)
+    return -1;
+  uint32_t avail;
+  do {
+    inflate_process(inf);
+    avail = buffer_pipe_read_avail(out);
+    uint8_t *outdata = buffer_pipe_read_get(out, avail);
+    write(outdata, avail);
+    buffer_pipe_read_stopped(out, avail);
+  } while (avail);
+  seek(back, SEEK_SET);
+}
+
+static void handle_pdfobj(unsigned jsobjs, unsigned extractobjs,
+                          unsigned objpos, unsigned pos)
+{
+  unsigned char buf[128];
+  unsigned back = seek(0, SEEK_CUR);
+  seek(objpos, SEEK_SET);
+
+  int32_t obj0 = read_number(10);
+  int32_t obj1 = read_number(10);
+  /* TODO: this is not right, obj1 can be max 99999 */
+  int32_t objid = (obj0 << 4) | (obj1&0xf);
+  if (hashset_contains(extractobjs, objid)) {
+    extract_obj(pos, hashset_contains(jsobjs, objid));
+    hashset_remove(extractobjs, objid);
+    hashset_remove(jsobjs, objid);
+  }
   seek(back, SEEK_SET);
 }
 
@@ -85,6 +141,10 @@ int entrypoint(void)
 {
   seek(7, SEEK_SET);
   REGEX_SCANNER;
+  int32_t jsnorm_objs, extract_objs;
+
+  jsnorm_objs = hashset_new();
+  extract_objs = hashset_new();
 
   for (;;) {
     REGEX_LOOP_BEGIN
@@ -128,7 +188,7 @@ int entrypoint(void)
     INDIRECTJS = NAME_JS WHITESPACE? INDIRECTPDFOBJECT;
 
     PDFOBJECT {
-        handle_pdfobj(re2c_stokstart, REGEX_POS); continue;
+        handle_pdfobj(jsnorm_objs, extract_objs, re2c_stokstart, REGEX_POS); continue;
     }
 
     DIRECTTEXTJS {
@@ -140,13 +200,14 @@ int entrypoint(void)
         decode_js_hex(REGEX_POS); continue;
     }
     INDIRECTJSOBJECT {
-        debug("indirectjs at:"); debug(REGEX_POS);
-        decode_js_indirect(REGEX_POS); continue;
+        decode_js_indirect(re2c_stokstart, jsnorm_objs, extract_objs); continue;
     }
     ANY { continue; }
   */
 #if 0
 #endif
   }
+  /* TODO: loop over elements in the set, lookup in the pdfobj->offset map, and
+   * extract 'em */
   return REGEX_RESULT;
 }
