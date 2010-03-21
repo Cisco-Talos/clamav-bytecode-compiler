@@ -61,8 +61,16 @@ int32_t cli_bcapi_hashset_add(struct cli_bc_ctx *ctx , int32_t, uint32_t);
 int32_t cli_bcapi_hashset_remove(struct cli_bc_ctx *ctx , int32_t, uint32_t);
 int32_t cli_bcapi_hashset_contains(struct cli_bc_ctx *ctx , int32_t, uint32_t);
 int32_t cli_bcapi_hashset_done(struct cli_bc_ctx *ctx , int32_t);
-int32_t cli_bcapi_inflate_init(struct cli_bc_ctx *ctx );
-int32_t cli_bcapi_inflate_process(struct cli_bc_ctx *ctx , int32_t, uint8_t*, uint32_t, uint8_t*, uint32_t);
+int32_t cli_bcapi_buffer_new(struct cli_bc_ctx *ctx , uint32_t);
+int32_t cli_bcapi_buffer_new_fromfile(struct cli_bc_ctx *ctx , uint32_t, uint32_t);
+uint32_t cli_bcapi_buffer_avail_read(struct cli_bc_ctx *ctx , int32_t);
+uint8_t* cli_bcapi_buffer_get_read(struct cli_bc_ctx *ctx , int32_t, uint32_t);
+int32_t cli_bcapi_buffer_stopped_read(struct cli_bc_ctx *ctx , int32_t, uint32_t);
+uint8_t* cli_bcapi_buffer_get_write(struct cli_bc_ctx *ctx , int32_t, uint32_t);
+int32_t cli_bcapi_buffer_stopped_write(struct cli_bc_ctx *ctx , int32_t, uint32_t);
+int32_t cli_bcapi_buffer_done(struct cli_bc_ctx *ctx , int32_t);
+int32_t cli_bcapi_inflate_init(struct cli_bc_ctx *ctx , int32_t, int32_t);
+int32_t cli_bcapi_inflate_process(struct cli_bc_ctx *ctx , int32_t);
 int32_t cli_bcapi_inflate_done(struct cli_bc_ctx *ctx , int32_t);
 
 const struct cli_apiglobal cli_globals[] = {
@@ -87,9 +95,9 @@ static uint16_t cli_tmp5[]={32, 16, 16, 32, 32, 32, 16, 16};
 static uint16_t cli_tmp6[]={32};
 static uint16_t cli_tmp7[]={32};
 static uint16_t cli_tmp8[]={32, 32};
-static uint16_t cli_tmp9[]={32, 32, 65, 32, 65, 32};
-static uint16_t cli_tmp10[]={32};
-static uint16_t cli_tmp11[]={32, 32, 32};
+static uint16_t cli_tmp9[]={32, 32, 32};
+static uint16_t cli_tmp10[]={65, 32, 32};
+static uint16_t cli_tmp11[]={32};
 static uint16_t cli_tmp12[]={32, 65, 32, 32, 32, 32};
 static uint16_t cli_tmp13[]={32, 83, 32};
 static uint16_t cli_tmp14[]={84};
@@ -113,9 +121,9 @@ const struct cli_bc_type cli_apicall_types[]={
 	{DArrayType, cli_tmp6, 1, 0, 0},
 	{DArrayType, cli_tmp7, 64, 0, 0},
 	{DFunctionType, cli_tmp8, 2, 0, 0},
-	{DFunctionType, cli_tmp9, 6, 0, 0},
-	{DFunctionType, cli_tmp10, 1, 0, 0},
-	{DFunctionType, cli_tmp11, 3, 0, 0},
+	{DFunctionType, cli_tmp9, 3, 0, 0},
+	{DFunctionType, cli_tmp10, 3, 0, 0},
+	{DFunctionType, cli_tmp11, 1, 0, 0},
 	{DFunctionType, cli_tmp12, 6, 0, 0},
 	{DFunctionType, cli_tmp13, 3, 0, 0},
 	{DPointerType, cli_tmp14, 1, 0, 0},
@@ -133,10 +141,10 @@ const struct cli_bc_type cli_apicall_types[]={
 const unsigned cli_apicall_maxtypes=sizeof(cli_apicall_types)/sizeof(cli_apicall_types[0]);
 const struct cli_apicall cli_apicalls[]={
 /* Bytecode APIcalls BEGIN */
-	{"test1", 11, 0, 0},
+	{"test1", 9, 0, 0},
 	{"read", 17, 0, 1},
 	{"write", 17, 1, 1},
-	{"seek", 11, 1, 0},
+	{"seek", 9, 1, 0},
 	{"setvirusname", 17, 2, 1},
 	{"debug_print_str", 17, 3, 1},
 	{"debug_print_uint", 8, 0, 2},
@@ -156,14 +164,22 @@ const struct cli_apicall cli_apicalls[]={
 	{"fill_buffer", 12, 0, 4},
 	{"extract_new", 8, 4, 2},
 	{"read_number", 8, 5, 2},
-	{"hashset_new", 10, 0, 5},
-	{"hashset_add", 11, 2, 0},
-	{"hashset_remove", 11, 3, 0},
-	{"hashset_contains", 11, 4, 0},
+	{"hashset_new", 11, 0, 5},
+	{"hashset_add", 9, 2, 0},
+	{"hashset_remove", 9, 3, 0},
+	{"hashset_contains", 9, 4, 0},
 	{"hashset_done", 8, 6, 2},
-	{"inflate_init", 10, 1, 5},
-	{"inflate_process", 9, 0, 6},
-	{"inflate_done", 8, 7, 2}
+	{"buffer_new", 8, 7, 2},
+	{"buffer_new_fromfile", 9, 5, 0},
+	{"buffer_avail_read", 8, 8, 2},
+	{"buffer_get_read", 10, 0, 7},
+	{"buffer_stopped_read", 9, 6, 0},
+	{"buffer_get_write", 10, 1, 7},
+	{"buffer_stopped_write", 9, 7, 0},
+	{"buffer_done", 8, 9, 2},
+	{"inflate_init", 9, 8, 0},
+	{"inflate_process", 8, 10, 2},
+	{"inflate_done", 8, 11, 2}
 /* Bytecode APIcalls END */
 };
 const cli_apicall_int2 cli_apicalls0[] = {
@@ -171,7 +187,11 @@ const cli_apicall_int2 cli_apicalls0[] = {
 	(cli_apicall_int2)cli_bcapi_seek,
 	(cli_apicall_int2)cli_bcapi_hashset_add,
 	(cli_apicall_int2)cli_bcapi_hashset_remove,
-	(cli_apicall_int2)cli_bcapi_hashset_contains
+	(cli_apicall_int2)cli_bcapi_hashset_contains,
+	(cli_apicall_int2)cli_bcapi_buffer_new_fromfile,
+	(cli_apicall_int2)cli_bcapi_buffer_stopped_read,
+	(cli_apicall_int2)cli_bcapi_buffer_stopped_write,
+	(cli_apicall_int2)cli_bcapi_inflate_init
 };
 const cli_apicall_pointer cli_apicalls1[] = {
 	(cli_apicall_pointer)cli_bcapi_read,
@@ -196,6 +216,10 @@ const cli_apicall_int1 cli_apicalls2[] = {
 	(cli_apicall_int1)cli_bcapi_extract_new,
 	(cli_apicall_int1)cli_bcapi_read_number,
 	(cli_apicall_int1)cli_bcapi_hashset_done,
+	(cli_apicall_int1)cli_bcapi_buffer_new,
+	(cli_apicall_int1)cli_bcapi_buffer_avail_read,
+	(cli_apicall_int1)cli_bcapi_buffer_done,
+	(cli_apicall_int1)cli_bcapi_inflate_process,
 	(cli_apicall_int1)cli_bcapi_inflate_done
 };
 const cli_apicall_malloclike cli_apicalls3[] = {
@@ -205,10 +229,13 @@ const cli_apicall_ptrbuffdata cli_apicalls4[] = {
 	(cli_apicall_ptrbuffdata)cli_bcapi_fill_buffer
 };
 const cli_apicall_allocobj cli_apicalls5[] = {
-	(cli_apicall_allocobj)cli_bcapi_hashset_new,
-	(cli_apicall_allocobj)cli_bcapi_inflate_init
+	(cli_apicall_allocobj)cli_bcapi_hashset_new
 };
 const cli_apicall_bufops cli_apicalls6[] = {
-	(cli_apicall_bufops)cli_bcapi_inflate_process
+
+};
+const cli_apicall_bufget cli_apicalls7[] = {
+	(cli_apicall_bufget)cli_bcapi_buffer_get_read,
+	(cli_apicall_bufget)cli_bcapi_buffer_get_write
 };
 const unsigned cli_apicall_maxapi = sizeof(cli_apicalls)/sizeof(cli_apicalls[0]);
