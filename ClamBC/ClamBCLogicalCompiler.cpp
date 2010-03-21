@@ -1048,6 +1048,8 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     GV->setLinkage(GlobalValue::InternalLinkage);
     //TODO: validate that target is a valid target
     compileLogicalSignature(*F, target);
+    if (F->use_empty())
+      F->eraseFromParent();
   }
   Node->addElement(MDString::get(M.getContext(), LogicalSignature));
   return true;
