@@ -98,7 +98,8 @@ static void extract_obj(unsigned pos, unsigned jsnorm)
     if (endpos == -1)
       break;
     c = file_byteat(endpos-1);
-    seek(endpos+9, SEEK_SET);
+    if (seek(endpos+9, SEEK_SET) == -1)
+      break;
   } while (c != '\n' && c != '\r');
   debug("trying to inflate X bytes");
   debug(endpos - pos);
