@@ -836,7 +836,7 @@ void ClamBCModule::finished(Module &M)
       // skip whitespace at BOL
       do {
         c = *start++;
-      } while (c == ' ' || c == '\t' || c == '\n');
+      } while (c == ' ' || c == '\t');
       while (c != '\n' && c) {
         char b[3] = {0x60 | (c&0xf), 0x60 | ((c>>4)&0xf), '\0'};
         OutReal << b;

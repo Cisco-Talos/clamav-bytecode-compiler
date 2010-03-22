@@ -23,6 +23,7 @@
 #include "ClamBCModule.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/Verifier.h"
+#include "llvm/Analysis/DebugInfo.h"
 #include "llvm/Analysis/Dominators.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/LiveValues.h"
@@ -278,14 +279,23 @@ namespace {
       BasicBlock *BB = I->getParent();
       BasicBlock::iterator It = I;
       BasicBlock *newBB = SplitBlock(BB, &*It, this);
+      PHINode *PN;
       //verifyFunction(*BB->getParent());
       if (!AbrtBB) {
         std::vector<const Type*>args;
         FunctionType* abrtTy = FunctionType::get(
           Type::getVoidTy(BB->getContext()),args,false);
+        args.push_back(Type::getInt32Ty(BB->getContext()));
+        FunctionType* rterrTy = FunctionType::get(
+          Type::getInt32Ty(BB->getContext()),args,false);
         Constant *func_abort =
           BB->getParent()->getParent()->getOrInsertFunction("abort", abrtTy);
+        Constant *func_rterr =
+          BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
         AbrtBB = BasicBlock::Create(BB->getContext(), "", BB->getParent());
+        PN = PHINode::Create(Type::getInt32Ty(BB->getContext()),"",
+                                      AbrtBB);
+        CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", AbrtBB);
         CallInst* AbrtC = CallInst::Create(func_abort, "", AbrtBB);
         AbrtC->setCallingConv(CallingConv::C);
         AbrtC->setTailCall(true);
@@ -294,7 +304,24 @@ namespace {
         new UnreachableInst(BB->getContext(), AbrtBB);
         DT->addNewBlock(AbrtBB, BB);
         //verifyFunction(*BB->getParent());
+      } else {
+        PN = cast<PHINode>(AbrtBB->begin());
       }
+      llvm::MetadataContext *TheMetadata = &BB->getParent()->getParent()->getContext().getMetadata();
+      unsigned MDDbgKind = TheMetadata->getMDKind("dbg");
+      unsigned locationid = 0;
+      if (MDNode *Dbg = TheMetadata->getMD(MDDbgKind, I)) {
+        DILocation Loc(Dbg);
+        locationid = Loc.getLineNumber() << 8;
+        unsigned col = Loc.getColumnNumber();
+        if (col > 255)
+          col = 255;
+        locationid |= col;
+//      Loc.getFilename();
+      }
+      PN->addIncoming(ConstantInt::get(Type::getInt32Ty(BB->getContext()),
+                                       locationid), BB);
+
       TerminatorInst *TI = BB->getTerminator();
       SCEVExpander expander(*SE);
       Value *IdxV = expander.expandCodeFor(Idx, Idx->getType(), TI);

@@ -42,7 +42,7 @@ static void decode_js_text(unsigned pos)
       }
     }
     write(buf, i);
-    if (buf[i] == ')' && !paranthesis)
+    if (i < RE2C_BSIZE && buf[i] == ')' && !paranthesis)
       break;
     BUFFER_FILL(buf, 0, 1, filled);
   }

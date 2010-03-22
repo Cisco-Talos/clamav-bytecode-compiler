@@ -137,7 +137,7 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createClamBCLowering());
   PM.add(createClamBCLogicalCompiler());
   PM.add(createClamBCVerifier());
-//  PM.add(createClamBCRTChecks());
+  PM.add(createClamBCRTChecks());
   PM.add(createInstructionCombiningPass());
   PM.add(createCFGSimplificationPass());
   PM.add(createClamBCTrace());
