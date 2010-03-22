@@ -73,6 +73,7 @@ cp -v examples/out/arithmetic.o1.c.cbc $CLAMAV_TEST/arith.cbc
 cp -v examples/out/div0.o1.c.cbc $CLAMAV_TEST/div0.cbc
 cp -v examples/out/retmagic.o1.c.cbc $CLAMAV_TEST/retmagic.cbc
 cp -v examples/out/lsig.o1.c.cbc $CLAMAV_TEST/lsig.cbc
+cp -v examples/out/inf.o1.c.cbc $CLAMAV_TEST/inf.cbc
 
 ./compile.sh -x c /dev/null -E -dD | grep ^\#define >docs/internals/predefines
 ./compile.sh -x c /dev/null -E -dD | grep ^typedef >docs/internals/typedefs
