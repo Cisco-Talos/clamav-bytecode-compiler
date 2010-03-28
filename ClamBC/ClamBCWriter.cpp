@@ -448,7 +448,7 @@ private :
 
   void visitIntrinsic(unsigned iid, CallInst &CI)
   {
-    int numop = 0;
+    unsigned numop = 0;
     if (isa<DbgInfoIntrinsic>(CI))
       return;
     switch (iid) {

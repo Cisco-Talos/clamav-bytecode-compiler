@@ -23,9 +23,10 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/LLVMContext.h"
+#include "llvm/Support/Compiler.h"
 
 namespace clamav {
-static unsigned initTypeIDs(llvm::DenseMap<const llvm::Type*, unsigned>
+static unsigned ATTRIBUTE_USED initTypeIDs(llvm::DenseMap<const llvm::Type*, unsigned>
                             &typeIDs, llvm::LLVMContext &C) {
   unsigned tid;
   // Void is typeid 0
@@ -47,8 +48,8 @@ static unsigned initTypeIDs(llvm::DenseMap<const llvm::Type*, unsigned>
   return tid;
 }
 
-static const char *apicall_begin="/* Bytecode APIcalls BEGIN */";
-static const char *apicall_end="/* Bytecode APIcalls END */";
-static const char *globals_begin="/* Bytecode globals BEGIN */";
-static const char *globals_end="/* Bytecode globals END */";
+static ATTRIBUTE_USED const char *apicall_begin="/* Bytecode APIcalls BEGIN */";
+static ATTRIBUTE_USED const char *apicall_end="/* Bytecode APIcalls END */";
+static ATTRIBUTE_USED const char *globals_begin="/* Bytecode globals BEGIN */";
+static ATTRIBUTE_USED const char *globals_end="/* Bytecode globals END */";
 }

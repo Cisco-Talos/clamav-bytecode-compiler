@@ -99,16 +99,16 @@ public:
   Parser(SourceMgr &SM, LLVMContext &C) :
     SrcMgr(SM), TokStart(0), LastTokStart(0), C(C) {
       memset(delimiters, tok::None, sizeof(delimiters));
-      delimiters['('] = tok::ParOpen;
-      delimiters[')'] = tok::ParClose;
-      delimiters['{'] = tok::BraceOpen;
-      delimiters['}'] = tok::BraceClose;
-      delimiters[';'] = tok::SemiColon;
-      delimiters['*'] = tok::Pointer;
-      delimiters[','] = tok::Comma;
-      delimiters['['] = tok::SquareBracketOpen;
-      delimiters[']'] = tok::SquareBracketClose;
-      delimiters['='] = tok::Equal;
+      delimiters[(uint8_t)'('] = tok::ParOpen;
+      delimiters[(uint8_t)')'] = tok::ParClose;
+      delimiters[(uint8_t)'{'] = tok::BraceOpen;
+      delimiters[(uint8_t)'}'] = tok::BraceClose;
+      delimiters[(uint8_t)';'] = tok::SemiColon;
+      delimiters[(uint8_t)'*'] = tok::Pointer;
+      delimiters[(uint8_t)','] = tok::Comma;
+      delimiters[(uint8_t)'['] = tok::SquareBracketOpen;
+      delimiters[(uint8_t)']'] = tok::SquareBracketClose;
+      delimiters[(uint8_t)'='] = tok::Equal;
 
       InitLangKeywords();
 
@@ -741,7 +741,7 @@ private:
       dimensions.pop_back();
     }
     return Ty;
-  };
+  }
 };
 // Map keywords types from TokenKinds.def to our token kinds
 #define BOOLSUPPORT 2

@@ -287,8 +287,8 @@ namespace {
         FunctionType* abrtTy = FunctionType::get(
           Type::getVoidTy(BB->getContext()),args,false);
         args.push_back(Type::getInt32Ty(BB->getContext()));
-        FunctionType* rterrTy = FunctionType::get(
-          Type::getInt32Ty(BB->getContext()),args,false);
+//        FunctionType* rterrTy = FunctionType::get(
+//          Type::getInt32Ty(BB->getContext()),args,false);
         Constant *func_abort =
           BB->getParent()->getParent()->getOrInsertFunction("abort", abrtTy);
 //        Constant *func_rterr =
