@@ -79,10 +79,10 @@ int entrypoint() {
 		debug("Can't read 10 bytes of cyphertext\n");
 		return 0;
 	}
-
 	// The "decryption" loop - turns the cyphertext into playintext
 	uint8_t current_position, key = 0x29;
 	for(current_position=0; current_position<10; current_position++) {
+                uint8_t in = cyphertext[current_position];
 		key++;
 		cyphertext[current_position] ^= key;
 		key = cyphertext[current_position];

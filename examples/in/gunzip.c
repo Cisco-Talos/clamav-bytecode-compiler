@@ -9,7 +9,7 @@ int entrypoint()
   int32_t input_buf = buffer_pipe_new(4096);
   int32_t output_buf = buffer_pipe_new(4096);
   if (input_buf < 0 || output_buf < 0)
-    return 1;
+    return 0xdead1;
   avail = buffer_pipe_write_avail(input_buf);
   input_b = buffer_pipe_write_get(input_buf, avail);
   memcpy(input_b, input, sizeof(input));
@@ -17,11 +17,12 @@ int entrypoint()
 
   int32_t id = inflate_init(input_buf, output_buf, 31);
   if (id < 0)
-    return 2;
+    return 0xdead2;
   inflate_process(id);
   avail = buffer_pipe_read_avail(output_buf);
   out_b = buffer_pipe_read_get(output_buf, avail);
-  debug(out_b);
+  if (memcmp(out_b, "test;", 5))
+    return 0xdead3;
   inflate_done(id);
-  return 0;
+  return 0xbeef;
 }
