@@ -33,22 +33,22 @@ $ make check -j4
 
 \section{Merging LLVM to ClamAV bytecode compiler}
 Use the \verb+merge-new.sh+ script in the bytecode compiler repository.
-If there are no conflicts then the script takes care of merging, comitting and
-tagging.
+If there are no conflicts then the script takes care of merging, and comitting
+and.
 
-If there are conflicts, the script will stop, and output a message:
+If there are conflicts, the script will stop, and output an error message about
+the failed merge.
 
-\verb+Merge failed: resolve conflicts and run: git tag merge-llvm-<REV>+
-
-Note down the git tag command, fix the conflicts by using \verb+git mergetool+, then
-commit the result using \verb+git commit+. The squash commit message is in \verb+.git/SQUASH_MSG+ in this case,
-you should paste that into the commit message.
-Finally run the \verb+git tag+ command you noted down.
+Fix the conflicts by using \verb+git mergetool+, then
+commit the result using \verb+git commit+.
 
 Note that if llvm merge failed, clang is not merged either, so you should resume
 the merge of clang (easiest is to just rerun the script).
 
 Then run \verb+make check-all+ for the compiler too.
+
+Note: the script is now doing normal merges (i.e. unsquashed), to visualize just
+"our" history use git log --first-parent
 
 \section{Merging LLVM to ClamAV (libclamav)}
 Update llvm remote: \verb+git remote update llvm-upstream+.
