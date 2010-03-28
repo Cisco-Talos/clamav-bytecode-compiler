@@ -13,6 +13,7 @@
 
 #include "clang/AST/APValue.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/CharUnits.h"
 #include "clang/AST/RecordLayout.h"
 #include "clang/AST/StmtVisitor.h"
 #include "clang/AST/ASTDiagnostic.h"
@@ -69,11 +70,12 @@ static bool EvaluateComplex(const Expr *E, APValue &Result, EvalInfo &Info);
 static bool EvalPointerValueAsBool(APValue& Value, bool& Result) {
   // FIXME: Is this accurate for all kinds of bases?  If not, what would
   // the check look like?
-  Result = Value.getLValueBase() || Value.getLValueOffset();
+  Result = Value.getLValueBase() || !Value.getLValueOffset().isZero();
   return true;
 }
 
-static bool HandleConversionToBool(Expr* E, bool& Result, EvalInfo &Info) {
+static bool HandleConversionToBool(const Expr* E, bool& Result,
+                                   EvalInfo &Info) {
   if (E->getType()->isIntegralType()) {
     APSInt IntResult;
     if (!EvaluateInteger(E, IntResult, Info))
@@ -222,11 +224,11 @@ public:
 
   APValue VisitParenExpr(ParenExpr *E) { return Visit(E->getSubExpr()); }
   APValue VisitDeclRefExpr(DeclRefExpr *E);
-  APValue VisitPredefinedExpr(PredefinedExpr *E) { return APValue(E, 0); }
+  APValue VisitPredefinedExpr(PredefinedExpr *E) { return APValue(E); }
   APValue VisitCompoundLiteralExpr(CompoundLiteralExpr *E);
   APValue VisitMemberExpr(MemberExpr *E);
-  APValue VisitStringLiteral(StringLiteral *E) { return APValue(E, 0); }
-  APValue VisitObjCEncodeExpr(ObjCEncodeExpr *E) { return APValue(E, 0); }
+  APValue VisitStringLiteral(StringLiteral *E) { return APValue(E); }
+  APValue VisitObjCEncodeExpr(ObjCEncodeExpr *E) { return APValue(E); }
   APValue VisitArraySubscriptExpr(ArraySubscriptExpr *E);
   APValue VisitUnaryDeref(UnaryOperator *E);
   APValue VisitUnaryExtension(const UnaryOperator *E)
@@ -254,15 +256,14 @@ static bool EvaluateLValue(const Expr* E, APValue& Result, EvalInfo &Info) {
 
 APValue LValueExprEvaluator::VisitDeclRefExpr(DeclRefExpr *E) {
   if (isa<FunctionDecl>(E->getDecl())) {
-    return APValue(E, 0);
+    return APValue(E);
   } else if (VarDecl* VD = dyn_cast<VarDecl>(E->getDecl())) {
     if (!Info.AnyLValue && !VD->hasGlobalStorage())
       return APValue();
     if (!VD->getType()->isReferenceType())
-      return APValue(E, 0);
+      return APValue(E);
     // FIXME: Check whether VD might be overridden!
-    const VarDecl *Def = 0;
-    if (const Expr *Init = VD->getDefinition(Def))
+    if (const Expr *Init = VD->getAnyInitializer())
       return Visit(const_cast<Expr *>(Init));
   }
 
@@ -272,7 +273,7 @@ APValue LValueExprEvaluator::VisitDeclRefExpr(DeclRefExpr *E) {
 APValue LValueExprEvaluator::VisitCompoundLiteralExpr(CompoundLiteralExpr *E) {
   if (!Info.AnyLValue && !E->isFileScope())
     return APValue();
-  return APValue(E, 0);
+  return APValue(E);
 }
 
 APValue LValueExprEvaluator::VisitMemberExpr(MemberExpr *E) {
@@ -309,7 +310,8 @@ APValue LValueExprEvaluator::VisitMemberExpr(MemberExpr *E) {
   }
 
   result.setLValue(result.getLValueBase(),
-                   result.getLValueOffset() + RL.getFieldOffset(i) / 8);
+                   result.getLValueOffset() + 
+                       CharUnits::fromQuantity(RL.getFieldOffset(i) / 8));
 
   return result;
 }
@@ -324,9 +326,9 @@ APValue LValueExprEvaluator::VisitArraySubscriptExpr(ArraySubscriptExpr *E) {
   if (!EvaluateInteger(E->getIdx(), Index, Info))
     return APValue();
 
-  uint64_t ElementSize = Info.Ctx.getTypeSize(E->getType()) / 8;
+  CharUnits ElementSize = Info.Ctx.getTypeSizeInChars(E->getType());
 
-  uint64_t Offset = Index.getSExtValue() * ElementSize;
+  CharUnits Offset = Index.getSExtValue() * ElementSize;
   Result.setLValue(Result.getLValueBase(),
                    Result.getLValueOffset() + Offset);
   return Result;
@@ -363,22 +365,22 @@ public:
       { return Visit(E->getSubExpr()); }
   APValue VisitUnaryAddrOf(const UnaryOperator *E);
   APValue VisitObjCStringLiteral(ObjCStringLiteral *E)
-      { return APValue(E, 0); }
+      { return APValue(E); }
   APValue VisitAddrLabelExpr(AddrLabelExpr *E)
-      { return APValue(E, 0); }
+      { return APValue(E); }
   APValue VisitCallExpr(CallExpr *E);
   APValue VisitBlockExpr(BlockExpr *E) {
     if (!E->hasBlockDeclRefExprs())
-      return APValue(E, 0);
+      return APValue(E);
     return APValue();
   }
   APValue VisitImplicitValueInitExpr(ImplicitValueInitExpr *E)
-      { return APValue((Expr*)0, 0); }
+      { return APValue((Expr*)0); }
   APValue VisitConditionalOperator(ConditionalOperator *E);
   APValue VisitChooseExpr(ChooseExpr *E)
       { return Visit(E->getChosenSubExpr(Info.Ctx)); }
   APValue VisitCXXNullPtrLiteralExpr(CXXNullPtrLiteralExpr *E)
-      { return APValue((Expr*)0, 0); }
+      { return APValue((Expr*)0); }
   // FIXME: Missing: @protocol, @selector
 };
 } // end anonymous namespace
@@ -409,15 +411,15 @@ APValue PointerExprEvaluator::VisitBinaryOperator(const BinaryOperator *E) {
     return APValue();
 
   QualType PointeeType = PExp->getType()->getAs<PointerType>()->getPointeeType();
-  uint64_t SizeOfPointee;
+  CharUnits SizeOfPointee;
 
   // Explicitly handle GNU void* and function pointer arithmetic extensions.
   if (PointeeType->isVoidType() || PointeeType->isFunctionType())
-    SizeOfPointee = 1;
+    SizeOfPointee = CharUnits::One();
   else
-    SizeOfPointee = Info.Ctx.getTypeSize(PointeeType) / 8;
+    SizeOfPointee = Info.Ctx.getTypeSizeInChars(PointeeType);
 
-  uint64_t Offset = ResultLValue.getLValueOffset();
+  CharUnits Offset = ResultLValue.getLValueOffset();
 
   if (E->getOpcode() == BinaryOperator::Add)
     Offset += AdditionalOffset.getLimitedValue() * SizeOfPointee;
@@ -459,7 +461,8 @@ APValue PointerExprEvaluator::VisitCastExpr(CastExpr* E) {
 
       if (Result.isInt()) {
         Result.getInt().extOrTrunc((unsigned)Info.Ctx.getTypeSize(E->getType()));
-        return APValue(0, Result.getInt().getZExtValue());
+        return APValue(0, 
+                       CharUnits::fromQuantity(Result.getInt().getZExtValue()));
       }
 
       // Cast is of an lvalue, no need to change value.
@@ -481,7 +484,8 @@ APValue PointerExprEvaluator::VisitCastExpr(CastExpr* E) {
 
     if (Result.isInt()) {
       Result.getInt().extOrTrunc((unsigned)Info.Ctx.getTypeSize(E->getType()));
-      return APValue(0, Result.getInt().getZExtValue());
+      return APValue(0, 
+                     CharUnits::fromQuantity(Result.getInt().getZExtValue()));
     }
 
     // Cast is of an lvalue, no need to change value.
@@ -501,8 +505,10 @@ APValue PointerExprEvaluator::VisitCastExpr(CastExpr* E) {
 
 APValue PointerExprEvaluator::VisitCallExpr(CallExpr *E) {
   if (E->isBuiltinCall(Info.Ctx) ==
-        Builtin::BI__builtin___CFStringMakeConstantString)
-    return APValue(E, 0);
+        Builtin::BI__builtin___CFStringMakeConstantString ||
+      E->isBuiltinCall(Info.Ctx) ==
+        Builtin::BI__builtin___NSStringMakeConstantString)
+    return APValue(E);
   return APValue();
 }
 
@@ -806,7 +812,7 @@ public:
     return false;
   }
 
-  bool VisitCallExpr(const CallExpr *E);
+  bool VisitCallExpr(CallExpr *E);
   bool VisitBinaryOperator(const BinaryOperator *E);
   bool VisitUnaryOperator(const UnaryOperator *E);
   bool VisitConditionalOperator(const ConditionalOperator *E);
@@ -842,8 +848,8 @@ public:
   bool VisitUnaryImag(const UnaryOperator *E);
 
 private:
-  unsigned GetAlignOfExpr(const Expr *E);
-  unsigned GetAlignOfType(QualType T);
+  CharUnits GetAlignOfExpr(const Expr *E);
+  CharUnits GetAlignOfType(QualType T);
   // FIXME: Missing: array subscript of vector, member of vector
 };
 } // end anonymous namespace
@@ -872,9 +878,12 @@ bool IntExprEvaluator::CheckReferencedDecl(const Expr* E, const Decl* D) {
   // In C, they can also be folded, although they are not ICEs.
   if (Info.Ctx.getCanonicalType(E->getType()).getCVRQualifiers() 
                                                         == Qualifiers::Const) {
+
+    if (isa<ParmVarDecl>(D))
+      return Error(E->getLocStart(), diag::note_invalid_subexpr_in_ice, E);
+
     if (const VarDecl *VD = dyn_cast<VarDecl>(D)) {
-      const VarDecl *Def = 0;
-      if (const Expr *Init = VD->getDefinition(Def)) {
+      if (const Expr *Init = VD->getAnyInitializer()) {
         if (APValue *V = VD->getEvaluatedValue()) {
           if (V->isInt())
             return Success(V->getInt(), E);
@@ -958,7 +967,7 @@ static int EvaluateBuiltinClassifyType(const CallExpr *E) {
   return -1;
 }
 
-bool IntExprEvaluator::VisitCallExpr(const CallExpr *E) {
+bool IntExprEvaluator::VisitCallExpr(CallExpr *E) {
   switch (E->isBuiltinCall(Info.Ctx)) {
   default:
     return Error(E->getLocStart(), diag::note_invalid_subexpr_in_ice, E);
@@ -966,6 +975,8 @@ bool IntExprEvaluator::VisitCallExpr(const CallExpr *E) {
   case Builtin::BI__builtin_object_size: {
     const Expr *Arg = E->getArg(0)->IgnoreParens();
     Expr::EvalResult Base;
+    
+    // TODO: Perhaps we should let LLVM lower this?
     if (Arg->EvaluateAsAny(Base, Info.Ctx)
         && Base.Val.getKind() == APValue::LValue
         && !Base.HasSideEffects)
@@ -976,20 +987,21 @@ bool IntExprEvaluator::VisitCallExpr(const CallExpr *E) {
                 && VD->getType()->isObjectType()
                 && !VD->getType()->isVariablyModifiedType()
                 && !VD->getType()->isDependentType()) {
-              uint64_t Size = Info.Ctx.getTypeSize(VD->getType()) / 8;
-              uint64_t Offset = Base.Val.getLValueOffset();
-              if (Offset <= Size)
-                Size -= Base.Val.getLValueOffset();
+              CharUnits Size = Info.Ctx.getTypeSizeInChars(VD->getType());
+              CharUnits Offset = Base.Val.getLValueOffset();
+              if (!Offset.isNegative() && Offset <= Size)
+                Size -= Offset;
               else
-                Size = 0;
-              return Success(Size, E);
+                Size = CharUnits::Zero();
+              return Success(Size.getQuantity(), E);
             }
           }
         }
 
-    // TODO: Perhaps we should let LLVM lower this?
+    // If evaluating the argument has side-effects we can't determine
+    // the size of the object and lower it to unknown now.
     if (E->getArg(0)->HasSideEffects(Info.Ctx)) {
-      if (E->getArg(1)->EvaluateAsInt(Info.Ctx).getZExtValue() == 0)
+      if (E->getArg(1)->EvaluateAsInt(Info.Ctx).getZExtValue() <= 1)
         return Success(-1ULL, E);
       return Success(0, E);
     }
@@ -1010,6 +1022,9 @@ bool IntExprEvaluator::VisitCallExpr(const CallExpr *E) {
     Operand = Info.Ctx.Target.getEHDataRegisterNumber(Operand);
     return Success(Operand, E);
   }
+
+  case Builtin::BI__builtin_expect:
+    return Visit(E->getArg(0));
   }
 }
 
@@ -1151,7 +1166,7 @@ bool IntExprEvaluator::VisitBinaryOperator(const BinaryOperator *E) {
       if (LHSValue.getLValueBase()) {
         if (!E->isEqualityOp())
           return false;
-        if (RHSValue.getLValueBase() || RHSValue.getLValueOffset())
+        if (RHSValue.getLValueBase() || !RHSValue.getLValueOffset().isZero())
           return false;
         bool bres;
         if (!EvalPointerValueAsBool(LHSValue, bres))
@@ -1160,7 +1175,7 @@ bool IntExprEvaluator::VisitBinaryOperator(const BinaryOperator *E) {
       } else if (RHSValue.getLValueBase()) {
         if (!E->isEqualityOp())
           return false;
-        if (LHSValue.getLValueBase() || LHSValue.getLValueOffset())
+        if (LHSValue.getLValueBase() || !LHSValue.getLValueOffset().isZero())
           return false;
         bool bres;
         if (!EvalPointerValueAsBool(RHSValue, bres))
@@ -1172,11 +1187,13 @@ bool IntExprEvaluator::VisitBinaryOperator(const BinaryOperator *E) {
         const QualType Type = E->getLHS()->getType();
         const QualType ElementType = Type->getAs<PointerType>()->getPointeeType();
 
-        uint64_t D = LHSValue.getLValueOffset() - RHSValue.getLValueOffset();
+        CharUnits ElementSize = CharUnits::One();
         if (!ElementType->isVoidType() && !ElementType->isFunctionType())
-          D /= Info.Ctx.getTypeSize(ElementType) / 8;
+          ElementSize = Info.Ctx.getTypeSizeInChars(ElementType);
 
-        return Success(D, E);
+        CharUnits Diff = LHSValue.getLValueOffset() - 
+                             RHSValue.getLValueOffset();
+        return Success(Diff / ElementSize, E);
       }
       bool Result;
       if (E->getOpcode() == BinaryOperator::EQ) {
@@ -1204,21 +1221,23 @@ bool IntExprEvaluator::VisitBinaryOperator(const BinaryOperator *E) {
 
   // Handle cases like (unsigned long)&a + 4.
   if (E->isAdditiveOp() && Result.isLValue() && RHSVal.isInt()) {
-    uint64_t offset = Result.getLValueOffset();
+    CharUnits Offset = Result.getLValueOffset();
+    CharUnits AdditionalOffset = CharUnits::fromQuantity(
+                                     RHSVal.getInt().getZExtValue());
     if (E->getOpcode() == BinaryOperator::Add)
-      offset += RHSVal.getInt().getZExtValue();
+      Offset += AdditionalOffset;
     else
-      offset -= RHSVal.getInt().getZExtValue();
-    Result = APValue(Result.getLValueBase(), offset);
+      Offset -= AdditionalOffset;
+    Result = APValue(Result.getLValueBase(), Offset);
     return true;
   }
 
   // Handle cases like 4 + (unsigned long)&a
   if (E->getOpcode() == BinaryOperator::Add &&
         RHSVal.isLValue() && Result.isInt()) {
-    uint64_t offset = RHSVal.getLValueOffset();
-    offset += Result.getInt().getZExtValue();
-    Result = APValue(RHSVal.getLValueBase(), offset);
+    CharUnits Offset = RHSVal.getLValueOffset();
+    Offset += CharUnits::fromQuantity(Result.getInt().getZExtValue());
+    Result = APValue(RHSVal.getLValueBase(), Offset);
     return true;
   }
 
@@ -1274,7 +1293,7 @@ bool IntExprEvaluator::VisitConditionalOperator(const ConditionalOperator *E) {
   return Visit(Cond ? E->getTrueExpr() : E->getFalseExpr());
 }
 
-unsigned IntExprEvaluator::GetAlignOfType(QualType T) {
+CharUnits IntExprEvaluator::GetAlignOfType(QualType T) {
   // C++ [expr.sizeof]p2: "When applied to a reference or a reference type,
   //   the result is the size of the referenced type."
   // C++ [expr.alignof]p3: "When alignof is applied to a reference type, the
@@ -1286,20 +1305,22 @@ unsigned IntExprEvaluator::GetAlignOfType(QualType T) {
   unsigned CharSize = Info.Ctx.Target.getCharWidth();
 
   // __alignof is defined to return the preferred alignment.
-  return Info.Ctx.getPreferredTypeAlign(T.getTypePtr()) / CharSize;
+  return CharUnits::fromQuantity(
+      Info.Ctx.getPreferredTypeAlign(T.getTypePtr()) / CharSize);
 }
 
-unsigned IntExprEvaluator::GetAlignOfExpr(const Expr *E) {
+CharUnits IntExprEvaluator::GetAlignOfExpr(const Expr *E) {
   E = E->IgnoreParens();
 
   // alignof decl is always accepted, even if it doesn't make sense: we default
   // to 1 in those cases.
   if (const DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E))
-    return Info.Ctx.getDeclAlignInBytes(DRE->getDecl(), /*RefAsPointee*/true);
+    return Info.Ctx.getDeclAlign(DRE->getDecl(), 
+                                 /*RefAsPointee*/true);
 
   if (const MemberExpr *ME = dyn_cast<MemberExpr>(E))
-    return Info.Ctx.getDeclAlignInBytes(ME->getMemberDecl(),
-                                        /*RefAsPointee*/true);
+    return Info.Ctx.getDeclAlign(ME->getMemberDecl(),
+                                 /*RefAsPointee*/true);
 
   return GetAlignOfType(E->getType());
 }
@@ -1311,9 +1332,9 @@ bool IntExprEvaluator::VisitSizeOfAlignOfExpr(const SizeOfAlignOfExpr *E) {
   // Handle alignof separately.
   if (!E->isSizeOf()) {
     if (E->isArgumentType())
-      return Success(GetAlignOfType(E->getArgumentType()), E);
+      return Success(GetAlignOfType(E->getArgumentType()).getQuantity(), E);
     else
-      return Success(GetAlignOfExpr(E->getArgumentExpr()), E);
+      return Success(GetAlignOfExpr(E->getArgumentExpr()).getQuantity(), E);
   }
 
   QualType SrcTy = E->getTypeOfArgument();
@@ -1334,8 +1355,7 @@ bool IntExprEvaluator::VisitSizeOfAlignOfExpr(const SizeOfAlignOfExpr *E) {
     return false;
 
   // Get information about the size.
-  unsigned BitWidth = Info.Ctx.getTypeSize(SrcTy);
-  return Success(BitWidth / Info.Ctx.Target.getCharWidth(), E);
+  return Success(Info.Ctx.getTypeSizeInChars(SrcTy).getQuantity(), E);
 }
 
 bool IntExprEvaluator::VisitUnaryOperator(const UnaryOperator *E) {
@@ -1349,7 +1369,7 @@ bool IntExprEvaluator::VisitUnaryOperator(const UnaryOperator *E) {
       return false;
     if (LV.getLValueBase())
       return false;
-    return Success(LV.getLValueOffset(), E);
+    return Success(LV.getLValueOffset().getQuantity(), E);
   }
 
   if (E->getOpcode() == UnaryOperator::LNot) {
@@ -1432,7 +1452,8 @@ bool IntExprEvaluator::VisitCastExpr(CastExpr *E) {
       return true;
     }
 
-    APSInt AsInt = Info.Ctx.MakeIntValue(LV.getLValueOffset(), SrcType);
+    APSInt AsInt = Info.Ctx.MakeIntValue(LV.getLValueOffset().getQuantity(), 
+                                         SrcType);
     return Success(HandleIntToIntCast(DestType, SrcType, AsInt, Info.Ctx), E);
   }
 
@@ -1539,6 +1560,31 @@ static bool EvaluateFloat(const Expr* E, APFloat& Result, EvalInfo &Info) {
   return FloatExprEvaluator(Info, Result).Visit(const_cast<Expr*>(E));
 }
 
+static bool TryEvaluateBuiltinNaN(ASTContext &Context,
+                                  QualType ResultTy,
+                                  const Expr *Arg,
+                                  bool SNaN,
+                                  llvm::APFloat &Result) {
+  const StringLiteral *S = dyn_cast<StringLiteral>(Arg->IgnoreParenCasts());
+  if (!S) return false;
+
+  const llvm::fltSemantics &Sem = Context.getFloatTypeSemantics(ResultTy);
+
+  llvm::APInt fill;
+
+  // Treat empty strings as if they were zero.
+  if (S->getString().empty())
+    fill = llvm::APInt(32, 0);
+  else if (S->getString().getAsInteger(0, fill))
+    return false;
+
+  if (SNaN)
+    Result = llvm::APFloat::getSNaN(Sem, false, &fill);
+  else
+    Result = llvm::APFloat::getQNaN(Sem, false, &fill);
+  return true;
+}
+
 bool FloatExprEvaluator::VisitCallExpr(const CallExpr *E) {
   switch (E->isBuiltinCall(Info.Ctx)) {
   default: return false;
@@ -1554,24 +1600,19 @@ bool FloatExprEvaluator::VisitCallExpr(const CallExpr *E) {
     return true;
   }
 
+  case Builtin::BI__builtin_nans:
+  case Builtin::BI__builtin_nansf:
+  case Builtin::BI__builtin_nansl:
+    return TryEvaluateBuiltinNaN(Info.Ctx, E->getType(), E->getArg(0),
+                                 true, Result);
+
   case Builtin::BI__builtin_nan:
   case Builtin::BI__builtin_nanf:
   case Builtin::BI__builtin_nanl:
     // If this is __builtin_nan() turn this into a nan, otherwise we
     // can't constant fold it.
-    if (const StringLiteral *S =
-        dyn_cast<StringLiteral>(E->getArg(0)->IgnoreParenCasts())) {
-      if (!S->isWide()) {
-        const llvm::fltSemantics &Sem =
-          Info.Ctx.getFloatTypeSemantics(E->getType());
-        unsigned Type = 0;
-        if (!S->getString().empty() && S->getString().getAsInteger(0, Type))
-          return false;
-        Result = llvm::APFloat::getNaN(Sem, false, Type);
-        return true;
-      }
-    }
-    return false;
+    return TryEvaluateBuiltinNaN(Info.Ctx, E->getType(), E->getArg(0),
+                                 false, Result);
 
   case Builtin::BI__builtin_fabs:
   case Builtin::BI__builtin_fabsf:
@@ -1976,6 +2017,13 @@ bool Expr::EvaluateAsAny(EvalResult &Result, ASTContext &Ctx) const {
     return false;
 
   return true;
+}
+
+bool Expr::EvaluateAsBooleanCondition(bool &Result, ASTContext &Ctx) const {
+  EvalResult Scratch;
+  EvalInfo Info(Ctx, Scratch);
+
+  return HandleConversionToBool(this, Result, Info);
 }
 
 bool Expr::EvaluateAsLValue(EvalResult &Result, ASTContext &Ctx) const {

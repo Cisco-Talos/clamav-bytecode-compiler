@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -analyze -analyzer-experimental-internal-checks -warn-dead-stores -verify %s
+// RUN: %clang_cc1 -analyze -analyzer-experimental-internal-checks -analyzer-check-dead-stores -verify %s
 
 typedef signed char BOOL;
 typedef unsigned int NSUInteger;
@@ -34,3 +34,10 @@ void DeadStoreTest(NSObject *anObject) {
       ([keys containsObject:@"name"] && [keys containsObject:@"icon"])) {}
 }
 
+// This test case was a false positive due to how clang models
+// pointer types and ObjC object pointer types differently.  Here
+// we don't warn about a dead store because 'nil' is assigned to
+// an object pointer for the sake of defensive programming.
+void rdar_7631278(NSObject *x) {
+  x = ((void*)0);
+}

@@ -42,6 +42,7 @@ namespace {
     void VisitDecl(Decl *D);
     void VisitTranslationUnitDecl(TranslationUnitDecl *D);
     void VisitNamedDecl(NamedDecl *D);
+    void VisitNamespaceDecl(NamespaceDecl *D);
     void VisitTypeDecl(TypeDecl *D);
     void VisitTypedefDecl(TypedefDecl *D);
     void VisitTagDecl(TagDecl *D);
@@ -99,6 +100,16 @@ void PCHDeclWriter::VisitNamedDecl(NamedDecl *D) {
   Writer.AddDeclarationName(D->getDeclName(), Record);
 }
 
+void PCHDeclWriter::VisitNamespaceDecl(NamespaceDecl *D) {
+  VisitNamedDecl(D);
+  Writer.AddSourceLocation(D->getLBracLoc(), Record);
+  Writer.AddSourceLocation(D->getRBracLoc(), Record);
+  Writer.AddDeclRef(D->getNextNamespace(), Record);
+  Writer.AddDeclRef(D->getOriginalNamespace(), Record);
+  Writer.AddDeclRef(D->getAnonymousNamespace(), Record);
+  Code = pch::DECL_NAMESPACE;
+}
+
 void PCHDeclWriter::VisitTypeDecl(TypeDecl *D) {
   VisitNamedDecl(D);
   Writer.AddTypeRef(QualType(D->getTypeForDecl(), 0), Record);
@@ -115,6 +126,7 @@ void PCHDeclWriter::VisitTagDecl(TagDecl *D) {
   Writer.AddDeclRef(D->getPreviousDeclaration(), Record);
   Record.push_back((unsigned)D->getTagKind()); // FIXME: stable encoding
   Record.push_back(D->isDefinition());
+  Record.push_back(D->isEmbeddedInDeclarator());
   Writer.AddDeclRef(D->getTypedefForAnonDecl(), Record);
   Writer.AddSourceLocation(D->getRBraceLoc(), Record);
   Writer.AddSourceLocation(D->getTagKeywordLoc(), Record);
@@ -208,7 +220,9 @@ void PCHDeclWriter::VisitObjCMethodDecl(ObjCMethodDecl *D) {
 
 void PCHDeclWriter::VisitObjCContainerDecl(ObjCContainerDecl *D) {
   VisitNamedDecl(D);
-  Writer.AddSourceLocation(D->getAtEndLoc(), Record);
+  SourceRange R = D->getAtEndRange();
+  Writer.AddSourceLocation(R.getBegin(), Record);
+  Writer.AddSourceLocation(R.getEnd(), Record);
   // Abstract class (no need to define a stable pch::DECL code).
 }
 
@@ -221,6 +235,10 @@ void PCHDeclWriter::VisitObjCInterfaceDecl(ObjCInterfaceDecl *D) {
          PEnd = D->protocol_end();
        P != PEnd; ++P)
     Writer.AddDeclRef(*P, Record);
+  for (ObjCInterfaceDecl::protocol_loc_iterator PL = D->protocol_loc_begin(),
+         PLEnd = D->protocol_loc_end();
+       PL != PLEnd; ++PL)
+    Writer.AddSourceLocation(*PL, Record);
   Record.push_back(D->ivar_size());
   for (ObjCInterfaceDecl::ivar_iterator I = D->ivar_begin(),
                                      IEnd = D->ivar_end(); I != IEnd; ++I)
@@ -249,6 +267,10 @@ void PCHDeclWriter::VisitObjCProtocolDecl(ObjCProtocolDecl *D) {
   for (ObjCProtocolDecl::protocol_iterator
        I = D->protocol_begin(), IEnd = D->protocol_end(); I != IEnd; ++I)
     Writer.AddDeclRef(*I, Record);
+  for (ObjCProtocolDecl::protocol_loc_iterator PL = D->protocol_loc_begin(),
+         PLEnd = D->protocol_loc_end();
+       PL != PLEnd; ++PL)
+    Writer.AddSourceLocation(*PL, Record);
   Code = pch::DECL_OBJC_PROTOCOL;
 }
 
@@ -270,9 +292,13 @@ void PCHDeclWriter::VisitObjCClassDecl(ObjCClassDecl *D) {
 void PCHDeclWriter::VisitObjCForwardProtocolDecl(ObjCForwardProtocolDecl *D) {
   VisitDecl(D);
   Record.push_back(D->protocol_size());
-  for (ObjCProtocolDecl::protocol_iterator
+  for (ObjCForwardProtocolDecl::protocol_iterator
        I = D->protocol_begin(), IEnd = D->protocol_end(); I != IEnd; ++I)
     Writer.AddDeclRef(*I, Record);
+  for (ObjCForwardProtocolDecl::protocol_loc_iterator 
+         PL = D->protocol_loc_begin(), PLEnd = D->protocol_loc_end();
+       PL != PLEnd; ++PL)
+    Writer.AddSourceLocation(*PL, Record);
   Code = pch::DECL_OBJC_FORWARD_PROTOCOL;
 }
 
@@ -280,11 +306,16 @@ void PCHDeclWriter::VisitObjCCategoryDecl(ObjCCategoryDecl *D) {
   VisitObjCContainerDecl(D);
   Writer.AddDeclRef(D->getClassInterface(), Record);
   Record.push_back(D->protocol_size());
-  for (ObjCProtocolDecl::protocol_iterator
+  for (ObjCCategoryDecl::protocol_iterator
        I = D->protocol_begin(), IEnd = D->protocol_end(); I != IEnd; ++I)
     Writer.AddDeclRef(*I, Record);
+  for (ObjCCategoryDecl::protocol_loc_iterator 
+         PL = D->protocol_loc_begin(), PLEnd = D->protocol_loc_end();
+       PL != PLEnd; ++PL)
+    Writer.AddSourceLocation(*PL, Record);
   Writer.AddDeclRef(D->getNextClassCategory(), Record);
-  Writer.AddSourceLocation(D->getLocEnd(), Record);
+  Writer.AddSourceLocation(D->getAtLoc(), Record);
+  Writer.AddSourceLocation(D->getCategoryNameLoc(), Record);
   Code = pch::DECL_OBJC_CATEGORY;
 }
 
@@ -296,6 +327,7 @@ void PCHDeclWriter::VisitObjCCompatibleAliasDecl(ObjCCompatibleAliasDecl *D) {
 
 void PCHDeclWriter::VisitObjCPropertyDecl(ObjCPropertyDecl *D) {
   VisitNamedDecl(D);
+  Writer.AddSourceLocation(D->getAtLoc(), Record);
   Writer.AddTypeRef(D->getType(), Record);
   // FIXME: stable encoding
   Record.push_back((unsigned)D->getPropertyAttributes());

@@ -33,9 +33,15 @@ using namespace clang;
 /// arguments.
 ///
 /// \param Innermost if non-NULL, the innermost template argument list.
+///
+/// \param RelativeToPrimary true if we should get the template
+/// arguments relative to the primary template, even when we're
+/// dealing with a specialization. This is only relevant for function
+/// template specializations.
 MultiLevelTemplateArgumentList
 Sema::getTemplateInstantiationArgs(NamedDecl *D, 
-                                   const TemplateArgumentList *Innermost) {
+                                   const TemplateArgumentList *Innermost,
+                                   bool RelativeToPrimary) {
   // Accumulate the set of template argument lists in this structure.
   MultiLevelTemplateArgumentList Result;
 
@@ -64,8 +70,9 @@ Sema::getTemplateInstantiationArgs(NamedDecl *D,
     }
     // Add template arguments from a function template specialization.
     else if (FunctionDecl *Function = dyn_cast<FunctionDecl>(Ctx)) {
-      if (Function->getTemplateSpecializationKind() 
-            == TSK_ExplicitSpecialization)
+      if (!RelativeToPrimary &&
+          Function->getTemplateSpecializationKind() 
+                                                  == TSK_ExplicitSpecialization)
         break;
           
       if (const TemplateArgumentList *TemplateArgs
@@ -86,11 +93,13 @@ Sema::getTemplateInstantiationArgs(NamedDecl *D,
       if (Function->getFriendObjectKind() &&
           Function->getDeclContext()->isFileContext()) {
         Ctx = Function->getLexicalDeclContext();
+        RelativeToPrimary = false;
         continue;
       }
     }
 
     Ctx = Ctx->getParent();
+    RelativeToPrimary = false;
   }
 
   return Result;
@@ -531,11 +540,11 @@ namespace {
       
     /// \brief Transform the given declaration by instantiating a reference to
     /// this declaration.
-    Decl *TransformDecl(Decl *D);
+    Decl *TransformDecl(SourceLocation Loc, Decl *D);
 
     /// \brief Transform the definition of the given declaration by
     /// instantiating it.
-    Decl *TransformDefinition(Decl *D);
+    Decl *TransformDefinition(SourceLocation Loc, Decl *D);
 
     /// \bried Transform the first qualifier within a scope by instantiating the
     /// declaration.
@@ -555,20 +564,31 @@ namespace {
     Sema::OwningExprResult TransformPredefinedExpr(PredefinedExpr *E);
     Sema::OwningExprResult TransformDeclRefExpr(DeclRefExpr *E);
     Sema::OwningExprResult TransformCXXDefaultArgExpr(CXXDefaultArgExpr *E);
+    Sema::OwningExprResult TransformTemplateParmRefExpr(DeclRefExpr *E,
+                                                NonTypeTemplateParmDecl *D);
 
     /// \brief Transforms a template type parameter type by performing
     /// substitution of the corresponding template type argument.
     QualType TransformTemplateTypeParmType(TypeLocBuilder &TLB,
-                                           TemplateTypeParmTypeLoc TL);
+                                           TemplateTypeParmTypeLoc TL,
+                                           QualType ObjectType);
   };
 }
 
-Decl *TemplateInstantiator::TransformDecl(Decl *D) {
+Decl *TemplateInstantiator::TransformDecl(SourceLocation Loc, Decl *D) {
   if (!D)
     return 0;
 
   if (TemplateTemplateParmDecl *TTP = dyn_cast<TemplateTemplateParmDecl>(D)) {
     if (TTP->getDepth() < TemplateArgs.getNumLevels()) {
+      // If the corresponding template argument is NULL or non-existent, it's
+      // because we are performing instantiation from explicitly-specified
+      // template arguments in a function template, but there were some
+      // arguments left unspecified.
+      if (!TemplateArgs.hasTemplateArgument(TTP->getDepth(),
+                                            TTP->getPosition()))
+        return D;
+
       TemplateName Template
         = TemplateArgs(TTP->getDepth(), TTP->getPosition()).getAsTemplate();
       assert(!Template.isNull() && Template.getAsTemplateDecl() &&
@@ -576,22 +596,14 @@ Decl *TemplateInstantiator::TransformDecl(Decl *D) {
       return Template.getAsTemplateDecl();
     }
 
-    // If the corresponding template argument is NULL or non-existent, it's
-    // because we are performing instantiation from explicitly-specified
-    // template arguments in a function template, but there were some
-    // arguments left unspecified.
-    if (!TemplateArgs.hasTemplateArgument(TTP->getDepth(),
-                                          TTP->getPosition()))
-      return D;
-
     // Fall through to find the instantiated declaration for this template
     // template parameter.
   }
 
-  return SemaRef.FindInstantiatedDecl(cast<NamedDecl>(D), TemplateArgs);
+  return SemaRef.FindInstantiatedDecl(Loc, cast<NamedDecl>(D), TemplateArgs);
 }
 
-Decl *TemplateInstantiator::TransformDefinition(Decl *D) {
+Decl *TemplateInstantiator::TransformDefinition(SourceLocation Loc, Decl *D) {
   Decl *Inst = getSema().SubstDecl(D, getSema().CurContext, TemplateArgs);
   if (!Inst)
     return 0;
@@ -611,7 +623,7 @@ TemplateInstantiator::TransformFirstQualifierInScope(NamedDecl *D,
     if (TTP->getDepth() < TemplateArgs.getNumLevels()) {
       QualType T = TemplateArgs(TTP->getDepth(), TTP->getIndex()).getAsType();
       if (T.isNull())
-        return cast_or_null<NamedDecl>(TransformDecl(D));
+        return cast_or_null<NamedDecl>(TransformDecl(Loc, D));
       
       if (const TagType *Tag = T->getAs<TagType>())
         return Tag->getDecl();
@@ -622,7 +634,7 @@ TemplateInstantiator::TransformFirstQualifierInScope(NamedDecl *D,
     }
   }
   
-  return cast_or_null<NamedDecl>(TransformDecl(D));
+  return cast_or_null<NamedDecl>(TransformDecl(Loc, D));
 }
 
 VarDecl *
@@ -676,8 +688,7 @@ TemplateInstantiator::TransformPredefinedExpr(PredefinedExpr *E) {
 
   PredefinedExpr::IdentType IT = E->getIdentType();
 
-  unsigned Length =
-    PredefinedExpr::ComputeName(getSema().Context, IT, currentDecl).length();
+  unsigned Length = PredefinedExpr::ComputeName(IT, currentDecl).length();
 
   llvm::APInt LengthI(32, Length + 1);
   QualType ResTy = getSema().Context.CharTy.withConst();
@@ -689,88 +700,146 @@ TemplateInstantiator::TransformPredefinedExpr(PredefinedExpr *E) {
 }
 
 Sema::OwningExprResult
-TemplateInstantiator::TransformDeclRefExpr(DeclRefExpr *E) {
-  // FIXME: Clean this up a bit
-  NamedDecl *D = E->getDecl();
-  if (NonTypeTemplateParmDecl *NTTP = dyn_cast<NonTypeTemplateParmDecl>(D)) {
-    if (NTTP->getDepth() < TemplateArgs.getNumLevels()) {
-      // If the corresponding template argument is NULL or non-existent, it's
-      // because we are performing instantiation from explicitly-specified
-      // template arguments in a function template, but there were some
-      // arguments left unspecified.
-      if (!TemplateArgs.hasTemplateArgument(NTTP->getDepth(),
-                                            NTTP->getPosition()))
-        return SemaRef.Owned(E->Retain());
+TemplateInstantiator::TransformTemplateParmRefExpr(DeclRefExpr *E,
+                                               NonTypeTemplateParmDecl *NTTP) {
+  // If the corresponding template argument is NULL or non-existent, it's
+  // because we are performing instantiation from explicitly-specified
+  // template arguments in a function template, but there were some
+  // arguments left unspecified.
+  if (!TemplateArgs.hasTemplateArgument(NTTP->getDepth(),
+                                        NTTP->getPosition()))
+    return SemaRef.Owned(E->Retain());
 
-      const TemplateArgument &Arg = TemplateArgs(NTTP->getDepth(),
-                                                 NTTP->getPosition());
+  const TemplateArgument &Arg = TemplateArgs(NTTP->getDepth(),
+                                             NTTP->getPosition());
 
-      // The template argument itself might be an expression, in which
-      // case we just return that expression.
-      if (Arg.getKind() == TemplateArgument::Expression)
-        return SemaRef.Owned(Arg.getAsExpr()->Retain());
+  // The template argument itself might be an expression, in which
+  // case we just return that expression.
+  if (Arg.getKind() == TemplateArgument::Expression)
+    return SemaRef.Owned(Arg.getAsExpr()->Retain());
 
-      if (Arg.getKind() == TemplateArgument::Declaration) {
-        ValueDecl *VD = cast<ValueDecl>(Arg.getAsDecl());
+  if (Arg.getKind() == TemplateArgument::Declaration) {
+    ValueDecl *VD = cast<ValueDecl>(Arg.getAsDecl());
 
-        VD = cast_or_null<ValueDecl>(
-                              getSema().FindInstantiatedDecl(VD, TemplateArgs));
-        if (!VD)
+    // Find the instantiation of the template argument.  This is
+    // required for nested templates.
+    VD = cast_or_null<ValueDecl>(
+                            getSema().FindInstantiatedDecl(E->getLocation(),
+                                                           VD, TemplateArgs));
+    if (!VD)
+      return SemaRef.ExprError();
+
+    // Derive the type we want the substituted decl to have.  This had
+    // better be non-dependent, or these checks will have serious problems.
+    QualType TargetType = SemaRef.SubstType(NTTP->getType(), TemplateArgs,
+                                            E->getLocation(), 
+                                            DeclarationName());
+    assert(!TargetType.isNull() && "type substitution failed for param type");
+    assert(!TargetType->isDependentType() && "param type still dependent");
+
+    if (VD->getDeclContext()->isRecord() && 
+        (isa<CXXMethodDecl>(VD) || isa<FieldDecl>(VD))) {
+      // If the value is a class member, we might have a pointer-to-member.
+      // Determine whether the non-type template template parameter is of
+      // pointer-to-member type. If so, we need to build an appropriate
+      // expression for a pointer-to-member, since a "normal" DeclRefExpr
+      // would refer to the member itself.
+      if (TargetType->isMemberPointerType()) {
+        QualType ClassType
+          = SemaRef.Context.getTypeDeclType(
+                                        cast<RecordDecl>(VD->getDeclContext()));
+        NestedNameSpecifier *Qualifier
+          = NestedNameSpecifier::Create(SemaRef.Context, 0, false,
+                                        ClassType.getTypePtr());
+        CXXScopeSpec SS;
+        SS.setScopeRep(Qualifier);
+        OwningExprResult RefExpr 
+          = SemaRef.BuildDeclRefExpr(VD, 
+                                     VD->getType().getNonReferenceType(), 
+                                     E->getLocation(), 
+                                     &SS);
+        if (RefExpr.isInvalid())
           return SemaRef.ExprError();
 
-        if (VD->getDeclContext()->isRecord()) {
-          // If the value is a class member, we might have a pointer-to-member.
-          // Determine whether the non-type template template parameter is of
-          // pointer-to-member type. If so, we need to build an appropriate
-          // expression for a pointer-to-member, since a "normal" DeclRefExpr
-          // would refer to the member itself.
-          if (NTTP->getType()->isMemberPointerType()) {
-            QualType ClassType
-              = SemaRef.Context.getTypeDeclType(
-                                        cast<RecordDecl>(VD->getDeclContext()));
-            NestedNameSpecifier *Qualifier
-              = NestedNameSpecifier::Create(SemaRef.Context, 0, false,
-                                            ClassType.getTypePtr());
-            CXXScopeSpec SS;
-            SS.setScopeRep(Qualifier);
-            OwningExprResult RefExpr 
-              = SemaRef.BuildDeclRefExpr(VD, 
-                                         VD->getType().getNonReferenceType(), 
-                                         E->getLocation(), 
-                                         &SS);
-            if (RefExpr.isInvalid())
-              return SemaRef.ExprError();
-              
-            return SemaRef.CreateBuiltinUnaryOp(E->getLocation(), 
-                                                UnaryOperator::AddrOf, 
-                                                move(RefExpr));
-          }
-        }
+        RefExpr = SemaRef.CreateBuiltinUnaryOp(E->getLocation(), 
+                                               UnaryOperator::AddrOf, 
+                                               move(RefExpr));
+        assert(!RefExpr.isInvalid() &&
+               SemaRef.Context.hasSameType(((Expr*) RefExpr.get())->getType(),
+                                           TargetType));
+        return move(RefExpr);
+      }
+    }
 
-        return SemaRef.BuildDeclRefExpr(VD, VD->getType().getNonReferenceType(),
-                                        E->getLocation());
+    QualType T = VD->getType().getNonReferenceType();
+
+    if (TargetType->isPointerType()) {
+      // C++03 [temp.arg.nontype]p5:
+      //  - For a non-type template-parameter of type pointer to
+      //    object, qualification conversions and the array-to-pointer
+      //    conversion are applied.
+      //  - For a non-type template-parameter of type pointer to
+      //    function, only the function-to-pointer conversion is
+      //    applied.
+
+      OwningExprResult RefExpr
+        = SemaRef.BuildDeclRefExpr(VD, T, E->getLocation());
+      if (RefExpr.isInvalid())
+        return SemaRef.ExprError();
+
+      // Decay functions and arrays.
+      Expr *RefE = (Expr *)RefExpr.get();
+      SemaRef.DefaultFunctionArrayConversion(RefE);
+      if (RefE != RefExpr.get()) {
+        RefExpr.release();
+        RefExpr = SemaRef.Owned(RefE);
       }
 
-      assert(Arg.getKind() == TemplateArgument::Integral);
-      QualType T = Arg.getIntegralType();
-      if (T->isCharType() || T->isWideCharType())
-        return SemaRef.Owned(new (SemaRef.Context) CharacterLiteral(
+      // Qualification conversions.
+      RefExpr.release();
+      SemaRef.ImpCastExprToType(RefE, TargetType.getUnqualifiedType(),
+                                CastExpr::CK_NoOp);
+      return SemaRef.Owned(RefE);
+    }
+
+    // If the non-type template parameter has reference type, qualify the
+    // resulting declaration reference with the extra qualifiers on the
+    // type that the reference refers to.
+    if (const ReferenceType *TargetRef = TargetType->getAs<ReferenceType>())
+      T = SemaRef.Context.getQualifiedType(T, 
+                                  TargetRef->getPointeeType().getQualifiers());
+    
+    return SemaRef.BuildDeclRefExpr(VD, T, E->getLocation());
+  }
+
+  assert(Arg.getKind() == TemplateArgument::Integral);
+  QualType T = Arg.getIntegralType();
+  if (T->isCharType() || T->isWideCharType())
+    return SemaRef.Owned(new (SemaRef.Context) CharacterLiteral(
                                               Arg.getAsIntegral()->getZExtValue(),
                                               T->isWideCharType(),
                                               T,
                                               E->getSourceRange().getBegin()));
-      if (T->isBooleanType())
-        return SemaRef.Owned(new (SemaRef.Context) CXXBoolLiteralExpr(
+  if (T->isBooleanType())
+    return SemaRef.Owned(new (SemaRef.Context) CXXBoolLiteralExpr(
                                             Arg.getAsIntegral()->getBoolValue(),
                                             T,
                                             E->getSourceRange().getBegin()));
 
-      assert(Arg.getAsIntegral()->getBitWidth() == SemaRef.Context.getIntWidth(T));
-      return SemaRef.Owned(new (SemaRef.Context) IntegerLiteral(
+  assert(Arg.getAsIntegral()->getBitWidth() == SemaRef.Context.getIntWidth(T));
+  return SemaRef.Owned(new (SemaRef.Context) IntegerLiteral(
                                                 *Arg.getAsIntegral(),
                                                 T,
                                                 E->getSourceRange().getBegin()));
-    }
+}
+                                                   
+
+Sema::OwningExprResult
+TemplateInstantiator::TransformDeclRefExpr(DeclRefExpr *E) {
+  NamedDecl *D = E->getDecl();
+  if (NonTypeTemplateParmDecl *NTTP = dyn_cast<NonTypeTemplateParmDecl>(D)) {
+    if (NTTP->getDepth() < TemplateArgs.getNumLevels())
+      return TransformTemplateParmRefExpr(E, NTTP);
     
     // We have a non-type template parameter that isn't fully substituted;
     // FindInstantiatedDecl will find it in the local instantiation scope.
@@ -792,7 +861,8 @@ Sema::OwningExprResult TemplateInstantiator::TransformCXXDefaultArgExpr(
 
 QualType
 TemplateInstantiator::TransformTemplateTypeParmType(TypeLocBuilder &TLB,
-                                                TemplateTypeParmTypeLoc TL) {
+                                                TemplateTypeParmTypeLoc TL, 
+                                                    QualType ObjectType) {
   TemplateTypeParmType *T = TL.getTypePtr();
   if (T->getDepth() < TemplateArgs.getNumLevels()) {
     // Replace the template type parameter with its corresponding
@@ -986,7 +1056,7 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
   bool Invalid = false;
 
   CXXRecordDecl *PatternDef
-    = cast_or_null<CXXRecordDecl>(Pattern->getDefinition(Context));
+    = cast_or_null<CXXRecordDecl>(Pattern->getDefinition());
   if (!PatternDef) {
     if (!Complain) {
       // Say nothing
@@ -1060,6 +1130,22 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
   // Exit the scope of this instantiation.
   CurContext = PreviousContext;
 
+  // If this is a polymorphic C++ class without a key function, we'll
+  // have to mark all of the virtual members to allow emission of a vtable
+  // in this translation unit.
+  if (Instantiation->isDynamicClass() &&
+      !Context.getKeyFunction(Instantiation)) {
+    // Local classes need to have their methods instantiated immediately in
+    // order to have the correct instantiation scope.
+    if (Instantiation->isLocalClass()) {
+      MarkVirtualMembersReferenced(PointOfInstantiation,
+                                   Instantiation);
+    } else {
+      ClassesWithUnmarkedVirtualMembers.push_back(std::make_pair(Instantiation,
+                                                       PointOfInstantiation));
+    }
+  }
+
   if (!Invalid)
     Consumer.HandleTagDeclDefinition(Instantiation);
 
@@ -1117,7 +1203,7 @@ Sema::InstantiateClassTemplateSpecialization(
          PartialEnd = Template->getPartialSpecializations().end();
        Partial != PartialEnd;
        ++Partial) {
-    TemplateDeductionInfo Info(Context);
+    TemplateDeductionInfo Info(Context, PointOfInstantiation);
     if (TemplateDeductionResult Result
           = DeduceTemplateArguments(&*Partial,
                                     ClassTemplateSpec->getTemplateArgs(),
@@ -1147,7 +1233,8 @@ Sema::InstantiateClassTemplateSpecialization(
       for (llvm::SmallVector<MatchResult, 4>::iterator P = Best + 1,
                                                     PEnd = Matched.end();
            P != PEnd; ++P) {
-        if (getMoreSpecializedPartialSpecialization(P->first, Best->first) 
+        if (getMoreSpecializedPartialSpecialization(P->first, Best->first,
+                                                    PointOfInstantiation) 
               == P->first)
           Best = P;
       }
@@ -1159,7 +1246,8 @@ Sema::InstantiateClassTemplateSpecialization(
                                                     PEnd = Matched.end();
            P != PEnd; ++P) {
         if (P != Best &&
-            getMoreSpecializedPartialSpecialization(P->first, Best->first)
+            getMoreSpecializedPartialSpecialization(P->first, Best->first,
+                                                    PointOfInstantiation)
               != Best->first) {
           Ambiguous = true;
           break;
@@ -1320,8 +1408,8 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
       CXXRecordDecl *Pattern = Record->getInstantiatedFromMemberClass();
       assert(Pattern && "Missing instantiated-from-template information");
       
-      if (!Record->getDefinition(Context)) {
-        if (!Pattern->getDefinition(Context)) {
+      if (!Record->getDefinition()) {
+        if (!Pattern->getDefinition()) {
           // C++0x [temp.explicit]p8:
           //   An explicit instantiation definition that names a class template
           //   specialization explicitly instantiates the class template 
@@ -1341,7 +1429,7 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
                          TSK);
       }
       
-      Pattern = cast_or_null<CXXRecordDecl>(Record->getDefinition(Context));
+      Pattern = cast_or_null<CXXRecordDecl>(Record->getDefinition());
       if (Pattern)
         InstantiateClassMembers(PointOfInstantiation, Pattern, TemplateArgs, 
                                 TSK);

@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -analyze -analyzer-experimental-internal-checks -checker-cfref -analyzer-experimental-checks -analyzer-store=region -verify %s
+// RUN: %clang_cc1 -analyze -analyzer-experimental-internal-checks -analyzer-check-objc-mem -analyzer-experimental-checks -analyzer-store=region -verify %s
 typedef __typeof(sizeof(int)) size_t;
 void *malloc(size_t);
 void free(void *);
@@ -42,4 +42,22 @@ int *f5() {
   int *q = malloc(10);
   q = realloc(q, 20);
   return q; // no-warning
+}
+
+void f6() {
+  int *p = malloc(10);
+  if (!p)
+    return; // no-warning
+  else
+    free(p);
+}
+
+char *doit2();
+void pr6069() {
+  char *buf = doit2();
+  free(buf);
+}
+
+void pr6293() {
+  free(0);
 }

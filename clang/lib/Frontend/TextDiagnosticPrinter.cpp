@@ -31,7 +31,7 @@ static const enum llvm::raw_ostream::Colors warningColor =
   llvm::raw_ostream::MAGENTA;
 static const enum llvm::raw_ostream::Colors errorColor = llvm::raw_ostream::RED;
 static const enum llvm::raw_ostream::Colors fatalColor = llvm::raw_ostream::RED;
-// used for changing only the bold attribute
+// Used for changing only the bold attribute.
 static const enum llvm::raw_ostream::Colors savedColor =
   llvm::raw_ostream::SAVEDCOLOR;
 
@@ -104,11 +104,6 @@ void TextDiagnosticPrinter::HighlightRange(const SourceRange &R,
     if (StartColNo) --StartColNo;  // Zero base the col #.
   }
 
-  // Pick the first non-whitespace column.
-  while (StartColNo < SourceLine.size() &&
-         (SourceLine[StartColNo] == ' ' || SourceLine[StartColNo] == '\t'))
-    ++StartColNo;
-
   // Compute the column number of the end.
   unsigned EndColNo = CaretLine.size();
   if (EndLineNo == LineNo) {
@@ -123,16 +118,25 @@ void TextDiagnosticPrinter::HighlightRange(const SourceRange &R,
     }
   }
 
+  assert(StartColNo <= EndColNo && "Invalid range!");
+  
+  // Pick the first non-whitespace column.
+  while (StartColNo < SourceLine.size() &&
+         (SourceLine[StartColNo] == ' ' || SourceLine[StartColNo] == '\t'))
+    ++StartColNo;
+  
   // Pick the last non-whitespace column.
-  if (EndColNo <= SourceLine.size())
-    while (EndColNo-1 &&
-           (SourceLine[EndColNo-1] == ' ' || SourceLine[EndColNo-1] == '\t'))
-      --EndColNo;
-  else
+  if (EndColNo > SourceLine.size())
     EndColNo = SourceLine.size();
+  while (EndColNo-1 &&
+         (SourceLine[EndColNo-1] == ' ' || SourceLine[EndColNo-1] == '\t'))
+    --EndColNo;
+  
+  // If the start/end passed each other, then we are trying to highlight a range
+  // that just exists in whitespace, which must be some sort of other bug.
+  assert(StartColNo <= EndColNo && "Trying to highlight whitespace??");
 
   // Fill the range with ~'s.
-  assert(StartColNo <= EndColNo && "Invalid range!");
   for (unsigned i = StartColNo; i < EndColNo; ++i)
     CaretLine[i] = '~';
 }
@@ -371,7 +375,7 @@ void TextDiagnosticPrinter::EmitCaretDiagnostic(SourceLocation Loc,
     CaretLine.push_back('^');
 
   // Scan the source line, looking for tabs.  If we find any, manually expand
-  // them to 8 characters and update the CaretLine to match.
+  // them to spaces and update the CaretLine to match.
   for (unsigned i = 0; i != SourceLine.size(); ++i) {
     if (SourceLine[i] != '\t') continue;
 
@@ -379,8 +383,11 @@ void TextDiagnosticPrinter::EmitCaretDiagnostic(SourceLocation Loc,
     SourceLine[i] = ' ';
 
     // Compute the number of spaces we need to insert.
-    unsigned NumSpaces = ((i+8)&~7) - (i+1);
-    assert(NumSpaces < 8 && "Invalid computation of space amt");
+    unsigned TabStop = DiagOpts->TabStop;
+    assert(0 < TabStop && TabStop <= DiagnosticOptions::MaxTabStop &&
+           "Invalid -ftabstop value");
+    unsigned NumSpaces = ((i+TabStop)/TabStop * TabStop) - (i+1);
+    assert(NumSpaces < TabStop && "Invalid computation of space amt");
 
     // Insert spaces into the SourceLine.
     SourceLine.insert(i+1, NumSpaces, ' ');
@@ -423,6 +430,42 @@ void TextDiagnosticPrinter::EmitCaretDiagnostic(SourceLocation Loc,
           FixItInsertionLine.clear();
           break;
         }
+      }
+    }
+    // Now that we have the entire fixit line, expand the tabs in it.
+    // Since we don't want to insert spaces in the middle of a word,
+    // find each word and the column it should line up with and insert
+    // spaces until they match.
+    if (!FixItInsertionLine.empty()) {
+      unsigned FixItPos = 0;
+      unsigned LinePos = 0;
+      unsigned TabExpandedCol = 0;
+      unsigned LineLength = LineEnd - LineStart;
+
+      while (FixItPos < FixItInsertionLine.size() && LinePos < LineLength) {
+        // Find the next word in the FixIt line.
+        while (FixItPos < FixItInsertionLine.size() &&
+               FixItInsertionLine[FixItPos] == ' ')
+          ++FixItPos;
+        unsigned CharDistance = FixItPos - TabExpandedCol;
+
+        // Walk forward in the source line, keeping track of
+        // the tab-expanded column.
+        for (unsigned I = 0; I < CharDistance; ++I, ++LinePos)
+          if (LinePos >= LineLength || LineStart[LinePos] != '\t')
+            ++TabExpandedCol;
+          else
+            TabExpandedCol =
+              (TabExpandedCol/DiagOpts->TabStop + 1) * DiagOpts->TabStop;
+
+        // Adjust the fixit line to match this column.
+        FixItInsertionLine.insert(FixItPos, TabExpandedCol-FixItPos, ' ');
+        FixItPos = TabExpandedCol;
+
+        // Walk to the end of the word.
+        while (FixItPos < FixItInsertionLine.size() &&
+               FixItInsertionLine[FixItPos] != ' ')
+          ++FixItPos;
       }
     }
   }
@@ -639,6 +682,9 @@ void TextDiagnosticPrinter::HandleDiagnostic(Diagnostic::Level Level,
   // file+line+column number prefix is.
   uint64_t StartOfLocationInfo = OS.tell();
 
+  if (!Prefix.empty())
+    OS << Prefix << ": ";
+
   // If the location is specified, print out a file/line/col and include trace
   // if enabled.
   if (Info.getLocation().isValid()) {
@@ -743,12 +789,15 @@ void TextDiagnosticPrinter::HandleDiagnostic(Diagnostic::Level Level,
   llvm::SmallString<100> OutStr;
   Info.FormatDiagnostic(OutStr);
 
-  if (DiagOpts->ShowOptionNames)
+  if (DiagOpts->ShowOptionNames) {
     if (const char *Opt = Diagnostic::getWarningOptionForDiag(Info.getID())) {
       OutStr += " [-W";
       OutStr += Opt;
       OutStr += ']';
+    } else if (Diagnostic::isBuiltinExtensionDiag(Info.getID())) {
+      OutStr += " [-pedantic]";
     }
+  }
 
   if (DiagOpts->ShowColors) {
     // Print warnings, errors and fatal errors in bold, no color

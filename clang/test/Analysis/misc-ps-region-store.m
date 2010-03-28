@@ -1,5 +1,9 @@
-// RUN: %clang_cc1 -triple i386-apple-darwin9 -analyze -analyzer-experimental-internal-checks -checker-cfref -analyzer-store=region -verify -fblocks -analyzer-opt-analyze-nested-blocks %s
-// RUN: %clang_cc1 -triple x86_64-apple-darwin9 -DTEST_64 -analyze -analyzer-experimental-internal-checks -checker-cfref -analyzer-store=region -verify -fblocks   -analyzer-opt-analyze-nested-blocks %s
+// RUN: %clang_cc1 -triple i386-apple-darwin9 -analyze -analyzer-experimental-internal-checks -analyzer-check-objc-mem -analyzer-store=region -verify -fblocks -analyzer-opt-analyze-nested-blocks %s
+// RUN: %clang_cc1 -triple x86_64-apple-darwin9 -DTEST_64 -analyze -analyzer-experimental-internal-checks -analyzer-check-objc-mem -analyzer-store=region -verify -fblocks   -analyzer-opt-analyze-nested-blocks %s
+
+typedef long unsigned int size_t;
+void *memcpy(void *, const void *, size_t);
+void *alloca(size_t);
 
 typedef struct objc_selector *SEL;
 typedef signed char BOOL;
@@ -55,7 +59,7 @@ void checkaccess_union() {
 
 // Check our handling of fields being invalidated by function calls.
 struct test2_struct { int x; int y; char* s; };
-void test2_helper(struct test2_struct* p);
+void test2_help(struct test2_struct* p);
 
 char test2() {
   struct test2_struct s;
@@ -387,7 +391,7 @@ void rdar_7332673_test1() {
     char value[1];
     if ( *(value) != 1 ) {} // expected-warning{{The left operand of '!=' is a garbage value}}
 }
-void rdar_rdar_7332673_test2_aux(char *x);
+int rdar_7332673_test2_aux(char *x);
 void rdar_7332673_test2() {
     char *value;
     if ( rdar_7332673_test2_aux(value) != 1 ) {} // expected-warning{{Pass-by-value argument in function call is undefined}}
@@ -590,6 +594,55 @@ int blocks_2(int *p, int z) {
   return z;
 }
 
+// Test that the value of 'x' is considered invalidated after the block
+// is passed as an argument to the message expression.
+typedef void (^RDar7582031CB)(void);
+@interface RDar7582031
+- rdar7582031:RDar7582031CB;
+- rdar7582031_b:RDar7582031CB;
+@end
+
+// Test with one block.
+unsigned rdar7582031(RDar7582031 *o) {
+  __block unsigned x;
+  [o rdar7582031:^{ x = 1; }];
+  return x; // no-warning
+}
+
+// Test with two blocks.
+unsigned long rdar7582031_b(RDar7582031 *o) {
+  __block unsigned y;
+  __block unsigned long x;
+  [o rdar7582031:^{ y = 1; }];
+  [o rdar7582031_b:^{ x = 1LL; }];
+  return x + (unsigned long) y; // no-warning
+}
+
+// Show we get an error when 'o' is null because the message
+// expression has no effect.
+unsigned long rdar7582031_b2(RDar7582031 *o) {
+  __block unsigned y;
+  __block unsigned long x;
+  if (o)
+    return 1;
+  [o rdar7582031:^{ y = 1; }];
+  [o rdar7582031_b:^{ x = 1LL; }];
+  return x + (unsigned long) y; // expected-warning{{The left operand of '+' is a garbage value}}
+}
+
+// Show that we handle static variables also getting invalidated.
+void rdar7582031_aux(void (^)(void));
+RDar7582031 *rdar7582031_aux_2();
+
+unsigned rdar7582031_static() {  
+  static RDar7582031 *o = 0;
+  rdar7582031_aux(^{ o = rdar7582031_aux_2(); });
+  
+  __block unsigned x;
+  [o rdar7582031:^{ x = 1; }];
+  return x; // no-warning
+}
+
 //===----------------------------------------------------------------------===//
 // <rdar://problem/7462324> - Test that variables passed using __blocks
 //  are not treated as being uninitialized.
@@ -631,7 +684,7 @@ typedef void (^RDar_7462324_Callback)(id obj);
 //===----------------------------------------------------------------------===//
 
 int rdar7468209_aux();
-void rdar7468209_aux2();
+void rdar7468209_aux_2();
 
 void rdar7468209() {
   __block int x = 0;
@@ -684,3 +737,154 @@ void pr4358(struct pr4358 *pnt) {
   }
   pr4358_aux(uninit); // no-warning
 }
+
+//===----------------------------------------------------------------------===//
+// <rdar://problem/7526777>
+// Test handling fields of values returned from function calls or
+// message expressions.
+//===----------------------------------------------------------------------===//
+
+typedef struct testReturn_rdar_7526777 {
+  int x;
+  int y;
+} testReturn_rdar_7526777;
+
+@interface TestReturnStruct_rdar_7526777
+- (testReturn_rdar_7526777) foo;
+@end
+
+int test_return_struct(TestReturnStruct_rdar_7526777 *x) {
+  return [x foo].x;
+}
+
+testReturn_rdar_7526777 test_return_struct_2_aux_rdar_7526777();
+
+int test_return_struct_2_rdar_7526777() {
+  return test_return_struct_2_aux_rdar_7526777().x;
+}
+
+//===----------------------------------------------------------------------===//
+// <rdar://problem/7527292> Assertion failed: (Op == BinaryOperator::Add || 
+//                                             Op == BinaryOperator::Sub)
+// This test case previously triggered an assertion failure due to a discrepancy
+// been the loaded/stored value in the array
+//===----------------------------------------------------------------------===//
+
+_Bool OSAtomicCompareAndSwapPtrBarrier( void *__oldValue, void *__newValue, void * volatile *__theValue );
+
+void rdar_7527292() {
+  static id Cache7527292[32];
+  for (signed long idx = 0;
+       idx < 32;
+       idx++) {
+    id v = Cache7527292[idx];
+    if (v && OSAtomicCompareAndSwapPtrBarrier(v, ((void*)0), (void * volatile *)(Cache7527292 + idx))) { 
+    }
+  }
+}
+
+//===----------------------------------------------------------------------===//
+// <rdar://problem/7515938> - Handle initialization of incomplete arrays
+//  in structures using a compound value.  Previously this crashed.
+//===----------------------------------------------------------------------===//
+
+struct rdar_7515938 {
+  int x;
+  int y[];
+};
+
+const struct rdar_7515938 *rdar_7515938() {
+  static const struct rdar_7515938 z = { 0, { 1, 2 } };
+  if (z.y[0] != 1) {
+    int *p = 0;
+    *p = 0xDEADBEEF; // no-warning
+  }
+  return &z;
+}
+
+struct rdar_7515938_str {
+  int x;
+  char y[];
+};
+
+const struct rdar_7515938_str *rdar_7515938_str() {
+  static const struct rdar_7515938_str z = { 0, "hello" };
+  return &z;
+}
+
+//===----------------------------------------------------------------------===//
+// Assorted test cases from PR 4172.
+//===----------------------------------------------------------------------===//
+
+struct PR4172A_s { int *a; };
+
+void PR4172A_f2(struct PR4172A_s *p);
+
+int PR4172A_f1(void) {
+    struct PR4172A_s m;
+    int b[4];
+    m.a = b;
+    PR4172A_f2(&m);
+    return b[3]; // no-warning
+}
+
+struct PR4172B_s { int *a; };
+
+void PR4172B_f2(struct PR4172B_s *p);
+
+int PR4172B_f1(void) {
+    struct PR4172B_s m;
+    int x;
+    m.a = &x;
+    PR4172B_f2(&m);
+    return x; // no-warning
+}
+
+//===----------------------------------------------------------------------===//
+// Test invalidation of values in struct literals.
+//===----------------------------------------------------------------------===//
+
+struct s_rev96062 { int *x; int *y; };
+struct s_rev96062_nested { struct s_rev96062 z; };
+
+void test_a_rev96062_aux(struct s_rev96062 *s);
+void test_a_rev96062_aux2(struct s_rev96062_nested *s);
+
+int test_a_rev96062() {
+  int a, b;
+  struct s_rev96062 x = { &a, &b };
+  test_a_rev96062_aux(&x);
+  return a + b; // no-warning
+}
+int test_b_rev96062() {
+  int a, b;
+  struct s_rev96062 x = { &a, &b };
+  struct s_rev96062 z = x;
+  test_a_rev96062_aux(&z);
+  return a + b; // no-warning
+}
+int test_c_rev96062() {
+  int a, b;
+  struct s_rev96062 x = { &a, &b };
+  struct s_rev96062_nested w = { x };
+  struct s_rev96062_nested z = w;
+  test_a_rev96062_aux2(&z);
+  return a + b; // no-warning
+}
+
+//===----------------------------------------------------------------------===//
+// <rdar://problem/7242010> - The access to y[0] at the bottom previously
+//  was reported as an uninitialized value.
+//===----------------------------------------------------------------------===//
+
+char *rdar_7242010(int count, char **y) {
+  char **x = alloca((count + 4) * sizeof(*x));
+  x[0] = "hi";
+  x[1] = "there";
+  x[2] = "every";
+  x[3] = "body";
+  memcpy(x + 4, y, count * sizeof(*x));
+  y = x;
+  return y[0]; // no-warning
+}
+

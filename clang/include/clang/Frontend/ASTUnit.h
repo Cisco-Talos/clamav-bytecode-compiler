@@ -18,9 +18,16 @@
 #include "llvm/ADT/OwningPtr.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Index/ASTLocation.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/System/Path.h"
 #include <string>
 #include <vector>
 #include <cassert>
+#include <utility>
+
+namespace llvm {
+  class MemoryBuffer;
+}
 
 namespace clang {
 class ASTContext;
@@ -46,7 +53,10 @@ class ASTUnit {
   llvm::OwningPtr<TargetInfo>       Target;
   llvm::OwningPtr<Preprocessor>     PP;
   llvm::OwningPtr<ASTContext>       Ctx;
-  bool                              tempFile;
+
+  /// Optional owned invocation, just used to make the invocation used in
+  /// LoadFromCommandLine available.
+  llvm::OwningPtr<CompilerInvocation> Invocation;
 
   // OnlyLocalDecls - when true, walking this AST should only visit declarations
   // that come from the AST itself, not from included precompiled headers.
@@ -71,10 +81,46 @@ class ASTUnit {
   // Critical optimization when using clang_getCursor().
   ASTLocation LastLoc;
 
+  /// \brief The set of diagnostics produced when creating this
+  /// translation unit.
+  llvm::SmallVector<StoredDiagnostic, 4> Diagnostics;
+
+  /// \brief Temporary files that should be removed when the ASTUnit is 
+  /// destroyed.
+  llvm::SmallVector<llvm::sys::Path, 4> TemporaryFiles;
+
+  /// \brief Simple hack to allow us to assert that ASTUnit is not being
+  /// used concurrently, which is not supported.
+  ///
+  /// Clients should create instances of the ConcurrencyCheck class whenever
+  /// using the ASTUnit in a way that isn't intended to be concurrent, which is
+  /// just about any usage.
+  unsigned int ConcurrencyCheckValue;
+  static const unsigned int CheckLocked = 28573289;
+  static const unsigned int CheckUnlocked = 9803453;
+  
   ASTUnit(const ASTUnit&); // DO NOT IMPLEMENT
   ASTUnit &operator=(const ASTUnit &); // DO NOT IMPLEMENT
-
+  
 public:
+  class ConcurrencyCheck {
+    volatile ASTUnit &Self;
+    
+  public:
+    explicit ConcurrencyCheck(ASTUnit &Self)
+      : Self(Self) 
+    { 
+      assert(Self.ConcurrencyCheckValue == CheckUnlocked && 
+             "Concurrent access to ASTUnit!");
+      Self.ConcurrencyCheckValue = CheckLocked;
+    }
+    
+    ~ConcurrencyCheck() {
+      Self.ConcurrencyCheckValue = CheckUnlocked;
+    }
+  };
+  friend class ConcurrencyCheck;
+  
   ASTUnit(bool MainFileIsAST);
   ~ASTUnit();
 
@@ -95,8 +141,13 @@ public:
   const std::string &getOriginalSourceFileName();
   const std::string &getPCHFileName();
 
-  void unlinkTemporaryFile() { tempFile = true; }
-
+  /// \brief Add a temporary file that the ASTUnit depends on.
+  ///
+  /// This file will be erased when the ASTUnit is destroyed.
+  void addTemporaryFile(const llvm::sys::Path &TempFile) {
+    TemporaryFiles.push_back(TempFile);
+  }
+                        
   bool getOnlyLocalDecls() const { return OnlyLocalDecls; }
 
   void setLastASTLocation(ASTLocation ALoc) { LastLoc = ALoc; }
@@ -111,6 +162,19 @@ public:
     return TopLevelDecls;
   }
 
+  // Retrieve the diagnostics associated with this AST
+  typedef const StoredDiagnostic * diag_iterator;
+  diag_iterator diag_begin() const { return Diagnostics.begin(); }
+  diag_iterator diag_end() const { return Diagnostics.end(); }
+  unsigned diag_size() const { return Diagnostics.size(); }
+  llvm::SmallVector<StoredDiagnostic, 4> &getDiagnostics() { 
+    return Diagnostics; 
+  }
+
+  /// \brief A mapping from a file name to the memory buffer that stores the
+  /// remapped contents of that file.
+  typedef std::pair<std::string, const llvm::MemoryBuffer *> RemappedFile;
+  
   /// \brief Create a ASTUnit from a PCH file.
   ///
   /// \param Filename - The PCH file to load.
@@ -122,22 +186,25 @@ public:
   static ASTUnit *LoadFromPCHFile(const std::string &Filename,
                                   Diagnostic &Diags,
                                   bool OnlyLocalDecls = false,
-                                  bool UseBumpAllocator = false);
+                                  RemappedFile *RemappedFiles = 0,
+                                  unsigned NumRemappedFiles = 0,
+                                  bool CaptureDiagnostics = false);
 
   /// LoadFromCompilerInvocation - Create an ASTUnit from a source file, via a
   /// CompilerInvocation object.
   ///
   /// \param CI - The compiler invocation to use; it must have exactly one input
-  /// source file.
+  /// source file. The ASTUnit takes ownership of the CompilerInvocation object.
   ///
   /// \param Diags - The diagnostics engine to use for reporting errors; its
   /// lifetime is expected to extend past that of the returned ASTUnit.
   //
   // FIXME: Move OnlyLocalDecls, UseBumpAllocator to setters on the ASTUnit, we
   // shouldn't need to specify them at construction time.
-  static ASTUnit *LoadFromCompilerInvocation(const CompilerInvocation &CI,
+  static ASTUnit *LoadFromCompilerInvocation(CompilerInvocation *CI,
                                              Diagnostic &Diags,
-                                             bool OnlyLocalDecls = false);
+                                             bool OnlyLocalDecls = false,
+                                             bool CaptureDiagnostics = false);
 
   /// LoadFromCommandLine - Create an ASTUnit from a vector of command line
   /// arguments, which must specify exactly one source file.
@@ -158,7 +225,9 @@ public:
                                       Diagnostic &Diags,
                                       llvm::StringRef ResourceFilesPath,
                                       bool OnlyLocalDecls = false,
-                                      bool UseBumpAllocator = false);
+                                      RemappedFile *RemappedFiles = 0,
+                                      unsigned NumRemappedFiles = 0,
+                                      bool CaptureDiagnostics = false);
 };
 
 } // namespace clang

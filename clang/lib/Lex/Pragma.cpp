@@ -286,26 +286,21 @@ void Preprocessor::HandlePragmaDependency(Token &DependencyTok) {
     return;
 
   // Reserve a buffer to get the spelling.
-  llvm::SmallVector<char, 128> FilenameBuffer;
-  FilenameBuffer.resize(FilenameTok.getLength());
+  llvm::SmallString<128> FilenameBuffer;
+  llvm::StringRef Filename = getSpelling(FilenameTok, FilenameBuffer);
 
-  const char *FilenameStart = &FilenameBuffer[0];
-  unsigned Len = getSpelling(FilenameTok, FilenameStart);
-  const char *FilenameEnd = FilenameStart+Len;
-  bool isAngled = GetIncludeFilenameSpelling(FilenameTok.getLocation(),
-                                             FilenameStart, FilenameEnd);
+  bool isAngled =
+    GetIncludeFilenameSpelling(FilenameTok.getLocation(), Filename);
   // If GetIncludeFilenameSpelling set the start ptr to null, there was an
   // error.
-  if (FilenameStart == 0)
+  if (Filename.empty())
     return;
 
   // Search include directories for this file.
   const DirectoryLookup *CurDir;
-  const FileEntry *File = LookupFile(FilenameStart, FilenameEnd,
-                                     isAngled, 0, CurDir);
+  const FileEntry *File = LookupFile(Filename, isAngled, 0, CurDir);
   if (File == 0) {
-    Diag(FilenameTok, diag::err_pp_file_not_found)
-      << std::string(FilenameStart, FilenameEnd);
+    Diag(FilenameTok, diag::err_pp_file_not_found) << Filename;
     return;
   }
 

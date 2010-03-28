@@ -100,10 +100,6 @@ static llvm::Constant *getUnexpectedFn(CodeGenFunction &CGF) {
   return CGF.CGM.CreateRuntimeFunction(FTy, "__cxa_call_unexpected");
 }
 
-// FIXME: Eventually this will all go into the backend.  Set from the target for
-// now.
-static int using_sjlj_exceptions = 0;
-
 static llvm::Constant *getUnwindResumeOrRethrowFn(CodeGenFunction &CGF) {
   const llvm::Type *Int8PtrTy = llvm::Type::getInt8PtrTy(CGF.getLLVMContext());
   std::vector<const llvm::Type*> Args(1, Int8PtrTy);
@@ -112,7 +108,7 @@ static llvm::Constant *getUnwindResumeOrRethrowFn(CodeGenFunction &CGF) {
     llvm::FunctionType::get(llvm::Type::getVoidTy(CGF.getLLVMContext()), Args,
                             false);
 
-  if (using_sjlj_exceptions)
+  if (CGF.CGM.getLangOptions().SjLjExceptions)
     return CGF.CGM.CreateRuntimeFunction(FTy, "_Unwind_SjLj_Resume");
   return CGF.CGM.CreateRuntimeFunction(FTy, "_Unwind_Resume_or_Rethrow");
 }
@@ -194,9 +190,9 @@ static void CopyObject(CodeGenFunction &CGF, const Expr *E,
       // Push the Src ptr.
       CallArgs.push_back(std::make_pair(RValue::get(Src),
                                         CopyCtor->getParamDecl(0)->getType()));
-      QualType ResultType =
-        CopyCtor->getType()->getAs<FunctionType>()->getResultType();
-      CGF.EmitCall(CGF.CGM.getTypes().getFunctionInfo(ResultType, CallArgs),
+      const FunctionProtoType *FPT
+        = CopyCtor->getType()->getAs<FunctionProtoType>();
+      CGF.EmitCall(CGF.CGM.getTypes().getFunctionInfo(CallArgs, FPT),
                    Callee, ReturnValueSlot(), CallArgs, CopyCtor);
       CGF.setInvokeDest(PrevLandingPad);
     } else
@@ -207,14 +203,22 @@ static void CopyObject(CodeGenFunction &CGF, const Expr *E,
 // CopyObject - Utility to copy an object.  Calls copy constructor as necessary.
 // N is casted to the right type.
 static void CopyObject(CodeGenFunction &CGF, QualType ObjectType,
-                       bool WasPointer, llvm::Value *E, llvm::Value *N) {
+                       bool WasPointer, bool WasPointerReference,
+                       llvm::Value *E, llvm::Value *N) {
   // Store the throw exception in the exception object.
   if (WasPointer || !CGF.hasAggregateLLVMType(ObjectType)) {
     llvm::Value *Value = E;
     if (!WasPointer)
       Value = CGF.Builder.CreateLoad(Value);
     const llvm::Type *ValuePtrTy = Value->getType()->getPointerTo(0);
-    CGF.Builder.CreateStore(Value, CGF.Builder.CreateBitCast(N, ValuePtrTy));
+    if (WasPointerReference) {
+      llvm::Value *Tmp = CGF.CreateTempAlloca(Value->getType(), "catch.param");
+      CGF.Builder.CreateStore(Value, Tmp);
+      Value = Tmp;
+      ValuePtrTy = Value->getType()->getPointerTo(0);
+    }
+    N = CGF.Builder.CreateBitCast(N, ValuePtrTy);
+    CGF.Builder.CreateStore(Value, N);
   } else {
     const llvm::Type *Ty = CGF.ConvertType(ObjectType)->getPointerTo(0);
     const CXXRecordDecl *RD;
@@ -236,9 +240,10 @@ static void CopyObject(CodeGenFunction &CGF, QualType ObjectType,
       // Push the Src ptr.
       CallArgs.push_back(std::make_pair(RValue::get(Src),
                                         CopyCtor->getParamDecl(0)->getType()));
-      QualType ResultType =
-        CopyCtor->getType()->getAs<FunctionType>()->getResultType();
-      CGF.EmitCall(CGF.CGM.getTypes().getFunctionInfo(ResultType, CallArgs),
+
+      const FunctionProtoType *FPT
+        = CopyCtor->getType()->getAs<FunctionProtoType>();
+      CGF.EmitCall(CGF.CGM.getTypes().getFunctionInfo(CallArgs, FPT),
                    Callee, ReturnValueSlot(), CallArgs, CopyCtor);
     } else
       llvm_unreachable("uncopyable object");
@@ -308,6 +313,9 @@ void CodeGenFunction::EmitCXXThrowExpr(const CXXThrowExpr *E) {
 }
 
 void CodeGenFunction::EmitStartEHSpec(const Decl *D) {
+  if (!Exceptions)
+    return;
+  
   const FunctionDecl* FD = dyn_cast_or_null<FunctionDecl>(D);
   if (FD == 0)
     return;
@@ -402,6 +410,9 @@ void CodeGenFunction::EmitStartEHSpec(const Decl *D) {
 }
 
 void CodeGenFunction::EmitEndEHSpec(const Decl *D) {
+  if (!Exceptions)
+    return;
+  
   const FunctionDecl* FD = dyn_cast_or_null<FunctionDecl>(D);
   if (FD == 0)
     return;
@@ -416,6 +427,26 @@ void CodeGenFunction::EmitEndEHSpec(const Decl *D) {
 }
 
 void CodeGenFunction::EmitCXXTryStmt(const CXXTryStmt &S) {
+  CXXTryStmtInfo Info = EnterCXXTryStmt(S);
+  EmitStmt(S.getTryBlock());
+  ExitCXXTryStmt(S, Info);
+}
+
+CodeGenFunction::CXXTryStmtInfo
+CodeGenFunction::EnterCXXTryStmt(const CXXTryStmt &S) {
+  CXXTryStmtInfo Info;
+  Info.SavedLandingPad = getInvokeDest();
+  Info.HandlerBlock = createBasicBlock("try.handler");
+  Info.FinallyBlock = createBasicBlock("finally");
+
+  PushCleanupBlock(Info.FinallyBlock);
+  setInvokeDest(Info.HandlerBlock);
+
+  return Info;
+}
+
+void CodeGenFunction::ExitCXXTryStmt(const CXXTryStmt &S,
+                                     CXXTryStmtInfo TryInfo) {
   // Pointer to the personality function
   llvm::Constant *Personality =
     CGM.CreateRuntimeFunction(llvm::FunctionType::get(llvm::Type::getInt32Ty
@@ -428,52 +459,11 @@ void CodeGenFunction::EmitCXXTryStmt(const CXXTryStmt &S) {
   llvm::Value *llvm_eh_selector =
     CGM.getIntrinsic(llvm::Intrinsic::eh_selector);
 
-  llvm::BasicBlock *PrevLandingPad = getInvokeDest();
-  llvm::BasicBlock *TryHandler = createBasicBlock("try.handler");
-  llvm::BasicBlock *FinallyBlock = createBasicBlock("finally");
+  llvm::BasicBlock *PrevLandingPad = TryInfo.SavedLandingPad;
+  llvm::BasicBlock *TryHandler = TryInfo.HandlerBlock;
+  llvm::BasicBlock *FinallyBlock = TryInfo.FinallyBlock;
   llvm::BasicBlock *FinallyRethrow = createBasicBlock("finally.throw");
   llvm::BasicBlock *FinallyEnd = createBasicBlock("finally.end");
-
-  // Push an EH context entry, used for handling rethrows.
-  PushCleanupBlock(FinallyBlock);
-
-  // Emit the statements in the try {} block
-  setInvokeDest(TryHandler);
-
-  // FIXME: We should not have to do this here.  The AST should have the member
-  // initializers under the CXXTryStmt's TryBlock.
-  if (OuterTryBlock == &S) {
-    GlobalDecl GD = CurGD;
-    const FunctionDecl *FD = cast<FunctionDecl>(GD.getDecl());
-
-    if (const CXXConstructorDecl *CD = dyn_cast<CXXConstructorDecl>(FD)) {
-      size_t OldCleanupStackSize = CleanupEntries.size();
-      EmitCtorPrologue(CD, CurGD.getCtorType());
-      EmitStmt(S.getTryBlock());
-
-      // If any of the member initializers are temporaries bound to references
-      // make sure to emit their destructors.
-      EmitCleanupBlocks(OldCleanupStackSize);
-    } else if (const CXXDestructorDecl *DD = dyn_cast<CXXDestructorDecl>(FD)) {
-      llvm::BasicBlock *DtorEpilogue  = createBasicBlock("dtor.epilogue");
-      PushCleanupBlock(DtorEpilogue);
-
-      EmitStmt(S.getTryBlock());
-
-      CleanupBlockInfo Info = PopCleanupBlock();
-
-      assert(Info.CleanupBlock == DtorEpilogue && "Block mismatch!");
-      EmitBlock(DtorEpilogue);
-      EmitDtorEpilogue(DD, GD.getDtorType());
-
-      if (Info.SwitchBlock)
-        EmitBlock(Info.SwitchBlock);
-      if (Info.EndBlock)
-        EmitBlock(Info.EndBlock);
-    } else
-      EmitStmt(S.getTryBlock());
-  } else
-    EmitStmt(S.getTryBlock());
 
   // Jump to end if there is no exception
   EmitBranchThroughCleanup(FinallyEnd);
@@ -563,7 +553,12 @@ void CodeGenFunction::EmitCXXTryStmt(const CXXTryStmt &S) {
         QualType CatchType = CatchParam->getType().getNonReferenceType();
         setInvokeDest(TerminateHandler);
         bool WasPointer = true;
-        if (!CatchType.getTypePtr()->isPointerType()) {
+        bool WasPointerReference = false;
+        CatchType = CGM.getContext().getCanonicalType(CatchType);
+        if (CatchType.getTypePtr()->isPointerType()) {
+          if (isa<ReferenceType>(CatchParam->getType()))
+            WasPointerReference = true;
+        } else {
           if (!isa<ReferenceType>(CatchParam->getType()))
             WasPointer = false;
           CatchType = getContext().getPointerType(CatchType);
@@ -574,7 +569,8 @@ void CodeGenFunction::EmitCXXTryStmt(const CXXTryStmt &S) {
         // cleanup doesn't start until after the ctor completes, use a decl
         // init?
         CopyObject(*this, CatchParam->getType().getNonReferenceType(),
-                   WasPointer, ExcObject, GetAddrOfLocalVar(CatchParam));
+                   WasPointer, WasPointerReference, ExcObject,
+                   GetAddrOfLocalVar(CatchParam));
         setInvokeDest(MatchHandler);
       }
 

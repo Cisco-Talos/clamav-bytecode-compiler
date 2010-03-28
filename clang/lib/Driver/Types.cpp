@@ -77,6 +77,7 @@ bool types::isAcceptedByClang(ID Id) {
 
   case TY_Asm:
   case TY_C: case TY_PP_C:
+  case TY_CL:
   case TY_ObjC: case TY_PP_ObjC:
   case TY_CXX: case TY_PP_CXX:
   case TY_ObjCXX: case TY_PP_ObjCXX:
@@ -133,6 +134,7 @@ types::ID types::lookupTypeForExtension(const char *Ext) {
            .Case("mm", TY_ObjCXX)
            .Case("cc", TY_CXX)
            .Case("CC", TY_CXX)
+           .Case("cl", TY_CL)
            .Case("cp", TY_CXX)
            .Case("hh", TY_CXXHeader)
            .Case("hpp", TY_CXXHeader)
@@ -210,4 +212,20 @@ phases::ID types::getCompilationPhase(ID Id, unsigned N) {
     return phases::Assemble;
 
   return phases::Link;
+}
+
+ID types::lookupCXXTypeForCType(ID Id) {
+  switch (Id) {
+  default:
+    return Id;
+    
+  case types::TY_C:
+    return types::TY_CXX;
+  case types::TY_PP_C:
+    return types::TY_PP_CXX;
+  case types::TY_CHeader:
+    return types::TY_CXXHeader;
+  case types::TY_PP_CHeader:
+    return types::TY_PP_CXXHeader;
+  }
 }

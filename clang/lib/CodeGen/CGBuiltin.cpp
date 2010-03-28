@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "TargetInfo.h"
 #include "CodeGenFunction.h"
 #include "CodeGenModule.h"
 #include "clang/Basic/TargetInfo.h"
@@ -19,6 +20,7 @@
 #include "clang/AST/Decl.h"
 #include "clang/Basic/TargetBuiltins.h"
 #include "llvm/Intrinsics.h"
+#include "llvm/Target/TargetData.h"
 using namespace clang;
 using namespace CodeGen;
 using namespace llvm;
@@ -57,6 +59,10 @@ static RValue EmitBinaryAtomicPost(CodeGenFunction& CGF,
   return RValue::get(CGF.Builder.CreateBinOp(Op, Result, Operand));
 }
 
+static llvm::ConstantInt *getInt32(llvm::LLVMContext &Context, int32_t Value) {
+  return llvm::ConstantInt::get(llvm::Type::getInt32Ty(Context), Value);
+}
+
 RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
                                         unsigned BuiltinID, const CallExpr *E) {
   // See if we can constant fold this builtin.  If so, don't emit it at all.
@@ -72,6 +78,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
   switch (BuiltinID) {
   default: break;  // Handle intrinsics and libm functions below.
   case Builtin::BI__builtin___CFStringMakeConstantString:
+  case Builtin::BI__builtin___NSStringMakeConstantString:
     return RValue::get(CGM.EmitConstantExpr(E, E->getType(), 0));
   case Builtin::BI__builtin_stdarg_start:
   case Builtin::BI__builtin_va_start:
@@ -303,6 +310,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     Size = Builder.CreateIntCast(Size, llvm::Type::getInt32Ty(VMContext), false, "tmp");
     return RValue::get(Builder.CreateAlloca(llvm::Type::getInt8Ty(VMContext), Size, "tmp"));
   }
+  case Builtin::BIbzero:
   case Builtin::BI__builtin_bzero: {
     Value *Address = EmitScalarExpr(E->getArg(0));
     Builder.CreateCall4(CGM.getMemSetFn(), Address,
@@ -339,6 +347,20 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
                         llvm::ConstantInt::get(llvm::Type::getInt32Ty(VMContext), 1));
     return RValue::get(Address);
   }
+  case Builtin::BI__builtin_dwarf_cfa: {
+    // The offset in bytes from the first argument to the CFA.
+    //
+    // Why on earth is this in the frontend?  Is there any reason at
+    // all that the backend can't reasonably determine this while
+    // lowering llvm.eh.dwarf.cfa()?
+    //
+    // TODO: If there's a satisfactory reason, add a target hook for
+    // this instead of hard-coding 0, which is correct for most targets.
+    int32_t Offset = 0;
+
+    Value *F = CGM.getIntrinsic(Intrinsic::eh_dwarf_cfa, 0, 0);
+    return RValue::get(Builder.CreateCall(F, getInt32(VMContext, Offset)));
+  }
   case Builtin::BI__builtin_return_address: {
     Value *Depth = EmitScalarExpr(E->getArg(0));
     Depth = Builder.CreateIntCast(Depth,
@@ -356,12 +378,79 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     return RValue::get(Builder.CreateCall(F, Depth));
   }
   case Builtin::BI__builtin_extract_return_addr: {
-    // FIXME: There should be a target hook for this
-    return RValue::get(EmitScalarExpr(E->getArg(0)));
+    Value *Address = EmitScalarExpr(E->getArg(0));
+    Value *Result = getTargetHooks().decodeReturnAddress(*this, Address);
+    return RValue::get(Result);
+  }
+  case Builtin::BI__builtin_frob_return_addr: {
+    Value *Address = EmitScalarExpr(E->getArg(0));
+    Value *Result = getTargetHooks().encodeReturnAddress(*this, Address);
+    return RValue::get(Result);
+  }
+  case Builtin::BI__builtin_dwarf_sp_column: {
+    const llvm::IntegerType *Ty
+      = cast<llvm::IntegerType>(ConvertType(E->getType()));
+    int Column = getTargetHooks().getDwarfEHStackPointer(CGM);
+    if (Column == -1) {
+      CGM.ErrorUnsupported(E, "__builtin_dwarf_sp_column");
+      return RValue::get(llvm::UndefValue::get(Ty));
+    }
+    return RValue::get(llvm::ConstantInt::get(Ty, Column, true));
+  }
+  case Builtin::BI__builtin_init_dwarf_reg_size_table: {
+    Value *Address = EmitScalarExpr(E->getArg(0));
+    if (getTargetHooks().initDwarfEHRegSizeTable(*this, Address))
+      CGM.ErrorUnsupported(E, "__builtin_init_dwarf_reg_size_table");
+    return RValue::get(llvm::UndefValue::get(ConvertType(E->getType())));
+  }
+  case Builtin::BI__builtin_eh_return: {
+    Value *Int = EmitScalarExpr(E->getArg(0));
+    Value *Ptr = EmitScalarExpr(E->getArg(1));
+
+    const llvm::IntegerType *IntTy = cast<llvm::IntegerType>(Int->getType());
+    assert((IntTy->getBitWidth() == 32 || IntTy->getBitWidth() == 64) &&
+           "LLVM's __builtin_eh_return only supports 32- and 64-bit variants");
+    Value *F = CGM.getIntrinsic(IntTy->getBitWidth() == 32
+                                  ? Intrinsic::eh_return_i32
+                                  : Intrinsic::eh_return_i64,
+                                0, 0);
+    Builder.CreateCall2(F, Int, Ptr);
+    Value *V = Builder.CreateUnreachable();
+    Builder.ClearInsertionPoint();
+    return RValue::get(V);
   }
   case Builtin::BI__builtin_unwind_init: {
     Value *F = CGM.getIntrinsic(Intrinsic::eh_unwind_init, 0, 0);
     return RValue::get(Builder.CreateCall(F));
+  }
+  case Builtin::BI__builtin_extend_pointer: {
+    // Extends a pointer to the size of an _Unwind_Word, which is
+    // uint64_t on all platforms.  Generally this gets poked into a
+    // register and eventually used as an address, so if the
+    // addressing registers are wider than pointers and the platform
+    // doesn't implicitly ignore high-order bits when doing
+    // addressing, we need to make sure we zext / sext based on
+    // the platform's expectations.
+    //
+    // See: http://gcc.gnu.org/ml/gcc-bugs/2002-02/msg00237.html
+
+    LLVMContext &C = CGM.getLLVMContext();
+
+    // Cast the pointer to intptr_t.
+    Value *Ptr = EmitScalarExpr(E->getArg(0));
+    const llvm::IntegerType *IntPtrTy = CGM.getTargetData().getIntPtrType(C);
+    Value *Result = Builder.CreatePtrToInt(Ptr, IntPtrTy, "extend.cast");
+
+    // If that's 64 bits, we're done.
+    if (IntPtrTy->getBitWidth() == 64)
+      return RValue::get(Result);
+
+    // Otherwise, ask the codegen data what to do.
+    const llvm::IntegerType *Int64Ty = llvm::IntegerType::get(C, 64);
+    if (getTargetHooks().extendPointerWithSExt())
+      return RValue::get(Builder.CreateSExt(Result, Int64Ty, "extend.sext"));
+    else
+      return RValue::get(Builder.CreateZExt(Result, Int64Ty, "extend.zext"));
   }
 #if 0
   // FIXME: Finish/enable when LLVM backend support stabilizes
@@ -556,6 +645,18 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     return RValue::get(0);
   }
 
+  case Builtin::BI__builtin_llvm_memory_barrier: {
+    Value *C[5] = {
+      EmitScalarExpr(E->getArg(0)),
+      EmitScalarExpr(E->getArg(1)),
+      EmitScalarExpr(E->getArg(2)),
+      EmitScalarExpr(E->getArg(3)),
+      EmitScalarExpr(E->getArg(4))
+    };
+    Builder.CreateCall(CGM.getIntrinsic(Intrinsic::memory_barrier), C, C + 5);
+    return RValue::get(0);
+  }
+      
     // Library functions with special handling.
   case Builtin::BIsqrt:
   case Builtin::BIsqrtf:
@@ -580,6 +681,23 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     const llvm::Type *ArgType = Base->getType();
     Value *F = CGM.getIntrinsic(Intrinsic::pow, &ArgType, 1);
     return RValue::get(Builder.CreateCall2(F, Base, Exponent, "tmp"));
+  }
+
+  case Builtin::BI__builtin_signbit:
+  case Builtin::BI__builtin_signbitf:
+  case Builtin::BI__builtin_signbitl: {
+    LLVMContext &C = CGM.getLLVMContext();
+
+    Value *Arg = EmitScalarExpr(E->getArg(0));
+    const llvm::Type *ArgTy = Arg->getType();
+    if (ArgTy->isPPC_FP128Ty())
+      break; // FIXME: I'm not sure what the right implementation is here.
+    int ArgWidth = ArgTy->getPrimitiveSizeInBits();
+    const llvm::Type *ArgIntTy = llvm::IntegerType::get(C, ArgWidth);
+    Value *BCArg = Builder.CreateBitCast(Arg, ArgIntTy);
+    Value *ZeroCmp = llvm::Constant::getNullValue(ArgIntTy);
+    Value *Result = Builder.CreateICmpSLT(BCArg, ZeroCmp);
+    return RValue::get(Builder.CreateZExt(Result, ConvertType(E->getType())));
   }
   }
 
@@ -643,13 +761,16 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
 
   // Unknown builtin, for now just dump it out and return undef.
   if (hasAggregateLLVMType(E->getType()))
-    return RValue::getAggregate(CreateTempAlloca(ConvertType(E->getType())));
+    return RValue::getAggregate(CreateMemTemp(E->getType()));
   return RValue::get(llvm::UndefValue::get(ConvertType(E->getType())));
 }
 
 Value *CodeGenFunction::EmitTargetBuiltinExpr(unsigned BuiltinID,
                                               const CallExpr *E) {
   switch (Target.getTriple().getArch()) {
+  case llvm::Triple::arm:
+  case llvm::Triple::thumb:
+    return EmitARMBuiltinExpr(BuiltinID, E);
   case llvm::Triple::x86:
   case llvm::Triple::x86_64:
     return EmitX86BuiltinExpr(BuiltinID, E);
@@ -658,6 +779,18 @@ Value *CodeGenFunction::EmitTargetBuiltinExpr(unsigned BuiltinID,
     return EmitPPCBuiltinExpr(BuiltinID, E);
   default:
     return 0;
+  }
+}
+
+Value *CodeGenFunction::EmitARMBuiltinExpr(unsigned BuiltinID,
+                                           const CallExpr *E) {
+  switch (BuiltinID) {
+  default: return 0;
+
+  case ARM::BI__builtin_thread_pointer: {
+    Value *AtomF = CGM.getIntrinsic(Intrinsic::arm_thread_pointer, 0, 0);
+    return Builder.CreateCall(AtomF);
+  }
   }
 }
 

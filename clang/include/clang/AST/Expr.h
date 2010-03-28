@@ -53,14 +53,6 @@ protected:
   /// (C++ [temp.dep.constexpr]).
   bool ValueDependent : 1;
 
-  // FIXME: Eventually, this constructor should go away and we should
-  // require every subclass to provide type/value-dependence
-  // information.
-  Expr(StmtClass SC, QualType T)
-    : Stmt(SC), TypeDependent(false), ValueDependent(false) {
-    setType(T);
-  }
-
   Expr(StmtClass SC, QualType T, bool TD, bool VD)
     : Stmt(SC), TypeDependent(TD), ValueDependent(VD) {
     setType(T);
@@ -157,7 +149,9 @@ public:
     LV_DuplicateVectorComponents,
     LV_InvalidExpression,
     LV_MemberFunction,
-    LV_SubObjCPropertySetting
+    LV_SubObjCPropertySetting,
+    LV_SubObjCPropertyGetterSetting,
+    LV_ClassTemporary
   };
   isLvalueResult isLvalue(ASTContext &Ctx) const;
 
@@ -187,7 +181,9 @@ public:
     MLV_ReadonlyProperty,
     MLV_NoSetterProperty,
     MLV_MemberFunction,
-    MLV_SubObjCPropertySetting
+    MLV_SubObjCPropertySetting,
+    MLV_SubObjCPropertyGetterSetting,
+    MLV_ClassTemporary
   };
   isModifiableLvalueResult isModifiableLvalue(ASTContext &Ctx,
                                               SourceLocation *Loc = 0) const;
@@ -200,6 +196,9 @@ public:
     return const_cast<Expr*>(this)->getBitField();
   }
 
+  /// \brief Returns whether this expression refers to a vector element.
+  bool refersToVectorElement() const;
+  
   /// isIntegerConstantExpr - Return true if this expression is a valid integer
   /// constant expression, and, if so, return its value in Result.  If not a
   /// valid i-c-e, return false and fill in Loc (if specified) with the location
@@ -248,6 +247,11 @@ public:
   /// EvaluateAsAny - The same as Evaluate, except that it also succeeds on
   /// stack based objects.
   bool EvaluateAsAny(EvalResult &Result, ASTContext &Ctx) const;
+
+  /// EvaluateAsBooleanCondition - Return true if this is a constant
+  /// which we we can fold and convert to a boolean condition using
+  /// any crazy technique that we want to.
+  bool EvaluateAsBooleanCondition(bool &Result, ASTContext &Ctx) const;
 
   /// isEvaluatable - Call Evaluate to see if this expression can be constant
   /// folded, but discard the result.
@@ -566,7 +570,10 @@ public:
   enum IdentType {
     Func,
     Function,
-    PrettyFunction
+    PrettyFunction,
+    /// PrettyFunctionNoVirtual - The same as PrettyFunction, except that the
+    /// 'virtual' keyword is omitted for virtual member functions.
+    PrettyFunctionNoVirtual
   };
 
 private:
@@ -587,8 +594,7 @@ public:
   SourceLocation getLocation() const { return Loc; }
   void setLocation(SourceLocation L) { Loc = L; }
 
-  static std::string ComputeName(ASTContext &Context, IdentType IT,
-                                 const Decl *CurrentDecl);
+  static std::string ComputeName(IdentType IT, const Decl *CurrentDecl);
 
   virtual SourceRange getSourceRange() const { return SourceRange(Loc); }
 
@@ -609,7 +615,7 @@ public:
   // type should be IntTy, LongTy, LongLongTy, UnsignedIntTy, UnsignedLongTy,
   // or UnsignedLongLongTy
   IntegerLiteral(const llvm::APInt &V, QualType type, SourceLocation l)
-    : Expr(IntegerLiteralClass, type), Value(V), Loc(l) {
+    : Expr(IntegerLiteralClass, type, false, false), Value(V), Loc(l) {
     assert(type->isIntegerType() && "Illegal type in IntegerLiteral");
   }
 
@@ -643,7 +649,8 @@ class CharacterLiteral : public Expr {
 public:
   // type should be IntTy
   CharacterLiteral(unsigned value, bool iswide, QualType type, SourceLocation l)
-    : Expr(CharacterLiteralClass, type), Value(value), Loc(l), IsWide(iswide) {
+    : Expr(CharacterLiteralClass, type, false, false), Value(value), Loc(l),
+      IsWide(iswide) {
   }
 
   /// \brief Construct an empty character literal.
@@ -677,7 +684,8 @@ class FloatingLiteral : public Expr {
 public:
   FloatingLiteral(const llvm::APFloat &V, bool isexact,
                   QualType Type, SourceLocation L)
-    : Expr(FloatingLiteralClass, Type), Value(V), IsExact(isexact), Loc(L) {}
+    : Expr(FloatingLiteralClass, Type, false, false), Value(V),
+      IsExact(isexact), Loc(L) {}
 
   /// \brief Construct an empty floating-point literal.
   explicit FloatingLiteral(EmptyShell Empty)
@@ -718,7 +726,7 @@ class ImaginaryLiteral : public Expr {
   Stmt *Val;
 public:
   ImaginaryLiteral(Expr *val, QualType Ty)
-    : Expr(ImaginaryLiteralClass, Ty), Val(val) {}
+    : Expr(ImaginaryLiteralClass, Ty, false, false), Val(val) {}
 
   /// \brief Build an empty imaginary literal.
   explicit ImaginaryLiteral(EmptyShell Empty)
@@ -762,7 +770,7 @@ class StringLiteral : public Expr {
   unsigned NumConcatenated;
   SourceLocation TokLocs[1];
 
-  StringLiteral(QualType Ty) : Expr(StringLiteralClass, Ty) {}
+  StringLiteral(QualType Ty) : Expr(StringLiteralClass, Ty, false, false) {}
 
 protected:
   virtual void DoDestroy(ASTContext &C);
@@ -1463,13 +1471,19 @@ class CompoundLiteralExpr : public Expr {
   /// compound literal like "(int){4}".  This can be null if this is a
   /// synthesized compound expression.
   SourceLocation LParenLoc;
+
+  /// The type as written.  This can be an incomplete array type, in
+  /// which case the actual expression type will be different.
+  TypeSourceInfo *TInfo;
   Stmt *Init;
   bool FileScope;
 public:
-  CompoundLiteralExpr(SourceLocation lparenloc, QualType ty, Expr *init,
-                      bool fileScope)
-    : Expr(CompoundLiteralExprClass, ty), LParenLoc(lparenloc), Init(init),
-      FileScope(fileScope) {}
+  // FIXME: Can compound literals be value-dependent?
+  CompoundLiteralExpr(SourceLocation lparenloc, TypeSourceInfo *tinfo,
+                      QualType T, Expr *init, bool fileScope)
+    : Expr(CompoundLiteralExprClass, T,
+           tinfo->getType()->isDependentType(), false),
+      LParenLoc(lparenloc), TInfo(tinfo), Init(init), FileScope(fileScope) {}
 
   /// \brief Construct an empty compound literal.
   explicit CompoundLiteralExpr(EmptyShell Empty)
@@ -1484,6 +1498,9 @@ public:
 
   SourceLocation getLParenLoc() const { return LParenLoc; }
   void setLParenLoc(SourceLocation L) { LParenLoc = L; }
+
+  TypeSourceInfo *getTypeSourceInfo() const { return TInfo; }
+  void setTypeSourceInfo(TypeSourceInfo* tinfo) { TInfo = tinfo; }
 
   virtual SourceRange getSourceRange() const {
     // FIXME: Init should never be null.
@@ -1712,28 +1729,32 @@ public:
 /// expression will be an lvalue. The reference type, however, will
 /// not be used as the type of the expression.
 class ExplicitCastExpr : public CastExpr {
-  /// TypeAsWritten - The type that this expression is casting to, as
-  /// written in the source code.
-  QualType TypeAsWritten;
+  /// TInfo - Source type info for the (written) type
+  /// this expression is casting to.
+  TypeSourceInfo *TInfo;
 
 protected:
   ExplicitCastExpr(StmtClass SC, QualType exprTy, CastKind kind,
-                   Expr *op, QualType writtenTy)
-    : CastExpr(SC, exprTy, kind, op), TypeAsWritten(writtenTy) {}
+                   Expr *op, TypeSourceInfo *writtenTy)
+    : CastExpr(SC, exprTy, kind, op), TInfo(writtenTy) {}
 
   /// \brief Construct an empty explicit cast.
   ExplicitCastExpr(StmtClass SC, EmptyShell Shell)
     : CastExpr(SC, Shell) { }
 
 public:
+  /// getTypeInfoAsWritten - Returns the type source info for the type
+  /// that this expression is casting to.
+  TypeSourceInfo *getTypeInfoAsWritten() const { return TInfo; }
+  void setTypeInfoAsWritten(TypeSourceInfo *writtenTy) { TInfo = writtenTy; }
+
   /// getTypeAsWritten - Returns the type that this expression is
   /// casting to, as written in the source code.
-  QualType getTypeAsWritten() const { return TypeAsWritten; }
-  void setTypeAsWritten(QualType T) { TypeAsWritten = T; }
+  QualType getTypeAsWritten() const { return TInfo->getType(); }
 
   static bool classof(const Stmt *T) {
     StmtClass SC = T->getStmtClass();
-    if (SC >= ExplicitCastExprClass && SC <= CStyleCastExprClass)
+    if (SC >= CStyleCastExprClass && SC <= CStyleCastExprClass)
       return true;
     if (SC >= CXXNamedCastExprClass && SC <= CXXFunctionalCastExprClass)
       return true;
@@ -1750,8 +1771,9 @@ class CStyleCastExpr : public ExplicitCastExpr {
   SourceLocation LPLoc; // the location of the left paren
   SourceLocation RPLoc; // the location of the right paren
 public:
-  CStyleCastExpr(QualType exprTy, CastKind kind, Expr *op, QualType writtenTy,
-                    SourceLocation l, SourceLocation r) :
+  CStyleCastExpr(QualType exprTy, CastKind kind, Expr *op,
+                 TypeSourceInfo *writtenTy,
+                 SourceLocation l, SourceLocation r) :
     ExplicitCastExpr(CStyleCastExprClass, exprTy, kind, op, writtenTy),
     LPLoc(l), RPLoc(r) {}
 
@@ -1903,8 +1925,11 @@ public:
 
 protected:
   BinaryOperator(Expr *lhs, Expr *rhs, Opcode opc, QualType ResTy,
-                 SourceLocation oploc, bool dead)
-    : Expr(CompoundAssignOperatorClass, ResTy), Opc(opc), OpLoc(oploc) {
+                 SourceLocation opLoc, bool dead)
+    : Expr(CompoundAssignOperatorClass, ResTy,
+           lhs->isTypeDependent() || rhs->isTypeDependent(),
+           lhs->isValueDependent() || rhs->isValueDependent()),
+      Opc(opc), OpLoc(opLoc) {
     SubExprs[LHS] = lhs;
     SubExprs[RHS] = rhs;
   }
@@ -2033,7 +2058,8 @@ class AddrLabelExpr : public Expr {
 public:
   AddrLabelExpr(SourceLocation AALoc, SourceLocation LLoc, LabelStmt *L,
                 QualType t)
-    : Expr(AddrLabelExprClass, t), AmpAmpLoc(AALoc), LabelLoc(LLoc), Label(L) {}
+    : Expr(AddrLabelExprClass, t, false, false),
+      AmpAmpLoc(AALoc), LabelLoc(LLoc), Label(L) {}
 
   /// \brief Build an empty address of a label expression.
   explicit AddrLabelExpr(EmptyShell Empty)
@@ -2068,9 +2094,11 @@ class StmtExpr : public Expr {
   Stmt *SubStmt;
   SourceLocation LParenLoc, RParenLoc;
 public:
+  // FIXME: Does type-dependence need to be computed differently?
   StmtExpr(CompoundStmt *substmt, QualType T,
            SourceLocation lp, SourceLocation rp) :
-    Expr(StmtExprClass, T), SubStmt(substmt),  LParenLoc(lp), RParenLoc(rp) { }
+    Expr(StmtExprClass, T, T->isDependentType(), false),
+    SubStmt(substmt), LParenLoc(lp), RParenLoc(rp) { }
 
   /// \brief Build an empty statement expression.
   explicit StmtExpr(EmptyShell Empty) : Expr(StmtExprClass, Empty) { }
@@ -2109,8 +2137,8 @@ class TypesCompatibleExpr : public Expr {
 public:
   TypesCompatibleExpr(QualType ReturnType, SourceLocation BLoc,
                       QualType t1, QualType t2, SourceLocation RP) :
-    Expr(TypesCompatibleExprClass, ReturnType), Type1(t1), Type2(t2),
-    BuiltinLoc(BLoc), RParenLoc(RP) {}
+    Expr(TypesCompatibleExprClass, ReturnType, false, false),
+    Type1(t1), Type2(t2), BuiltinLoc(BLoc), RParenLoc(RP) {}
 
   /// \brief Build an empty __builtin_type_compatible_p expression.
   explicit TypesCompatibleExpr(EmptyShell Empty)
@@ -2160,11 +2188,13 @@ protected:
   virtual void DoDestroy(ASTContext &C);
 
 public:
+  // FIXME: Can a shufflevector be value-dependent?  Does type-dependence need
+  // to be computed differently?
   ShuffleVectorExpr(ASTContext &C, Expr **args, unsigned nexpr,
                     QualType Type, SourceLocation BLoc,
                     SourceLocation RP) :
-    Expr(ShuffleVectorExprClass, Type), BuiltinLoc(BLoc),
-    RParenLoc(RP), NumExprs(nexpr) {
+    Expr(ShuffleVectorExprClass, Type, Type->isDependentType(), false),
+    BuiltinLoc(BLoc), RParenLoc(RP), NumExprs(nexpr) {
 
     SubExprs = new (C) Stmt*[nexpr];
     for (unsigned i = 0; i < nexpr; i++)
@@ -2292,7 +2322,7 @@ class GNUNullExpr : public Expr {
 
 public:
   GNUNullExpr(QualType Ty, SourceLocation Loc)
-    : Expr(GNUNullExprClass, Ty), TokenLoc(Loc) { }
+    : Expr(GNUNullExprClass, Ty, false, false), TokenLoc(Loc) { }
 
   /// \brief Build an empty GNU __null expression.
   explicit GNUNullExpr(EmptyShell Empty) : Expr(GNUNullExprClass, Empty) { }
@@ -2320,7 +2350,7 @@ class VAArgExpr : public Expr {
   SourceLocation BuiltinLoc, RParenLoc;
 public:
   VAArgExpr(SourceLocation BLoc, Expr* e, QualType t, SourceLocation RPLoc)
-    : Expr(VAArgExprClass, t),
+    : Expr(VAArgExprClass, t, t->isDependentType(), false),
       Val(e),
       BuiltinLoc(BLoc),
       RParenLoc(RPLoc) { }
@@ -2549,7 +2579,7 @@ private:
   unsigned NumSubExprs : 16;
 
 
-  DesignatedInitExpr(QualType Ty, unsigned NumDesignators,
+  DesignatedInitExpr(ASTContext &C, QualType Ty, unsigned NumDesignators,
                      const Designator *Designators,
                      SourceLocation EqualOrColonLoc, bool GNUSyntax,
                      Expr **IndexExprs, unsigned NumIndexExprs,
@@ -2562,6 +2592,8 @@ private:
 protected:
   virtual void DoDestroy(ASTContext &C);
 
+  void DestroyDesignators(ASTContext &C);
+  
 public:
   /// A field designator, e.g., ".x".
   struct FieldDesignator {
@@ -2729,7 +2761,8 @@ public:
 
   Designator *getDesignator(unsigned Idx) { return &designators_begin()[Idx]; }
 
-  void setDesignators(const Designator *Desigs, unsigned NumDesigs);
+  void setDesignators(ASTContext &C, const Designator *Desigs, 
+                      unsigned NumDesigs);
 
   Expr *getArrayIndex(const Designator& D);
   Expr *getArrayRangeStart(const Designator& D);
@@ -2776,7 +2809,7 @@ public:
 
   /// \brief Replaces the designator at index @p Idx with the series
   /// of designators in [First, Last).
-  void ExpandDesignator(unsigned Idx, const Designator *First,
+  void ExpandDesignator(ASTContext &C, unsigned Idx, const Designator *First,
                         const Designator *Last);
 
   virtual SourceRange getSourceRange() const;
@@ -2802,7 +2835,7 @@ public:
 class ImplicitValueInitExpr : public Expr {
 public:
   explicit ImplicitValueInitExpr(QualType ty)
-    : Expr(ImplicitValueInitExprClass, ty) { }
+    : Expr(ImplicitValueInitExprClass, ty, false, false) { }
 
   /// \brief Construct an empty implicit value initialization.
   explicit ImplicitValueInitExpr(EmptyShell Empty)
@@ -2890,7 +2923,8 @@ class ExtVectorElementExpr : public Expr {
 public:
   ExtVectorElementExpr(QualType ty, Expr *base, IdentifierInfo &accessor,
                        SourceLocation loc)
-    : Expr(ExtVectorElementExprClass, ty),
+    : Expr(ExtVectorElementExprClass, ty, base->isTypeDependent(),
+           base->isValueDependent()),
       Base(base), Accessor(&accessor), AccessorLoc(loc) {}
 
   /// \brief Build an empty vector element expression.
@@ -2945,7 +2979,7 @@ protected:
   bool HasBlockDeclRefExprs;
 public:
   BlockExpr(BlockDecl *BD, QualType ty, bool hasBlockDeclRefExprs)
-    : Expr(BlockExprClass, ty),
+    : Expr(BlockExprClass, ty, ty->isDependentType(), false),
       TheBlock(BD), HasBlockDeclRefExprs(hasBlockDeclRefExprs) {}
 
   /// \brief Build an empty block expression.
@@ -2990,10 +3024,11 @@ class BlockDeclRefExpr : public Expr {
   bool IsByRef : 1;
   bool ConstQualAdded : 1;
 public:
+  // FIXME: Fix type/value dependence!
   BlockDeclRefExpr(ValueDecl *d, QualType t, SourceLocation l, bool ByRef,
-                   bool constAdded = false) :
-       Expr(BlockDeclRefExprClass, t), D(d), Loc(l), IsByRef(ByRef),
-                                       ConstQualAdded(constAdded) {}
+                   bool constAdded = false)
+  : Expr(BlockDeclRefExprClass, t, false, false), D(d), Loc(l), IsByRef(ByRef),
+    ConstQualAdded(constAdded) {}
 
   // \brief Build an empty reference to a declared variable in a
   // block.

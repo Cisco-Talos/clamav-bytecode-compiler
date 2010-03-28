@@ -5,7 +5,7 @@ class C { C(int a0 = 0); };
 template<>
 C<char>::C(int a0);
 
-struct S { }; // expected-note 3 {{candidate function}}
+struct S { }; // expected-note 3 {{candidate constructor (the implicit copy constructor)}}
 
 template<typename T> void f1(T a, T b = 10) { } // expected-error{{no viable conversion}}
 
@@ -176,4 +176,11 @@ namespace PR5810 {
   void f2() {
     X<float> x; // expected-note{{member function}}
   }
+}
+
+template<typename T> void f4(T, int = 17);
+template<> void f4<int>(int, int);
+
+void f4_test(int i) {
+  f4(i);
 }

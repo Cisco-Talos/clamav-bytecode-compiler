@@ -94,21 +94,6 @@ void TypePrinter::PrintBuiltin(const BuiltinType *T, std::string &S) {
   }
 }
 
-void TypePrinter::PrintFixedWidthInt(const FixedWidthIntType *T, 
-                                     std::string &S) {
-  // FIXME: Once we get bitwidth attribute, write as
-  // "int __attribute__((bitwidth(x)))".
-  std::string prefix = "__clang_fixedwidth";
-  prefix += llvm::utostr_32(T->getWidth());
-  prefix += (char)(T->isSigned() ? 'S' : 'U');
-  if (S.empty()) {
-    S = prefix;
-  } else {
-    // Prefix the basic type, e.g. 'int X'.
-    S = prefix + S;
-  }  
-}
-
 void TypePrinter::PrintComplex(const ComplexType *T, std::string &S) {
   Print(T->getElementType(), S);
   S = "_Complex " + S;
@@ -240,15 +225,24 @@ void TypePrinter::PrintDependentSizedExtVector(
 }
 
 void TypePrinter::PrintVector(const VectorType *T, std::string &S) { 
-  // FIXME: We prefer to print the size directly here, but have no way
-  // to get the size of the type.
-  Print(T->getElementType(), S);
-  std::string V = "__attribute__((__vector_size__(";
-  V += llvm::utostr_32(T->getNumElements()); // convert back to bytes.
-  std::string ET;
-  Print(T->getElementType(), ET);
-  V += " * sizeof(" + ET + ")))) ";
-  S = V + S;
+  if (T->isAltiVec()) {
+    if (T->isPixel())
+      S = "__vector __pixel " + S;
+    else {
+      Print(T->getElementType(), S);
+      S = "__vector " + S;
+    }
+  } else {
+    // FIXME: We prefer to print the size directly here, but have no way
+    // to get the size of the type.
+    Print(T->getElementType(), S);
+    std::string V = "__attribute__((__vector_size__(";
+    V += llvm::utostr_32(T->getNumElements()); // convert back to bytes.
+    std::string ET;
+    Print(T->getElementType(), ET);
+    V += " * sizeof(" + ET + ")))) ";
+    S = V + S;
+  }
 }
 
 void TypePrinter::PrintExtVector(const ExtVectorType *T, std::string &S) { 
@@ -286,6 +280,23 @@ void TypePrinter::PrintFunctionProto(const FunctionProtoType *T,
   
   S += ")";
 
+  switch(T->getCallConv()) {
+  case CC_Default:
+  default: break;
+  case CC_C:
+    S += " __attribute__((cdecl))";
+    break;
+  case CC_X86StdCall:
+    S += " __attribute__((stdcall))";
+    break;
+  case CC_X86FastCall:
+    S += " __attribute__((fastcall))";
+    break;
+  }
+  if (T->getNoReturnAttr())
+    S += " __attribute__((noreturn))";
+
+  
   if (T->hasExceptionSpec()) {
     S += " throw(";
     if (T->hasAnyExceptionSpec())
@@ -302,10 +313,9 @@ void TypePrinter::PrintFunctionProto(const FunctionProtoType *T,
     S += ")";
   }
 
-  if (T->getNoReturnAttr())
-    S += " __attribute__((noreturn))";
-  Print(T->getResultType(), S);
+  AppendTypeQualList(S, T->getTypeQuals());
   
+  Print(T->getResultType(), S);
 }
 
 void TypePrinter::PrintFunctionNoProto(const FunctionNoProtoType *T, 

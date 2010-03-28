@@ -46,6 +46,16 @@ const char *Decl::getDeclKindName() const {
   }
 }
 
+void Decl::setInvalidDecl(bool Invalid) {
+  InvalidDecl = Invalid;
+  if (Invalid) {
+    // Defensive maneuver for ill-formed code: we're likely not to make it to
+    // a point where we set the access specifier, so default it to "public"
+    // to avoid triggering asserts elsewhere in the front end. 
+    setAccess(AS_public);
+  }
+}
+
 const char *DeclContext::getDeclKindName() const {
   switch (DeclKind) {
   default: assert(0 && "Declaration context not in DeclNodes.def!");
@@ -101,6 +111,17 @@ bool Decl::isFunctionOrFunctionTemplate() const {
 
   return isa<FunctionDecl>(this) || isa<FunctionTemplateDecl>(this);
 }
+
+bool Decl::isDefinedOutsideFunctionOrMethod() const {
+  for (const DeclContext *DC = getDeclContext(); 
+       DC && !DC->isTranslationUnit(); 
+       DC = DC->getParent())
+    if (DC->isFunctionOrMethod())
+      return false;
+
+  return true;
+}
+
 
 //===----------------------------------------------------------------------===//
 // PrettyStackTraceDecl Implementation
@@ -182,6 +203,24 @@ TranslationUnitDecl *Decl::getTranslationUnitDecl() {
 ASTContext &Decl::getASTContext() const {
   return getTranslationUnitDecl()->getASTContext();
 }
+
+bool Decl::isUsed() const { 
+  if (Used)
+    return true;
+  
+  // Check for used attribute.
+  if (hasAttr<UsedAttr>())
+    return true;
+  
+  // Check redeclarations for used attribute.
+  for (redecl_iterator I = redecls_begin(), E = redecls_end(); I != E; ++I) {
+    if (I->hasAttr<UsedAttr>() || I->Used)
+      return true;
+  }
+  
+  return false; 
+}
+
 
 unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
   switch (DeclKind) {
@@ -399,10 +438,16 @@ SourceLocation Decl::getBodyRBrace() const {
 
 #ifndef NDEBUG
 void Decl::CheckAccessDeclContext() const {
-  // If the decl is the toplevel translation unit or if we're not in a
-  // record decl context, we don't need to check anything.
+  // Suppress this check if any of the following hold:
+  // 1. this is the translation unit (and thus has no parent)
+  // 2. this is a template parameter (and thus doesn't belong to its context)
+  // 3. this is a ParmVarDecl (which can be in a record context during
+  //    the brief period between its creation and the creation of the
+  //    FunctionDecl)
+  // 4. the context is not a record
   if (isa<TranslationUnitDecl>(this) ||
-      !isa<CXXRecordDecl>(getDeclContext()))
+      !isa<CXXRecordDecl>(getDeclContext()) ||
+      isInvalidDecl())
     return;
 
   assert(Access != AS_none &&
@@ -432,7 +477,10 @@ bool DeclContext::classof(const Decl *D) {
 }
 
 DeclContext::~DeclContext() {
-  delete static_cast<StoredDeclsMap*>(LookupPtr);
+  // FIXME: Currently ~ASTContext will delete the StoredDeclsMaps because
+  // ~DeclContext() is not guaranteed to be called when ASTContext uses
+  // a BumpPtrAllocator.
+  // delete static_cast<StoredDeclsMap*>(LookupPtr);
 }
 
 void DeclContext::DestroyDecls(ASTContext &C) {
@@ -606,7 +654,8 @@ DeclContext::LoadVisibleDeclsFromExternalStorage() const {
   // Load the declaration IDs for all of the names visible in this
   // context.
   assert(!LookupPtr && "Have a lookup map before de-serialization?");
-  StoredDeclsMap *Map = new StoredDeclsMap;
+  StoredDeclsMap *Map =
+    (StoredDeclsMap*) getParentASTContext().CreateStoredDeclsMap();
   LookupPtr = Map;
   for (unsigned I = 0, N = Decls.size(); I != N; ++I) {
     (*Map)[Decls[I].Name].setFromDeclIDs(Decls[I].Declarations);
@@ -814,8 +863,11 @@ void DeclContext::makeDeclVisibleInContextImpl(NamedDecl *D) {
   if (isa<ClassTemplateSpecializationDecl>(D))
     return;
 
-  if (!LookupPtr)
-    LookupPtr = new StoredDeclsMap;
+  ASTContext *C = 0;
+  if (!LookupPtr) {
+    C = &getParentASTContext();
+    LookupPtr = (StoredDeclsMap*) C->CreateStoredDeclsMap();
+  }
 
   // Insert this declaration into the map.
   StoredDeclsMap &Map = *static_cast<StoredDeclsMap*>(LookupPtr);
@@ -828,7 +880,10 @@ void DeclContext::makeDeclVisibleInContextImpl(NamedDecl *D) {
   // If it is possible that this is a redeclaration, check to see if there is
   // already a decl for which declarationReplaces returns true.  If there is
   // one, just replace it and return.
-  if (DeclNameEntries.HandleRedeclaration(getParentASTContext(), D))
+  if (!C)
+    C = &getParentASTContext();
+  
+  if (DeclNameEntries.HandleRedeclaration(*C, D))
     return;
 
   // Put this declaration into the appropriate slot.
@@ -879,4 +934,19 @@ void StoredDeclsList::materializeDecls(ASTContext &Context) {
     break;
   }
   }
+}
+
+//===----------------------------------------------------------------------===//
+// Creation and Destruction of StoredDeclsMaps.                               //
+//===----------------------------------------------------------------------===//
+
+void *ASTContext::CreateStoredDeclsMap() {
+  StoredDeclsMap *M = new StoredDeclsMap();
+  SDMs.push_back(M);
+  return M;
+}
+
+void ASTContext::ReleaseDeclContextMaps() {
+  for (std::vector<void*>::iterator I = SDMs.begin(), E = SDMs.end(); I!=E; ++I)
+    delete (StoredDeclsMap*) *I;
 }

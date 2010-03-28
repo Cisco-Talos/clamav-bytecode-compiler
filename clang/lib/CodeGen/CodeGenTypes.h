@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "CGCall.h"
-#include "CGCXX.h"
+#include "GlobalDecl.h"
 
 namespace llvm {
   class FunctionType;
@@ -35,6 +35,7 @@ namespace llvm {
 namespace clang {
   class ABIInfo;
   class ASTContext;
+  template <typename> class CanQual;
   class CXXConstructorDecl;
   class CXXDestructorDecl;
   class CXXMethodDecl;
@@ -48,6 +49,7 @@ namespace clang {
   class TagDecl;
   class TargetInfo;
   class Type;
+  typedef CanQual<Type> CanQualType;
 
 namespace CodeGen {
   class CodeGenTypes;
@@ -60,21 +62,24 @@ namespace CodeGen {
     /// LLVMType - The LLVMType corresponding to this record layout.
     const llvm::Type *LLVMType;
 
-    /// ContainsMemberPointer - Whether one of the fields in this record layout
-    /// is a member pointer, or a struct that contains a member pointer.
-    bool ContainsMemberPointer;
+    /// ContainsPointerToDataMember - Whether one of the fields in this record 
+    /// layout is a pointer to data member, or a struct that contains pointer to
+    /// data member.
+    bool ContainsPointerToDataMember;
 
   public:
-    CGRecordLayout(const llvm::Type *T, bool ContainsMemberPointer)
-      : LLVMType(T), ContainsMemberPointer(ContainsMemberPointer) { }
+    CGRecordLayout(const llvm::Type *T, bool ContainsPointerToDataMember)
+      : LLVMType(T), ContainsPointerToDataMember(ContainsPointerToDataMember) { }
 
     /// getLLVMType - Return llvm type associated with this record.
     const llvm::Type *getLLVMType() const {
       return LLVMType;
     }
 
-    bool containsMemberPointer() const {
-      return ContainsMemberPointer;
+    /// containsPointerToDataMember - Whether this struct contains pointers to
+    /// data members.
+    bool containsPointerToDataMember() const {
+      return ContainsPointerToDataMember;
     }
   };
 
@@ -85,7 +90,7 @@ class CodeGenTypes {
   const TargetInfo &Target;
   llvm::Module& TheModule;
   const llvm::TargetData& TheTargetData;
-  mutable const ABIInfo* TheABIInfo;
+  const ABIInfo& TheABIInfo;
 
   llvm::SmallVector<std::pair<QualType,
                               llvm::OpaqueType *>, 8>  PointersToResolve;
@@ -140,13 +145,14 @@ private:
   /// interface to convert type T into a llvm::Type.
   const llvm::Type *ConvertNewType(QualType T);
 public:
-  CodeGenTypes(ASTContext &Ctx, llvm::Module &M, const llvm::TargetData &TD);
+  CodeGenTypes(ASTContext &Ctx, llvm::Module &M, const llvm::TargetData &TD,
+               const ABIInfo &Info);
   ~CodeGenTypes();
 
   const llvm::TargetData &getTargetData() const { return TheTargetData; }
   const TargetInfo &getTarget() const { return Target; }
   ASTContext &getContext() const { return Context; }
-  const ABIInfo &getABIInfo() const;
+  const ABIInfo &getABIInfo() const { return TheABIInfo; }
   llvm::LLVMContext &getLLVMContext() { return TheModule.getContext(); }
 
   /// ConvertType - Convert type T into a llvm::Type.
@@ -164,6 +170,8 @@ public:
   const llvm::FunctionType *GetFunctionType(const CGFunctionInfo &Info,
                                             bool IsVariadic);
 
+  const llvm::FunctionType *GetFunctionType(GlobalDecl GD);
+
 
   /// GetFunctionTypeForVtable - Get the LLVM function type for use in a vtable,
   /// given a CXXMethodDecl. If the method to has an incomplete return type, 
@@ -180,12 +188,9 @@ public:
   /// replace the 'opaque' type we previously made for it if applicable.
   void UpdateCompletedType(const TagDecl *TD);
 
-private:
-  const CGFunctionInfo &getFunctionInfo(const FunctionNoProtoType *FTNP);
-  const CGFunctionInfo &getFunctionInfo(const FunctionProtoType *FTP);
-
-public:
   /// getFunctionInfo - Get the function info for the specified function decl.
+  const CGFunctionInfo &getFunctionInfo(GlobalDecl GD);
+  
   const CGFunctionInfo &getFunctionInfo(const FunctionDecl *FD);
   const CGFunctionInfo &getFunctionInfo(const CXXMethodDecl *MD);
   const CGFunctionInfo &getFunctionInfo(const ObjCMethodDecl *MD);
@@ -193,6 +198,14 @@ public:
                                         CXXCtorType Type);
   const CGFunctionInfo &getFunctionInfo(const CXXDestructorDecl *D,
                                         CXXDtorType Type);
+
+  const CGFunctionInfo &getFunctionInfo(const CallArgList &Args,
+                                        const FunctionType *Ty) {
+    return getFunctionInfo(Ty->getResultType(), Args,
+                           Ty->getCallConv(), Ty->getNoReturnAttr());
+  }
+  const CGFunctionInfo &getFunctionInfo(CanQual<FunctionProtoType> Ty);
+  const CGFunctionInfo &getFunctionInfo(CanQual<FunctionNoProtoType> Ty);
 
   // getFunctionInfo - Get the function info for a member function.
   const CGFunctionInfo &getFunctionInfo(const CXXRecordDecl *RD,
@@ -203,13 +216,20 @@ public:
   /// specified, the "C" calling convention will be used.
   const CGFunctionInfo &getFunctionInfo(QualType ResTy,
                                         const CallArgList &Args,
-                                        unsigned CallingConvention = 0);
+                                        CallingConv CC,
+                                        bool NoReturn);
   const CGFunctionInfo &getFunctionInfo(QualType ResTy,
                                         const FunctionArgList &Args,
-                                        unsigned CallingConvention = 0);
-  const CGFunctionInfo &getFunctionInfo(QualType RetTy,
-                                  const llvm::SmallVector<QualType, 16> &ArgTys,
-                                        unsigned CallingConvention = 0);
+                                        CallingConv CC,
+                                        bool NoReturn);
+
+  /// Retrieves the ABI information for the given function signature.
+  /// 
+  /// \param ArgTys - must all actually be canonical as params
+  const CGFunctionInfo &getFunctionInfo(CanQualType RetTy,
+                               const llvm::SmallVectorImpl<CanQualType> &ArgTys,
+                                        CallingConv CC,
+                                        bool NoReturn);
 
 public:  // These are internal details of CGT that shouldn't be used externally.
   /// addFieldInfo - Assign field number to field FD.

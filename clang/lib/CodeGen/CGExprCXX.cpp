@@ -15,14 +15,345 @@
 using namespace clang;
 using namespace CodeGen;
 
-static uint64_t CalculateCookiePadding(ASTContext &Ctx, QualType ElementType) {
+RValue CodeGenFunction::EmitCXXMemberCall(const CXXMethodDecl *MD,
+                                          llvm::Value *Callee,
+                                          ReturnValueSlot ReturnValue,
+                                          llvm::Value *This,
+                                          llvm::Value *VTT,
+                                          CallExpr::const_arg_iterator ArgBeg,
+                                          CallExpr::const_arg_iterator ArgEnd) {
+  assert(MD->isInstance() &&
+         "Trying to emit a member call expr on a static method!");
+
+  const FunctionProtoType *FPT = MD->getType()->getAs<FunctionProtoType>();
+
+  CallArgList Args;
+
+  // Push the this ptr.
+  Args.push_back(std::make_pair(RValue::get(This),
+                                MD->getThisType(getContext())));
+
+  // If there is a VTT parameter, emit it.
+  if (VTT) {
+    QualType T = getContext().getPointerType(getContext().VoidPtrTy);
+    Args.push_back(std::make_pair(RValue::get(VTT), T));
+  }
+  
+  // And the rest of the call args
+  EmitCallArgs(Args, FPT, ArgBeg, ArgEnd);
+
+  QualType ResultType = FPT->getResultType();
+  return EmitCall(CGM.getTypes().getFunctionInfo(ResultType, Args,
+                                                 FPT->getCallConv(),
+                                                 FPT->getNoReturnAttr()), Callee, 
+                  ReturnValue, Args, MD);
+}
+
+/// canDevirtualizeMemberFunctionCalls - Checks whether virtual calls on given
+/// expr can be devirtualized.
+static bool canDevirtualizeMemberFunctionCalls(const Expr *Base) {
+  if (const DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Base)) {
+    if (const VarDecl *VD = dyn_cast<VarDecl>(DRE->getDecl())) {
+      // This is a record decl. We know the type and can devirtualize it.
+      return VD->getType()->isRecordType();
+    }
+    
+    return false;
+  }
+  
+  // We can always devirtualize calls on temporary object expressions.
+  if (isa<CXXConstructExpr>(Base))
+    return true;
+  
+  // And calls on bound temporaries.
+  if (isa<CXXBindTemporaryExpr>(Base))
+    return true;
+  
+  // Check if this is a call expr that returns a record type.
+  if (const CallExpr *CE = dyn_cast<CallExpr>(Base))
+    return CE->getCallReturnType()->isRecordType();
+  
+  // We can't devirtualize the call.
+  return false;
+}
+
+RValue CodeGenFunction::EmitCXXMemberCallExpr(const CXXMemberCallExpr *CE,
+                                              ReturnValueSlot ReturnValue) {
+  if (isa<BinaryOperator>(CE->getCallee()->IgnoreParens())) 
+    return EmitCXXMemberPointerCallExpr(CE, ReturnValue);
+      
+  const MemberExpr *ME = cast<MemberExpr>(CE->getCallee()->IgnoreParens());
+  const CXXMethodDecl *MD = cast<CXXMethodDecl>(ME->getMemberDecl());
+
+  if (MD->isStatic()) {
+    // The method is static, emit it as we would a regular call.
+    llvm::Value *Callee = CGM.GetAddrOfFunction(MD);
+    return EmitCall(getContext().getPointerType(MD->getType()), Callee,
+                    ReturnValue, CE->arg_begin(), CE->arg_end());
+  }
+  
+  const FunctionProtoType *FPT = MD->getType()->getAs<FunctionProtoType>();
+
+  const llvm::Type *Ty =
+    CGM.getTypes().GetFunctionType(CGM.getTypes().getFunctionInfo(MD),
+                                   FPT->isVariadic());
+  llvm::Value *This;
+
+  if (ME->isArrow())
+    This = EmitScalarExpr(ME->getBase());
+  else {
+    LValue BaseLV = EmitLValue(ME->getBase());
+    This = BaseLV.getAddress();
+  }
+
+  if (MD->isCopyAssignment() && MD->isTrivial()) {
+    // We don't like to generate the trivial copy assignment operator when
+    // it isn't necessary; just produce the proper effect here.
+    llvm::Value *RHS = EmitLValue(*CE->arg_begin()).getAddress();
+    EmitAggregateCopy(This, RHS, CE->getType());
+    return RValue::get(This);
+  }
+
+  // C++ [class.virtual]p12:
+  //   Explicit qualification with the scope operator (5.1) suppresses the
+  //   virtual call mechanism.
+  //
+  // We also don't emit a virtual call if the base expression has a record type
+  // because then we know what the type is.
+  llvm::Value *Callee;
+  if (const CXXDestructorDecl *Destructor
+             = dyn_cast<CXXDestructorDecl>(MD)) {
+    if (Destructor->isTrivial())
+      return RValue::get(0);
+    if (MD->isVirtual() && !ME->hasQualifier() && 
+        !canDevirtualizeMemberFunctionCalls(ME->getBase())) {
+      Callee = BuildVirtualCall(Destructor, Dtor_Complete, This, Ty); 
+    } else {
+      Callee = CGM.GetAddrOfFunction(GlobalDecl(Destructor, Dtor_Complete), Ty);
+    }
+  } else if (MD->isVirtual() && !ME->hasQualifier() && 
+             !canDevirtualizeMemberFunctionCalls(ME->getBase())) {
+    Callee = BuildVirtualCall(MD, This, Ty); 
+  } else {
+    Callee = CGM.GetAddrOfFunction(MD, Ty);
+  }
+
+  return EmitCXXMemberCall(MD, Callee, ReturnValue, This, /*VTT=*/0,
+                           CE->arg_begin(), CE->arg_end());
+}
+
+RValue
+CodeGenFunction::EmitCXXMemberPointerCallExpr(const CXXMemberCallExpr *E,
+                                              ReturnValueSlot ReturnValue) {
+  const BinaryOperator *BO =
+      cast<BinaryOperator>(E->getCallee()->IgnoreParens());
+  const Expr *BaseExpr = BO->getLHS();
+  const Expr *MemFnExpr = BO->getRHS();
+  
+  const MemberPointerType *MPT = 
+    MemFnExpr->getType()->getAs<MemberPointerType>();
+  const FunctionProtoType *FPT = 
+    MPT->getPointeeType()->getAs<FunctionProtoType>();
+  const CXXRecordDecl *RD = 
+    cast<CXXRecordDecl>(MPT->getClass()->getAs<RecordType>()->getDecl());
+
+  const llvm::FunctionType *FTy = 
+    CGM.getTypes().GetFunctionType(CGM.getTypes().getFunctionInfo(RD, FPT),
+                                   FPT->isVariadic());
+
+  const llvm::Type *Int8PtrTy = llvm::Type::getInt8PtrTy(VMContext);
+
+  // Get the member function pointer.
+  llvm::Value *MemFnPtr = CreateMemTemp(MemFnExpr->getType(), "mem.fn");
+  EmitAggExpr(MemFnExpr, MemFnPtr, /*VolatileDest=*/false);
+
+  // Emit the 'this' pointer.
+  llvm::Value *This;
+  
+  if (BO->getOpcode() == BinaryOperator::PtrMemI)
+    This = EmitScalarExpr(BaseExpr);
+  else 
+    This = EmitLValue(BaseExpr).getAddress();
+  
+  // Adjust it.
+  llvm::Value *Adj = Builder.CreateStructGEP(MemFnPtr, 1);
+  Adj = Builder.CreateLoad(Adj, "mem.fn.adj");
+  
+  llvm::Value *Ptr = Builder.CreateBitCast(This, Int8PtrTy, "ptr");
+  Ptr = Builder.CreateGEP(Ptr, Adj, "adj");
+  
+  This = Builder.CreateBitCast(Ptr, This->getType(), "this");
+  
+  llvm::Value *FnPtr = Builder.CreateStructGEP(MemFnPtr, 0, "mem.fn.ptr");
+  
+  const llvm::Type *PtrDiffTy = ConvertType(getContext().getPointerDiffType());
+
+  llvm::Value *FnAsInt = Builder.CreateLoad(FnPtr, "fn");
+  
+  // If the LSB in the function pointer is 1, the function pointer points to
+  // a virtual function.
+  llvm::Value *IsVirtual 
+    = Builder.CreateAnd(FnAsInt, llvm::ConstantInt::get(PtrDiffTy, 1),
+                        "and");
+  
+  IsVirtual = Builder.CreateTrunc(IsVirtual,
+                                  llvm::Type::getInt1Ty(VMContext));
+  
+  llvm::BasicBlock *FnVirtual = createBasicBlock("fn.virtual");
+  llvm::BasicBlock *FnNonVirtual = createBasicBlock("fn.nonvirtual");
+  llvm::BasicBlock *FnEnd = createBasicBlock("fn.end");
+  
+  Builder.CreateCondBr(IsVirtual, FnVirtual, FnNonVirtual);
+  EmitBlock(FnVirtual);
+  
+  const llvm::Type *VtableTy = 
+    FTy->getPointerTo()->getPointerTo();
+
+  llvm::Value *Vtable = Builder.CreateBitCast(This, VtableTy->getPointerTo());
+  Vtable = Builder.CreateLoad(Vtable);
+  
+  Vtable = Builder.CreateBitCast(Vtable, Int8PtrTy);
+  llvm::Value *VtableOffset = 
+    Builder.CreateSub(FnAsInt, llvm::ConstantInt::get(PtrDiffTy, 1));
+  
+  Vtable = Builder.CreateGEP(Vtable, VtableOffset, "fn");
+  Vtable = Builder.CreateBitCast(Vtable, VtableTy);
+  
+  llvm::Value *VirtualFn = Builder.CreateLoad(Vtable, "virtualfn");
+  
+  EmitBranch(FnEnd);
+  EmitBlock(FnNonVirtual);
+  
+  // If the function is not virtual, just load the pointer.
+  llvm::Value *NonVirtualFn = Builder.CreateLoad(FnPtr, "fn");
+  NonVirtualFn = Builder.CreateIntToPtr(NonVirtualFn, FTy->getPointerTo());
+  
+  EmitBlock(FnEnd);
+
+  llvm::PHINode *Callee = Builder.CreatePHI(FTy->getPointerTo());
+  Callee->reserveOperandSpace(2);
+  Callee->addIncoming(VirtualFn, FnVirtual);
+  Callee->addIncoming(NonVirtualFn, FnNonVirtual);
+
+  CallArgList Args;
+
+  QualType ThisType = 
+    getContext().getPointerType(getContext().getTagDeclType(RD));
+
+  // Push the this ptr.
+  Args.push_back(std::make_pair(RValue::get(This), ThisType));
+  
+  // And the rest of the call args
+  EmitCallArgs(Args, FPT, E->arg_begin(), E->arg_end());
+  const FunctionType *BO_FPT = BO->getType()->getAs<FunctionProtoType>();
+  return EmitCall(CGM.getTypes().getFunctionInfo(Args, BO_FPT), Callee, 
+                  ReturnValue, Args);
+}
+
+RValue
+CodeGenFunction::EmitCXXOperatorMemberCallExpr(const CXXOperatorCallExpr *E,
+                                               const CXXMethodDecl *MD,
+                                               ReturnValueSlot ReturnValue) {
+  assert(MD->isInstance() &&
+         "Trying to emit a member call expr on a static method!");
+
+  if (MD->isCopyAssignment()) {
+    const CXXRecordDecl *ClassDecl = cast<CXXRecordDecl>(MD->getDeclContext());
+    if (ClassDecl->hasTrivialCopyAssignment()) {
+      assert(!ClassDecl->hasUserDeclaredCopyAssignment() &&
+             "EmitCXXOperatorMemberCallExpr - user declared copy assignment");
+      llvm::Value *This = EmitLValue(E->getArg(0)).getAddress();
+      llvm::Value *Src = EmitLValue(E->getArg(1)).getAddress();
+      QualType Ty = E->getType();
+      EmitAggregateCopy(This, Src, Ty);
+      return RValue::get(This);
+    }
+  }
+
+  const FunctionProtoType *FPT = MD->getType()->getAs<FunctionProtoType>();
+  const llvm::Type *Ty =
+    CGM.getTypes().GetFunctionType(CGM.getTypes().getFunctionInfo(MD),
+                                   FPT->isVariadic());
+
+  llvm::Value *This = EmitLValue(E->getArg(0)).getAddress();
+
+  llvm::Value *Callee;
+  if (MD->isVirtual() && !canDevirtualizeMemberFunctionCalls(E->getArg(0)))
+    Callee = BuildVirtualCall(MD, This, Ty);
+  else
+    Callee = CGM.GetAddrOfFunction(MD, Ty);
+
+  return EmitCXXMemberCall(MD, Callee, ReturnValue, This, /*VTT=*/0,
+                           E->arg_begin() + 1, E->arg_end());
+}
+
+void
+CodeGenFunction::EmitCXXConstructExpr(llvm::Value *Dest,
+                                      const CXXConstructExpr *E) {
+  assert(Dest && "Must have a destination!");
+  const CXXConstructorDecl *CD = E->getConstructor();
+  const ConstantArrayType *Array =
+  getContext().getAsConstantArrayType(E->getType());
+  // For a copy constructor, even if it is trivial, must fall thru so
+  // its argument is code-gen'ed.
+  if (!CD->isCopyConstructor()) {
+    QualType InitType = E->getType();
+    if (Array)
+      InitType = getContext().getBaseElementType(Array);
+    const CXXRecordDecl *RD =
+    cast<CXXRecordDecl>(InitType->getAs<RecordType>()->getDecl());
+    if (RD->hasTrivialConstructor())
+      return;
+  }
+  // Code gen optimization to eliminate copy constructor and return
+  // its first argument instead.
+  if (getContext().getLangOptions().ElideConstructors && E->isElidable()) {
+    const Expr *Arg = E->getArg(0);
+    
+    if (const ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(Arg)) {
+      assert((ICE->getCastKind() == CastExpr::CK_NoOp ||
+              ICE->getCastKind() == CastExpr::CK_ConstructorConversion ||
+              ICE->getCastKind() == CastExpr::CK_UserDefinedConversion) &&
+             "Unknown implicit cast kind in constructor elision");
+      Arg = ICE->getSubExpr();
+    }
+    
+    if (const CXXFunctionalCastExpr *FCE = dyn_cast<CXXFunctionalCastExpr>(Arg))
+      Arg = FCE->getSubExpr();
+    
+    if (const CXXBindTemporaryExpr *BindExpr = 
+        dyn_cast<CXXBindTemporaryExpr>(Arg))
+      Arg = BindExpr->getSubExpr();
+    
+    EmitAggExpr(Arg, Dest, false);
+    return;
+  }
+  if (Array) {
+    QualType BaseElementTy = getContext().getBaseElementType(Array);
+    const llvm::Type *BasePtr = ConvertType(BaseElementTy);
+    BasePtr = llvm::PointerType::getUnqual(BasePtr);
+    llvm::Value *BaseAddrPtr =
+    Builder.CreateBitCast(Dest, BasePtr);
+    
+    EmitCXXAggrConstructorCall(CD, Array, BaseAddrPtr, 
+                               E->arg_begin(), E->arg_end());
+  }
+  else
+    // Call the constructor.
+    EmitCXXConstructorCall(CD, 
+                           E->isBaseInitialization()? Ctor_Base : Ctor_Complete, 
+                           Dest,
+                           E->arg_begin(), E->arg_end());
+}
+
+static CharUnits CalculateCookiePadding(ASTContext &Ctx, QualType ElementType) {
   const RecordType *RT = ElementType->getAs<RecordType>();
   if (!RT)
-    return 0;
+    return CharUnits::Zero();
   
   const CXXRecordDecl *RD = dyn_cast<CXXRecordDecl>(RT->getDecl());
   if (!RD)
-    return 0;
+    return CharUnits::Zero();
   
   // Check if the class has a trivial destructor.
   if (RD->hasTrivialDestructor()) {
@@ -44,25 +375,25 @@ static uint64_t CalculateCookiePadding(ASTContext &Ctx, QualType ElementType) {
     
     // No usual deallocation function, we don't need a cookie.
     if (!UsualDeallocationFunction)
-      return 0;
+      return CharUnits::Zero();
     
     // The usual deallocation function doesn't take a size_t argument, so we
     // don't need a cookie.
     if (UsualDeallocationFunction->getNumParams() == 1)
-      return 0;
+      return CharUnits::Zero();
         
     assert(UsualDeallocationFunction->getNumParams() == 2 && 
            "Unexpected deallocation function type!");
   }  
   
   // Padding is the maximum of sizeof(size_t) and alignof(ElementType)
-  return std::max(Ctx.getTypeSize(Ctx.getSizeType()),
-                  static_cast<uint64_t>(Ctx.getTypeAlign(ElementType))) / 8;
+  return std::max(Ctx.getTypeSizeInChars(Ctx.getSizeType()),
+                  Ctx.getTypeAlignInChars(ElementType));
 }
 
-static uint64_t CalculateCookiePadding(ASTContext &Ctx, const CXXNewExpr *E) {
+static CharUnits CalculateCookiePadding(ASTContext &Ctx, const CXXNewExpr *E) {
   if (!E->isArray())
-    return 0;
+    return CharUnits::Zero();
 
   // No cookie is required if the new operator being used is 
   // ::operator new[](size_t, void*).
@@ -73,7 +404,7 @@ static uint64_t CalculateCookiePadding(ASTContext &Ctx, const CXXNewExpr *E) {
         Ctx.getCanonicalType(OperatorNew->getParamDecl(1)->getType());
       
       if (ParamType == Ctx.VoidPtrTy)
-        return 0;
+        return CharUnits::Zero();
     }
   }
       
@@ -84,25 +415,25 @@ static llvm::Value *EmitCXXNewAllocSize(CodeGenFunction &CGF,
                                         const CXXNewExpr *E,
                                         llvm::Value *& NumElements) {
   QualType Type = E->getAllocatedType();
-  uint64_t TypeSizeInBytes = CGF.getContext().getTypeSize(Type) / 8;
+  CharUnits TypeSize = CGF.getContext().getTypeSizeInChars(Type);
   const llvm::Type *SizeTy = CGF.ConvertType(CGF.getContext().getSizeType());
   
   if (!E->isArray())
-    return llvm::ConstantInt::get(SizeTy, TypeSizeInBytes);
+    return llvm::ConstantInt::get(SizeTy, TypeSize.getQuantity());
 
-  uint64_t CookiePadding = CalculateCookiePadding(CGF.getContext(), E);
+  CharUnits CookiePadding = CalculateCookiePadding(CGF.getContext(), E);
   
   Expr::EvalResult Result;
   if (E->getArraySize()->Evaluate(Result, CGF.getContext()) &&
       !Result.HasSideEffects && Result.Val.isInt()) {
 
-    uint64_t AllocSize = 
-      Result.Val.getInt().getZExtValue() * TypeSizeInBytes + CookiePadding;
+    CharUnits AllocSize = 
+      Result.Val.getInt().getZExtValue() * TypeSize + CookiePadding;
     
     NumElements = 
       llvm::ConstantInt::get(SizeTy, Result.Val.getInt().getZExtValue());
     
-    return llvm::ConstantInt::get(SizeTy, AllocSize);
+    return llvm::ConstantInt::get(SizeTy, AllocSize.getQuantity());
   }
   
   // Emit the array size expression.
@@ -111,11 +442,13 @@ static llvm::Value *EmitCXXNewAllocSize(CodeGenFunction &CGF,
   // Multiply with the type size.
   llvm::Value *V = 
     CGF.Builder.CreateMul(NumElements, 
-                          llvm::ConstantInt::get(SizeTy, TypeSizeInBytes));
+                          llvm::ConstantInt::get(SizeTy, 
+                                                 TypeSize.getQuantity()));
 
   // And add the cookie padding if necessary.
-  if (CookiePadding)
-    V = CGF.Builder.CreateAdd(V, llvm::ConstantInt::get(SizeTy, CookiePadding));
+  if (!CookiePadding.isZero())
+    V = CGF.Builder.CreateAdd(V, 
+        llvm::ConstantInt::get(SizeTy, CookiePadding.getQuantity()));
   
   return V;
 }
@@ -210,7 +543,7 @@ llvm::Value *CodeGenFunction::EmitCXXNewExpr(const CXXNewExpr *E) {
 
   // Emit the call to new.
   RValue RV =
-    EmitCall(CGM.getTypes().getFunctionInfo(NewFTy->getResultType(), NewArgs),
+    EmitCall(CGM.getTypes().getFunctionInfo(NewArgs, NewFTy),
              CGM.GetAddrOfFunction(NewFD), ReturnValueSlot(), NewArgs, NewFD);
 
   // If an allocation function is declared with an empty exception specification
@@ -239,20 +572,22 @@ llvm::Value *CodeGenFunction::EmitCXXNewExpr(const CXXNewExpr *E) {
     Builder.CreateCondBr(IsNull, NewNull, NewNotNull);
     EmitBlock(NewNotNull);
   }
-
-  if (uint64_t CookiePadding = CalculateCookiePadding(getContext(), E)) {
-    uint64_t CookieOffset = 
-      CookiePadding - getContext().getTypeSize(SizeTy) / 8;
+  
+  CharUnits CookiePadding = CalculateCookiePadding(getContext(), E);
+  if (!CookiePadding.isZero()) {
+    CharUnits CookieOffset = 
+      CookiePadding - getContext().getTypeSizeInChars(SizeTy);
     
     llvm::Value *NumElementsPtr = 
-      Builder.CreateConstInBoundsGEP1_64(NewPtr, CookieOffset);
+      Builder.CreateConstInBoundsGEP1_64(NewPtr, CookieOffset.getQuantity());
     
     NumElementsPtr = Builder.CreateBitCast(NumElementsPtr, 
                                            ConvertType(SizeTy)->getPointerTo());
     Builder.CreateStore(NumElements, NumElementsPtr);
 
     // Now add the padding to the new ptr.
-    NewPtr = Builder.CreateConstInBoundsGEP1_64(NewPtr, CookiePadding);
+    NewPtr = Builder.CreateConstInBoundsGEP1_64(NewPtr, 
+                                                CookiePadding.getQuantity());
   }
   
   NewPtr = Builder.CreateBitCast(NewPtr, ConvertType(E->getType()));
@@ -283,23 +618,24 @@ GetAllocatedObjectPtrAndNumElements(CodeGenFunction &CGF,
   QualType SizeTy = CGF.getContext().getSizeType();
   const llvm::Type *SizeLTy = CGF.ConvertType(SizeTy);
   
-  uint64_t DeleteTypeAlign = CGF.getContext().getTypeAlign(DeleteTy);
-  uint64_t CookiePadding = std::max(CGF.getContext().getTypeSize(SizeTy),
-                                    DeleteTypeAlign) / 8;
-  assert(CookiePadding && "CookiePadding should not be 0.");
+  CharUnits DeleteTypeAlign = CGF.getContext().getTypeAlignInChars(DeleteTy);
+  CharUnits CookiePadding = 
+    std::max(CGF.getContext().getTypeSizeInChars(SizeTy),
+             DeleteTypeAlign);
+  assert(!CookiePadding.isZero() && "CookiePadding should not be 0.");
 
   const llvm::Type *Int8PtrTy = llvm::Type::getInt8PtrTy(CGF.getLLVMContext());
-  uint64_t CookieOffset = 
-    CookiePadding - CGF.getContext().getTypeSize(SizeTy) / 8;
+  CharUnits CookieOffset = 
+    CookiePadding - CGF.getContext().getTypeSizeInChars(SizeTy);
 
   llvm::Value *AllocatedObjectPtr = CGF.Builder.CreateBitCast(Ptr, Int8PtrTy);
   AllocatedObjectPtr = 
     CGF.Builder.CreateConstInBoundsGEP1_64(AllocatedObjectPtr,
-                                           -CookiePadding);
+                                           -CookiePadding.getQuantity());
 
   llvm::Value *NumElementsPtr =
     CGF.Builder.CreateConstInBoundsGEP1_64(AllocatedObjectPtr, 
-                                           CookieOffset);
+                                           CookieOffset.getQuantity());
   NumElementsPtr = 
     CGF.Builder.CreateBitCast(NumElementsPtr, SizeLTy->getPointerTo());
   
@@ -323,13 +659,13 @@ void CodeGenFunction::EmitDeleteCall(const FunctionDecl *DeleteFD,
   QualType SizeTy;
   if (DeleteFTy->getNumArgs() == 2) {
     SizeTy = DeleteFTy->getArgType(1);
-    uint64_t DeleteTypeSize = getContext().getTypeSize(DeleteTy) / 8;
-    Size = llvm::ConstantInt::get(ConvertType(SizeTy), DeleteTypeSize);
+    CharUnits DeleteTypeSize = getContext().getTypeSizeInChars(DeleteTy);
+    Size = llvm::ConstantInt::get(ConvertType(SizeTy), 
+                                  DeleteTypeSize.getQuantity());
   }
   
   if (DeleteFD->getOverloadedOperator() == OO_Array_Delete &&
-      
-      CalculateCookiePadding(getContext(), DeleteTy)) {
+      !CalculateCookiePadding(getContext(), DeleteTy).isZero()) {
     // We need to get the number of elements in the array from the cookie.
     llvm::Value *AllocatedObjectPtr;
     llvm::Value *NumElements;
@@ -351,8 +687,7 @@ void CodeGenFunction::EmitDeleteCall(const FunctionDecl *DeleteFD,
     DeleteArgs.push_back(std::make_pair(RValue::get(Size), SizeTy));
 
   // Emit the call to delete.
-  EmitCall(CGM.getTypes().getFunctionInfo(DeleteFTy->getResultType(),
-                                          DeleteArgs),
+  EmitCall(CGM.getTypes().getFunctionInfo(DeleteArgs, DeleteFTy),
            CGM.GetAddrOfFunction(DeleteFD), ReturnValueSlot(), 
            DeleteArgs, DeleteFD);
 }
@@ -405,7 +740,8 @@ void CodeGenFunction::EmitCXXDeleteExpr(const CXXDeleteExpr *E) {
                                            /*isVariadic=*/false);
           
           llvm::Value *Callee = BuildVirtualCall(Dtor, Dtor_Deleting, Ptr, Ty);
-          EmitCXXMemberCall(Dtor, Callee, ReturnValueSlot(), Ptr, 0, 0);
+          EmitCXXMemberCall(Dtor, Callee, ReturnValueSlot(), Ptr, /*VTT=*/0,
+                            0, 0);
 
           // The dtor took care of deleting the object.
           ShouldCallDelete = false;

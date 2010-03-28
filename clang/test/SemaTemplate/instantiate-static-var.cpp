@@ -30,7 +30,7 @@ T Z<T>::value; // expected-error{{no matching constructor}}
 struct DefCon {};
 
 struct NoDefCon { 
-  NoDefCon(const NoDefCon&); // expected-note{{candidate function}}
+  NoDefCon(const NoDefCon&); // expected-note{{candidate constructor}}
 };
 
 void test() {
@@ -92,3 +92,26 @@ struct SizeOf {
 void MyTest3() {
    Y3().Foo(X3<SizeOf<char>::value>());
 }
+
+namespace PR6449 {
+  template<typename T>    
+  struct X0  {
+    static const bool var = false;
+  };
+
+  template<typename T>
+  const bool X0<T>::var;
+
+  template<typename T>
+  struct X1 : public X0<T> {
+    static const bool var = false;
+  };
+
+  template<typename T>      
+  const bool X1<T>::var;
+
+  template class X0<char>;
+  template class X1<char>;
+
+}
+

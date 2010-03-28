@@ -20,6 +20,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "clang/Basic/TargetInfo.h"
+#include "clang/AST/CharUnits.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/ExprObjC.h"
@@ -50,15 +51,14 @@ class CodeGenModule;
 class BlockBase {
 public:
     enum {
-        BLOCK_NEEDS_FREE =        (1 << 24),
         BLOCK_HAS_COPY_DISPOSE =  (1 << 25),
         BLOCK_HAS_CXX_OBJ =       (1 << 26),
-        BLOCK_IS_GC =             (1 << 27),
         BLOCK_IS_GLOBAL =         (1 << 28),
-        BLOCK_HAS_DESCRIPTOR =    (1 << 29),
-        BLOCK_HAS_OBJC_TYPE  =    (1 << 30)
+        BLOCK_USE_STRET =         (1 << 29),
+        BLOCK_HAS_SIGNATURE  =    (1 << 30)
     };
 };
+
 
 class BlockModule : public BlockBase {
   ASTContext &Context;
@@ -79,7 +79,6 @@ public:
   const llvm::Type *getBlockDescriptorType();
 
   const llvm::Type *getGenericBlockLiteralType();
-  const llvm::Type *getGenericExtendedBlockLiteralType();
 
   llvm::Constant *GetAddrOfGlobalBlock(const BlockExpr *BE, const char *);
 
@@ -93,7 +92,7 @@ public:
 
   const llvm::Type *BlockDescriptorType;
   const llvm::Type *GenericBlockLiteralType;
-  const llvm::Type *GenericExtendedBlockLiteralType;
+
   struct {
     int GlobalUniqueCount;
   } Block;
@@ -110,7 +109,7 @@ public:
     : Context(C), TheModule(M), TheTargetData(TD), Types(T),
       CGM(CodeGen), VMContext(M.getContext()),
       NSConcreteGlobalBlock(0), NSConcreteStackBlock(0), BlockDescriptorType(0),
-      GenericBlockLiteralType(0), GenericExtendedBlockLiteralType(0),
+      GenericBlockLiteralType(0),
       BlockObjectAssign(0), BlockObjectDispose(0) {
     Block.GlobalUniqueCount = 0;
     PtrToInt8Ty = llvm::Type::getInt8PtrTy(M.getContext());
@@ -175,13 +174,14 @@ public:
 
   /// BlockOffset - The offset in bytes for the next allocation of an
   /// imported block variable.
-  uint64_t BlockOffset;
-  /// BlockAlign - Maximal alignment needed for the Block expressed in bytes.
-  uint64_t BlockAlign;
+  CharUnits BlockOffset;
+  /// BlockAlign - Maximal alignment needed for the Block expressed in 
+  /// characters.
+  CharUnits BlockAlign;
 
   /// getBlockOffset - Allocate an offset for the ValueDecl from a
   /// BlockDeclRefExpr in a block literal (BlockExpr).
-  uint64_t getBlockOffset(const BlockDeclRefExpr *E);
+  CharUnits getBlockOffset(const BlockDeclRefExpr *E);
 
   /// BlockHasCopyDispose - True iff the block uses copy/dispose.
   bool BlockHasCopyDispose;
@@ -191,7 +191,7 @@ public:
   llvm::SmallVector<const Expr *, 8> BlockDeclRefDecls;
 
   /// BlockDecls - Offsets for all Decls in BlockDeclRefExprs.
-  std::map<const Decl*, uint64_t> BlockDecls;
+  std::map<const Decl*, CharUnits> BlockDecls;
 
   ImplicitParamDecl *BlockStructDecl;
   ImplicitParamDecl *getBlockStructDecl() { return BlockStructDecl; }

@@ -22,6 +22,7 @@
 #include "clang/Parse/Parser.h"
 #include "clang/Parse/DeclSpec.h"
 #include "clang/Parse/Scope.h"
+#include "clang/Parse/Template.h"
 #include "clang/Basic/PrettyStackTrace.h"
 #include "RAIIObjectsForParser.h"
 #include "llvm/ADT/SmallVector.h"
@@ -200,11 +201,6 @@ static prec::Level getBinOpPrecedence(tok::TokenKind Kind,
 ///         expression ',' assignment-expression
 ///
 Parser::OwningExprResult Parser::ParseExpression() {
-  if (Tok.is(tok::code_completion)) {
-    Actions.CodeCompleteOrdinaryName(CurScope);
-    ConsumeToken();
-  }
-
   OwningExprResult LHS(ParseAssignmentExpression());
   if (LHS.isInvalid()) return move(LHS);
 
@@ -248,6 +244,11 @@ Parser::ParseExpressionWithLeadingExtension(SourceLocation ExtLoc) {
 /// ParseAssignmentExpression - Parse an expr that doesn't include commas.
 ///
 Parser::OwningExprResult Parser::ParseAssignmentExpression() {
+  if (Tok.is(tok::code_completion)) {
+    Actions.CodeCompleteOrdinaryName(CurScope, Action::CCC_Expression);
+    ConsumeToken();
+  }
+
   if (Tok.is(tok::kw_throw))
     return ParseThrowExpression();
 
@@ -616,9 +617,19 @@ Parser::OwningExprResult Parser::ParseCastExpression(bool isUnaryExpression,
     // Turn a potentially qualified name into a annot_typename or
     // annot_cxxscope if it would be valid.  This handles things like x::y, etc.
     if (getLang().CPlusPlus) {
-      // If TryAnnotateTypeOrScopeToken annotates the token, tail recurse.
-      if (TryAnnotateTypeOrScopeToken())
-        return ParseCastExpression(isUnaryExpression, isAddressOfOperand);
+      // Avoid the unnecessary parse-time lookup in the common case
+      // where the syntax forbids a type.
+      const Token &Next = NextToken();
+      if (Next.is(tok::coloncolon) ||
+          (!ColonIsSacred && Next.is(tok::colon)) ||
+          Next.is(tok::less) ||
+          Next.is(tok::l_paren)) {
+        // If TryAnnotateTypeOrScopeToken annotates the token, tail recurse.
+        if (TryAnnotateTypeOrScopeToken())
+          return ExprError();
+        if (!Tok.is(tok::identifier))
+          return ParseCastExpression(isUnaryExpression, isAddressOfOperand);
+      }
     }
 
     // Consume the identifier so that we can see if it is followed by a '(' or
@@ -772,6 +783,7 @@ Parser::OwningExprResult Parser::ParseCastExpression(bool isUnaryExpression,
   case tok::kw_void:
   case tok::kw_typename:
   case tok::kw_typeof:
+  case tok::kw___vector:
   case tok::annot_typename: {
     if (!getLang().CPlusPlus) {
       Diag(Tok, diag::err_expected_expression);
@@ -780,7 +792,7 @@ Parser::OwningExprResult Parser::ParseCastExpression(bool isUnaryExpression,
 
     if (SavedKind == tok::kw_typename) {
       // postfix-expression: typename-specifier '(' expression-list[opt] ')'
-      if (!TryAnnotateTypeOrScopeToken())
+      if (TryAnnotateTypeOrScopeToken())
         return ExprError();
     }
 
@@ -797,9 +809,44 @@ Parser::OwningExprResult Parser::ParseCastExpression(bool isUnaryExpression,
     return ParsePostfixExpressionSuffix(move(Res));
   }
 
-  case tok::annot_cxxscope: // [C++] id-expression: qualified-id
+  case tok::annot_cxxscope: { // [C++] id-expression: qualified-id
+    Token Next = NextToken();
+    if (Next.is(tok::annot_template_id)) {
+      TemplateIdAnnotation *TemplateId
+        = static_cast<TemplateIdAnnotation *>(Next.getAnnotationValue());
+      if (TemplateId->Kind == TNK_Type_template) {
+        // We have a qualified template-id that we know refers to a
+        // type, translate it into a type and continue parsing as a
+        // cast expression.
+        CXXScopeSpec SS;
+        ParseOptionalCXXScopeSpecifier(SS, /*ObjectType=*/0, false);
+        AnnotateTemplateIdTokenAsType(&SS);
+        return ParseCastExpression(isUnaryExpression, isAddressOfOperand,
+                                   NotCastExpr, TypeOfCast);
+      }
+    }
+
+    // Parse as an id-expression.
+    Res = ParseCXXIdExpression(isAddressOfOperand);
+    return ParsePostfixExpressionSuffix(move(Res));
+  }
+
+  case tok::annot_template_id: { // [C++]          template-id
+    TemplateIdAnnotation *TemplateId
+      = static_cast<TemplateIdAnnotation *>(Tok.getAnnotationValue());
+    if (TemplateId->Kind == TNK_Type_template) {
+      // We have a template-id that we know refers to a type,
+      // translate it into a type and continue parsing as a cast
+      // expression.
+      AnnotateTemplateIdTokenAsType();
+      return ParseCastExpression(isUnaryExpression, isAddressOfOperand,
+                                 NotCastExpr, TypeOfCast);
+    }
+
+    // Fall through to treat the template-id as an id-expression.
+  }
+
   case tok::kw_operator: // [C++] id-expression: operator/conversion-function-id
-  case tok::annot_template_id: // [C++]          template-id
     Res = ParseCXXIdExpression(isAddressOfOperand);
     return ParsePostfixExpressionSuffix(move(Res));
 
@@ -807,6 +854,8 @@ Parser::OwningExprResult Parser::ParseCastExpression(bool isUnaryExpression,
     // ::foo::bar -> global qualified name etc.   If TryAnnotateTypeOrScopeToken
     // annotates the token, tail recurse.
     if (TryAnnotateTypeOrScopeToken())
+      return ExprError();
+    if (!Tok.is(tok::coloncolon))
       return ParseCastExpression(isUnaryExpression, isAddressOfOperand);
 
     // ::new -> [C++] new-expression
@@ -951,12 +1000,16 @@ Parser::ParsePostfixExpressionSuffix(OwningExprResult LHS) {
 
       CXXScopeSpec SS;
       Action::TypeTy *ObjectType = 0;
+      bool MayBePseudoDestructor = false;
       if (getLang().CPlusPlus && !LHS.isInvalid()) {
         LHS = Actions.ActOnStartCXXMemberReference(CurScope, move(LHS),
-                                                   OpLoc, OpKind, ObjectType);
+                                                   OpLoc, OpKind, ObjectType,
+                                                   MayBePseudoDestructor);
         if (LHS.isInvalid())
           break;
-        ParseOptionalCXXScopeSpecifier(SS, ObjectType, false);
+
+        ParseOptionalCXXScopeSpecifier(SS, ObjectType, false,
+                                       &MayBePseudoDestructor);
       }
 
       if (Tok.is(tok::code_completion)) {
@@ -967,6 +1020,17 @@ Parser::ParsePostfixExpressionSuffix(OwningExprResult LHS) {
         ConsumeToken();
       }
       
+      if (MayBePseudoDestructor) {
+        LHS = ParseCXXPseudoDestructor(move(LHS), OpLoc, OpKind, SS, 
+                                       ObjectType);
+        break;
+      }
+
+      // Either the action has told is that this cannot be a
+      // pseudo-destructor expression (based on the type of base
+      // expression), or we didn't see a '~' in the right place. We
+      // can still parse a destructor name here, but in that case it
+      // names a real destructor.
       UnqualifiedId Name;
       if (ParseUnqualifiedId(SS, 
                              /*EnteringContext=*/false, 
@@ -977,10 +1041,9 @@ Parser::ParsePostfixExpressionSuffix(OwningExprResult LHS) {
         return ExprError();
       
       if (!LHS.isInvalid())
-        LHS = Actions.ActOnMemberAccessExpr(CurScope, move(LHS), OpLoc, OpKind,
-                                            SS, Name, ObjCImpDecl,
+        LHS = Actions.ActOnMemberAccessExpr(CurScope, move(LHS), OpLoc, 
+                                            OpKind, SS, Name, ObjCImpDecl,
                                             Tok.is(tok::l_paren));
-      
       break;
     }
     case tok::plusplus:    // postfix-expression: postfix-expression '++'

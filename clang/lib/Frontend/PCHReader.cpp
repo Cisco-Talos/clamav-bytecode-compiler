@@ -72,12 +72,14 @@ PCHValidator::ReadLanguageOptions(const LangOptions &LangOpts) {
   PARSE_LANGOPT_IMPORTANT(ObjC1, diag::warn_pch_objective_c);
   PARSE_LANGOPT_IMPORTANT(ObjC2, diag::warn_pch_objective_c2);
   PARSE_LANGOPT_IMPORTANT(ObjCNonFragileABI, diag::warn_pch_nonfragile_abi);
+  PARSE_LANGOPT_IMPORTANT(ObjCNonFragileABI2, diag::warn_pch_nonfragile_abi2);
   PARSE_LANGOPT_BENIGN(PascalStrings);
   PARSE_LANGOPT_BENIGN(WritableStrings);
   PARSE_LANGOPT_IMPORTANT(LaxVectorConversions,
                           diag::warn_pch_lax_vector_conversions);
   PARSE_LANGOPT_IMPORTANT(AltiVec, diag::warn_pch_altivec);
   PARSE_LANGOPT_IMPORTANT(Exceptions, diag::warn_pch_exceptions);
+  PARSE_LANGOPT_IMPORTANT(SjLjExceptions, diag::warn_pch_sjlj_exceptions);
   PARSE_LANGOPT_IMPORTANT(NeXTRuntime, diag::warn_pch_objc_runtime);
   PARSE_LANGOPT_IMPORTANT(Freestanding, diag::warn_pch_freestanding);
   PARSE_LANGOPT_IMPORTANT(NoBuiltin, diag::warn_pch_builtins);
@@ -118,7 +120,7 @@ PCHValidator::ReadLanguageOptions(const LangOptions &LangOpts) {
   PARSE_LANGOPT_IMPORTANT(OpenCL, diag::warn_pch_opencl);
   PARSE_LANGOPT_BENIGN(CatchUndefined);
   PARSE_LANGOPT_IMPORTANT(ElideConstructors, diag::warn_pch_elide_constructors);
-#undef PARSE_LANGOPT_IRRELEVANT
+#undef PARSE_LANGOPT_IMPORTANT
 #undef PARSE_LANGOPT_BENIGN
 
   return false;
@@ -434,7 +436,9 @@ public:
         continue;
       }
 
-      Prev->Next = new ObjCMethodList(Method, 0);
+      ObjCMethodList *Mem =
+        Reader.getSema()->BumpAlloc.Allocate<ObjCMethodList>();
+      Prev->Next = new (Mem) ObjCMethodList(Method, 0);
       Prev = Prev->Next;
     }
 
@@ -450,7 +454,9 @@ public:
         continue;
       }
 
-      Prev->Next = new ObjCMethodList(Method, 0);
+      ObjCMethodList *Mem =
+        Reader.getSema()->BumpAlloc.Allocate<ObjCMethodList>();
+      Prev->Next = new (Mem) ObjCMethodList(Method, 0);
       Prev = Prev->Next;
     }
 
@@ -1079,6 +1085,61 @@ void PCHReader::ReadMacroRecord(uint64_t Offset) {
   }
 }
 
+void PCHReader::ReadDefinedMacros() {
+  // If there was no preprocessor block, do nothing.
+  if (!MacroCursor.getBitStreamReader())
+    return;
+
+  llvm::BitstreamCursor Cursor = MacroCursor;
+  if (Cursor.EnterSubBlock(pch::PREPROCESSOR_BLOCK_ID)) {
+    Error("malformed preprocessor block record in PCH file");
+    return;
+  }
+
+  RecordData Record;
+  while (true) {
+    unsigned Code = Cursor.ReadCode();
+    if (Code == llvm::bitc::END_BLOCK) {
+      if (Cursor.ReadBlockEnd())
+        Error("error at end of preprocessor block in PCH file");
+      return;
+    }
+
+    if (Code == llvm::bitc::ENTER_SUBBLOCK) {
+      // No known subblocks, always skip them.
+      Cursor.ReadSubBlockID();
+      if (Cursor.SkipBlock()) {
+        Error("malformed block record in PCH file");
+        return;
+      }
+      continue;
+    }
+
+    if (Code == llvm::bitc::DEFINE_ABBREV) {
+      Cursor.ReadAbbrevRecord();
+      continue;
+    }
+
+    // Read a record.
+    const char *BlobStart;
+    unsigned BlobLen;
+    Record.clear();
+    switch (Cursor.ReadRecord(Code, Record, &BlobStart, &BlobLen)) {
+    default:  // Default behavior: ignore.
+      break;
+
+    case pch::PP_MACRO_OBJECT_LIKE:
+    case pch::PP_MACRO_FUNCTION_LIKE:
+        DecodeIdentifierInfo(Record[0]);
+      break;
+
+    case pch::PP_TOKEN:
+      // Ignore tokens.
+      break;
+    }
+  }
+}
+
 /// \brief If we are loading a relocatable PCH file, and the filename is
 /// not an absolute path, add the system root to the beginning of the file
 /// name.
@@ -1140,6 +1201,10 @@ PCHReader::ReadPCHBlock() {
         break;
 
       case pch::PREPROCESSOR_BLOCK_ID:
+        MacroCursor = Stream;
+        if (PP)
+          PP->setExternalSource(this);
+
         if (Stream.SkipBlock()) {
           Error("malformed block record in PCH file");
           return Failure;
@@ -1267,6 +1332,14 @@ PCHReader::ReadPCHBlock() {
       TentativeDefinitions.swap(Record);
       break;
 
+    case pch::UNUSED_STATIC_FUNCS:
+      if (!UnusedStaticFuncs.empty()) {
+        Error("duplicate UNUSED_STATIC_FUNCS record in PCH file");
+        return Failure;
+      }
+      UnusedStaticFuncs.swap(Record);
+      break;
+
     case pch::LOCALLY_SCOPED_EXTERNAL_DECLS:
       if (!LocallyScopedExternalDecls.empty()) {
         Error("duplicate LOCALLY_SCOPED_EXTERNAL_DECLS record in PCH file");
@@ -1312,7 +1385,7 @@ PCHReader::ReadPCHBlock() {
       break;
 
     case pch::STAT_CACHE: {
-      PCHStatCache *MyStatCache = 
+      PCHStatCache *MyStatCache =
         new PCHStatCache((const unsigned char *)BlobStart + Record[0],
                          (const unsigned char *)BlobStart,
                          NumStatHits, NumStatMisses);
@@ -1320,7 +1393,7 @@ PCHReader::ReadPCHBlock() {
       StatCache = MyStatCache;
       break;
     }
-        
+
     case pch::EXT_VECTOR_DECLS:
       if (!ExtVectorDecls.empty()) {
         Error("duplicate EXT_VECTOR_DECLS record in PCH file");
@@ -1339,18 +1412,11 @@ PCHReader::ReadPCHBlock() {
       Comments = (SourceRange *)BlobStart;
       NumComments = BlobLen / sizeof(SourceRange);
       break;
-        
-    case pch::SVN_BRANCH_REVISION: {
-      unsigned CurRevision = getClangSubversionRevision();
-      if (Record[0] && CurRevision && Record[0] != CurRevision) {
-        Diag(Record[0] < CurRevision? diag::warn_pch_version_too_old
-                                    : diag::warn_pch_version_too_new);
-        return IgnorePCH;
-      }
-      
-      const char *CurBranch = getClangSubversionPath();
-      if (strncmp(CurBranch, BlobStart, BlobLen)) {
-        std::string PCHBranch(BlobStart, BlobLen);
+
+    case pch::VERSION_CONTROL_BRANCH_REVISION: {
+      const std::string &CurBranch = getClangFullRepositoryVersion();
+      llvm::StringRef PCHBranch(BlobStart, BlobLen);
+      if (llvm::StringRef(CurBranch) != PCHBranch) {
         Diag(diag::warn_pch_different_branch) << PCHBranch << CurBranch;
         return IgnorePCH;
       }
@@ -1494,6 +1560,7 @@ void PCHReader::InitializeContext(ASTContext &Ctx) {
   assert(PP && "Forgot to set Preprocessor ?");
   PP->getIdentifierTable().setExternalIdentifierLookup(this);
   PP->getHeaderSearchInfo().SetExternalLookup(this);
+  PP->setExternalSource(this);
 
   // Load the translation unit declaration
   ReadDeclRecord(DeclOffsets[0], 0);
@@ -1687,11 +1754,13 @@ bool PCHReader::ParseLanguageOptions(
     PARSE_LANGOPT(ObjC1);
     PARSE_LANGOPT(ObjC2);
     PARSE_LANGOPT(ObjCNonFragileABI);
+    PARSE_LANGOPT(ObjCNonFragileABI2);
     PARSE_LANGOPT(PascalStrings);
     PARSE_LANGOPT(WritableStrings);
     PARSE_LANGOPT(LaxVectorConversions);
     PARSE_LANGOPT(AltiVec);
     PARSE_LANGOPT(Exceptions);
+    PARSE_LANGOPT(SjLjExceptions);
     PARSE_LANGOPT(NeXTRuntime);
     PARSE_LANGOPT(Freestanding);
     PARSE_LANGOPT(NoBuiltin);
@@ -1761,11 +1830,6 @@ QualType PCHReader::ReadTypeRecord(uint64_t Offset) {
     return Context->getQualifiedType(Base, Quals);
   }
 
-  case pch::TYPE_FIXED_WIDTH_INT: {
-    assert(Record.size() == 2 && "Incorrect encoding of fixed-width int type");
-    return Context->getFixedWidthIntType(Record[0], Record[1]);
-  }
-
   case pch::TYPE_COMPLEX: {
     assert(Record.size() == 1 && "Incorrect encoding of complex type");
     QualType ElemType = GetType(Record[0]);
@@ -1832,18 +1896,20 @@ QualType PCHReader::ReadTypeRecord(uint64_t Offset) {
   }
 
   case pch::TYPE_VECTOR: {
-    if (Record.size() != 2) {
+    if (Record.size() != 4) {
       Error("incorrect encoding of vector type in PCH file");
       return QualType();
     }
 
     QualType ElementType = GetType(Record[0]);
     unsigned NumElements = Record[1];
-    return Context->getVectorType(ElementType, NumElements);
+    bool AltiVec = Record[2];
+    bool Pixel = Record[3];
+    return Context->getVectorType(ElementType, NumElements, AltiVec, Pixel);
   }
 
   case pch::TYPE_EXT_VECTOR: {
-    if (Record.size() != 2) {
+    if (Record.size() != 4) {
       Error("incorrect encoding of extended vector type in PCH file");
       return QualType();
     }
@@ -1854,18 +1920,20 @@ QualType PCHReader::ReadTypeRecord(uint64_t Offset) {
   }
 
   case pch::TYPE_FUNCTION_NO_PROTO: {
-    if (Record.size() != 2) {
+    if (Record.size() != 3) {
       Error("incorrect encoding of no-proto function type");
       return QualType();
     }
     QualType ResultType = GetType(Record[0]);
-    return Context->getFunctionNoProtoType(ResultType, Record[1]);
+    return Context->getFunctionNoProtoType(ResultType, Record[1],
+                                           (CallingConv)Record[2]);
   }
 
   case pch::TYPE_FUNCTION_PROTO: {
     QualType ResultType = GetType(Record[0]);
     bool NoReturn = Record[1];
-    unsigned Idx = 2;
+    CallingConv CallConv = (CallingConv)Record[2];
+    unsigned Idx = 3;
     unsigned NumParams = Record[Idx++];
     llvm::SmallVector<QualType, 16> ParamTypes;
     for (unsigned I = 0; I != NumParams; ++I)
@@ -1881,7 +1949,7 @@ QualType PCHReader::ReadTypeRecord(uint64_t Offset) {
     return Context->getFunctionType(ResultType, ParamTypes.data(), NumParams,
                                     isVariadic, Quals, hasExceptionSpec,
                                     hasAnyExceptionSpec, NumExceptions,
-                                    Exceptions.data(), NoReturn);
+                                    Exceptions.data(), NoReturn, CallConv);
   }
 
   case pch::TYPE_UNRESOLVED_USING:
@@ -1985,10 +2053,13 @@ void TypeLocReader::VisitQualifiedTypeLoc(QualifiedTypeLoc TL) {
   // nothing to do
 }
 void TypeLocReader::VisitBuiltinTypeLoc(BuiltinTypeLoc TL) {
-  TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
-}
-void TypeLocReader::VisitFixedWidthIntTypeLoc(FixedWidthIntTypeLoc TL) {
-  TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setBuiltinLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  if (TL.needsExtraLocalData()) {
+    TL.setWrittenTypeSpec(static_cast<DeclSpec::TST>(Record[Idx++]));
+    TL.setWrittenSignSpec(static_cast<DeclSpec::TSS>(Record[Idx++]));
+    TL.setWrittenWidthSpec(static_cast<DeclSpec::TSW>(Record[Idx++]));
+    TL.setModeAttr(Record[Idx++]);
+  }
 }
 void TypeLocReader::VisitComplexTypeLoc(ComplexTypeLoc TL) {
   TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
@@ -2059,10 +2130,15 @@ void TypeLocReader::VisitTypedefTypeLoc(TypedefTypeLoc TL) {
   TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
 }
 void TypeLocReader::VisitTypeOfExprTypeLoc(TypeOfExprTypeLoc TL) {
-  TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setTypeofLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setLParenLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setRParenLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
 }
 void TypeLocReader::VisitTypeOfTypeLoc(TypeOfTypeLoc TL) {
-  TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setTypeofLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setLParenLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setRParenLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
+  TL.setUnderlyingTInfo(Reader.GetTypeSourceInfo(Record, Idx));
 }
 void TypeLocReader::VisitDecltypeTypeLoc(DecltypeTypeLoc TL) {
   TL.setNameLoc(SourceLocation::getFromRawEncoding(Record[Idx++]));
@@ -2195,7 +2271,7 @@ PCHReader::GetTemplateArgumentLocInfo(TemplateArgument::ArgKind Kind,
   case TemplateArgument::Type:
     return GetTypeSourceInfo(Record, Index);
   case TemplateArgument::Template: {
-    SourceLocation 
+    SourceLocation
       QualStart = SourceLocation::getFromRawEncoding(Record[Index++]),
       QualEnd = SourceLocation::getFromRawEncoding(Record[Index++]),
       TemplateNameLoc = SourceLocation::getFromRawEncoding(Record[Index++]);
@@ -2406,11 +2482,17 @@ void PCHReader::InitializeSema(Sema &S) {
   PreloadedDecls.clear();
 
   // If there were any tentative definitions, deserialize them and add
-  // them to Sema's table of tentative definitions.
+  // them to Sema's list of tentative definitions.
   for (unsigned I = 0, N = TentativeDefinitions.size(); I != N; ++I) {
     VarDecl *Var = cast<VarDecl>(GetDecl(TentativeDefinitions[I]));
-    SemaObj->TentativeDefinitions[Var->getDeclName()] = Var;
-    SemaObj->TentativeDefinitionList.push_back(Var->getDeclName());
+    SemaObj->TentativeDefinitions.push_back(Var);
+  }
+
+  // If there were any unused static functions, deserialize them and add to
+  // Sema's list of unused static functions.
+  for (unsigned I = 0, N = UnusedStaticFuncs.size(); I != N; ++I) {
+    FunctionDecl *FD = cast<FunctionDecl>(GetDecl(UnusedStaticFuncs[I]));
+    SemaObj->UnusedStaticFuncs.push_back(FD);
   }
 
   // If there were any locally-scoped external declarations,

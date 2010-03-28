@@ -16,53 +16,40 @@
 #include "clang/Basic/Builtins.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/LangOptions.h"
+#include "clang/Basic/MacroBuilder.h"
 #include "clang/Basic/TargetBuiltins.h"
 #include "clang/Basic/TargetOptions.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/MC/MCSectionMachO.h"
+#include <algorithm>
 using namespace clang;
 
 //===----------------------------------------------------------------------===//
 //  Common code shared among targets.
 //===----------------------------------------------------------------------===//
 
-static void Define(std::vector<char> &Buf, const llvm::StringRef &Macro,
-                   const llvm::StringRef &Val = "1") {
-  const char *Def = "#define ";
-  Buf.insert(Buf.end(), Def, Def+strlen(Def));
-  Buf.insert(Buf.end(), Macro.begin(), Macro.end());
-  Buf.push_back(' ');
-  Buf.insert(Buf.end(), Val.begin(), Val.end());
-  Buf.push_back('\n');
-}
-
 /// DefineStd - Define a macro name and standard variants.  For example if
 /// MacroName is "unix", then this will define "__unix", "__unix__", and "unix"
 /// when in GNU mode.
-static void DefineStd(std::vector<char> &Buf, const char *MacroName,
+static void DefineStd(MacroBuilder &Builder, llvm::StringRef MacroName,
                       const LangOptions &Opts) {
   assert(MacroName[0] != '_' && "Identifier should be in the user's namespace");
 
   // If in GNU mode (e.g. -std=gnu99 but not -std=c99) define the raw identifier
   // in the user's namespace.
   if (Opts.GNUMode)
-    Define(Buf, MacroName);
+    Builder.defineMacro(MacroName);
 
   // Define __unix.
-  llvm::SmallString<20> TmpStr;
-  TmpStr = "__";
-  TmpStr += MacroName;
-  Define(Buf, TmpStr.str());
+  Builder.defineMacro("__" + MacroName);
 
   // Define __unix__.
-  TmpStr += "__";
-  Define(Buf, TmpStr.str());
+  Builder.defineMacro("__" + MacroName + "__");
 }
 
 //===----------------------------------------------------------------------===//
@@ -74,85 +61,81 @@ template<typename TgtInfo>
 class OSTargetInfo : public TgtInfo {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                            std::vector<char> &Defines) const=0;
+                            MacroBuilder &Builder) const=0;
 public:
   OSTargetInfo(const std::string& triple) : TgtInfo(triple) {}
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    TgtInfo::getTargetDefines(Opts, Defines);
-    getOSDefines(Opts, TgtInfo::getTriple(), Defines);
+                                MacroBuilder &Builder) const {
+    TgtInfo::getTargetDefines(Opts, Builder);
+    getOSDefines(Opts, TgtInfo::getTriple(), Builder);
   }
 
 };
 } // end anonymous namespace
 
 
-static void getDarwinDefines(std::vector<char> &Defs, const LangOptions &Opts) {
-  Define(Defs, "__APPLE_CC__", "5621");
-  Define(Defs, "__APPLE__");
-  Define(Defs, "__MACH__");
-  Define(Defs, "OBJC_NEW_PROPERTIES");
+static void getDarwinDefines(MacroBuilder &Builder, const LangOptions &Opts,
+                             const llvm::Triple &Triple) {
+  Builder.defineMacro("__APPLE_CC__", "5621");
+  Builder.defineMacro("__APPLE__");
+  Builder.defineMacro("__MACH__");
+  Builder.defineMacro("OBJC_NEW_PROPERTIES");
 
   // __weak is always defined, for use in blocks and with objc pointers.
-  Define(Defs, "__weak", "__attribute__((objc_gc(weak)))");
+  Builder.defineMacro("__weak", "__attribute__((objc_gc(weak)))");
 
   // Darwin defines __strong even in C mode (just to nothing).
   if (!Opts.ObjC1 || Opts.getGCMode() == LangOptions::NonGC)
-    Define(Defs, "__strong", "");
+    Builder.defineMacro("__strong", "");
   else
-    Define(Defs, "__strong", "__attribute__((objc_gc(strong)))");
+    Builder.defineMacro("__strong", "__attribute__((objc_gc(strong)))");
 
   if (Opts.Static)
-    Define(Defs, "__STATIC__");
+    Builder.defineMacro("__STATIC__");
   else
-    Define(Defs, "__DYNAMIC__");
+    Builder.defineMacro("__DYNAMIC__");
 
   if (Opts.POSIXThreads)
-    Define(Defs, "_REENTRANT", "1");
-}
+    Builder.defineMacro("_REENTRANT");
 
-static void getDarwinOSXDefines(std::vector<char> &Defs,
-                                const llvm::Triple &Triple) {
-  if (Triple.getOS() != llvm::Triple::Darwin)
-    return;
-
-  // Figure out which "darwin number" the target triple is.  "darwin9" -> 10.5.
+  // Get the OS version number from the triple.
   unsigned Maj, Min, Rev;
-  Triple.getDarwinNumber(Maj, Min, Rev);
 
-  char MacOSXStr[] = "1000";
-  if (Maj >= 4 && Maj <= 13) { // 10.0-10.9
-    // darwin7 -> 1030, darwin8 -> 1040, darwin9 -> 1050, etc.
-    MacOSXStr[2] = '0' + Maj-4;
+  // If no version was given, default to to 10.4.0, for simplifying tests.
+  if (Triple.getOSName() == "darwin") {
+    Min = Rev = 0;
+    Maj = 8;
+  } else
+    Triple.getDarwinNumber(Maj, Min, Rev);
+
+  // Set the appropriate OS version define.
+  if (Triple.getEnvironmentName() == "iphoneos") {
+    assert(Maj < 10 && Min < 99 && Rev < 99 && "Invalid version!");
+    char Str[6];
+    Str[0] = '0' + Maj;
+    Str[1] = '0' + (Min / 10);
+    Str[2] = '0' + (Min % 10);
+    Str[3] = '0' + (Rev / 10);
+    Str[4] = '0' + (Rev % 10);
+    Str[5] = '\0';
+    Builder.defineMacro("__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__", Str);
+  } else {
+    // For historical reasons that make little sense, the version passed here is
+    // the "darwin" version, which drops the 10 and offsets by 4.
+    Rev = Min;
+    Min = Maj - 4;
+    Maj = 10;
+
+    assert(Triple.getEnvironmentName().empty() && "Invalid environment!");
+    assert(Maj < 99 && Min < 10 && Rev < 10 && "Invalid version!");
+    char Str[5];
+    Str[0] = '0' + (Maj / 10);
+    Str[1] = '0' + (Maj % 10);
+    Str[2] = '0' + Min;
+    Str[3] = '0' + Rev;
+    Str[4] = '\0';
+    Builder.defineMacro("__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__", Str);
   }
-
-  // Handle minor version: 10.4.9 -> darwin8.9 -> "1049"
-  // Cap 10.4.11 -> darwin8.11 -> "1049"
-  MacOSXStr[3] = std::min(Min, 9U)+'0';
-  Define(Defs, "__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__", MacOSXStr);
-}
-
-static void getDarwinIPhoneOSDefines(std::vector<char> &Defs,
-                                     const llvm::Triple &Triple) {
-  if (Triple.getOS() != llvm::Triple::Darwin)
-    return;
-
-  // Figure out which "darwin number" the target triple is.  "darwin9" -> 10.5.
-  unsigned Maj, Min, Rev;
-  Triple.getDarwinNumber(Maj, Min, Rev);
-
-  // When targetting iPhone OS, interpret the minor version and
-  // revision as the iPhone OS version
-  char iPhoneOSStr[] = "10000";
-  if (Min >= 2 && Min <= 9) { // iPhone OS 2.0-9.0
-    // darwin9.2.0 -> 20000, darwin9.3.0 -> 30000, etc.
-    iPhoneOSStr[0] = '0' + Min;
-  }
-
-  // Handle minor version: 2.2 -> darwin9.2.2 -> 20200
-  iPhoneOSStr[2] = std::min(Rev, 9U)+'0';
-  Define(Defs, "__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__",
-         iPhoneOSStr);
 }
 
 namespace {
@@ -160,9 +143,8 @@ template<typename Target>
 class DarwinTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                    std::vector<char> &Defines) const {
-    getDarwinDefines(Defines, Opts);
-    getDarwinOSXDefines(Defines, Triple);
+                            MacroBuilder &Builder) const {
+    getDarwinDefines(Builder, Opts, Triple);
   }
 
 public:
@@ -171,11 +153,7 @@ public:
       this->TLSSupported = false;
     }
 
-  virtual const char *getUnicodeStringSection() const {
-    return "__TEXT,__ustring";
-  }
-
-  virtual std::string isValidSectionSpecifier(const llvm::StringRef &SR) const {
+  virtual std::string isValidSectionSpecifier(llvm::StringRef SR) const {
     // Let MCSectionMachO validate this.
     llvm::StringRef Segment, Section;
     unsigned TAA, StubSize;
@@ -190,14 +168,14 @@ template<typename Target>
 class DragonFlyBSDTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                    std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // DragonFly defines; list based off of gcc output
-    Define(Defs, "__DragonFly__");
-    Define(Defs, "__DragonFly_cc_version", "100001");
-    Define(Defs, "__ELF__");
-    Define(Defs, "__KPRINTF_ATTRIBUTE__");
-    Define(Defs, "__tune_i386__");
-    DefineStd(Defs, "unix", Opts);
+    Builder.defineMacro("__DragonFly__");
+    Builder.defineMacro("__DragonFly_cc_version", "100001");
+    Builder.defineMacro("__ELF__");
+    Builder.defineMacro("__KPRINTF_ATTRIBUTE__");
+    Builder.defineMacro("__tune_i386__");
+    DefineStd(Builder, "unix", Opts);
   }
 public:
   DragonFlyBSDTargetInfo(const std::string &triple)
@@ -209,23 +187,17 @@ template<typename Target>
 class FreeBSDTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                    std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // FreeBSD defines; list based off of gcc output
 
     // FIXME: Move version number handling to llvm::Triple.
-    const char *FreeBSD = strstr(Triple.getTriple().c_str(),
-                                 "-freebsd");
-    FreeBSD += strlen("-freebsd");
-    char release[] = "X";
-    release[0] = FreeBSD[0];
-    char version[] = "X00001";
-    version[0] = FreeBSD[0];
+    llvm::StringRef Release = Triple.getOSName().substr(strlen("freebsd"), 1);
 
-    Define(Defs, "__FreeBSD__", release);
-    Define(Defs, "__FreeBSD_cc_version", version);
-    Define(Defs, "__KPRINTF_ATTRIBUTE__");
-    DefineStd(Defs, "unix", Opts);
-    Define(Defs, "__ELF__", "1");
+    Builder.defineMacro("__FreeBSD__", Release);
+    Builder.defineMacro("__FreeBSD_cc_version", Release + "00001");
+    Builder.defineMacro("__KPRINTF_ATTRIBUTE__");
+    DefineStd(Builder, "unix", Opts);
+    Builder.defineMacro("__ELF__");
   }
 public:
   FreeBSDTargetInfo(const std::string &triple)
@@ -239,14 +211,14 @@ template<typename Target>
 class LinuxTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                           std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // Linux defines; list based off of gcc output
-    DefineStd(Defs, "unix", Opts);
-    DefineStd(Defs, "linux", Opts);
-    Define(Defs, "__gnu_linux__");
-    Define(Defs, "__ELF__", "1");
+    DefineStd(Builder, "unix", Opts);
+    DefineStd(Builder, "linux", Opts);
+    Builder.defineMacro("__gnu_linux__");
+    Builder.defineMacro("__ELF__");
     if (Opts.POSIXThreads)
-      Define(Defs, "_REENTRANT", "1");
+      Builder.defineMacro("_REENTRANT");
   }
 public:
   LinuxTargetInfo(const std::string& triple)
@@ -260,13 +232,13 @@ template<typename Target>
 class NetBSDTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                    std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // NetBSD defines; list based off of gcc output
-    Define(Defs, "__NetBSD__", "1");
-    Define(Defs, "__unix__", "1");
-    Define(Defs, "__ELF__", "1");
+    Builder.defineMacro("__NetBSD__");
+    Builder.defineMacro("__unix__");
+    Builder.defineMacro("__ELF__");
     if (Opts.POSIXThreads)
-      Define(Defs, "_POSIX_THREADS", "1");
+      Builder.defineMacro("_POSIX_THREADS");
   }
 public:
   NetBSDTargetInfo(const std::string &triple)
@@ -280,14 +252,14 @@ template<typename Target>
 class OpenBSDTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                    std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // OpenBSD defines; list based off of gcc output
 
-    Define(Defs, "__OpenBSD__", "1");
-    DefineStd(Defs, "unix", Opts);
-    Define(Defs, "__ELF__", "1");
+    Builder.defineMacro("__OpenBSD__");
+    DefineStd(Builder, "unix", Opts);
+    Builder.defineMacro("__ELF__");
     if (Opts.POSIXThreads)
-      Define(Defs, "_POSIX_THREADS", "1");
+      Builder.defineMacro("_POSIX_THREADS");
   }
 public:
   OpenBSDTargetInfo(const std::string &triple)
@@ -299,12 +271,12 @@ template<typename Target>
 class PSPTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                           std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // PSP defines; list based on the output of the pspdev gcc toolchain.
-    Define(Defs, "PSP", "1");
-    Define(Defs, "_PSP", "1");
-    Define(Defs, "__psp__", "1");
-    Define(Defs, "__ELF__", "1");
+    Builder.defineMacro("PSP");
+    Builder.defineMacro("_PSP");
+    Builder.defineMacro("__psp__");
+    Builder.defineMacro("__ELF__");
   }
 public:
   PSPTargetInfo(const std::string& triple)
@@ -318,12 +290,12 @@ template<typename Target>
 class PS3PPUTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                           std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // PS3 PPU defines.
-    Define(Defs, "__PPU__", "1");
-    Define(Defs, "__CELLOS_LV2__", "1");
-    Define(Defs, "__ELF__", "1");
-    Define(Defs, "__LP32__", "1");
+    Builder.defineMacro("__PPU__");
+    Builder.defineMacro("__CELLOS_LV2__");
+    Builder.defineMacro("__ELF__");
+    Builder.defineMacro("__LP32__");
   }
 public:
   PS3PPUTargetInfo(const std::string& triple)
@@ -340,10 +312,10 @@ template<typename Target>
 class PS3SPUTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                           std::vector<char> &Defs) const {
+                            MacroBuilder &Builder) const {
     // PS3 PPU defines.
-    Define(Defs, "__SPU__", "1");
-    Define(Defs, "__ELF__", "1");
+    Builder.defineMacro("__SPU__");
+    Builder.defineMacro("__ELF__");
   }
 public:
   PS3SPUTargetInfo(const std::string& triple)
@@ -357,12 +329,12 @@ template<typename Target>
 class AuroraUXTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                                std::vector<char> &Defs) const {
-    DefineStd(Defs, "sun", Opts);
-    DefineStd(Defs, "unix", Opts);
-    Define(Defs, "__ELF__");
-    Define(Defs, "__svr4__");
-    Define(Defs, "__SVR4");
+                            MacroBuilder &Builder) const {
+    DefineStd(Builder, "sun", Opts);
+    DefineStd(Builder, "unix", Opts);
+    Builder.defineMacro("__ELF__");
+    Builder.defineMacro("__svr4__");
+    Builder.defineMacro("__SVR4");
   }
 public:
   AuroraUXTargetInfo(const std::string& triple)
@@ -378,12 +350,12 @@ template<typename Target>
 class SolarisTargetInfo : public OSTargetInfo<Target> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                                std::vector<char> &Defs) const {
-    DefineStd(Defs, "sun", Opts);
-    DefineStd(Defs, "unix", Opts);
-    Define(Defs, "__ELF__");
-    Define(Defs, "__svr4__");
-    Define(Defs, "__SVR4");
+                            MacroBuilder &Builder) const {
+    DefineStd(Builder, "sun", Opts);
+    DefineStd(Builder, "unix", Opts);
+    Builder.defineMacro("__ELF__");
+    Builder.defineMacro("__svr4__");
+    Builder.defineMacro("__SVR4");
   }
 public:
   SolarisTargetInfo(const std::string& triple)
@@ -416,7 +388,7 @@ public:
   }
 
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const;
+                                MacroBuilder &Builder) const;
 
   virtual const char *getVAListDeclaration() const {
     return "typedef char* __builtin_va_list;";
@@ -460,34 +432,36 @@ const Builtin::Info PPCTargetInfo::BuiltinInfo[] = {
 /// PPCTargetInfo::getTargetDefines - Return a set of the PowerPC-specific
 /// #defines that are not tied to a specific subtarget.
 void PPCTargetInfo::getTargetDefines(const LangOptions &Opts,
-                                     std::vector<char> &Defs) const {
+                                     MacroBuilder &Builder) const {
   // Target identification.
-  Define(Defs, "__ppc__");
-  Define(Defs, "_ARCH_PPC");
-  Define(Defs, "__POWERPC__");
+  Builder.defineMacro("__ppc__");
+  Builder.defineMacro("_ARCH_PPC");
+  Builder.defineMacro("__powerpc__");
+  Builder.defineMacro("__POWERPC__");
   if (PointerWidth == 64) {
-    Define(Defs, "_ARCH_PPC64");
-    Define(Defs, "_LP64");
-    Define(Defs, "__LP64__");
-    Define(Defs, "__ppc64__");
+    Builder.defineMacro("_ARCH_PPC64");
+    Builder.defineMacro("_LP64");
+    Builder.defineMacro("__LP64__");
+    Builder.defineMacro("__powerpc64__");
+    Builder.defineMacro("__ppc64__");
   } else {
-    Define(Defs, "__ppc__");
+    Builder.defineMacro("__ppc__");
   }
 
   // Target properties.
-  Define(Defs, "_BIG_ENDIAN");
-  Define(Defs, "__BIG_ENDIAN__");
+  Builder.defineMacro("_BIG_ENDIAN");
+  Builder.defineMacro("__BIG_ENDIAN__");
 
   // Subtarget options.
-  Define(Defs, "__NATURAL_ALIGNMENT__");
-  Define(Defs, "__REGISTER_PREFIX__", "");
+  Builder.defineMacro("__NATURAL_ALIGNMENT__");
+  Builder.defineMacro("__REGISTER_PREFIX__", "");
 
   // FIXME: Should be controlled by command line option.
-  Define(Defs, "__LONG_DOUBLE_128__");
+  Builder.defineMacro("__LONG_DOUBLE_128__");
   
   if (Opts.AltiVec) {
-    Define(Defs, "__VEC__", "10206");
-    Define(Defs, "__ALTIVEC__", "1");
+    Builder.defineMacro("__VEC__", "10206");
+    Builder.defineMacro("__ALTIVEC__");
   }
 }
 
@@ -599,9 +573,12 @@ void PPCTargetInfo::getGCCRegAliases(const GCCRegAlias *&Aliases,
 namespace {
 class PPC32TargetInfo : public PPCTargetInfo {
 public:
-  PPC32TargetInfo(const std::string& triple) : PPCTargetInfo(triple) {
+  PPC32TargetInfo(const std::string &triple) : PPCTargetInfo(triple) {
     DescriptionString = "E-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-"
                         "i64:64:64-f32:32:32-f64:64:64-v128:128:128-n32";
+
+    if (getTriple().getOS() == llvm::Triple::FreeBSD)
+        this->SizeType = TargetInfo::UnsignedInt;
   }
 };
 } // end anonymous namespace.
@@ -618,6 +595,134 @@ public:
                         "i64:64:64-f32:32:32-f64:64:64-v128:128:128-n32:64";
   }
 };
+} // end anonymous namespace.
+
+namespace {
+// MBlaze abstract base class
+class MBlazeTargetInfo : public TargetInfo {
+  static const char * const GCCRegNames[];
+  static const TargetInfo::GCCRegAlias GCCRegAliases[];
+
+public:
+  MBlazeTargetInfo(const std::string& triple) : TargetInfo(triple) {
+    DescriptionString = "E-p:32:32-i8:8:8-i16:16:16-i64:32:32-f64:32:32-"
+                        "v64:32:32-v128:32:32-n32";
+  }
+
+  virtual void getTargetBuiltins(const Builtin::Info *&Records,
+                                 unsigned &NumRecords) const {
+    // FIXME: Implement.
+    Records = 0;
+    NumRecords = 0;
+  }
+
+  virtual void getTargetDefines(const LangOptions &Opts,
+                                MacroBuilder &Builder) const;
+
+  virtual const char *getVAListDeclaration() const {
+    return "typedef char* __builtin_va_list;";
+  }
+  virtual const char *getTargetPrefix() const {
+    return "mblaze";
+  }
+  virtual void getGCCRegNames(const char * const *&Names,
+                              unsigned &NumNames) const;
+  virtual void getGCCRegAliases(const GCCRegAlias *&Aliases,
+                                unsigned &NumAliases) const;
+  virtual bool validateAsmConstraint(const char *&Name,
+                                     TargetInfo::ConstraintInfo &Info) const {
+    switch (*Name) {
+    default: return false;
+    case 'O': // Zero
+      return true;
+    case 'b': // Base register
+    case 'f': // Floating point register
+      Info.setAllowsRegister();
+      return true;
+    }
+  }
+  virtual const char *getClobbers() const {
+    return "";
+  }
+};
+
+/// MBlazeTargetInfo::getTargetDefines - Return a set of the MBlaze-specific
+/// #defines that are not tied to a specific subtarget.
+void MBlazeTargetInfo::getTargetDefines(const LangOptions &Opts,
+                                     MacroBuilder &Builder) const {
+  // Target identification.
+  Builder.defineMacro("__microblaze__");
+  Builder.defineMacro("_ARCH_MICROBLAZE");
+  Builder.defineMacro("__MICROBLAZE__");
+
+  // Target properties.
+  Builder.defineMacro("_BIG_ENDIAN");
+  Builder.defineMacro("__BIG_ENDIAN__");
+
+  // Subtarget options.
+  Builder.defineMacro("__REGISTER_PREFIX__", "");
+}
+
+
+const char * const MBlazeTargetInfo::GCCRegNames[] = {
+  "r0",   "r1",   "r2",   "r3",   "r4",   "r5",   "r6",   "r7",
+  "r8",   "r9",   "r10",  "r11",  "r12",  "r13",  "r14",  "r15",
+  "r16",  "r17",  "r18",  "r19",  "r20",  "r21",  "r22",  "r23",
+  "r24",  "r25",  "r26",  "r27",  "r28",  "r29",  "r30",  "r31",
+  "$f0",  "$f1",  "$f2",  "$f3",  "$f4",  "$f5",  "$f6",  "$f7",
+  "$f8",  "$f9",  "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
+  "$f16", "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23",
+  "$f24", "$f25", "$f26", "$f27", "$f28", "$f29", "$f30", "$f31",
+  "hi",   "lo",   "accum","rmsr", "$fcc1","$fcc2","$fcc3","$fcc4",
+  "$fcc5","$fcc6","$fcc7","$ap",  "$rap", "$frp"
+};
+
+void MBlazeTargetInfo::getGCCRegNames(const char * const *&Names,
+                                   unsigned &NumNames) const {
+  Names = GCCRegNames;
+  NumNames = llvm::array_lengthof(GCCRegNames);
+}
+
+const TargetInfo::GCCRegAlias MBlazeTargetInfo::GCCRegAliases[] = {
+  { {"f0"},  "r0" },
+  { {"f1"},  "r1" },
+  { {"f2"},  "r2" },
+  { {"f3"},  "r3" },
+  { {"f4"},  "r4" },
+  { {"f5"},  "r5" },
+  { {"f6"},  "r6" },
+  { {"f7"},  "r7" },
+  { {"f8"},  "r8" },
+  { {"f9"},  "r9" },
+  { {"f10"}, "r10" },
+  { {"f11"}, "r11" },
+  { {"f12"}, "r12" },
+  { {"f13"}, "r13" },
+  { {"f14"}, "r14" },
+  { {"f15"}, "r15" },
+  { {"f16"}, "r16" },
+  { {"f17"}, "r17" },
+  { {"f18"}, "r18" },
+  { {"f19"}, "r19" },
+  { {"f20"}, "r20" },
+  { {"f21"}, "r21" },
+  { {"f22"}, "r22" },
+  { {"f23"}, "r23" },
+  { {"f24"}, "r24" },
+  { {"f25"}, "r25" },
+  { {"f26"}, "r26" },
+  { {"f27"}, "r27" },
+  { {"f28"}, "r28" },
+  { {"f29"}, "r29" },
+  { {"f30"}, "r30" },
+  { {"f31"}, "r31" },
+};
+
+void MBlazeTargetInfo::getGCCRegAliases(const GCCRegAlias *&Aliases,
+                                     unsigned &NumAliases) const {
+  Aliases = GCCRegAliases;
+  NumAliases = llvm::array_lengthof(GCCRegAliases);
+}
 } // end anonymous namespace.
 
 namespace {
@@ -655,9 +760,13 @@ class X86TargetInfo : public TargetInfo {
   enum X86SSEEnum {
     NoMMXSSE, MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42
   } SSELevel;
+  enum AMD3DNowEnum {
+    NoAMD3DNow, AMD3DNow, AMD3DNowAthlon
+  } AMD3DNowLevel;
+
 public:
   X86TargetInfo(const std::string& triple)
-    : TargetInfo(triple), SSELevel(NoMMXSSE) {
+    : TargetInfo(triple), SSELevel(NoMMXSSE), AMD3DNowLevel(NoAMD3DNow) {
     LongDoubleFormat = &llvm::APFloat::x87DoubleExtended;
   }
   virtual void getTargetBuiltins(const Builtin::Info *&Records,
@@ -682,7 +791,7 @@ public:
     return "~{dirflag},~{fpsr},~{flags}";
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const;
+                                MacroBuilder &Builder) const;
   virtual bool setFeatureEnabled(llvm::StringMap<bool> &Features,
                                  const std::string &Name,
                                  bool Enabled) const;
@@ -753,8 +862,10 @@ void X86TargetInfo::getDefaultFeatures(const std::string &CPU,
 bool X86TargetInfo::setFeatureEnabled(llvm::StringMap<bool> &Features,
                                       const std::string &Name,
                                       bool Enabled) const {
-  // FIXME: This *really* should not be here.
-  if (!Features.count(Name) && Name != "sse4")
+  // FIXME: This *really* should not be here.  We need some way of translating
+  // options into llvm subtarget features.
+  if (!Features.count(Name) &&
+      (Name != "sse4" && Name != "sse4.2" && Name != "sse4.1"))
     return false;
 
   if (Enabled) {
@@ -770,9 +881,12 @@ bool X86TargetInfo::setFeatureEnabled(llvm::StringMap<bool> &Features,
     else if (Name == "ssse3")
       Features["mmx"] = Features["sse"] = Features["sse2"] = Features["sse3"] =
         Features["ssse3"] = true;
-    else if (Name == "sse4")
+    else if (Name == "sse4" || Name == "sse4.2")
       Features["mmx"] = Features["sse"] = Features["sse2"] = Features["sse3"] =
         Features["ssse3"] = Features["sse41"] = Features["sse42"] = true;
+    else if (Name == "sse4.1")
+      Features["mmx"] = Features["sse"] = Features["sse2"] = Features["sse3"] =
+        Features["ssse3"] = Features["sse41"] = true;
     else if (Name == "3dnow")
       Features["3dnowa"] = true;
     else if (Name == "3dnowa")
@@ -793,6 +907,10 @@ bool X86TargetInfo::setFeatureEnabled(llvm::StringMap<bool> &Features,
     else if (Name == "ssse3")
       Features["ssse3"] = Features["sse41"] = Features["sse42"] = false;
     else if (Name == "sse4")
+      Features["sse41"] = Features["sse42"] = false;
+    else if (Name == "sse4.2")
+      Features["sse42"] = false;
+    else if (Name == "sse4.1")
       Features["sse41"] = Features["sse42"] = false;
     else if (Name == "3dnow")
       Features["3dnow"] = Features["3dnowa"] = false;
@@ -822,58 +940,76 @@ void X86TargetInfo::HandleTargetFeatures(std::vector<std::string> &Features) {
       .Case("mmx", MMX)
       .Default(NoMMXSSE);
     SSELevel = std::max(SSELevel, Level);
+    
+    AMD3DNowEnum ThreeDNowLevel = 
+      llvm::StringSwitch<AMD3DNowEnum>(Features[i].substr(1))
+        .Case("3dnowa", AMD3DNowAthlon)
+        .Case("3dnow", AMD3DNow)
+        .Default(NoAMD3DNow);
+    
+    AMD3DNowLevel = std::max(AMD3DNowLevel, ThreeDNowLevel);
   }
 }
 
 /// X86TargetInfo::getTargetDefines - Return a set of the X86-specific #defines
 /// that are not tied to a specific subtarget.
 void X86TargetInfo::getTargetDefines(const LangOptions &Opts,
-                                     std::vector<char> &Defs) const {
+                                     MacroBuilder &Builder) const {
   // Target identification.
   if (PointerWidth == 64) {
-    Define(Defs, "_LP64");
-    Define(Defs, "__LP64__");
-    Define(Defs, "__amd64__");
-    Define(Defs, "__amd64");
-    Define(Defs, "__x86_64");
-    Define(Defs, "__x86_64__");
+    Builder.defineMacro("_LP64");
+    Builder.defineMacro("__LP64__");
+    Builder.defineMacro("__amd64__");
+    Builder.defineMacro("__amd64");
+    Builder.defineMacro("__x86_64");
+    Builder.defineMacro("__x86_64__");
   } else {
-    DefineStd(Defs, "i386", Opts);
+    DefineStd(Builder, "i386", Opts);
   }
 
   // Target properties.
-  Define(Defs, "__LITTLE_ENDIAN__");
+  Builder.defineMacro("__LITTLE_ENDIAN__");
 
   // Subtarget options.
-  Define(Defs, "__nocona");
-  Define(Defs, "__nocona__");
-  Define(Defs, "__tune_nocona__");
-  Define(Defs, "__REGISTER_PREFIX__", "");
+  Builder.defineMacro("__nocona");
+  Builder.defineMacro("__nocona__");
+  Builder.defineMacro("__tune_nocona__");
+  Builder.defineMacro("__REGISTER_PREFIX__", "");
 
   // Define __NO_MATH_INLINES on linux/x86 so that we don't get inline
   // functions in glibc header files that use FP Stack inline asm which the
   // backend can't deal with (PR879).
-  Define(Defs, "__NO_MATH_INLINES");
+  Builder.defineMacro("__NO_MATH_INLINES");
 
   // Each case falls through to the previous one here.
   switch (SSELevel) {
   case SSE42:
-    Define(Defs, "__SSE4_2__");
+    Builder.defineMacro("__SSE4_2__");
   case SSE41:
-    Define(Defs, "__SSE4_1__");
+    Builder.defineMacro("__SSE4_1__");
   case SSSE3:
-    Define(Defs, "__SSSE3__");
+    Builder.defineMacro("__SSSE3__");
   case SSE3:
-    Define(Defs, "__SSE3__");
+    Builder.defineMacro("__SSE3__");
   case SSE2:
-    Define(Defs, "__SSE2__");
-    Define(Defs, "__SSE2_MATH__");  // -mfp-math=sse always implied.
+    Builder.defineMacro("__SSE2__");
+    Builder.defineMacro("__SSE2_MATH__");  // -mfp-math=sse always implied.
   case SSE1:
-    Define(Defs, "__SSE__");
-    Define(Defs, "__SSE_MATH__");   // -mfp-math=sse always implied.
+    Builder.defineMacro("__SSE__");
+    Builder.defineMacro("__SSE_MATH__");   // -mfp-math=sse always implied.
   case MMX:
-    Define(Defs, "__MMX__");
+    Builder.defineMacro("__MMX__");
   case NoMMXSSE:
+    break;
+  }
+  
+  // Each case falls through to the previous one here.
+  switch (AMD3DNowLevel) {
+  case AMD3DNowAthlon:
+    Builder.defineMacro("__3dNOW_A__");
+  case AMD3DNow:
+    Builder.defineMacro("__3dNOW__");
+  case NoAMD3DNow:
     break;
   }
 }
@@ -999,13 +1135,13 @@ public:
                         "v128:128:128-a0:0:64-f80:32:32-n8:16:32";
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    X86_32TargetInfo::getTargetDefines(Opts, Defines);
+                                MacroBuilder &Builder) const {
+    X86_32TargetInfo::getTargetDefines(Opts, Builder);
     // This list is based off of the the list of things MingW defines
-    Define(Defines, "_WIN32");
-    DefineStd(Defines, "WIN32", Opts);
-    DefineStd(Defines, "WINNT", Opts);
-    Define(Defines, "_X86_");
+    Builder.defineMacro("_WIN32");
+    DefineStd(Builder, "WIN32", Opts);
+    DefineStd(Builder, "WINNT", Opts);
+    Builder.defineMacro("_X86_");
   }
 };
 } // end anonymous namespace
@@ -1019,12 +1155,12 @@ public:
     : WindowsX86_32TargetInfo(triple) {
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    WindowsX86_32TargetInfo::getTargetDefines(Opts, Defines);
+                                MacroBuilder &Builder) const {
+    WindowsX86_32TargetInfo::getTargetDefines(Opts, Builder);
     // The value of the following reflects processor type.
     // 300=386, 400=486, 500=Pentium, 600=Blend (default)
     // We lost the original triple, so we use the default.
-    Define(Defines, "_M_IX86", "600");
+    Builder.defineMacro("_M_IX86", "600");
   }
 };
 } // end anonymous namespace
@@ -1037,11 +1173,11 @@ public:
     : WindowsX86_32TargetInfo(triple) {
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    WindowsX86_32TargetInfo::getTargetDefines(Opts, Defines);
-    Define(Defines, "__MSVCRT__");
-    Define(Defines, "__MINGW32__");
-    Define(Defines, "__declspec", "__declspec");
+                                MacroBuilder &Builder) const {
+    WindowsX86_32TargetInfo::getTargetDefines(Opts, Builder);
+    Builder.defineMacro("__MSVCRT__");
+    Builder.defineMacro("__MINGW32__");
+    Builder.defineMacro("__declspec", "__declspec");
   }
 };
 } // end anonymous namespace
@@ -1060,11 +1196,11 @@ public:
                         "a0:0:64-f80:32:32-n8:16:32";
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    X86_32TargetInfo::getTargetDefines(Opts, Defines);
-    Define(Defines, "__CYGWIN__");
-    Define(Defines, "__CYGWIN32__");
-    DefineStd(Defines, "unix", Opts);
+                                MacroBuilder &Builder) const {
+    X86_32TargetInfo::getTargetDefines(Opts, Builder);
+    Builder.defineMacro("__CYGWIN__");
+    Builder.defineMacro("__CYGWIN32__");
+    DefineStd(Builder, "unix", Opts);
   }
 };
 } // end anonymous namespace
@@ -1116,10 +1252,10 @@ public:
     DoubleAlign = LongLongAlign = 64;
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    X86_64TargetInfo::getTargetDefines(Opts, Defines);
-    Define(Defines, "_WIN64");
-    DefineStd(Defines, "WIN64", Opts);
+                                MacroBuilder &Builder) const {
+    X86_64TargetInfo::getTargetDefines(Opts, Builder);
+    Builder.defineMacro("_WIN64");
+    DefineStd(Builder, "WIN64", Opts);
   }
 };
 } // end anonymous namespace
@@ -1132,9 +1268,9 @@ public:
     : WindowsX86_64TargetInfo(triple) {
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    WindowsX86_64TargetInfo::getTargetDefines(Opts, Defines);
-    Define(Defines, "_M_X64");
+                                MacroBuilder &Builder) const {
+    WindowsX86_64TargetInfo::getTargetDefines(Opts, Builder);
+    Builder.defineMacro("_M_X64");
   }
   virtual const char *getVAListDeclaration() const {
     return "typedef char* va_list;";
@@ -1150,11 +1286,11 @@ public:
     : WindowsX86_64TargetInfo(triple) {
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    WindowsX86_64TargetInfo::getTargetDefines(Opts, Defines);
-    Define(Defines, "__MSVCRT__");
-    Define(Defines, "__MINGW64__");
-    Define(Defines, "__declspec");
+                                MacroBuilder &Builder) const {
+    WindowsX86_64TargetInfo::getTargetDefines(Opts, Builder);
+    Builder.defineMacro("__MSVCRT__");
+    Builder.defineMacro("__MINGW64__");
+    Builder.defineMacro("__declspec");
   }
 };
 } // end anonymous namespace
@@ -1208,6 +1344,8 @@ class ARMTargetInfo : public TargetInfo {
   unsigned SoftFloat : 1;
   unsigned SoftFloatABI : 1;
 
+  static const Builtin::Info BuiltinInfo[];
+
 public:
   ARMTargetInfo(const std::string &TripleStr)
     : TargetInfo(TripleStr), ABI("aapcs-linux"), CPU("arm1136j-s")
@@ -1236,7 +1374,7 @@ public:
     // FIXME: We need support for -meabi... we could just mangle it into the
     // name.
     if (Name == "apcs-gnu") {
-      DoubleAlign = LongLongAlign = 32;
+      DoubleAlign = LongLongAlign = LongDoubleAlign = 32;
       SizeType = UnsignedLong;
 
       if (IsThumb) {
@@ -1342,67 +1480,60 @@ public:
     return true;
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defs) const {
+                                MacroBuilder &Builder) const {
     // Target identification.
-    Define(Defs, "__arm");
-    Define(Defs, "__arm__");
+    Builder.defineMacro("__arm");
+    Builder.defineMacro("__arm__");
 
     // Target properties.
-    Define(Defs, "__ARMEL__");
-    Define(Defs, "__LITTLE_ENDIAN__");
-    Define(Defs, "__REGISTER_PREFIX__", "");
+    Builder.defineMacro("__ARMEL__");
+    Builder.defineMacro("__LITTLE_ENDIAN__");
+    Builder.defineMacro("__REGISTER_PREFIX__", "");
 
     llvm::StringRef CPUArch = getCPUDefineSuffix(CPU);
-    std::string ArchName = "__ARM_ARCH_";
-    ArchName += CPUArch;
-    ArchName += "__";
-    Define(Defs, ArchName);
+    Builder.defineMacro("__ARM_ARCH_" + CPUArch + "__");
 
     // Subtarget options.
 
     // FIXME: It's more complicated than this and we don't really support
     // interworking.
     if ('5' <= CPUArch[0] && CPUArch[0] <= '7')
-      Define(Defs, "__THUMB_INTERWORK__");
+      Builder.defineMacro("__THUMB_INTERWORK__");
 
     if (ABI == "aapcs" || ABI == "aapcs-linux")
-      Define(Defs, "__ARM_EABI__");
+      Builder.defineMacro("__ARM_EABI__");
 
     if (SoftFloat)
-      Define(Defs, "__SOFTFP__");
+      Builder.defineMacro("__SOFTFP__");
 
     if (CPU == "xscale")
-      Define(Defs, "__XSCALE__");
+      Builder.defineMacro("__XSCALE__");
 
     bool IsThumb2 = IsThumb && (CPUArch == "6T2" || CPUArch.startswith("7"));
     if (IsThumb) {
-      Define(Defs, "__THUMBEL__");
-      Define(Defs, "__thumb__");
+      Builder.defineMacro("__THUMBEL__");
+      Builder.defineMacro("__thumb__");
       if (IsThumb2)
-        Define(Defs, "__thumb2__");
+        Builder.defineMacro("__thumb2__");
     }
 
     // Note, this is always on in gcc, even though it doesn't make sense.
-    Define(Defs, "__APCS_32__");
+    Builder.defineMacro("__APCS_32__");
 
     if (FPUModeIsVFP((FPUMode) FPU))
-      Define(Defs, "__VFP_FP__");
+      Builder.defineMacro("__VFP_FP__");
 
     // This only gets set when Neon instructions are actually available, unlike
     // the VFP define, hence the soft float and arch check. This is subtly
     // different from gcc, we follow the intent which was that it should be set
     // when Neon instructions are actually available.
     if (FPU == NeonFPU && !SoftFloat && IsThumb2)
-      Define(Defs, "__ARM_NEON__");
-
-    if (getTriple().getOS() == llvm::Triple::Darwin)
-      Define(Defs, "__USING_SJLJ_EXCEPTIONS__");
+      Builder.defineMacro("__ARM_NEON__");
   }
   virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                  unsigned &NumRecords) const {
-    // FIXME: Implement.
-    Records = 0;
-    NumRecords = 0;
+    Records = BuiltinInfo;
+    NumRecords = clang::ARM::LastTSBuiltin-Builtin::FirstTSBuiltin;
   }
   virtual const char *getVAListDeclaration() const {
     return "typedef char* __builtin_va_list;";
@@ -1467,6 +1598,12 @@ void ARMTargetInfo::getGCCRegAliases(const GCCRegAlias *&Aliases,
   Aliases = GCCRegAliases;
   NumAliases = llvm::array_lengthof(GCCRegAliases);
 }
+
+const Builtin::Info ARMTargetInfo::BuiltinInfo[] = {
+#define BUILTIN(ID, TYPE, ATTRS) { #ID, TYPE, ATTRS, 0, false },
+#define LIBBUILTIN(ID, TYPE, ATTRS, HEADER) { #ID, TYPE, ATTRS, HEADER, false },
+#include "clang/Basic/BuiltinsARM.def"
+};
 } // end anonymous namespace.
 
 
@@ -1475,9 +1612,8 @@ class DarwinARMTargetInfo :
   public DarwinTargetInfo<ARMTargetInfo> {
 protected:
   virtual void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
-                    std::vector<char> &Defines) const {
-    getDarwinDefines(Defines, Opts);
-    getDarwinIPhoneOSDefines(Defines, Triple);
+                            MacroBuilder &Builder) const {
+    getDarwinDefines(Builder, Opts, Triple);
   }
 
 public:
@@ -1497,10 +1633,10 @@ public:
                         "i64:64:64-f32:32:32-f64:64:64-v64:64:64-n32";
   }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    DefineStd(Defines, "sparc", Opts);
-    Define(Defines, "__sparcv8");
-    Define(Defines, "__REGISTER_PREFIX__", "");
+                                MacroBuilder &Builder) const {
+    DefineStd(Builder, "sparc", Opts);
+    Builder.defineMacro("__sparcv8");
+    Builder.defineMacro("__REGISTER_PREFIX__", "");
   }
   virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                  unsigned &NumRecords) const {
@@ -1630,25 +1766,27 @@ namespace {
     virtual uint64_t getPointerWidthV(unsigned AddrSpace) const { return 16; }
     virtual uint64_t getPointerAlignV(unsigned AddrSpace) const { return 8; }
     virtual void getTargetDefines(const LangOptions &Opts,
-                                  std::vector<char> &Defines) const {
-      Define(Defines, "__pic16");
-      Define(Defines, "rom", "__attribute__((address_space(1)))");
-      Define(Defines, "ram", "__attribute__((address_space(0)))");
-      Define(Defines, "_section(SectName)",
+                                MacroBuilder &Builder) const {
+      Builder.defineMacro("__pic16");
+      Builder.defineMacro("__PIC16");
+      Builder.defineMacro("rom", "__attribute__((address_space(1)))");
+      Builder.defineMacro("ram", "__attribute__((address_space(0)))");
+      Builder.defineMacro("__section(SectName)",
              "__attribute__((section(SectName)))");
-      Define(Defines, "near",
+      Builder.defineMacro("near",
              "__attribute__((section(\"Address=NEAR\")))");
-      Define(Defines, "_address(Addr)",
+      Builder.defineMacro("__address(Addr)",
              "__attribute__((section(\"Address=\"#Addr)))");
-      Define(Defines, "_CONFIG(conf)", "asm(\"CONFIG \"#conf)");
-      Define(Defines, "_interrupt",
+      Builder.defineMacro("__config(conf)", "asm(\"CONFIG \"#conf)");
+      Builder.defineMacro("__idlocs(value)", "asm(\"__IDLOCS \"#value)");
+      Builder.defineMacro("interrupt",
              "__attribute__((section(\"interrupt=0x4\"))) \
              __attribute__((used))");
     }
     virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                    unsigned &NumRecords) const {}
     virtual const char *getVAListDeclaration() const {
-      return "";
+      return "typedef char* __builtin_va_list;";
     }
     virtual const char *getClobbers() const {
       return "";
@@ -1671,12 +1809,10 @@ namespace {
   public:
     MSP430TargetInfo(const std::string& triple) : TargetInfo(triple) {
       TLSSupported = false;
-      IntWidth = 16;
-      LongWidth = LongLongWidth = 32;
-      PointerWidth = 16;
-      IntAlign = 8;
-      LongAlign = LongLongAlign = 8;
-      PointerAlign = 8;
+      IntWidth = 16; IntAlign = 16;
+      LongWidth = 32; LongLongWidth = 64;
+      LongAlign = LongLongAlign = 16;
+      PointerWidth = 16; PointerAlign = 16;
       SizeType = UnsignedInt;
       IntMaxType = SignedLong;
       UIntMaxType = UnsignedLong;
@@ -1686,9 +1822,9 @@ namespace {
       DescriptionString = "e-p:16:16:16-i8:8:8-i16:16:16-i32:16:32-n8:16";
    }
     virtual void getTargetDefines(const LangOptions &Opts,
-                                 std::vector<char> &Defines) const {
-      Define(Defines, "MSP430");
-      Define(Defines, "__MSP430__");
+                                  MacroBuilder &Builder) const {
+      Builder.defineMacro("MSP430");
+      Builder.defineMacro("__MSP430__");
       // FIXME: defines for different 'flavours' of MCU
     }
     virtual void getTargetBuiltins(const Builtin::Info *&Records,
@@ -1805,9 +1941,9 @@ namespace {
       "i64:64:64-f32:32:32-f64:64:64-f128:128:128-a0:16:16-n32:64";
    }
     virtual void getTargetDefines(const LangOptions &Opts,
-                                 std::vector<char> &Defines) const {
-      Define(Defines, "__s390__");
-      Define(Defines, "__s390x__");
+                                  MacroBuilder &Builder) const {
+      Builder.defineMacro("__s390__");
+      Builder.defineMacro("__s390x__");
     }
     virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                    unsigned &NumRecords) const {
@@ -1864,12 +2000,12 @@ namespace {
     }
 
     virtual void getTargetDefines(const LangOptions &Opts,
-                                  std::vector<char> &Defines) const {
-      DefineStd(Defines, "bfin", Opts);
-      DefineStd(Defines, "BFIN", Opts);
-      Define(Defines, "__ADSPBLACKFIN__");
+                                  MacroBuilder &Builder) const {
+      DefineStd(Builder, "bfin", Opts);
+      DefineStd(Builder, "BFIN", Opts);
+      Builder.defineMacro("__ADSPBLACKFIN__");
       // FIXME: This one is really dependent on -mcpu
-      Define(Defines, "__ADSPLPBLACKFIN__");
+      Builder.defineMacro("__ADSPLPBLACKFIN__");
       // FIXME: Add cpu-dependent defines and __SILICON_REVISION__
     }
 
@@ -1959,16 +2095,17 @@ namespace {
       FloatFormat = &llvm::APFloat::IEEEsingle;
       DoubleFormat = &llvm::APFloat::IEEEsingle;
       LongDoubleFormat = &llvm::APFloat::IEEEsingle;
-      DescriptionString = "E-p:32:32:32-a0:32:32"
-                          "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64"
-                          "-f32:32:32-f64:32:64-n32";
+      DescriptionString = "E-p:32:32:32-i1:8:8-i8:8:32-"
+                          "i16:16:32-i32:32:32-i64:32:32-"
+                          "f32:32:32-f64:64:64-v64:64:64-"
+                          "v128:128:128-a0:0:64-n32";
     }
 
     virtual void getTargetDefines(const LangOptions &Opts,
-                                  std::vector<char> &Defines) const {
-      DefineStd(Defines, "tce", Opts);
-      Define(Defines, "__TCE__");
-      Define(Defines, "__TCE_V1__");
+                                  MacroBuilder &Builder) const {
+      DefineStd(Builder, "tce", Opts);
+      Builder.defineMacro("__TCE__");
+      Builder.defineMacro("__TCE_V1__");
     }
     virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                    unsigned &NumRecords) const {}
@@ -1991,20 +2128,47 @@ namespace {
 
 namespace {
 class MipsTargetInfo : public TargetInfo {
+  std::string ABI, CPU;
   static const TargetInfo::GCCRegAlias GCCRegAliases[];
   static const char * const GCCRegNames[];
 public:
-  MipsTargetInfo(const std::string& triple) : TargetInfo(triple) {
+  MipsTargetInfo(const std::string& triple) : TargetInfo(triple), ABI("o32") {
     DescriptionString = "E-p:32:32:32-i1:8:8-i8:8:32-i16:16:32-i32:32:32-"
                         "i64:32:64-f32:32:32-f64:64:64-v64:64:64-n32";
   }
+  virtual const char *getABI() const { return ABI.c_str(); }
+  virtual bool setABI(const std::string &Name) {
+
+    if ((Name == "o32") || (Name == "eabi")) {
+      ABI = Name;
+      return true;
+    } else
+      return false;
+  }
+  virtual bool setCPU(const std::string &Name) {
+    CPU = Name;
+    return true;
+  }
+  void getDefaultFeatures(const std::string &CPU,
+                          llvm::StringMap<bool> &Features) const {
+    Features[ABI] = true;
+    Features[CPU] = true;
+  }
+  virtual void getArchDefines(const LangOptions &Opts,
+                                MacroBuilder &Builder) const {
+    if (ABI == "o32")
+      Builder.defineMacro("__mips_o32");
+    else if (ABI == "eabi")
+      Builder.defineMacro("__mips_eabi");
+  }
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const {
-    DefineStd(Defines, "mips", Opts);
-    Define(Defines, "_mips");
-    DefineStd(Defines, "MIPSEB", Opts);
-    Define(Defines, "_MIPSEB");
-    Define(Defines, "__REGISTER_PREFIX__", "");
+                                MacroBuilder &Builder) const {
+    DefineStd(Builder, "mips", Opts);
+    Builder.defineMacro("_mips");
+    DefineStd(Builder, "MIPSEB", Opts);
+    Builder.defineMacro("_MIPSEB");
+    Builder.defineMacro("__REGISTER_PREFIX__", "");
+    getArchDefines(Opts, Builder);
   }
   virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                  unsigned &NumRecords) const {
@@ -2106,16 +2270,17 @@ public:
   }
 
   virtual void getTargetDefines(const LangOptions &Opts,
-                                std::vector<char> &Defines) const;
+                                MacroBuilder &Builder) const;
 };
 
 void MipselTargetInfo::getTargetDefines(const LangOptions &Opts,
-                                        std::vector<char> &Defines) const {
-  DefineStd(Defines, "mips", Opts);
-  Define(Defines, "_mips");
-  DefineStd(Defines, "MIPSEL", Opts);
-  Define(Defines, "_MIPSEL");
-  Define(Defines, "__REGISTER_PREFIX__", "");
+                                        MacroBuilder &Builder) const {
+  DefineStd(Builder, "mips", Opts);
+  Builder.defineMacro("_mips");
+  DefineStd(Builder, "MIPSEL", Opts);
+  Builder.defineMacro("_MIPSEL");
+  Builder.defineMacro("__REGISTER_PREFIX__", "");
+  getArchDefines(Opts, Builder);
 }
 } // end anonymous namespace.
 
@@ -2171,6 +2336,8 @@ static TargetInfo *AllocateTarget(const std::string &T) {
   case llvm::Triple::ppc:
     if (os == llvm::Triple::Darwin)
       return new DarwinTargetInfo<PPCTargetInfo>(T);
+    else if (os == llvm::Triple::FreeBSD)
+      return new FreeBSDTargetInfo<PPC32TargetInfo>(T);
     return new PPC32TargetInfo(T);
 
   case llvm::Triple::ppc64:
@@ -2178,7 +2345,12 @@ static TargetInfo *AllocateTarget(const std::string &T) {
       return new DarwinTargetInfo<PPC64TargetInfo>(T);
     else if (os == llvm::Triple::Lv2)
       return new PS3PPUTargetInfo<PPC64TargetInfo>(T);
+    else if (os == llvm::Triple::FreeBSD)
+      return new FreeBSDTargetInfo<PPC64TargetInfo>(T);
     return new PPC64TargetInfo(T);
+
+  case llvm::Triple::mblaze:
+    return new MBlazeTargetInfo(T);
 
   case llvm::Triple::sparc:
     if (os == llvm::Triple::AuroraUX)
@@ -2233,6 +2405,8 @@ static TargetInfo *AllocateTarget(const std::string &T) {
       return new DarwinX86_64TargetInfo(T);
     case llvm::Triple::Linux:
       return new LinuxTargetInfo<X86_64TargetInfo>(T);
+    case llvm::Triple::DragonFly:
+      return new DragonFlyBSDTargetInfo<X86_64TargetInfo>(T);
     case llvm::Triple::NetBSD:
       return new NetBSDTargetInfo<X86_64TargetInfo>(T);
     case llvm::Triple::OpenBSD:

@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fblocks -analyze -warn-objc-unused-ivars %s -verify
+// RUN: %clang_cc1 -fblocks -analyze -analyzer-check-objc-unused-ivars %s -verify
 
 //===--- BEGIN: Delta-debugging reduced headers. --------------------------===//
 
@@ -81,3 +81,18 @@ int radar_7254495(RDar7254495 *a) {
   return a->x;
 }
 @end
+
+//===----------------------------------------------------------------------===//
+// <rdar://problem/7353683> - consult attribute((unused)) to silence warnings
+// about unused instance variables
+//===----------------------------------------------------------------------===//
+
+@interface RDar7353683 {
+@private
+  id x __attribute__((unused));
+}
+@end
+
+@implementation RDar7353683
+@end
+

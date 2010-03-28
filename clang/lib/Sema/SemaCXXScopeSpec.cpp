@@ -30,9 +30,9 @@ getCurrentInstantiationOf(ASTContext &Context, DeclContext *CurContext,
   if (T.isNull())
     return 0;
   
-  T = Context.getCanonicalType(T);
+  T = Context.getCanonicalType(T).getUnqualifiedType();
   
-  for (DeclContext *Ctx = CurContext; Ctx; Ctx = Ctx->getParent()) {
+  for (DeclContext *Ctx = CurContext; Ctx; Ctx = Ctx->getLookupParent()) {
     // If we've hit a namespace or the global scope, then the
     // nested-name-specifier can't refer to the current instantiation.
     if (Ctx->isFileContext())
@@ -241,6 +241,10 @@ bool Sema::RequireCompleteDeclContext(const CXXScopeSpec &SS) {
 
   DeclContext *DC = computeDeclContext(SS, true);
   if (TagDecl *Tag = dyn_cast<TagDecl>(DC)) {
+    // If this is a dependent type, then we consider it complete.
+    if (Tag->isDependentContext())
+      return false;
+
     // If we're currently defining this type, then lookup into the
     // type is okay: don't complain that it isn't complete yet.
     const TagType *TagT = Context.getTypeDeclType(Tag)->getAs<TagType>();
@@ -323,13 +327,61 @@ NamedDecl *Sema::FindFirstQualifierInScope(Scope *S, NestedNameSpecifier *NNS) {
   return 0;
 }
 
+bool Sema::isNonTypeNestedNameSpecifier(Scope *S, const CXXScopeSpec &SS,
+                                        SourceLocation IdLoc,
+                                        IdentifierInfo &II,
+                                        TypeTy *ObjectTypePtr) {
+  QualType ObjectType = GetTypeFromParser(ObjectTypePtr);
+  LookupResult Found(*this, &II, IdLoc, LookupNestedNameSpecifierName);
+  
+  // Determine where to perform name lookup
+  DeclContext *LookupCtx = 0;
+  bool isDependent = false;
+  if (!ObjectType.isNull()) {
+    // This nested-name-specifier occurs in a member access expression, e.g.,
+    // x->B::f, and we are looking into the type of the object.
+    assert(!SS.isSet() && "ObjectType and scope specifier cannot coexist");
+    LookupCtx = computeDeclContext(ObjectType);
+    isDependent = ObjectType->isDependentType();
+  } else if (SS.isSet()) {
+    // This nested-name-specifier occurs after another nested-name-specifier,
+    // so long into the context associated with the prior nested-name-specifier.
+    LookupCtx = computeDeclContext(SS, false);
+    isDependent = isDependentScopeSpecifier(SS);
+    Found.setContextRange(SS.getRange());
+  }
+  
+  if (LookupCtx) {
+    // Perform "qualified" name lookup into the declaration context we
+    // computed, which is either the type of the base of a member access
+    // expression or the declaration context associated with a prior
+    // nested-name-specifier.
+    
+    // The declaration context must be complete.
+    if (!LookupCtx->isDependentContext() && RequireCompleteDeclContext(SS))
+      return false;
+    
+    LookupQualifiedName(Found, LookupCtx);
+  } else if (isDependent) {
+    return false;
+  } else {
+    LookupName(Found, S);
+  }
+  Found.suppressDiagnostics();
+  
+  if (NamedDecl *ND = Found.getAsSingle<NamedDecl>())
+    return isa<NamespaceDecl>(ND) || isa<NamespaceAliasDecl>(ND);
+  
+  return false;
+}
+
 /// \brief Build a new nested-name-specifier for "identifier::", as described
 /// by ActOnCXXNestedNameSpecifier.
 ///
 /// This routine differs only slightly from ActOnCXXNestedNameSpecifier, in
 /// that it contains an extra parameter \p ScopeLookupResult, which provides
 /// the result of name lookup within the scope of the nested-name-specifier
-/// that was computed at template definitino time.
+/// that was computed at template definition time.
 ///
 /// If ErrorRecoveryLookup is true, then this call is used to improve error
 /// recovery.  This means that it should not emit diagnostics, it should
@@ -428,6 +480,32 @@ Sema::CXXScopeTy *Sema::BuildCXXNestedNameSpecifier(Scope *S,
   }
 
   // FIXME: Deal with ambiguities cleanly.
+
+  if (Found.empty() && !ErrorRecoveryLookup) {
+    // We haven't found anything, and we're not recovering from a
+    // different kind of error, so look for typos.
+    DeclarationName Name = Found.getLookupName();
+    if (CorrectTypo(Found, S, &SS, LookupCtx, EnteringContext) &&
+        Found.isSingleResult() &&
+        isAcceptableNestedNameSpecifier(Found.getAsSingle<NamedDecl>())) {
+      if (LookupCtx)
+        Diag(Found.getNameLoc(), diag::err_no_member_suggest)
+          << Name << LookupCtx << Found.getLookupName() << SS.getRange()
+          << CodeModificationHint::CreateReplacement(Found.getNameLoc(),
+                                           Found.getLookupName().getAsString());
+      else
+        Diag(Found.getNameLoc(), diag::err_undeclared_var_use_suggest)
+          << Name << Found.getLookupName()
+          << CodeModificationHint::CreateReplacement(Found.getNameLoc(),
+                                           Found.getLookupName().getAsString());
+      
+      if (NamedDecl *ND = Found.getAsSingle<NamedDecl>())
+        Diag(ND->getLocation(), diag::note_previous_decl)
+          << ND->getDeclName();
+    } else
+      Found.clear();
+  }
+
   NamedDecl *SD = Found.getAsSingle<NamedDecl>();
   if (isAcceptableNestedNameSpecifier(SD)) {
     if (!ObjectType.isNull() && !ObjectTypeSearchedInScope) {

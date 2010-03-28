@@ -1,5 +1,5 @@
-// RUN: %clang_cc1 -analyze -checker-cfref -analyzer-store=basic -fblocks -verify %s
-// RUN: %clang_cc1 -analyze -checker-cfref -analyzer-store=region -fblocks -verify %s
+// RUN: %clang_cc1 -analyze -analyzer-check-objc-mem -analyzer-store=basic -fblocks -verify %s
+// RUN: %clang_cc1 -analyze -analyzer-check-objc-mem -analyzer-store=region -fblocks -verify %s
 
 int* f1() {
   int x = 0;
@@ -67,4 +67,11 @@ ComparatorBlock test_return_block_neg(void) {
   ComparatorBlock b = test_return_block_neg_aux();
   return b; // no-warning
 }
+
+// <rdar://problem/7523821>
+int *rdar_7523821_f2() {
+  int a[3];
+  return a; // expected-warning 2 {{ddress of stack memory associated with local variable 'a' returned}}
+};
+
 

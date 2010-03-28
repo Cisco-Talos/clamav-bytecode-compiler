@@ -65,6 +65,7 @@ namespace {
                                                SourceLocation SuperLoc,
                                                const DeclPtrTy *ProtoRefs,
                                                unsigned NumProtocols,
+                                               const SourceLocation *ProtoLocs,
                                                SourceLocation EndProtoLoc,
                                                AttributeList *AttrList) {
       Out << __FUNCTION__ << "\n";
@@ -72,7 +73,8 @@ namespace {
                                                      ClassName, ClassLoc,
                                                      SuperName, SuperLoc,
                                                      ProtoRefs, NumProtocols,
-                                                     EndProtoLoc, AttrList);
+                                                     ProtoLocs, EndProtoLoc,
+                                                     AttrList);
     }
 
     /// ActOnForwardClassDeclaration -
@@ -389,12 +391,13 @@ namespace {
                                           bool IsVolatile,
                                           unsigned NumOutputs,
                                           unsigned NumInputs,
-                                          std::string *Names,
+                                          IdentifierInfo **Names,
                                           MultiExprArg Constraints,
                                           MultiExprArg Exprs,
                                           ExprArg AsmString,
                                           MultiExprArg Clobbers,
-                                          SourceLocation RParenLoc) {
+                                          SourceLocation RParenLoc,
+                                          bool MSAsm) {
       Out << __FUNCTION__ << "\n";
       return StmtEmpty();
     }
@@ -681,7 +684,8 @@ namespace {
 
     virtual DeclPtrTy ActOnStartNamespaceDef(Scope *S, SourceLocation IdentLoc,
                                              IdentifierInfo *Ident,
-                                             SourceLocation LBrace) {
+                                             SourceLocation LBrace,
+                                             AttributeList *AttrList) {
       Out << __FUNCTION__ << "\n";
       return DeclPtrTy();
     }

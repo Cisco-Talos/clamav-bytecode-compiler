@@ -25,18 +25,23 @@ using namespace clang;
 // Decl Allocation/Deallocation Method Implementations
 //===----------------------------------------------------------------------===//
 
-CXXRecordDecl::CXXRecordDecl(Kind K, TagKind TK, DeclContext *DC,
-                             SourceLocation L, IdentifierInfo *Id,
-                             CXXRecordDecl *PrevDecl,
-                             SourceLocation TKL)
-  : RecordDecl(K, TK, DC, L, Id, PrevDecl, TKL),
-    UserDeclaredConstructor(false), UserDeclaredCopyConstructor(false),
+CXXRecordDecl::DefinitionData::DefinitionData(CXXRecordDecl *D)
+  : UserDeclaredConstructor(false), UserDeclaredCopyConstructor(false),
     UserDeclaredCopyAssignment(false), UserDeclaredDestructor(false),
     Aggregate(true), PlainOldData(true), Empty(true), Polymorphic(false),
     Abstract(false), HasTrivialConstructor(true),
     HasTrivialCopyConstructor(true), HasTrivialCopyAssignment(true),
     HasTrivialDestructor(true), ComputedVisibleConversions(false),
     Bases(0), NumBases(0), VBases(0), NumVBases(0),
+    Definition(D) {
+}
+
+CXXRecordDecl::CXXRecordDecl(Kind K, TagKind TK, DeclContext *DC,
+                             SourceLocation L, IdentifierInfo *Id,
+                             CXXRecordDecl *PrevDecl,
+                             SourceLocation TKL)
+  : RecordDecl(K, TK, DC, L, Id, PrevDecl, TKL),
+    DefinitionData(PrevDecl ? PrevDecl->DefinitionData : 0),
     TemplateOrInstantiation() { }
 
 CXXRecordDecl *CXXRecordDecl::Create(ASTContext &C, TagKind TK, DeclContext *DC,
@@ -57,37 +62,39 @@ CXXRecordDecl::~CXXRecordDecl() {
 }
 
 void CXXRecordDecl::Destroy(ASTContext &C) {
-  C.Deallocate(Bases);
-  C.Deallocate(VBases);
+  if (data().Definition == this) {
+    C.Deallocate(data().Bases);
+    C.Deallocate(data().VBases);
+    C.Deallocate(&data());
+  }
   this->RecordDecl::Destroy(C);
 }
 
 void
-CXXRecordDecl::setBases(ASTContext &C,
-                        CXXBaseSpecifier const * const *Bases,
+CXXRecordDecl::setBases(CXXBaseSpecifier const * const *Bases,
                         unsigned NumBases) {
+  ASTContext &C = getASTContext();
+  
   // C++ [dcl.init.aggr]p1:
   //   An aggregate is an array or a class (clause 9) with [...]
   //   no base classes [...].
-  Aggregate = false;
+  data().Aggregate = false;
 
-  if (this->Bases)
-    C.Deallocate(this->Bases);
+  if (data().Bases)
+    C.Deallocate(data().Bases);
 
   int vbaseCount = 0;
   llvm::SmallVector<const CXXBaseSpecifier*, 8> UniqueVbases;
   bool hasDirectVirtualBase = false;
 
-  this->Bases = new(C) CXXBaseSpecifier [NumBases];
-  this->NumBases = NumBases;
+  data().Bases = new(C) CXXBaseSpecifier [NumBases];
+  data().NumBases = NumBases;
   for (unsigned i = 0; i < NumBases; ++i) {
-    this->Bases[i] = *Bases[i];
+    data().Bases[i] = *Bases[i];
     // Keep track of inherited vbases for this base class.
     const CXXBaseSpecifier *Base = Bases[i];
     QualType BaseType = Base->getType();
-    // Skip template types.
-    // FIXME. This means that this list must be rebuilt during template
-    // instantiation.
+    // Skip dependent types; we can't do any checking on them now.
     if (BaseType->isDependentType())
       continue;
     CXXRecordDecl *BaseClassDecl
@@ -130,18 +137,34 @@ CXXRecordDecl::setBases(ASTContext &C,
   }
   if (vbaseCount > 0) {
     // build AST for inhireted, direct or indirect, virtual bases.
-    this->VBases = new (C) CXXBaseSpecifier [vbaseCount];
-    this->NumVBases = vbaseCount;
+    data().VBases = new (C) CXXBaseSpecifier [vbaseCount];
+    data().NumVBases = vbaseCount;
     for (int i = 0; i < vbaseCount; i++) {
       QualType QT = UniqueVbases[i]->getType();
+      // Skip dependent types; we can't do any checking on them now.
+      if (QT->isDependentType())
+        continue;
       CXXRecordDecl *VBaseClassDecl
         = cast<CXXRecordDecl>(QT->getAs<RecordType>()->getDecl());
-      this->VBases[i] =
+      data().VBases[i] =
         CXXBaseSpecifier(VBaseClassDecl->getSourceRange(), true,
                          VBaseClassDecl->getTagKind() == RecordDecl::TK_class,
                          UniqueVbases[i]->getAccessSpecifier(), QT);
     }
   }
+}
+
+/// Callback function for CXXRecordDecl::forallBases that acknowledges
+/// that it saw a base class.
+static bool SawBase(const CXXRecordDecl *, void *) {
+  return true;
+}
+
+bool CXXRecordDecl::hasAnyDependentBases() const {
+  if (!isDependentContext())
+    return false;
+
+  return !forallBases(SawBase, 0);
 }
 
 bool CXXRecordDecl::hasConstCopyConstructor(ASTContext &Context) const {
@@ -226,32 +249,32 @@ CXXRecordDecl::addedConstructor(ASTContext &Context,
                                 CXXConstructorDecl *ConDecl) {
   assert(!ConDecl->isImplicit() && "addedConstructor - not for implicit decl");
   // Note that we have a user-declared constructor.
-  UserDeclaredConstructor = true;
+  data().UserDeclaredConstructor = true;
 
   // C++ [dcl.init.aggr]p1:
   //   An aggregate is an array or a class (clause 9) with no
   //   user-declared constructors (12.1) [...].
-  Aggregate = false;
+  data().Aggregate = false;
 
   // C++ [class]p4:
   //   A POD-struct is an aggregate class [...]
-  PlainOldData = false;
+  data().PlainOldData = false;
 
   // C++ [class.ctor]p5:
   //   A constructor is trivial if it is an implicitly-declared default
   //   constructor.
   // FIXME: C++0x: don't do this for "= default" default constructors.
-  HasTrivialConstructor = false;
+  data().HasTrivialConstructor = false;
 
   // Note when we have a user-declared copy constructor, which will
   // suppress the implicit declaration of a copy constructor.
   if (ConDecl->isCopyConstructor()) {
-    UserDeclaredCopyConstructor = true;
+    data().UserDeclaredCopyConstructor = true;
 
     // C++ [class.copy]p6:
     //   A copy constructor is trivial if it is implicitly declared.
     // FIXME: C++0x: don't do this for "= default" copy constructors.
-    HasTrivialCopyConstructor = false;
+    data().HasTrivialCopyConstructor = false;
   }
 }
 
@@ -282,25 +305,26 @@ void CXXRecordDecl::addedAssignmentOperator(ASTContext &Context,
   OpDecl->setCopyAssignment(true);
 
   // Suppress the implicit declaration of a copy constructor.
-  UserDeclaredCopyAssignment = true;
+  data().UserDeclaredCopyAssignment = true;
 
   // C++ [class.copy]p11:
   //   A copy assignment operator is trivial if it is implicitly declared.
   // FIXME: C++0x: don't do this for "= default" copy operators.
-  HasTrivialCopyAssignment = false;
+  data().HasTrivialCopyAssignment = false;
 
   // C++ [class]p4:
   //   A POD-struct is an aggregate class that [...] has no user-defined copy
   //   assignment operator [...].
-  PlainOldData = false;
+  data().PlainOldData = false;
 }
 
 void
 CXXRecordDecl::collectConversionFunctions(
                  llvm::SmallPtrSet<CanQualType, 8>& ConversionsTypeSet) const
 {
-  const UnresolvedSet *Cs = getConversionFunctions();
-  for (UnresolvedSet::iterator I = Cs->begin(), E = Cs->end(); I != E; ++I) {
+  const UnresolvedSetImpl *Cs = getConversionFunctions();
+  for (UnresolvedSetImpl::iterator I = Cs->begin(), E = Cs->end();
+         I != E; ++I) {
     NamedDecl *TopConv = *I;
     CanQualType TConvType;
     if (FunctionTemplateDecl *TConversionTemplate =
@@ -331,10 +355,11 @@ CXXRecordDecl::getNestedVisibleConversionFunctions(CXXRecordDecl *RD,
   bool inTopClass = (RD == this);
   QualType ClassType = getASTContext().getTypeDeclType(this);
   if (const RecordType *Record = ClassType->getAs<RecordType>()) {
-    const UnresolvedSet *Cs
+    const UnresolvedSetImpl *Cs
       = cast<CXXRecordDecl>(Record->getDecl())->getConversionFunctions();
     
-    for (UnresolvedSet::iterator I = Cs->begin(), E = Cs->end(); I != E; ++I) {
+    for (UnresolvedSetImpl::iterator I = Cs->begin(), E = Cs->end();
+           I != E; ++I) {
       NamedDecl *Conv = *I;
       // Only those conversions not exact match of conversions in current
       // class are candidateconversion routines.
@@ -397,45 +422,45 @@ CXXRecordDecl::getNestedVisibleConversionFunctions(CXXRecordDecl *RD,
 
 /// getVisibleConversionFunctions - get all conversion functions visible
 /// in current class; including conversion function templates.
-const UnresolvedSet *CXXRecordDecl::getVisibleConversionFunctions() {
+const UnresolvedSetImpl *CXXRecordDecl::getVisibleConversionFunctions() {
   // If root class, all conversions are visible.
   if (bases_begin() == bases_end())
-    return &Conversions;
+    return &data().Conversions;
   // If visible conversion list is already evaluated, return it.
-  if (ComputedVisibleConversions)
-    return &VisibleConversions;
+  if (data().ComputedVisibleConversions)
+    return &data().VisibleConversions;
   llvm::SmallPtrSet<CanQualType, 8> TopConversionsTypeSet;
   collectConversionFunctions(TopConversionsTypeSet);
   getNestedVisibleConversionFunctions(this, TopConversionsTypeSet,
                                       TopConversionsTypeSet);
-  ComputedVisibleConversions = true;
-  return &VisibleConversions;
+  data().ComputedVisibleConversions = true;
+  return &data().VisibleConversions;
 }
 
 void CXXRecordDecl::addVisibleConversionFunction(
                                           CXXConversionDecl *ConvDecl) {
   assert(!ConvDecl->getDescribedFunctionTemplate() &&
          "Conversion function templates should cast to FunctionTemplateDecl.");
-  VisibleConversions.addDecl(ConvDecl);
+  data().VisibleConversions.addDecl(ConvDecl);
 }
 
 void CXXRecordDecl::addVisibleConversionFunction(
                                           FunctionTemplateDecl *ConvDecl) {
   assert(isa<CXXConversionDecl>(ConvDecl->getTemplatedDecl()) &&
          "Function template is not a conversion function template");
-  VisibleConversions.addDecl(ConvDecl);
+  data().VisibleConversions.addDecl(ConvDecl);
 }
 
 void CXXRecordDecl::addConversionFunction(CXXConversionDecl *ConvDecl) {
   assert(!ConvDecl->getDescribedFunctionTemplate() &&
          "Conversion function templates should cast to FunctionTemplateDecl.");
-  Conversions.addDecl(ConvDecl);
+  data().Conversions.addDecl(ConvDecl);
 }
 
 void CXXRecordDecl::addConversionFunction(FunctionTemplateDecl *ConvDecl) {
   assert(isa<CXXConversionDecl>(ConvDecl->getTemplatedDecl()) &&
          "Function template is not a conversion function template");
-  Conversions.addDecl(ConvDecl);
+  data().Conversions.addDecl(ConvDecl);
 }
 
 
@@ -519,14 +544,14 @@ CXXRecordDecl::getDefaultConstructor(ASTContext &Context) {
   return 0;
 }
 
-CXXDestructorDecl *CXXRecordDecl::getDestructor(ASTContext &Context) {
+CXXDestructorDecl *CXXRecordDecl::getDestructor(ASTContext &Context) const {
   QualType ClassType = Context.getTypeDeclType(this);
 
   DeclarationName Name
     = Context.DeclarationNames.getCXXDestructorName(
                                           Context.getCanonicalType(ClassType));
 
-  DeclContext::lookup_iterator I, E;
+  DeclContext::lookup_const_iterator I, E;
   llvm::tie(I, E) = lookup(Name);
   assert(I != E && "Did not find a destructor!");
 
@@ -549,7 +574,13 @@ bool CXXMethodDecl::isUsualDeallocationFunction() const {
   if (getOverloadedOperator() != OO_Delete &&
       getOverloadedOperator() != OO_Array_Delete)
     return false;
-  
+
+  // C++ [basic.stc.dynamic.deallocation]p2:
+  //   A template instance is never a usual deallocation function,
+  //   regardless of its signature.
+  if (getPrimaryTemplate())
+    return false;
+
   // C++ [basic.stc.dynamic.deallocation]p2:
   //   If a class T has a member deallocation function named operator delete 
   //   with exactly one parameter, then that function is a usual (non-placement)
@@ -564,7 +595,8 @@ bool CXXMethodDecl::isUsualDeallocationFunction() const {
   //   then this function is a usual deallocation function.
   ASTContext &Context = getASTContext();
   if (getNumParams() != 2 ||
-      !Context.hasSameType(getParamDecl(1)->getType(), Context.getSizeType()))
+      !Context.hasSameUnqualifiedType(getParamDecl(1)->getType(),
+                                      Context.getSizeType()))
     return false;
                  
   // This function is a usual deallocation function if there are no 
@@ -579,49 +611,20 @@ bool CXXMethodDecl::isUsualDeallocationFunction() const {
   return true;
 }
 
-typedef llvm::DenseMap<const CXXMethodDecl*,
-                       std::vector<const CXXMethodDecl *> *>
-                       OverriddenMethodsMapTy;
-
-// FIXME: We hate static data.  This doesn't survive PCH saving/loading, and
-// the vtable building code uses it at CG time.
-static OverriddenMethodsMapTy *OverriddenMethods = 0;
-
 void CXXMethodDecl::addOverriddenMethod(const CXXMethodDecl *MD) {
   assert(MD->isCanonicalDecl() && "Method is not canonical!");
-  
-  // FIXME: The CXXMethodDecl dtor needs to remove and free the entry.
+  assert(!MD->getParent()->isDependentContext() &&
+         "Can't add an overridden method to a class template!");
 
-  if (!OverriddenMethods)
-    OverriddenMethods = new OverriddenMethodsMapTy();
-
-  std::vector<const CXXMethodDecl *> *&Methods = (*OverriddenMethods)[this];
-  if (!Methods)
-    Methods = new std::vector<const CXXMethodDecl *>;
-
-  Methods->push_back(MD);
+  getASTContext().addOverriddenMethod(this, MD);
 }
 
 CXXMethodDecl::method_iterator CXXMethodDecl::begin_overridden_methods() const {
-  if (!OverriddenMethods)
-    return 0;
-
-  OverriddenMethodsMapTy::iterator it = OverriddenMethods->find(this);
-  if (it == OverriddenMethods->end() || it->second->empty())
-    return 0;
-
-  return &(*it->second)[0];
+  return getASTContext().overridden_methods_begin(this);
 }
 
 CXXMethodDecl::method_iterator CXXMethodDecl::end_overridden_methods() const {
-  if (!OverriddenMethods)
-    return 0;
-
-  OverriddenMethodsMapTy::iterator it = OverriddenMethods->find(this);
-  if (it == OverriddenMethods->end() || it->second->empty())
-    return 0;
-
-  return &(*it->second)[0] + it->second->size();
+  return getASTContext().overridden_methods_end(this);
 }
 
 QualType CXXMethodDecl::getThisType(ASTContext &C) const {
@@ -643,63 +646,38 @@ QualType CXXMethodDecl::getThisType(ASTContext &C) const {
   return C.getPointerType(ClassTy);
 }
 
-static bool MethodHasBody(const CXXMethodDecl *MD, const FunctionDecl *&fn) {
-  // Simple case: function has a body
-  if (MD->getBody(fn))
-    return true;
-
-  // Complex case: function is an instantiation of a function which has a
-  // body, but the definition hasn't been instantiated.
-  const FunctionDecl *PatternDecl = MD->getTemplateInstantiationPattern();
-  if (PatternDecl && PatternDecl->getBody(fn))
-    return true;
-
-  return false;
-}
-
 bool CXXMethodDecl::hasInlineBody() const {
+  // If this function is a template instantiation, look at the template from 
+  // which it was instantiated.
+  const FunctionDecl *CheckFn = getTemplateInstantiationPattern();
+  if (!CheckFn)
+    CheckFn = this;
+  
   const FunctionDecl *fn;
-  return MethodHasBody(this, fn) && !fn->isOutOfLine();
+  return CheckFn->getBody(fn) && !fn->isOutOfLine();
 }
 
 CXXBaseOrMemberInitializer::
 CXXBaseOrMemberInitializer(ASTContext &Context,
-                           TypeSourceInfo *TInfo, CXXConstructorDecl *C,
-                           SourceLocation L, 
-                           Expr **Args, unsigned NumArgs,
-                           SourceLocation R)
-  : BaseOrMember(TInfo), Args(0), NumArgs(0), CtorOrAnonUnion(C), 
+                           TypeSourceInfo *TInfo, 
+                           SourceLocation L, Expr *Init, SourceLocation R)
+  : BaseOrMember(TInfo), Init(Init), AnonUnionMember(0),
     LParenLoc(L), RParenLoc(R) 
 {
-  if (NumArgs > 0) {
-    this->NumArgs = NumArgs;
-    this->Args = new (Context) Stmt*[NumArgs];
-    for (unsigned Idx = 0; Idx < NumArgs; ++Idx)
-      this->Args[Idx] = Args[Idx];
-  }
 }
 
 CXXBaseOrMemberInitializer::
 CXXBaseOrMemberInitializer(ASTContext &Context,
                            FieldDecl *Member, SourceLocation MemberLoc,
-                           CXXConstructorDecl *C, SourceLocation L,
-                           Expr **Args, unsigned NumArgs,
-                           SourceLocation R)
-  : BaseOrMember(Member), MemberLocation(MemberLoc), Args(0), NumArgs(0), 
-    CtorOrAnonUnion(C), LParenLoc(L), RParenLoc(R) 
+                           SourceLocation L, Expr *Init, SourceLocation R)
+  : BaseOrMember(Member), MemberLocation(MemberLoc), Init(Init), 
+    AnonUnionMember(0), LParenLoc(L), RParenLoc(R) 
 {
-  if (NumArgs > 0) {
-    this->NumArgs = NumArgs;
-    this->Args = new (Context) Stmt*[NumArgs];
-    for (unsigned Idx = 0; Idx < NumArgs; ++Idx)
-      this->Args[Idx] = Args[Idx];
-  }
 }
 
 void CXXBaseOrMemberInitializer::Destroy(ASTContext &Context) {
-  for (unsigned I = 0; I != NumArgs; ++I)
-    Args[I]->Destroy(Context);
-  Context.Deallocate(Args);
+  if (Init)
+    Init->Destroy(Context);
   this->~CXXBaseOrMemberInitializer();
 }
 

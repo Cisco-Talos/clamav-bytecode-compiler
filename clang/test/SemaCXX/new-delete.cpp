@@ -65,7 +65,7 @@ void bad_news(int *ip)
   (void)new S(1); // expected-error {{no matching constructor}}
   (void)new S(1, 1); // expected-error {{call to constructor of 'struct S' is ambiguous}}
   (void)new const int; // expected-error {{default initialization of an object of const type 'int const'}}
-  (void)new float*(ip); // expected-error {{cannot initialize a value of type 'float *' with an lvalue of type 'int *'}}
+  (void)new float*(ip); // expected-error {{cannot initialize a new value of type 'float *' with an lvalue of type 'int *'}}
   // Undefined, but clang should reject it directly.
   (void)new int[-1]; // expected-error {{array size is negative}}
   (void)new int[*(S*)0]; // expected-error {{array size expression must have integral or enumerated type, not 'struct S'}}
@@ -159,12 +159,10 @@ void loadEngineFor() {
 }
 
 template <class T> struct TBase {
-  void* operator new(T size, int); // expected-error {{'operator new' cannot take a dependent type as first parameter; use size_t}}\
-                                   // expected-error {{'operator new' takes type size_t}}
+  void* operator new(T size, int); // expected-error {{'operator new' cannot take a dependent type as first parameter; use size_t}}
 };
 
-// FIXME: We should not try to instantiate operator new, since it is invalid.
-TBase<int> t1; // expected-note {{in instantiation of template class 'struct TBase<int>' requested here}}
+TBase<int> t1;
 
 class X6 {
 public:
@@ -215,4 +213,19 @@ struct X13 : X12 {
 static void* f(void* g)
 {
     return new (g) X13();
+}
+
+class X14 {
+  static void operator delete(void*, const size_t);
+};
+
+void f(X14 *x14a, X14 *x14b) {
+  delete x14a;
+}
+
+namespace PR5918 { // Look for template operator new overloads.
+  struct S { template<typename T> static void* operator new(size_t, T); };
+  void test() {
+    (void)new(0) S;
+  }
 }

@@ -339,6 +339,8 @@ my %LinkerOptionMap = (
 my %CompilerLinkerOptionMap = (
   '-isysroot' => 1,
   '-arch' => 1,
+  '-m32' => 0,
+  '-m64' => 0,
   '-v' => 0,
   '-fpascal-strings' => 0,
   '-mmacosx-version-min' => 0, # This is really a 1 argument, but always has '='
@@ -380,9 +382,7 @@ my %UniqueOptions = (
 
 my %LangsAccepted = (
   "objective-c" => 1,
-  "c" => 1,
-  "c++" => 1,
-  "objective-c++" => 1
+  "c" => 1
 );
 
 ##----------------------------------------------------------------------------##
@@ -403,7 +403,7 @@ if ($Status) { exit($Status >> 8); }
 
 # Get the analysis options.
 my $Analyses = $ENV{'CCC_ANALYZER_ANALYSIS'};
-if (!defined($Analyses)) { $Analyses = '-checker-cfref'; }
+if (!defined($Analyses)) { $Analyses = '-analyzer-check-objc-mem'; }
 
 # Get the store model.
 my $StoreModel = $ENV{'CCC_ANALYZER_STORE_MODEL'};
@@ -597,9 +597,12 @@ if ($Action eq 'compile' or $Action eq 'link') {
       }
     }
     
+    # FileLang still not defined?  Skip the file.
     next if (!defined $FileLang);
+
+    # Language not accepted?
     next if (!defined $LangsAccepted{$FileLang});
-    
+
     my @CmdArgs;
     my @AnalyzeArgs;    
     

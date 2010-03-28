@@ -8,6 +8,13 @@
 ##===----------------------------------------------------------------------===##
 
 LEVEL := ../../..
-DIRS := driver index-test CIndex c-index-test
+DIRS := driver CIndex c-index-test
+
+include $(LEVEL)/Makefile.config
+
+ifeq ($(OS), $(filter $(OS), Cygwin MingW))
+DIRS := $(filter $(DIRS), CIndex)
+DIRS := $(filter $(DIRS), c-index-test)
+endif
 
 include $(LEVEL)/Makefile.common

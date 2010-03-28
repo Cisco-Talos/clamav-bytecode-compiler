@@ -53,7 +53,7 @@ int* k(char*);
 double* k(bool);
 
 void test_k() {
-  int* ip1 = k("foo");
+  int* ip1 = k("foo"); // expected-warning{{conversion from string literal to 'char *' is deprecated}}
   double* dp1 = k(L"foo");
 }
 
@@ -61,7 +61,7 @@ int* l(wchar_t*);
 double* l(bool);
 
 void test_l() {
-  int* ip1 = l(L"foo");
+  int* ip1 = l(L"foo"); // expected-warning{{conversion from string literal to 'wchar_t *' is deprecated}}
   double* dp1 = l("foo");
 }
 
@@ -79,7 +79,7 @@ class E;
 void test_n(E* e) {
   char ca[7];
   int* ip1 = n(ca);
-  int* ip2 = n("foo");
+  int* ip2 = n("foo"); // expected-warning{{conversion from string literal to 'char *' is deprecated}}
 
   float fa[7];
   double* dp1 = n(fa);
@@ -300,4 +300,109 @@ namespace PR5756 {
     int &ir = a(0,0);
     (void)ir;
   }
+}
+
+// Tests the exact text used to note the candidates
+namespace test1 {
+  template <class T> void foo(T t, unsigned N); // expected-note {{candidate function [with T = int] not viable: no known conversion from 'char const [6]' to 'unsigned int' for 2nd argument}}
+  void foo(int n, char N); // expected-note {{candidate function not viable: no known conversion from 'char const [6]' to 'char' for 2nd argument}} 
+  void foo(int n); // expected-note {{candidate function not viable: requires 1 argument, but 2 were provided}}
+  void foo(unsigned n = 10); // expected-note {{candidate function not viable: requires at most 1 argument, but 2 were provided}}
+  void foo(int n, const char *s, int t); // expected-note {{candidate function not viable: requires 3 arguments, but 2 were provided}}
+  void foo(int n, const char *s, int t, ...); // expected-note {{candidate function not viable: requires at least 3 arguments, but 2 were provided}}
+  void foo(int n, const char *s, int t, int u = 0); // expected-note {{candidate function not viable: requires at least 3 arguments, but 2 were provided}}
+
+  void test() {
+    foo(4, "hello"); //expected-error {{no matching function for call to 'foo'}}
+  }
+}
+
+// PR 6014
+namespace test2 {
+  struct QFixed {
+    QFixed(int i);
+    QFixed(long i);
+  };
+
+  bool operator==(const QFixed &f, int i);
+
+  class qrgb666 {
+    inline operator unsigned int () const;
+
+    inline bool operator==(const qrgb666 &v) const;
+    inline bool operator!=(const qrgb666 &v) const { return !(*this == v); }
+  };
+}
+
+// PR 6117
+namespace test3 {
+  struct Base {};
+  struct Incomplete;
+
+  void foo(Base *); // expected-note 2 {{cannot convert argument of incomplete type}}
+  void foo(Base &); // expected-note 2 {{cannot convert argument of incomplete type}}
+
+  void test(Incomplete *P) {
+    foo(P); // expected-error {{no matching function for call to 'foo'}}
+    foo(*P); // expected-error {{no matching function for call to 'foo'}}
+  }
+}
+
+namespace DerivedToBaseVsVoid {
+  struct A { };
+  struct B : A { };
+  
+  float &f(void *);
+  int &f(const A*);
+  
+  void g(B *b) {
+    int &ir = f(b);
+  }
+}
+
+// PR 6398 + PR 6421
+namespace test4 {
+  class A;
+  class B {
+    static void foo(); // expected-note {{not viable}}
+    static void foo(int*); // expected-note {{not viable}}
+    static void foo(long*); // expected-note {{not viable}}
+
+    void bar(A *a) { 
+      foo(a); // expected-error {{no matching function for call}}
+    }
+  };
+}
+
+namespace DerivedToBase {
+  struct A { };
+  struct B : A { };
+  struct C : B { };
+  
+  int &f0(const A&);
+  float &f0(B);
+  
+  void g() {
+    float &fr = f0(C());
+  }
+}
+
+namespace PR6483 {
+  struct X0 {
+    operator const unsigned int & () const;
+  };
+
+  struct X1 {
+    operator unsigned int & () const;
+  };
+
+  void f0(const bool &);
+  void f1(bool &); // expected-note 2{{not viable}}
+
+  void g(X0 x0, X1 x1) {
+    f0(x0);
+    f1(x0); // expected-error{{no matching function for call}}
+    f0(x1);
+    f1(x1); // expected-error{{no matching function for call}}
+  }  
 }

@@ -1,5 +1,5 @@
-// RUN: %clang_cc1 -triple i386-apple-darwin9 -analyze -analyzer-experimental-internal-checks -checker-cfref -analyzer-store=region -verify -fblocks -analyzer-opt-analyze-nested-blocks %s
-// RUN: %clang_cc1 -triple x86_64-apple-darwin9 -analyze -analyzer-experimental-internal-checks -checker-cfref -analyzer-store=region -verify -fblocks   -analyzer-opt-analyze-nested-blocks %s
+// RUN: %clang_cc1 -triple i386-apple-darwin9 -analyze -analyzer-experimental-internal-checks -analyzer-check-objc-mem -analyzer-store=region -verify -fblocks -analyzer-opt-analyze-nested-blocks %s
+// RUN: %clang_cc1 -triple x86_64-apple-darwin9 -analyze -analyzer-experimental-internal-checks -analyzer-check-objc-mem -analyzer-store=region -verify -fblocks   -analyzer-opt-analyze-nested-blocks %s
 
 // Test basic handling of references.
 char &test1_aux();
@@ -33,6 +33,10 @@ int test3_aux(Test3_Base &x);
 int test3(Test3_Derived x) {
   return test3_aux(x);
 }
+
+//===---------------------------------------------------------------------===//
+// Test CFG support for C++ condition variables.
+//===---------------------------------------------------------------------===//
 
 int test_init_in_condition_aux();
 int test_init_in_condition() {
@@ -89,3 +93,42 @@ int test_init_in_condition_for() {
   *p = 0xDEADBEEF; // no-warning
   return 0;
 }
+
+//===---------------------------------------------------------------------===//
+// Test handling of 'this' pointer.
+//===---------------------------------------------------------------------===//
+
+class TestHandleThis {
+  int x;
+
+  TestHandleThis();  
+  int foo();
+  int null_deref_negative();
+  int null_deref_positive();  
+};
+
+int TestHandleThis::foo() {
+  // Assume that 'x' is initialized.
+  return x + 1; // no-warning
+}
+
+int TestHandleThis::null_deref_negative() {
+  x = 10;
+  if (x == 10) {
+    return 1;
+  }
+  int *p = 0;
+  *p = 0xDEADBEEF; // no-warning
+  return 0;  
+}
+
+int TestHandleThis::null_deref_positive() {
+  x = 10;
+  if (x == 9) {
+    return 1;
+  }
+  int *p = 0;
+  *p = 0xDEADBEEF; // expected-warning{{null pointer}}
+  return 0;  
+}
+

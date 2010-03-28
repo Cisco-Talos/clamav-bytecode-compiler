@@ -11,6 +11,8 @@
 #define LLVM_CLANG_FRONTEND_FRONTENDACTIONS_H
 
 #include "clang/Frontend/FrontendAction.h"
+#include <string>
+#include <vector>
 
 namespace clang {
 class FixItRewriter;
@@ -119,39 +121,41 @@ public:
   virtual bool hasCodeCompletionSupport() const { return true; }
 };
 
-//===----------------------------------------------------------------------===//
-// Code Gen AST Actions
-//===----------------------------------------------------------------------===//
-
-class CodeGenAction : public ASTFrontendAction {
-private:
-  unsigned Act;
+/**
+ * \brief Frontend action adaptor that merges ASTs together.
+ *
+ * This action takes an existing AST file and "merges" it into the AST
+ * context, producing a merged context. This action is an action
+ * adaptor, which forwards most of its calls to another action that
+ * will consume the merged context.
+ */
+class ASTMergeAction : public FrontendAction {
+  /// \brief The action that the merge action adapts.
+  FrontendAction *AdaptedAction;
+  
+  /// \brief The set of AST files to merge.
+  std::vector<std::string> ASTFiles;
 
 protected:
-  CodeGenAction(unsigned _Act);
-
   virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI,
                                          llvm::StringRef InFile);
-};
 
-class EmitAssemblyAction : public CodeGenAction {
-public:
-  EmitAssemblyAction();
-};
+  virtual bool BeginSourceFileAction(CompilerInstance &CI,
+                                     llvm::StringRef Filename);
 
-class EmitBCAction : public CodeGenAction {
-public:
-  EmitBCAction();
-};
+  virtual void ExecuteAction();
+  virtual void EndSourceFileAction();
 
-class EmitLLVMAction : public CodeGenAction {
 public:
-  EmitLLVMAction();
-};
+  ASTMergeAction(FrontendAction *AdaptedAction,
+                 std::string *ASTFiles, unsigned NumASTFiles);
+  virtual ~ASTMergeAction();
 
-class EmitLLVMOnlyAction : public CodeGenAction {
-public:
-  EmitLLVMOnlyAction();
+  virtual bool usesPreprocessorOnly() const;
+  virtual bool usesCompleteTranslationUnit();
+  virtual bool hasPCHSupport() const;
+  virtual bool hasASTSupport() const;
+  virtual bool hasCodeCompletionSupport() const;
 };
 
 //===----------------------------------------------------------------------===//

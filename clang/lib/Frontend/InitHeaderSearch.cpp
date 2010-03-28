@@ -189,10 +189,12 @@ void InitHeaderSearch::AddGnuCPlusPlusIncludePaths(llvm::StringRef Base,
 void InitHeaderSearch::AddMinGWCPlusPlusIncludePaths(llvm::StringRef Base,
                                                      llvm::StringRef Arch,
                                                      llvm::StringRef Version) {
-  llvm::Twine localBase = Base + "/" + Arch + "/" + Version + "/include";
-  AddPath(localBase, System, true, false, false);
-  AddPath(localBase + "/c++", System, true, false, false);
-  AddPath(localBase + "/c++/backward", System, true, false, false);
+  AddPath(Base + "/" + Arch + "/" + Version + "/include",
+          System, true, false, false);
+  AddPath(Base + "/" + Arch + "/" + Version + "/include/c++",
+          System, true, false, false);
+  AddPath(Base + "/" + Arch + "/" + Version + "/include/c++/backward",
+          System, true, false, false);
 }
 
   // FIXME: This probably should goto to some platform utils place.
@@ -206,8 +208,8 @@ void InitHeaderSearch::AddMinGWCPlusPlusIncludePaths(llvm::StringRef Base,
   // I.e. "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\$VERSION".
   // There can be additional characters in the component.  Only the numberic
   // characters are compared.
-bool getSystemRegistryString(const char *keyPath, const char *valueName,
-                       char *value, size_t maxLength) {
+static bool getSystemRegistryString(const char *keyPath, const char *valueName,
+                                    char *value, size_t maxLength) {
   HKEY hRootKey = NULL;
   HKEY hKey = NULL;
   const char* subKey = NULL;
@@ -312,13 +314,13 @@ bool getSystemRegistryString(const char *keyPath, const char *valueName,
 }
 #else // _MSC_VER
   // Read registry string.
-bool getSystemRegistryString(const char *, const char *, char *, size_t) {
+static bool getSystemRegistryString(const char*, const char*, char*, size_t) {
   return(false);
 }
 #endif // _MSC_VER
 
   // Get Visual Studio installation directory.
-bool getVisualStudioDir(std::string &path) {
+static bool getVisualStudioDir(std::string &path) {
   char vsIDEInstallDir[256];
   // Try the Windows registry first.
   bool hasVCDir = getSystemRegistryString(
@@ -365,7 +367,7 @@ bool getVisualStudioDir(std::string &path) {
 }
 
   // Get Windows SDK installation directory.
-bool getWindowsSDKDir(std::string &path) {
+static bool getWindowsSDKDir(std::string &path) {
   char windowsSDKInstallDir[256];
   // Try the Windows registry.
   bool hasSDKDir = getSystemRegistryString(
@@ -434,7 +436,7 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple) {
     break;
   }
 
-  AddPath("/usr/local/include", System, false, false, false);
+  AddPath("/usr/local/include", System, true, false, false);
   AddPath("/usr/include", System, false, false, false);
 }
 
@@ -477,15 +479,20 @@ void InitHeaderSearch::AddDefaultCPlusPlusIncludePaths(const llvm::Triple &tripl
     AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.0.0",
                                 "i686-apple-darwin8", "", "", triple);
     break;
+  case llvm::Triple::DragonFly:
+    AddPath("/usr/include/c++/4.1", System, true, false, false);
+    break;
   case llvm::Triple::Linux:
-    // Exherbo (2009-10-26)
-    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.2",
+    // Exherbo (2010-01-25)
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.3",
                                 "x86_64-pc-linux-gnu", "32", "", triple);
-    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.2",
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.3",
                                 "i686-pc-linux-gnu", "", "", triple);
     // Debian sid
-    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.2",
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4",
                                 "x86_64-linux-gnu", "32", "", triple);
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4",
+                                "i486-linux-gnu", "64", "", triple);
     // Ubuntu 7.10 - Gutsy Gibbon
     AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.1.3",
                                 "i486-linux-gnu", "", "", triple);
@@ -505,6 +512,10 @@ void InitHeaderSearch::AddDefaultCPlusPlusIncludePaths(const llvm::Triple &tripl
     AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.3.2",
                                 "i386-redhat-linux","", "", triple);
 
+    // Fedora 10 x86_64
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.3.2",
+                                "x86_64-redhat-linux", "32", "", triple);
+
     // Fedora 11
     AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.1",
                                 "i586-redhat-linux","", "", triple);
@@ -513,6 +524,10 @@ void InitHeaderSearch::AddDefaultCPlusPlusIncludePaths(const llvm::Triple &tripl
     AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.2",
                                 "i686-redhat-linux","", "", triple);
 
+    // Fedora 12 (February-2010+)
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.4.3",
+                                "i686-redhat-linux","", "", triple);
+      
     // openSUSE 11.1 32 bit
     AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.3",
                                 "i586-suse-linux", "", "", triple);
@@ -551,12 +566,20 @@ void InitHeaderSearch::AddDefaultCPlusPlusIncludePaths(const llvm::Triple &tripl
     AddGnuCPlusPlusIncludePaths(
         "/usr/lib/gcc/x86_64-pc-linux-gnu/4.1.2/include/g++-v4",
         "i686-pc-linux-gnu", "", "", triple);
+        
+    // Gentoo amd64 gcc 4.3.2
+    AddGnuCPlusPlusIncludePaths(
+        "/usr/lib/gcc/x86_64-pc-linux-gnu/4.3.2/include/g++-v4",
+        "x86_64-pc-linux-gnu", "", "", triple);
+        
+    // Gentoo amd64 gcc 4.4.3
+    AddGnuCPlusPlusIncludePaths(
+        "/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.3/include/g++-v4",
+        "x86_64-pc-linux-gnu", "32", "", triple);
+    
     break;
   case llvm::Triple::FreeBSD:
-    // DragonFly
-    AddPath("/usr/include/c++/4.1", System, true, false, false);
-    // FreeBSD
-    AddPath("/usr/include/c++/4.2", System, true, false, false);
+    AddGnuCPlusPlusIncludePaths("/usr/include/c++/4.2", "", "", "", triple);
     break;
   case llvm::Triple::Solaris:
     // Solaris - Fall though..

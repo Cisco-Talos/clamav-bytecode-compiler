@@ -32,6 +32,7 @@ class Diagnostic;
 class DiagnosticClient;
 class ExternalASTSource;
 class FileManager;
+class FrontendAction;
 class Preprocessor;
 class Source;
 class SourceManager;
@@ -57,11 +58,10 @@ class TargetInfo;
 /// and a long form that takes explicit instances of any required objects.
 class CompilerInstance {
   /// The LLVM context used for this instance.
-  llvm::LLVMContext *LLVMContext;
-  bool OwnsLLVMContext;
+  llvm::OwningPtr<llvm::LLVMContext> LLVMContext;
 
   /// The options used in this compiler instance.
-  CompilerInvocation Invocation;
+  llvm::OwningPtr<CompilerInvocation> Invocation;
 
   /// The diagnostics engine instance.
   llvm::OwningPtr<Diagnostic> Diagnostics;
@@ -96,13 +96,48 @@ class CompilerInstance {
   /// The list of active output files.
   std::list< std::pair<std::string, llvm::raw_ostream*> > OutputFiles;
 
+  void operator=(const CompilerInstance &);  // DO NOT IMPLEMENT
+  CompilerInstance(const CompilerInstance&); // DO NOT IMPLEMENT
 public:
-  /// Create a new compiler instance with the given LLVM context, optionally
-  /// taking ownership of it.
-  CompilerInstance(llvm::LLVMContext *_LLVMContext = 0,
-                   bool _OwnsLLVMContext = true);
+  CompilerInstance();
   ~CompilerInstance();
 
+  /// @name High-Level Operations
+  /// {
+
+  /// ExecuteAction - Execute the provided action against the compiler's
+  /// CompilerInvocation object.
+  ///
+  /// This function makes the following assumptions:
+  ///
+  ///  - The invocation options should be initialized. This function does not
+  ///    handle the '-help' or '-version' options, clients should handle those
+  ///    directly.
+  ///
+  ///  - The diagnostics engine should have already been created by the client.
+  ///
+  ///  - No other CompilerInstance state should have been initialized (this is
+  ///    an unchecked error).
+  ///
+  ///  - Clients should have initialized any LLVM target features that may be
+  ///    required.
+  ///
+  ///  - Clients should eventually call llvm_shutdown() upon the completion of
+  ///    this routine to ensure that any managed objects are properly destroyed.
+  ///
+  /// Note that this routine may write output to 'stderr'.
+  ///
+  /// \param Act - The action to execute.
+  /// \return - True on success.
+  //
+  // FIXME: This function should take the stream to write any debugging /
+  // verbose output to as an argument.
+  //
+  // FIXME: Eliminate the llvm_shutdown requirement, that should either be part
+  // of the context or else not CompilerInstance specific.
+  bool ExecuteAction(FrontendAction &Act);
+
+  /// }
   /// @name LLVM Context
   /// {
 
@@ -113,93 +148,101 @@ public:
     return *LLVMContext;
   }
 
+  llvm::LLVMContext *takeLLVMContext() { return LLVMContext.take(); }
+
   /// setLLVMContext - Replace the current LLVM context and take ownership of
   /// \arg Value.
-  void setLLVMContext(llvm::LLVMContext *Value, bool TakeOwnership = true) {
-    LLVMContext = Value;
-    OwnsLLVMContext = TakeOwnership;
-  }
+  void setLLVMContext(llvm::LLVMContext *Value);
 
   /// }
   /// @name Compiler Invocation and Options
   /// {
 
-  CompilerInvocation &getInvocation() { return Invocation; }
-  const CompilerInvocation &getInvocation() const { return Invocation; }
-  void setInvocation(const CompilerInvocation &Value) { Invocation = Value; }
+  bool hasInvocation() const { return Invocation != 0; }
+
+  CompilerInvocation &getInvocation() {
+    assert(Invocation && "Compiler instance has no invocation!");
+    return *Invocation;
+  }
+
+  CompilerInvocation *takeInvocation() { return Invocation.take(); }
+
+  /// setInvocation - Replace the current invocation; the compiler instance
+  /// takes ownership of \arg Value.
+  void setInvocation(CompilerInvocation *Value);
 
   /// }
   /// @name Forwarding Methods
   /// {
 
   AnalyzerOptions &getAnalyzerOpts() {
-    return Invocation.getAnalyzerOpts();
+    return Invocation->getAnalyzerOpts();
   }
   const AnalyzerOptions &getAnalyzerOpts() const {
-    return Invocation.getAnalyzerOpts();
+    return Invocation->getAnalyzerOpts();
   }
 
   CodeGenOptions &getCodeGenOpts() {
-    return Invocation.getCodeGenOpts();
+    return Invocation->getCodeGenOpts();
   }
   const CodeGenOptions &getCodeGenOpts() const {
-    return Invocation.getCodeGenOpts();
+    return Invocation->getCodeGenOpts();
   }
 
   DependencyOutputOptions &getDependencyOutputOpts() {
-    return Invocation.getDependencyOutputOpts();
+    return Invocation->getDependencyOutputOpts();
   }
   const DependencyOutputOptions &getDependencyOutputOpts() const {
-    return Invocation.getDependencyOutputOpts();
+    return Invocation->getDependencyOutputOpts();
   }
 
   DiagnosticOptions &getDiagnosticOpts() {
-    return Invocation.getDiagnosticOpts();
+    return Invocation->getDiagnosticOpts();
   }
   const DiagnosticOptions &getDiagnosticOpts() const {
-    return Invocation.getDiagnosticOpts();
+    return Invocation->getDiagnosticOpts();
   }
 
   FrontendOptions &getFrontendOpts() {
-    return Invocation.getFrontendOpts();
+    return Invocation->getFrontendOpts();
   }
   const FrontendOptions &getFrontendOpts() const {
-    return Invocation.getFrontendOpts();
+    return Invocation->getFrontendOpts();
   }
 
   HeaderSearchOptions &getHeaderSearchOpts() {
-    return Invocation.getHeaderSearchOpts();
+    return Invocation->getHeaderSearchOpts();
   }
   const HeaderSearchOptions &getHeaderSearchOpts() const {
-    return Invocation.getHeaderSearchOpts();
+    return Invocation->getHeaderSearchOpts();
   }
 
   LangOptions &getLangOpts() {
-    return Invocation.getLangOpts();
+    return Invocation->getLangOpts();
   }
   const LangOptions &getLangOpts() const {
-    return Invocation.getLangOpts();
+    return Invocation->getLangOpts();
   }
 
   PreprocessorOptions &getPreprocessorOpts() {
-    return Invocation.getPreprocessorOpts();
+    return Invocation->getPreprocessorOpts();
   }
   const PreprocessorOptions &getPreprocessorOpts() const {
-    return Invocation.getPreprocessorOpts();
+    return Invocation->getPreprocessorOpts();
   }
 
   PreprocessorOutputOptions &getPreprocessorOutputOpts() {
-    return Invocation.getPreprocessorOutputOpts();
+    return Invocation->getPreprocessorOutputOpts();
   }
   const PreprocessorOutputOptions &getPreprocessorOutputOpts() const {
-    return Invocation.getPreprocessorOutputOpts();
+    return Invocation->getPreprocessorOutputOpts();
   }
 
   TargetOptions &getTargetOpts() {
-    return Invocation.getTargetOpts();
+    return Invocation->getTargetOpts();
   }
   const TargetOptions &getTargetOpts() const {
-    return Invocation.getTargetOpts();
+    return Invocation->getTargetOpts();
   }
 
   /// }
@@ -396,11 +439,11 @@ public:
   /// \param OS - The output stream, which should be non-null.
   void addOutputFile(llvm::StringRef Path, llvm::raw_ostream *OS);
 
-  /// ClearOutputFiles - Clear the output file list, destroying the contained
+  /// clearOutputFiles - Clear the output file list, destroying the contained
   /// output streams.
   ///
   /// \param EraseFiles - If true, attempt to erase the files from disk.
-  void ClearOutputFiles(bool EraseFiles);
+  void clearOutputFiles(bool EraseFiles);
 
   /// }
   /// @name Construction Utility Methods
@@ -451,6 +494,7 @@ public:
                                           const HeaderSearchOptions &,
                                           const DependencyOutputOptions &,
                                           const TargetInfo &,
+                                          const FrontendOptions &,
                                           SourceManager &, FileManager &);
 
   /// Create the AST context.

@@ -16,6 +16,7 @@
 #define LLVM_CLANG_SEMA_OVERLOAD_H
 
 #include "clang/AST/Decl.h"
+#include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -53,12 +54,12 @@ namespace clang {
     ICK_Floating_Conversion,   ///< Floating point conversions (C++ 4.8)
     ICK_Complex_Conversion,    ///< Complex conversions (C99 6.3.1.6)
     ICK_Floating_Integral,     ///< Floating-integral conversions (C++ 4.9)
-    ICK_Complex_Real,          ///< Complex-real conversions (C99 6.3.1.7)
     ICK_Pointer_Conversion,    ///< Pointer conversions (C++ 4.10)
     ICK_Pointer_Member,        ///< Pointer-to-member conversions (C++ 4.11)
     ICK_Boolean_Conversion,    ///< Boolean conversions (C++ 4.12)
     ICK_Compatible_Conversion, ///< Conversions between compatible types in C99
     ICK_Derived_To_Base,       ///< Derived-to-base (C++ [over.best.ics])
+    ICK_Complex_Real,          ///< Complex-real conversions (C99 6.3.1.7)
     ICK_Num_Conversion_Kinds   ///< The number of conversion kinds
   };
 
@@ -82,9 +83,10 @@ namespace clang {
   /// 13.3.3.1.1) and are listed such that better conversion ranks
   /// have smaller values.
   enum ImplicitConversionRank {
-    ICR_Exact_Match = 0, ///< Exact Match
-    ICR_Promotion,       ///< Promotion
-    ICR_Conversion       ///< Conversion
+    ICR_Exact_Match = 0,        ///< Exact Match
+    ICR_Promotion,              ///< Promotion
+    ICR_Conversion,             ///< Conversion
+    ICR_Complex_Real_Conversion ///< Complex <-> Real conversion
   };
 
   ImplicitConversionRank GetConversionRank(ImplicitConversionKind Kind);
@@ -115,7 +117,7 @@ namespace clang {
     /// Deprecated - Whether this the deprecated conversion of a
     /// string literal to a pointer to non-const character data
     /// (C++ 4.2p2).
-    bool Deprecated : 1;
+    bool DeprecatedStringLiteralToCharPtr : 1;
 
     /// IncompatibleObjC - Whether this is an Objective-C conversion
     /// that we should warn about (if we actually use it).
@@ -138,9 +140,10 @@ namespace clang {
     /// QualType.
     void *FromTypePtr;
 
-    /// ToType - The type that this conversion is converting to. This
-    /// is an opaque pointer that can be translated into a QualType.
-    void *ToTypePtr;
+    /// ToType - The types that this conversion is converting to in
+    /// each step. This is an opaque pointer that can be translated
+    /// into a QualType.
+    void *ToTypePtrs[3];
 
     /// CopyConstructor - The copy constructor that is used to perform
     /// this conversion, when the conversion is actually just the
@@ -148,6 +151,25 @@ namespace clang {
     /// conversions are either identity conversions or derived-to-base
     /// conversions.
     CXXConstructorDecl *CopyConstructor;
+
+    void setFromType(QualType T) { FromTypePtr = T.getAsOpaquePtr(); }
+    void setToType(unsigned Idx, QualType T) { 
+      assert(Idx < 3 && "To type index is out of range");
+      ToTypePtrs[Idx] = T.getAsOpaquePtr(); 
+    }
+    void setAllToTypes(QualType T) {
+      ToTypePtrs[0] = T.getAsOpaquePtr(); 
+      ToTypePtrs[1] = ToTypePtrs[0];
+      ToTypePtrs[2] = ToTypePtrs[0];
+    }
+
+    QualType getFromType() const {
+      return QualType::getFromOpaquePtr(FromTypePtr);
+    }
+    QualType getToType(unsigned Idx) const {
+      assert(Idx < 3 && "To type index is out of range");
+      return QualType::getFromOpaquePtr(ToTypePtrs[Idx]);
+    }
 
     void setAsIdentityConversion();
     ImplicitConversionRank getRank() const;
@@ -190,6 +212,93 @@ namespace clang {
     void DebugPrint() const;
   };
 
+  /// Represents an ambiguous user-defined conversion sequence.
+  struct AmbiguousConversionSequence {
+    typedef llvm::SmallVector<FunctionDecl*, 4> ConversionSet;
+
+    void *FromTypePtr;
+    void *ToTypePtr;
+    char Buffer[sizeof(ConversionSet)];
+
+    QualType getFromType() const {
+      return QualType::getFromOpaquePtr(FromTypePtr);
+    }
+    QualType getToType() const {
+      return QualType::getFromOpaquePtr(ToTypePtr);
+    }
+    void setFromType(QualType T) { FromTypePtr = T.getAsOpaquePtr(); }
+    void setToType(QualType T) { ToTypePtr = T.getAsOpaquePtr(); }
+
+    ConversionSet &conversions() {
+      return *reinterpret_cast<ConversionSet*>(Buffer);
+    }
+
+    const ConversionSet &conversions() const {
+      return *reinterpret_cast<const ConversionSet*>(Buffer);
+    }
+
+    void addConversion(FunctionDecl *D) {
+      conversions().push_back(D);
+    }
+
+    typedef ConversionSet::iterator iterator;
+    iterator begin() { return conversions().begin(); }
+    iterator end() { return conversions().end(); }
+
+    typedef ConversionSet::const_iterator const_iterator;
+    const_iterator begin() const { return conversions().begin(); }
+    const_iterator end() const { return conversions().end(); }
+
+    void construct();
+    void destruct();
+    void copyFrom(const AmbiguousConversionSequence &);
+  };
+
+  /// BadConversionSequence - Records information about an invalid
+  /// conversion sequence.
+  struct BadConversionSequence {
+    enum FailureKind {
+      no_conversion,
+      unrelated_class,
+      suppressed_user,
+      bad_qualifiers
+    };
+
+    // This can be null, e.g. for implicit object arguments.
+    Expr *FromExpr;
+
+    FailureKind Kind;
+
+  private:
+    // The type we're converting from (an opaque QualType).
+    void *FromTy;
+
+    // The type we're converting to (an opaque QualType).
+    void *ToTy;
+
+  public:
+    void init(FailureKind K, Expr *From, QualType To) {
+      init(K, From->getType(), To);
+      FromExpr = From;
+    }
+    void init(FailureKind K, QualType From, QualType To) {
+      Kind = K;
+      FromExpr = 0;
+      setFromType(From);
+      setToType(To);
+    }
+
+    QualType getFromType() const { return QualType::getFromOpaquePtr(FromTy); }
+    QualType getToType() const { return QualType::getFromOpaquePtr(ToTy); }
+
+    void setFromExpr(Expr *E) {
+      FromExpr = E;
+      setFromType(E->getType());
+    }
+    void setFromType(QualType T) { FromTy = T.getAsOpaquePtr(); }
+    void setToType(QualType T) { ToTy = T.getAsOpaquePtr(); }
+  };
+
   /// ImplicitConversionSequence - Represents an implicit conversion
   /// sequence, which may be a standard conversion sequence
   /// (C++ 13.3.3.1.1), user-defined conversion sequence (C++ 13.3.3.1.2),
@@ -197,18 +306,34 @@ namespace clang {
   struct ImplicitConversionSequence {
     /// Kind - The kind of implicit conversion sequence. BadConversion
     /// specifies that there is no conversion from the source type to
-    /// the target type. The enumerator values are ordered such that
-    /// better implicit conversions have smaller values.
+    /// the target type.  AmbiguousConversion represents the unique
+    /// ambiguous conversion (C++0x [over.best.ics]p10).
     enum Kind {
       StandardConversion = 0,
       UserDefinedConversion,
+      AmbiguousConversion,
       EllipsisConversion,
       BadConversion
     };
 
-    /// ConversionKind - The kind of implicit conversion sequence.
-    Kind ConversionKind;
+  private:
+    enum {
+      Uninitialized = BadConversion + 1
+    };
 
+    /// ConversionKind - The kind of implicit conversion sequence.
+    unsigned ConversionKind;
+
+    void setKind(Kind K) {
+      destruct();
+      ConversionKind = K;
+    }
+
+    void destruct() {
+      if (ConversionKind == AmbiguousConversion) Ambiguous.destruct();
+    }
+
+  public:
     union {
       /// When ConversionKind == StandardConversion, provides the
       /// details of the standard conversion sequence.
@@ -217,12 +342,78 @@ namespace clang {
       /// When ConversionKind == UserDefinedConversion, provides the
       /// details of the user-defined conversion sequence.
       UserDefinedConversionSequence UserDefined;
+
+      /// When ConversionKind == AmbiguousConversion, provides the
+      /// details of the ambiguous conversion.
+      AmbiguousConversionSequence Ambiguous;
+
+      /// When ConversionKind == BadConversion, provides the details
+      /// of the bad conversion.
+      BadConversionSequence Bad;
     };
+
+    ImplicitConversionSequence() : ConversionKind(Uninitialized) {}
+    ~ImplicitConversionSequence() {
+      destruct();
+    }
+    ImplicitConversionSequence(const ImplicitConversionSequence &Other)
+      : ConversionKind(Other.ConversionKind)
+    {
+      switch (ConversionKind) {
+      case Uninitialized: break;
+      case StandardConversion: Standard = Other.Standard; break;
+      case UserDefinedConversion: UserDefined = Other.UserDefined; break;
+      case AmbiguousConversion: Ambiguous.copyFrom(Other.Ambiguous); break;
+      case EllipsisConversion: break;
+      case BadConversion: Bad = Other.Bad; break;
+      }
+    }
+
+    ImplicitConversionSequence &
+        operator=(const ImplicitConversionSequence &Other) {
+      destruct();
+      new (this) ImplicitConversionSequence(Other);
+      return *this;
+    }
     
-    /// When ConversionKind == BadConversion due to multiple conversion
-    /// functions, this will list those functions.
-    llvm::SmallVector<FunctionDecl*, 4> ConversionFunctionSet;
-    
+    Kind getKind() const {
+      assert(isInitialized() && "querying uninitialized conversion");
+      return Kind(ConversionKind);
+    }
+    bool isBad() const { return getKind() == BadConversion; }
+    bool isStandard() const { return getKind() == StandardConversion; }
+    bool isEllipsis() const { return getKind() == EllipsisConversion; }
+    bool isAmbiguous() const { return getKind() == AmbiguousConversion; }
+    bool isUserDefined() const { return getKind() == UserDefinedConversion; }
+
+    /// Determines whether this conversion sequence has been
+    /// initialized.  Most operations should never need to query
+    /// uninitialized conversions and should assert as above.
+    bool isInitialized() const { return ConversionKind != Uninitialized; }
+
+    /// Sets this sequence as a bad conversion for an explicit argument.
+    void setBad(BadConversionSequence::FailureKind Failure,
+                Expr *FromExpr, QualType ToType) {
+      setKind(BadConversion);
+      Bad.init(Failure, FromExpr, ToType);
+    }
+
+    /// Sets this sequence as a bad conversion for an implicit argument.
+    void setBad(BadConversionSequence::FailureKind Failure,
+                QualType FromType, QualType ToType) {
+      setKind(BadConversion);
+      Bad.init(Failure, FromType, ToType);
+    }
+
+    void setStandard() { setKind(StandardConversion); }
+    void setEllipsis() { setKind(EllipsisConversion); }
+    void setUserDefined() { setKind(UserDefinedConversion); }
+    void setAmbiguous() {
+      if (ConversionKind == AmbiguousConversion) return;
+      ConversionKind = AmbiguousConversion;
+      Ambiguous.construct();
+    }
+
     // The result of a comparison between implicit conversion
     // sequences. Use Sema::CompareImplicitConversionSequences to
     // actually perform the comparison.
@@ -233,6 +424,22 @@ namespace clang {
     };
 
     void DebugPrint() const;
+  };
+
+  enum OverloadFailureKind {
+    ovl_fail_too_many_arguments,
+    ovl_fail_too_few_arguments,
+    ovl_fail_bad_conversion,
+    ovl_fail_bad_deduction,
+
+    /// This conversion candidate was not considered because it
+    /// duplicates the work of a trivial or derived-to-base
+    /// conversion.
+    ovl_fail_trivial_conversion,
+
+    /// This conversion candidate is not viable because its result
+    /// type is not implicitly convertible to the desired type.
+    ovl_fail_bad_final_conversion
   };
 
   /// OverloadCandidate - A single candidate in an overload set (C++ 13.3).
@@ -275,11 +482,48 @@ namespace clang {
     /// object argument.
     bool IgnoreObjectArgument;
 
-    /// FinalConversion - For a conversion function (where Function is
-    /// a CXXConversionDecl), the standard conversion that occurs
-    /// after the call to the overload candidate to convert the result
-    /// of calling the conversion function to the required type.
-    StandardConversionSequence FinalConversion;
+    /// FailureKind - The reason why this candidate is not viable.
+    /// Actually an OverloadFailureKind.
+    unsigned char FailureKind;
+
+    /// PathAccess - The 'path access' to the given function/conversion.
+    /// Actually an AccessSpecifier.
+    unsigned Access;
+
+    AccessSpecifier getAccess() const {
+      return AccessSpecifier(Access);
+    }
+
+    /// A structure used to record information about a failed
+    /// template argument deduction.
+    struct DeductionFailureInfo {
+      // A Sema::TemplateDeductionResult.
+      unsigned Result;
+
+      // A TemplateParameter.
+      void *TemplateParameter;
+    };
+
+    union {
+      DeductionFailureInfo DeductionFailure;
+      
+      /// FinalConversion - For a conversion function (where Function is
+      /// a CXXConversionDecl), the standard conversion that occurs
+      /// after the call to the overload candidate to convert the result
+      /// of calling the conversion function to the required type.
+      StandardConversionSequence FinalConversion;
+    };
+
+    /// hasAmbiguousConversion - Returns whether this overload
+    /// candidate requires an ambiguous conversion or not.
+    bool hasAmbiguousConversion() const {
+      for (llvm::SmallVectorImpl<ImplicitConversionSequence>::const_iterator
+             I = Conversions.begin(), E = Conversions.end(); I != E; ++I) {
+        if (!I->isInitialized()) return false;
+        if (I->isAmbiguous()) return true;
+      }
+      return false;
+    }
   };
 
   /// OverloadCandidateSet - A set of overload candidates, used in C++
@@ -287,8 +531,13 @@ namespace clang {
   class OverloadCandidateSet : public llvm::SmallVector<OverloadCandidate, 16> {
     typedef llvm::SmallVector<OverloadCandidate, 16> inherited;
     llvm::SmallPtrSet<Decl *, 16> Functions;
-    
+
+    SourceLocation Loc;    
   public:
+    OverloadCandidateSet(SourceLocation Loc) : Loc(Loc) {}
+
+    SourceLocation getLocation() const { return Loc; }
+
     /// \brief Determine when this overload candidate will be new to the
     /// overload set.
     bool isNewCandidate(Decl *F) { 

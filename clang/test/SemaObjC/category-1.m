@@ -29,7 +29,7 @@
 
 @interface MyClass1 (Category) <p2, p3> @end  // expected-warning {{cannot find protocol definition for 'p2'}}
 
-@interface MyClass  (Category) @end // expected-error {{cannot find interface declaration for 'MyClass'}}
+@interface UnknownClass  (Category) @end // expected-error {{cannot find interface declaration for 'UnknownClass'}}
 
 @class MyClass2;
 
@@ -73,3 +73,7 @@
 
 @implementation MultipleCat_I // expected-warning {{incomplete implementation}}, expected-warning {{method definition for 'im0' not found}}
 @end
+
+// <rdar://problem/7680391> - Handle nameless categories with no name that refer
+// to an undefined class
+@interface RDar7680391 () @end // expected-error{{cannot find interface declaration}}

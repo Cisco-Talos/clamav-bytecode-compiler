@@ -14,6 +14,8 @@
 let Component = "Parse" in {
 
 def w_asm_qualifier_ignored : Warning<"ignored %0 qualifier on asm">;
+def warn_file_asm_volatile : Warning<
+  "meaningless 'volatile' on asm outside function">;
 
 def ext_empty_source_file : Extension<"ISO C forbids an empty source file">;
 def ext_top_level_semi : Extension<
@@ -144,8 +146,6 @@ def err_missing_comma_before_ellipsis : Error<
 def err_unexpected_typedef_ident : Error<
   "unexpected type name %0: expected identifier">;
 def err_expected_class_name : Error<"expected class name">;
-def err_destructor_class_name : Error<
-  "expected the class name after '~' to name a destructor">;
 def err_unspecified_vla_size_with_static : Error<
   "'static' may not be used with an unspecified variable length array size">;
 
@@ -158,12 +158,20 @@ def err_typename_invalid_functionspec : Error<
   "type name does not allow function specifier to be specified">;
 def err_invalid_decl_spec_combination : Error<
   "cannot combine with previous '%0' declaration specifier">;
+def err_invalid_vector_decl_spec_combination : Error<
+  "cannot combine with previous '%0' declaration specifier. '__vector' must be first">;
+def err_invalid_pixel_decl_spec_combination : Error<
+  "'__pixel' must be preceded by '__vector'.  '%0' declaration specifier not allowed here">;
+def err_invalid_vector_double_decl_spec_combination : Error<
+  "cannot use 'double' with '__vector'">;
+def warn_vector_long_decl_spec_combination : Warning<
+  "Use of 'long' with '__vector' is deprecated">, InGroup<Deprecated>;
 def err_friend_invalid_in_context : Error<
   "'friend' used outside of class">;
 def err_unknown_typename : Error<
   "unknown type name %0">;
 def err_use_of_tag_name_without_tag : Error<
-  "use of tagged type %0 without '%1' tag">;
+  "must use '%1' tag to refer to type %0%select{| in this scope}2">;
 def err_expected_ident_in_using : Error<
   "expected an identifier in using directive">;
 def err_unexected_colon_in_nested_name_spec : Error<
@@ -237,8 +245,10 @@ def err_expected_catch : Error<"expected catch">;
 def err_expected_lbrace_or_comma : Error<"expected '{' or ','">;
 def err_using_namespace_in_class : Error<
   "'using namespace' is not allowed in classes">;
-def err_ident_in_pseudo_dtor_not_a_type : Error<
-  "identifier %0 in pseudo-destructor expression does not name a type">;
+def err_destructor_tilde_identifier : Error<
+  "expected a class name after '~' to name a destructor">;
+def err_destructor_template_id : Error<
+  "destructor name %0 does not refer to a template">;
 
 // C++ derived classes
 def err_dup_virtual : Error<"duplicate 'virtual' in base specifier">;
@@ -261,6 +271,8 @@ def err_attributes_not_allowed : Error<"an attribute list cannot appear here">;
 
 /// C++ Templates
 def err_expected_template : Error<"expected template">;
+def err_unknown_template_name : Error<
+  "unknown template name %0">;
 def err_expected_comma_greater : Error<
   "expected ',' or '>' in template-parameter-list">;
 def err_expected_type_id_after : Error<"expected type-id after '%0'">;
@@ -288,9 +300,23 @@ def err_explicit_instantiation_with_definition : Error<
     "explicit template instantiation cannot have a definition; if this "
     "definition is meant to be an explicit specialization, add '<>' after the "
     "'template' keyword">;
+def err_enum_template : Error<"enumeration cannot be a template">;
+
+// Constructor template diagnostics.
+def err_out_of_line_constructor_template_id : Error<
+  "out-of-line constructor for %0 cannot have template arguments">;
+def err_out_of_line_template_id_names_constructor : Error<
+  "qualified reference to %0 is a constructor name rather than a "
+  "template name wherever a constructor can be declared">;
+def err_out_of_line_type_names_constructor : Error<
+  "qualified reference to %0 is a constructor name rather than a "
+  "type wherever a constructor can be declared">;
 
 def err_expected_qualified_after_typename : Error<
   "expected a qualified name after 'typename'">;
+def err_expected_semi_after_tagdecl : Error<
+  "expected ';' after %0">;
+
 def err_typename_refers_to_non_type_template : Error<
   "typename specifier refers to a non-template">;
 def err_expected_type_name_after_typename : Error<

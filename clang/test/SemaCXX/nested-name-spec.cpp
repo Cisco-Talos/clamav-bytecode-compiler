@@ -13,8 +13,9 @@ namespace A {
 }
 
 A:: ; // expected-error {{expected unqualified-id}}
-::A::ax::undef ex3; // expected-error {{no member named}}
-A::undef1::undef2 ex4; // expected-error {{no member named 'undef1'}}
+// FIXME: redundant errors
+::A::ax::undef ex3; // expected-error {{no member named}} expected-error {{unknown type name}}
+A::undef1::undef2 ex4; // expected-error {{no member named 'undef1'}} expected-error {{unknown type name}}
 
 int A::C::Ag1() { return 0; }
 
@@ -178,7 +179,7 @@ bool (foo_S::value);
 
 
 namespace somens {
-  struct a { }; // expected-note{{candidate function}}
+  struct a { }; // expected-note{{candidate constructor (the implicit copy constructor)}}
 }
 
 template <typename T>
@@ -212,11 +213,20 @@ namespace test1 {
 // non-lexical scope.
 namespace test2 {
   namespace ns {
-    int *count_ptr;
+    extern int *count_ptr;
   }
   namespace {
     int count = 0;
   }
 
   int *ns::count_ptr = &count;
+}
+
+// PR6259, invalid case
+namespace test3 {
+  // FIXME: this should really only trigger once
+  class A; // expected-note 2 {{forward declaration}}
+  void foo(const char *path) {
+    A::execute(path); // expected-error 2 {{incomplete type 'class test3::A' named in nested name specifier}}
+  }
 }

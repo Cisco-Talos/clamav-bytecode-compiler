@@ -16,6 +16,7 @@
 
 #include "clang/AST/DeclarationName.h"
 #include "clang/AST/DeclBase.h"
+#include "clang/AST/DeclCXX.h"
 #include "clang/AST/Type.h"
 #include "clang/AST/TypeOrdering.h"
 #include "llvm/ADT/SmallVector.h"
@@ -65,9 +66,21 @@ struct CXXBasePathElement {
 /// subobject is being used.
 class CXXBasePath : public llvm::SmallVector<CXXBasePathElement, 4> {
 public:
+  CXXBasePath() : Access(AS_public) {}
+
+  /// \brief The access along this inheritance path.  This is only
+  /// calculated when recording paths.  AS_none is a special value
+  /// used to indicate a path which permits no legal access.
+  AccessSpecifier Access;
+
   /// \brief The set of declarations found inside this base class
   /// subobject.
   DeclContext::lookup_result Decls;
+
+  void clear() {
+    llvm::SmallVectorImpl<CXXBasePathElement>::clear();
+    Access = AS_public;
+  }
 };
 
 /// BasePaths - Represents the set of paths from a derived class to
@@ -131,10 +144,10 @@ class CXXBasePaths {
   /// is also recorded.
   bool DetectVirtual;
   
-  /// ScratchPath - A BasePath that is used by Sema::IsDerivedFrom
+  /// ScratchPath - A BasePath that is used by Sema::lookupInBases
   /// to help build the set of paths.
   CXXBasePath ScratchPath;
-  
+
   /// DetectedVirtual - The base class that is virtual.
   const RecordType *DetectedVirtual;
   
@@ -147,9 +160,14 @@ class CXXBasePaths {
   friend class CXXRecordDecl;
   
   void ComputeDeclsFound();
-  
+
+  bool lookupInBases(ASTContext &Context, 
+                     const CXXRecordDecl *Record,
+                     CXXRecordDecl::BaseMatchesCallback *BaseMatches, 
+                     void *UserData);
 public:
-  typedef std::list<CXXBasePath>::const_iterator paths_iterator;
+  typedef std::list<CXXBasePath>::iterator paths_iterator;
+  typedef std::list<CXXBasePath>::const_iterator const_paths_iterator;
   typedef NamedDecl **decl_iterator;
   
   /// BasePaths - Construct a new BasePaths structure to record the
@@ -163,8 +181,10 @@ public:
   
   ~CXXBasePaths() { delete [] DeclsFound; }
   
-  paths_iterator begin() const { return Paths.begin(); }
-  paths_iterator end()   const { return Paths.end(); }
+  paths_iterator begin() { return Paths.begin(); }
+  paths_iterator end()   { return Paths.end(); }
+  const_paths_iterator begin() const { return Paths.begin(); }
+  const_paths_iterator end()   const { return Paths.end(); }
   
   CXXBasePath&       front()       { return Paths.front(); }
   const CXXBasePath& front() const { return Paths.front(); }
@@ -194,7 +214,7 @@ public:
   const RecordType* getDetectedVirtual() const {
     return DetectedVirtual;
   }
-  
+
   /// \brief Retrieve the type from which this base-paths search
   /// began
   CXXRecordDecl *getOrigin() const { return Origin; }

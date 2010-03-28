@@ -16,9 +16,9 @@
 
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceLocation.h"
+#include "clang/Basic/Specifiers.h"
 #include "clang/Basic/TemplateKinds.h"
 #include "clang/Basic/TypeTraits.h"
-#include "clang/Parse/AccessSpecifier.h"
 #include "clang/Parse/DeclSpec.h"
 #include "clang/Parse/Ownership.h"
 #include "llvm/Support/PrettyStackTrace.h"
@@ -291,13 +291,62 @@ public:
                                           bool EnteringContext,
                                           TemplateTy &Template) = 0;
 
+  /// \brief Action called as part of error recovery when the parser has 
+  /// determined that the given name must refer to a template, but 
+  /// \c isTemplateName() did not return a result.
+  ///
+  /// This callback permits the action to give a detailed diagnostic when an
+  /// unknown template name is encountered and, potentially, to try to recover
+  /// by producing a new template in \p SuggestedTemplate.
+  ///
+  /// \param II the name that should be a template.
+  ///
+  /// \param IILoc the location of the name in the source.
+  ///
+  /// \param S the scope in which name lookup was performed.
+  ///
+  /// \param SS the C++ scope specifier that preceded the name.
+  ///
+  /// \param SuggestedTemplate if the action sets this template to a non-NULL,
+  /// template, the parser will recover by consuming the template name token
+  /// and the template argument list that follows.
+  ///
+  /// \param SuggestedTemplateKind as input, the kind of template that we
+  /// expect (e.g., \c TNK_Type_template or \c TNK_Function_template). If the
+  /// action provides a suggested template, this should be set to the kind of
+  /// template.
+  ///
+  /// \returns true if a diagnostic was emitted, false otherwise. When false,
+  /// the parser itself will emit a generic "unknown template name" diagnostic.
+  virtual bool DiagnoseUnknownTemplateName(const IdentifierInfo &II, 
+                                           SourceLocation IILoc,
+                                           Scope *S,
+                                           const CXXScopeSpec *SS,
+                                           TemplateTy &SuggestedTemplate,
+                                           TemplateNameKind &SuggestedKind) {
+    return false;
+  }
+  
+  /// \brief Determine whether the given name refers to a non-type nested name
+  /// specifier, e.g., the name of a namespace or namespace alias.
+  ///
+  /// This actual is used in the parsing of pseudo-destructor names to 
+  /// distinguish a nested-name-specifier and a "type-name ::" when we
+  /// see the token sequence "X :: ~".
+  virtual bool isNonTypeNestedNameSpecifier(Scope *S, const CXXScopeSpec &SS,
+                                            SourceLocation IdLoc,
+                                            IdentifierInfo &II,
+                                            TypeTy *ObjectType) {
+    return false;
+  }
+  
   /// ActOnCXXGlobalScopeSpecifier - Return the object that represents the
   /// global scope ('::').
   virtual CXXScopeTy *ActOnCXXGlobalScopeSpecifier(Scope *S,
                                                    SourceLocation CCLoc) {
     return 0;
   }
-
+  
   /// \brief Parsed an identifier followed by '::' in a C++
   /// nested-name-specifier.
   ///
@@ -423,6 +472,8 @@ public:
   virtual DeclPtrTy ActOnParamDeclarator(Scope *S, Declarator &D) {
     return DeclPtrTy();
   }
+  virtual void ActOnObjCCatchParam(DeclPtrTy D) {
+  }
 
   /// AddInitializerToDecl - This action is called immediately after
   /// ActOnDeclarator (when an initializer is present). The code is factored
@@ -452,6 +503,12 @@ public:
     return;
   }
 
+  /// \brief Note that the given declaration had an initializer that could not
+  /// be parsed.
+  virtual void ActOnInitializerError(DeclPtrTy Dcl) {
+    return;
+  }
+  
   /// FinalizeDeclaratorGroup - After a sequence of declarators are parsed, this
   /// gives the actions implementation a chance to process the group as a whole.
   virtual DeclGroupPtrTy FinalizeDeclaratorGroup(Scope *S, const DeclSpec& DS,
@@ -772,6 +829,11 @@ public:
     return StmtEmpty();
   }
 
+  /// ActOnSwitchBodyError - This is called if there is an error parsing the
+  /// body of the switch stmt instead of ActOnFinishSwitchStmt.
+  virtual void ActOnSwitchBodyError(SourceLocation SwitchLoc, StmtArg Switch,
+                                    StmtArg Body) {}
+  
   virtual OwningStmtResult ActOnFinishSwitchStmt(SourceLocation SwitchLoc,
                                                  StmtArg Switch, StmtArg Body) {
     return StmtEmpty();
@@ -861,12 +923,13 @@ public:
                                         bool IsVolatile,
                                         unsigned NumOutputs,
                                         unsigned NumInputs,
-                                        std::string *Names,
+                                        IdentifierInfo **Names,
                                         MultiExprArg Constraints,
                                         MultiExprArg Exprs,
                                         ExprArg AsmString,
                                         MultiExprArg Clobbers,
-                                        SourceLocation RParenLoc) {
+                                        SourceLocation RParenLoc,
+                                        bool MSAsm = false) {
     return StmtEmpty();
   }
 
@@ -1031,7 +1094,7 @@ public:
                                                    SourceLocation RLoc) {
     return ExprEmpty();
   }
-  
+
   /// \brief Parsed a member access expresion (C99 6.5.2.3, C++ [expr.ref])
   /// of the form \c x.m or \c p->m.
   ///
@@ -1233,7 +1296,8 @@ public:
   /// definition.
   virtual DeclPtrTy ActOnStartNamespaceDef(Scope *S, SourceLocation IdentLoc,
                                            IdentifierInfo *Ident,
-                                           SourceLocation LBrace) {
+                                           SourceLocation LBrace,
+                                           AttributeList *AttrList) {
     return DeclPtrTy();
   }
 
@@ -1428,6 +1492,18 @@ public:
 
   //===------------------------- C++ Expressions --------------------------===//
 
+  /// \brief Parsed a destructor name or pseudo-destructor name. 
+  ///
+  /// \returns the type being destructed.
+  virtual TypeTy *getDestructorName(SourceLocation TildeLoc,
+                                    IdentifierInfo &II, SourceLocation NameLoc,
+                                    Scope *S, const CXXScopeSpec &SS,
+                                    TypeTy *ObjectType,
+                                    bool EnteringContext) {
+    return getTypeName(II, NameLoc, S, &SS, false, ObjectType);
+  }
+
+
   /// ActOnCXXNamedCast - Parse {dynamic,static,reinterpret,const}_cast's.
   virtual OwningExprResult ActOnCXXNamedCast(SourceLocation OpLoc,
                                              tok::TokenKind Kind,
@@ -1549,12 +1625,66 @@ public:
   /// with the type into which name lookup should look to find the member in
   /// the member access expression.
   ///
+  /// \param MayBePseudoDestructor Originally false. The action should
+  /// set this true if the expression may end up being a
+  /// pseudo-destructor expression, indicating to the parser that it
+  /// shoudl be parsed as a pseudo-destructor rather than as a member
+  /// access expression. Note that this should apply both when the
+  /// object type is a scalar and when the object type is dependent.
+  ///
   /// \returns the (possibly modified) \p Base expression
   virtual OwningExprResult ActOnStartCXXMemberReference(Scope *S,
                                                         ExprArg Base,
                                                         SourceLocation OpLoc,
                                                         tok::TokenKind OpKind,
-                                                        TypeTy *&ObjectType) {
+                                                        TypeTy *&ObjectType,
+                                                  bool &MayBePseudoDestructor) {
+    return ExprEmpty();
+  }
+
+  /// \brief Parsed a C++ pseudo-destructor expression or a dependent
+  /// member access expression that has the same syntactic form as a
+  /// pseudo-destructor expression.
+  ///
+  /// \param S The scope in which the member access expression occurs.
+  ///
+  /// \param Base The expression in which a member is being accessed, e.g., the
+  /// "x" in "x.f".
+  ///
+  /// \param OpLoc The location of the member access operator ("." or "->")
+  ///
+  /// \param OpKind The kind of member access operator ("." or "->")
+  ///
+  /// \param SS The nested-name-specifier that precedes the type names
+  /// in the grammar. Note that this nested-name-specifier will not
+  /// cover the last "type-name ::" in the grammar, because it isn't
+  /// necessarily a nested-name-specifier.
+  ///
+  /// \param FirstTypeName The type name that follows the optional
+  /// nested-name-specifier but precedes the '::', e.g., the first
+  /// type-name in "type-name :: type-name". This type name may be
+  /// empty. This will be either an identifier or a template-id.
+  ///
+  /// \param CCLoc The location of the '::' in "type-name ::
+  /// typename". May be invalid, if there is no \p FirstTypeName.
+  ///
+  /// \param TildeLoc The location of the '~'.
+  ///
+  /// \param SecondTypeName The type-name following the '~', which is
+  /// the name of the type being destroyed. This will be either an
+  /// identifier or a template-id.
+  ///
+  /// \param HasTrailingLParen Whether the next token in the stream is
+  /// a left parentheses.
+  virtual OwningExprResult ActOnPseudoDestructorExpr(Scope *S, ExprArg Base,
+                                                     SourceLocation OpLoc,
+                                                     tok::TokenKind OpKind,
+                                                     const CXXScopeSpec &SS,
+                                                  UnqualifiedId &FirstTypeName,
+                                                     SourceLocation CCLoc,
+                                                     SourceLocation TildeLoc,
+                                                 UnqualifiedId &SecondTypeName,
+                                                     bool HasTrailingLParen) {
     return ExprEmpty();
   }
 
@@ -1612,9 +1742,12 @@ public:
   /// a well-formed program), ColonLoc is the location of the ':' that
   /// starts the constructor initializer, and MemInit/NumMemInits
   /// contains the individual member (and base) initializers.
+  /// AnyErrors will be true if there were any invalid member initializers
+  /// that are not represented in the list.
   virtual void ActOnMemInitializers(DeclPtrTy ConstructorDecl,
                                     SourceLocation ColonLoc,
-                                    MemInitTy **MemInits, unsigned NumMemInits){
+                                    MemInitTy **MemInits, unsigned NumMemInits,
+                                    bool AnyErrors){
   }
 
  virtual void ActOnDefaultCtorInitializers(DeclPtrTy CDtorDecl) {}
@@ -2073,6 +2206,7 @@ public:
                                              SourceLocation SuperLoc,
                                              const DeclPtrTy *ProtoRefs,
                                              unsigned NumProtoRefs,
+                                             const SourceLocation *ProtoLocs,
                                              SourceLocation EndProtoLoc,
                                              AttributeList *AttrList) {
     return DeclPtrTy();
@@ -2094,6 +2228,7 @@ public:
                                                 SourceLocation ProtocolLoc,
                                                 const DeclPtrTy *ProtoRefs,
                                                 unsigned NumProtoRefs,
+                                                const SourceLocation *ProtoLocs,
                                                 SourceLocation EndProtoLoc,
                                                 AttributeList *AttrList) {
     return DeclPtrTy();
@@ -2107,6 +2242,7 @@ public:
                                                 SourceLocation CategoryLoc,
                                                 const DeclPtrTy *ProtoRefs,
                                                 unsigned NumProtoRefs,
+                                                const SourceLocation *ProtoLocs,
                                                 SourceLocation EndProtoLoc) {
     return DeclPtrTy();
   }
@@ -2176,7 +2312,7 @@ public:
   // protocols, categories), the parser passes all methods/properties.
   // For class implementations, these values default to 0. For implementations,
   // methods are processed incrementally (by ActOnMethodDeclaration above).
-  virtual void ActOnAtEnd(SourceLocation AtEndLoc,
+  virtual void ActOnAtEnd(SourceRange AtEnd,
                           DeclPtrTy classDecl,
                           DeclPtrTy *allMethods = 0,
                           unsigned allNum = 0,
@@ -2339,11 +2475,49 @@ public:
   /// \todo Code completion for attributes.
   //@{
   
+  /// \brief Describes the context in which code completion occurs.
+  enum CodeCompletionContext {
+    /// \brief Code completion occurs at top-level or namespace context.
+    CCC_Namespace,
+    /// \brief Code completion occurs within a class, struct, or union.
+    CCC_Class,
+    /// \brief Code completion occurs within an Objective-C interface, protocol,
+    /// or category.
+    CCC_ObjCInterface,
+    /// \brief Code completion occurs within an Objective-C implementation or
+    /// category implementation
+    CCC_ObjCImplementation,
+    /// \brief Code completion occurs within the list of instance variables
+    /// in an Objective-C interface, protocol, category, or implementation.
+    CCC_ObjCInstanceVariableList,
+    /// \brief Code completion occurs following one or more template
+    /// headers.
+    CCC_Template,
+    /// \brief Code completion occurs following one or more template
+    /// headers within a class.
+    CCC_MemberTemplate,
+    /// \brief Code completion occurs within an expression.
+    CCC_Expression,
+    /// \brief Code completion occurs within a statement, which may
+    /// also be an expression or a declaration.
+    CCC_Statement,
+    /// \brief Code completion occurs at the beginning of the
+    /// initialization statement (or expression) in a for loop.
+    CCC_ForInit,
+    /// \brief Code completion ocurs within the condition of an if,
+    /// while, switch, or for statement.
+    CCC_Condition
+  };
+    
   /// \brief Code completion for an ordinary name that occurs within the given
   /// scope.
   ///
   /// \param S the scope in which the name occurs.
-  virtual void CodeCompleteOrdinaryName(Scope *S) { }
+  ///
+  /// \param CompletionContext the context in which code completion
+  /// occurs.
+  virtual void CodeCompleteOrdinaryName(Scope *S, 
+                                    CodeCompletionContext CompletionContext) { }
   
   /// \brief Code completion for a member access expression.
   ///
@@ -2458,6 +2632,9 @@ public:
   virtual void CodeCompleteObjCAtDirective(Scope *S, DeclPtrTy ObjCImpDecl,
                                            bool InInterface) { }
 
+  /// \brief Code completion after the '@' in the list of instance variables.
+  virtual void CodeCompleteObjCAtVisibility(Scope *S) { }
+  
   /// \brief Code completion after the '@' in a statement.
   virtual void CodeCompleteObjCAtStatement(Scope *S) { }
 
@@ -2693,6 +2870,7 @@ public:
                                              SourceLocation SuperLoc,
                                              const DeclPtrTy *ProtoRefs,
                                              unsigned NumProtoRefs,
+                                             const SourceLocation *ProtoLocs,
                                              SourceLocation EndProtoLoc,
                                              AttributeList *AttrList);
 };

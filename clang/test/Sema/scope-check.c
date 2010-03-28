@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify -fblocks -std=gnu99 %s
+// RUN: %clang_cc1 -fsyntax-only -verify -fblocks -std=gnu99 %s -Wno-unreachable-code
 
 int test1(int x) {
   goto L;    // expected-error{{illegal goto into protected scope}}
@@ -140,13 +140,13 @@ L2: ;
 
 L3:
 L4:  
-  goto *P;  // expected-error {{illegal indirect goto in protected scope, unknown effect on scopes}}
+  goto *P;  // expected-warning {{illegal indirect goto in protected scope, unknown effect on scopes}}
   goto L3;  // ok
   goto L4;  // ok
   
   void *Ptrs[] = {
     &&L2,   // Ok.
-    &&L3   // expected-error {{address taken of label in protected scope, jump to it would have unknown effect on scope}}
+    &&L3   // expected-warning {{address taken of label in protected scope, jump to it would have unknown effect on scope}}
   };
 }
 
@@ -181,15 +181,14 @@ void test11(int n) {
 // TODO: When and if gotos are allowed in blocks, this should work.
 void test12(int n) {
   void *P = ^{
-    goto L1;  // expected-error {{goto not allowed in block literal}}
+    goto L1;
   L1:
-    goto L2;  // expected-error {{goto not allowed in block literal}}
+    goto L2;
   L2:
-    goto L3;    // expected-error {{goto not allowed in block literal}}
-      // todo-error {{illegal goto into protected scope}}
-    int Arr[n]; // todo-note {{jump bypasses initialization of variable length array}}
+    goto L3;    // expected-error {{illegal goto into protected scope}}
+    int Arr[n]; // expected-note {{jump bypasses initialization of variable length array}}
   L3:
-    goto L4;  // expected-error {{goto not allowed in block literal}}
+    goto L4;
   L4: return;
   };
 }

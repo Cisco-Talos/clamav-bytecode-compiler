@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -faccess-control -verify %s
+// RUN: %clang_cc1 -fsyntax-only -faccess-control -verify %s -std=c++0x
 namespace T1 {
 
 class A {
@@ -29,14 +29,14 @@ class B : A {
 namespace T3 {
 
 struct a { };
-struct b : private a { }; // expected-note{{'private' inheritance specifier here}}
+struct b : private a { }; // expected-note{{declared private here}}
   
 class A {
   virtual a* f(); // expected-note{{overridden virtual function is here}}
 };
 
 class B : A {
-  virtual b* f(); // expected-error{{return type of virtual function 'f' is not covariant with the return type of the function it overrides (conversion from 'struct T3::b' to inaccessible base class 'struct T3::a')}}
+  virtual b* f(); // expected-error{{invalid covariant return for virtual function: 'struct T3::a' is a private base class of 'struct T3::b'}}
 };
 
 }
@@ -104,6 +104,35 @@ namespace T7 {
   };
 }
 
+namespace T8 {
+  struct a { };
+  struct b; // expected-note {{forward declaration of 'struct T8::b'}}
+  
+  class A {
+    virtual a *f();
+  };
+  
+  class B : A {
+    b* f(); // expected-error {{return type of virtual function 'f' is not covariant with the return type of the function it overrides ('struct T8::b' is incomplete)}}
+  };
+}
+
+namespace T9 {
+  struct a { };
+  
+  template<typename T> struct b : a {
+    int a[sizeof(T) ? -1 : -1]; // expected-error {{array size is negative}}
+  };
+  
+  class A {
+    virtual a *f();
+  };
+  
+  class B : A {
+    virtual b<int> *f(); // expected-note {{in instantiation of template class 'struct T9::b<int>' requested here}}
+  };
+}
+
 // PR5656
 class X0 {
   virtual void f0();
@@ -150,3 +179,100 @@ void test3() {
   Bar3<int> b3i; // okay
   Bar3<float> b3f; // expected-error{{is an abstract class}}
 }
+
+// 5920
+namespace PR5920 {
+  class Base {};
+
+  template <typename T>
+  class Derived : public Base {};
+
+  class Foo {
+   public:
+    virtual Base* Method();
+  };
+
+  class Bar : public Foo {
+   public:
+    virtual Derived<int>* Method();
+  };
+}
+
+// Look through template types and typedefs to see whether return types are
+// pointers or references.
+namespace PR6110 {
+  class Base {};
+  class Derived : public Base {};
+
+  typedef Base* BaseP;
+  typedef Derived* DerivedP;
+
+  class X { virtual BaseP f(); };
+  class X1 : public X { virtual DerivedP f(); };
+
+  template <typename T> class Y { virtual T f(); };
+  template <typename T1, typename T> class Y1 : public Y<T> { virtual T1 f(); };
+  Y1<Derived*, Base*> y;
+}
+
+// Defer checking for covariance if either return type is dependent.
+namespace type_dependent_covariance {
+  struct B {};
+  template <int N> struct TD : public B {};
+  template <> struct TD<1> {};
+
+  template <int N> struct TB {};
+  struct D : public TB<0> {};
+
+  template <int N> struct X {
+    virtual B* f1(); // expected-note{{overridden virtual function is here}}
+    virtual TB<N>* f2(); // expected-note{{overridden virtual function is here}}
+  };
+  template <int N, int M> struct X1 : X<N> {
+    virtual TD<M>* f1(); // expected-error{{return type of virtual function 'f1' is not covariant with the return type of the function it overrides ('TD<1> *'}}
+    virtual D* f2(); // expected-error{{return type of virtual function 'f2' is not covariant with the return type of the function it overrides ('struct type_dependent_covariance::D *' is not derived from 'TB<1> *')}}
+  };
+
+  X1<0, 0> good;
+  X1<0, 1> bad_derived; // expected-note{{instantiation}}
+  X1<1, 0> bad_base; // expected-note{{instantiation}}
+}
+
+namespace T10 {
+  struct A { };
+  struct B : A { };
+
+  struct C { 
+    virtual A&& f();
+  };
+
+  struct D : C {
+    virtual B&& f();
+  };
+};
+
+namespace T11 {
+  struct A { };
+  struct B : A { };
+
+  struct C { 
+    virtual A& f(); // expected-note {{overridden virtual function is here}}
+  };
+
+  struct D : C {
+    virtual B&& f(); // expected-error {{virtual function 'f' has a different return type ('struct T11::B &&') than the function it overrides (which has return type 'struct T11::A &')}}
+  };
+};
+
+namespace T12 {
+  struct A { };
+  struct B : A { };
+
+  struct C { 
+    virtual A&& f(); // expected-note {{overridden virtual function is here}}
+  };
+
+  struct D : C {
+    virtual B& f(); // expected-error {{virtual function 'f' has a different return type ('struct T12::B &') than the function it overrides (which has return type 'struct T12::A &&')}}
+  };
+};

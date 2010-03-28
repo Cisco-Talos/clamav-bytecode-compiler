@@ -560,10 +560,14 @@ FileID SourceManager::getFileIDSlow(unsigned SLocOffset) const {
 SourceLocation SourceManager::
 getInstantiationLocSlowCase(SourceLocation Loc) const {
   do {
-    std::pair<FileID, unsigned> LocInfo = getDecomposedLoc(Loc);
-    Loc = getSLocEntry(LocInfo.first).getInstantiation()
+    // Note: If Loc indicates an offset into a token that came from a macro
+    // expansion (e.g. the 5th character of the token) we do not want to add
+    // this offset when going to the instantiation location.  The instatiation
+    // location is the macro invocation, which the offset has nothing to do
+    // with.  This is unlike when we get the spelling loc, because the offset
+    // directly correspond to the token whose spelling we're inspecting.
+    Loc = getSLocEntry(getFileID(Loc)).getInstantiation()
                    .getInstantiationLocStart();
-    Loc = Loc.getFileLocWithOffset(LocInfo.second);
   } while (!Loc.isFileID());
 
   return Loc;
@@ -976,20 +980,6 @@ SourceLocation SourceManager::getLocation(const FileEntry *SourceFile,
   if (Content->SourceLineCache == 0)
     ComputeLineNumbers(Content, ContentCacheAlloc);
 
-  if (Line > Content->NumLines)
-    return SourceLocation();
-
-  unsigned FilePos = Content->SourceLineCache[Line - 1];
-  const char *Buf = Content->getBuffer()->getBufferStart() + FilePos;
-  unsigned BufLength = Content->getBuffer()->getBufferEnd() - Buf;
-  unsigned i = 0;
-
-  // Check that the given column is valid.
-  while (i < BufLength-1 && i < Col-1 && Buf[i] != '\n' && Buf[i] != '\r')
-    ++i;
-  if (i < Col-1)
-    return SourceLocation();
-
   // Find the first file ID that corresponds to the given file.
   FileID FirstFID;
 
@@ -1015,6 +1005,24 @@ SourceLocation SourceManager::getLocation(const FileEntry *SourceFile,
     
   if (FirstFID.isInvalid())
     return SourceLocation();
+
+  if (Line > Content->NumLines) {
+    unsigned Size = Content->getBuffer()->getBufferSize();
+    if (Size > 0)
+      --Size;
+    return getLocForStartOfFile(FirstFID).getFileLocWithOffset(Size);
+  }
+
+  unsigned FilePos = Content->SourceLineCache[Line - 1];
+  const char *Buf = Content->getBuffer()->getBufferStart() + FilePos;
+  unsigned BufLength = Content->getBuffer()->getBufferEnd() - Buf;
+  unsigned i = 0;
+
+  // Check that the given column is valid.
+  while (i < BufLength-1 && i < Col-1 && Buf[i] != '\n' && Buf[i] != '\r')
+    ++i;
+  if (i < Col-1)
+    return getLocForStartOfFile(FirstFID).getFileLocWithOffset(FilePos + i);
 
   return getLocForStartOfFile(FirstFID).getFileLocWithOffset(FilePos + Col - 1);
 }

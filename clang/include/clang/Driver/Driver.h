@@ -61,11 +61,17 @@ public:
   /// command line.
   std::string Dir;
 
+  /// The path to the compiler resource directory.
+  std::string ResourceDir;
+
   /// Default host triple.
   std::string DefaultHostTriple;
 
   /// Default name for linked images (e.g., "a.out").
   std::string DefaultImageName;
+
+  /// Driver title to use with help.
+  std::string DriverTitle;
 
   /// Host information for the platform the driver is running as. This
   /// will generally be the actual host platform, but not always.
@@ -74,32 +80,36 @@ public:
   /// Information about the host which can be overriden by the user.
   std::string HostBits, HostMachine, HostSystem, HostRelease;
 
-  /// Whether the driver should follow g++ like behavior.
-  bool CCCIsCXX : 1;
-
-  /// Echo commands while executing (in -v style).
-  bool CCCEcho : 1;
-
-  /// Only print tool bindings, don't build any jobs.
-  bool CCCPrintBindings : 1;
-
   /// Name to use when calling the generic gcc.
   std::string CCCGenericGCCName;
 
+  /// Whether the driver should follow g++ like behavior.
+  unsigned CCCIsCXX : 1;
+
+  /// Echo commands while executing (in -v style).
+  unsigned CCCEcho : 1;
+
+  /// Only print tool bindings, don't build any jobs.
+  unsigned CCCPrintBindings : 1;
+
 private:
+  /// Whether to check that input files exist when constructing compilation
+  /// jobs.
+  unsigned CheckInputsExist : 1;
+
   /// Use the clang compiler where possible.
-  bool CCCUseClang : 1;
+  unsigned CCCUseClang : 1;
 
   /// Use clang for handling C++ and Objective-C++ inputs.
-  bool CCCUseClangCXX : 1;
+  unsigned CCCUseClangCXX : 1;
 
   /// Use clang as a preprocessor (clang's preprocessor will still be
   /// used where an integrated CPP would).
-  bool CCCUseClangCPP : 1;
+  unsigned CCCUseClangCPP : 1;
 
 public:
   /// Use lazy precompiled headers for PCH support.
-  bool CCCUsePCH;
+  unsigned CCCUsePCH : 1;
 
 private:
   /// Only use clang for the given architectures (only used when
@@ -125,6 +135,13 @@ public:
   const OptTable &getOpts() const { return *Opts; }
 
   const Diagnostic &getDiags() const { return Diags; }
+
+  bool getCheckInputsExist() const { return CheckInputsExist; }
+
+  void setCheckInputsExist(bool Value) { CheckInputsExist = Value; }
+
+  const std::string &getTitle() { return DriverTitle; }
+  void setTitle(std::string Value) { DriverTitle = Value; }
 
   /// @}
   /// @name Primary Functionality

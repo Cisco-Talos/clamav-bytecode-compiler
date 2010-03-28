@@ -102,6 +102,7 @@ public:
 #define LAST_STMT(CLASS) lastStmtConstant = CLASS##Class,
 #define FIRST_EXPR(CLASS) firstExprConstant = CLASS##Class,
 #define LAST_EXPR(CLASS) lastExprConstant = CLASS##Class
+#define ABSTRACT_EXPR(CLASS, PARENT)
 #include "clang/AST/StmtNodes.def"
 };
 private:
@@ -1116,24 +1117,31 @@ class AsmStmt : public Stmt {
 
   bool IsSimple;
   bool IsVolatile;
+  bool MSAsm;
 
   unsigned NumOutputs;
   unsigned NumInputs;
+  unsigned NumClobbers;
 
-  llvm::SmallVector<std::string, 4> Names;
-  llvm::SmallVector<StringLiteral*, 4> Constraints;
-  llvm::SmallVector<Stmt*, 4> Exprs;
+  // FIXME: If we wanted to, we could allocate all of these in one big array.
+  IdentifierInfo **Names;
+  StringLiteral **Constraints;
+  Stmt **Exprs;
+  StringLiteral **Clobbers;
 
-  llvm::SmallVector<StringLiteral*, 4> Clobbers;
+protected:
+  virtual void DoDestroy(ASTContext &Ctx);
+  
 public:
-  AsmStmt(SourceLocation asmloc, bool issimple, bool isvolatile,
-          unsigned numoutputs, unsigned numinputs,
-          std::string *names, StringLiteral **constraints,
+  AsmStmt(ASTContext &C, SourceLocation asmloc, bool issimple, bool isvolatile, 
+          bool msasm, unsigned numoutputs, unsigned numinputs,
+          IdentifierInfo **names, StringLiteral **constraints,
           Expr **exprs, StringLiteral *asmstr, unsigned numclobbers,
           StringLiteral **clobbers, SourceLocation rparenloc);
 
   /// \brief Build an empty inline-assembly statement.
-  explicit AsmStmt(EmptyShell Empty) : Stmt(AsmStmtClass, Empty) { }
+  explicit AsmStmt(EmptyShell Empty) : Stmt(AsmStmtClass, Empty), 
+    Names(0), Constraints(0), Exprs(0), Clobbers(0) { }
 
   SourceLocation getAsmLoc() const { return AsmLoc; }
   void setAsmLoc(SourceLocation L) { AsmLoc = L; }
@@ -1143,7 +1151,9 @@ public:
   bool isVolatile() const { return IsVolatile; }
   void setVolatile(bool V) { IsVolatile = V; }
   bool isSimple() const { return IsSimple; }
-  void setSimple(bool V) { IsSimple = false; }
+  void setSimple(bool V) { IsSimple = V; }
+  bool isMSAsm() const { return MSAsm; }
+  void setMSAsm(bool V) { MSAsm = V; }
 
   //===--- Asm String Analysis ---===//
 
@@ -1205,14 +1215,21 @@ public:
 
   unsigned getNumOutputs() const { return NumOutputs; }
 
-  const std::string &getOutputName(unsigned i) const {
+  IdentifierInfo *getOutputIdentifier(unsigned i) const {
     return Names[i];
+  }
+
+  llvm::StringRef getOutputName(unsigned i) const {
+    if (IdentifierInfo *II = getOutputIdentifier(i))
+      return II->getName();
+    
+    return llvm::StringRef();
   }
 
   /// getOutputConstraint - Return the constraint string for the specified
   /// output operand.  All output constraints are known to be non-empty (either
   /// '=' or '+').
-  std::string getOutputConstraint(unsigned i) const;
+  llvm::StringRef getOutputConstraint(unsigned i) const;
 
   const StringLiteral *getOutputConstraintLiteral(unsigned i) const {
     return Constraints[i];
@@ -1220,7 +1237,6 @@ public:
   StringLiteral *getOutputConstraintLiteral(unsigned i) {
     return Constraints[i];
   }
-
 
   Expr *getOutputExpr(unsigned i);
 
@@ -1243,13 +1259,20 @@ public:
 
   unsigned getNumInputs() const { return NumInputs; }
 
-  const std::string &getInputName(unsigned i) const {
+  IdentifierInfo *getInputIdentifier(unsigned i) const {
     return Names[i + NumOutputs];
+  }
+
+  llvm::StringRef getInputName(unsigned i) const {
+    if (IdentifierInfo *II = getInputIdentifier(i))
+      return II->getName();
+
+    return llvm::StringRef();
   }
 
   /// getInputConstraint - Return the specified input constraint.  Unlike output
   /// constraints, these can be empty.
-  std::string getInputConstraint(unsigned i) const;
+  llvm::StringRef getInputConstraint(unsigned i) const;
 
   const StringLiteral *getInputConstraintLiteral(unsigned i) const {
     return Constraints[i + NumOutputs];
@@ -1258,32 +1281,31 @@ public:
     return Constraints[i + NumOutputs];
   }
 
-
   Expr *getInputExpr(unsigned i);
 
   const Expr *getInputExpr(unsigned i) const {
     return const_cast<AsmStmt*>(this)->getInputExpr(i);
   }
 
-  void setOutputsAndInputs(unsigned NumOutputs,
-                           unsigned NumInputs,
-                           const std::string *Names,
-                           StringLiteral **Constraints,
-                           Stmt **Exprs);
+  void setOutputsAndInputsAndClobbers(ASTContext &C,
+                                      IdentifierInfo **Names,
+                                      StringLiteral **Constraints,
+                                      Stmt **Exprs,
+                                      unsigned NumOutputs,
+                                      unsigned NumInputs,                                      
+                                      StringLiteral **Clobbers,
+                                      unsigned NumClobbers);
 
   //===--- Other ---===//
 
   /// getNamedOperand - Given a symbolic operand reference like %[foo],
   /// translate this into a numeric value needed to reference the same operand.
   /// This returns -1 if the operand name is invalid.
-  int getNamedOperand(const std::string &SymbolicName) const;
+  int getNamedOperand(llvm::StringRef SymbolicName) const;
 
-
-
-  unsigned getNumClobbers() const { return Clobbers.size(); }
+  unsigned getNumClobbers() const { return NumClobbers; }
   StringLiteral *getClobber(unsigned i) { return Clobbers[i]; }
   const StringLiteral *getClobber(unsigned i) const { return Clobbers[i]; }
-  void setClobbers(StringLiteral **Clobbers, unsigned NumClobbers);
 
   virtual SourceRange getSourceRange() const {
     return SourceRange(AsmLoc, RParenLoc);
@@ -1298,19 +1320,19 @@ public:
   typedef ConstExprIterator const_inputs_iterator;
 
   inputs_iterator begin_inputs() {
-    return Exprs.data() + NumOutputs;
+    return &Exprs[0] + NumOutputs;
   }
 
   inputs_iterator end_inputs() {
-    return Exprs.data() + NumOutputs + NumInputs;
+    return &Exprs[0] + NumOutputs + NumInputs;
   }
 
   const_inputs_iterator begin_inputs() const {
-    return Exprs.data() + NumOutputs;
+    return &Exprs[0] + NumOutputs;
   }
 
   const_inputs_iterator end_inputs() const {
-    return Exprs.data() + NumOutputs + NumInputs;
+    return &Exprs[0] + NumOutputs + NumInputs;
   }
 
   // Output expr iterators.
@@ -1319,27 +1341,17 @@ public:
   typedef ConstExprIterator const_outputs_iterator;
 
   outputs_iterator begin_outputs() {
-    return Exprs.data();
+    return &Exprs[0];
   }
   outputs_iterator end_outputs() {
-    return Exprs.data() + NumOutputs;
+    return &Exprs[0] + NumOutputs;
   }
 
   const_outputs_iterator begin_outputs() const {
-    return Exprs.data();
+    return &Exprs[0];
   }
   const_outputs_iterator end_outputs() const {
-    return Exprs.data() + NumOutputs;
-  }
-
-  // Input name iterator.
-
-  const std::string *begin_output_names() const {
-    return &Names[0];
-  }
-
-  const std::string *end_output_names() const {
-    return &Names[0] + NumOutputs;
+    return &Exprs[0] + NumOutputs;
   }
 
   // Child iterators

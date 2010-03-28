@@ -80,8 +80,13 @@ void CodeGenFunction::EmitCXXGlobalVarDeclInit(const VarDecl &D,
     EmitDeclInit(*this, D, DeclPtr);
     return;
   }
-
-  ErrorUnsupported(Init, "global variable that binds to a reference");
+  if (Init->isLvalue(getContext()) == Expr::LV_Valid) {
+    RValue RV = EmitReferenceBindingToExpr(Init, /*IsInitializer=*/true);
+    EmitStoreOfScalar(RV.getScalarVal(), DeclPtr, false, T);
+    return;
+  }
+  ErrorUnsupported(Init, 
+                   "global variable that binds reference to a non-lvalue");
 }
 
 void
@@ -120,6 +125,22 @@ CodeGenFunction::EmitCXXGlobalDtorRegistration(llvm::Constant *DtorFn,
 }
 
 void
+CodeGenModule::EmitCXXGlobalVarDeclInitFunc(const VarDecl *D) {
+  const llvm::FunctionType *FTy
+    = llvm::FunctionType::get(llvm::Type::getVoidTy(VMContext),
+                              false);
+
+  // Create a variable initialization function.
+  llvm::Function *Fn =
+    llvm::Function::Create(FTy, llvm::GlobalValue::InternalLinkage,
+                           "__cxx_global_var_init", &TheModule);
+
+  CodeGenFunction(*this).GenerateCXXGlobalVarDeclInitFunc(Fn, D);
+
+  CXXGlobalInits.push_back(Fn);
+}
+
+void
 CodeGenModule::EmitCXXGlobalInitFunc() {
   if (CXXGlobalInits.empty())
     return;
@@ -140,72 +161,143 @@ CodeGenModule::EmitCXXGlobalInitFunc() {
   AddGlobalCtor(Fn);
 }
 
+void CodeGenFunction::GenerateCXXGlobalVarDeclInitFunc(llvm::Function *Fn,
+                                                       const VarDecl *D) {
+  StartFunction(GlobalDecl(), getContext().VoidTy, Fn, FunctionArgList(),
+                SourceLocation());
+
+  llvm::Constant *DeclPtr = CGM.GetAddrOfGlobalVar(D);
+  EmitCXXGlobalVarDeclInit(*D, DeclPtr);
+
+  FinishFunction();
+}
+
 void CodeGenFunction::GenerateCXXGlobalInitFunc(llvm::Function *Fn,
-                                                const VarDecl **Decls,
+                                                llvm::Constant **Decls,
                                                 unsigned NumDecls) {
   StartFunction(GlobalDecl(), getContext().VoidTy, Fn, FunctionArgList(),
                 SourceLocation());
 
-  for (unsigned i = 0; i != NumDecls; ++i) {
-    const VarDecl *D = Decls[i];
+  for (unsigned i = 0; i != NumDecls; ++i)
+    Builder.CreateCall(Decls[i]);
 
-    llvm::Constant *DeclPtr = CGM.GetAddrOfGlobalVar(D);
-    EmitCXXGlobalVarDeclInit(*D, DeclPtr);
-  }
   FinishFunction();
+}
+
+static llvm::Constant *getGuardAcquireFn(CodeGenFunction &CGF) {
+  // int __cxa_guard_acquire(__int64_t *guard_object);
+  
+  const llvm::Type *Int64PtrTy = 
+    llvm::Type::getInt64PtrTy(CGF.getLLVMContext());
+  
+  std::vector<const llvm::Type*> Args(1, Int64PtrTy);
+  
+  const llvm::FunctionType *FTy =
+    llvm::FunctionType::get(CGF.ConvertType(CGF.getContext().IntTy),
+                            Args, /*isVarArg=*/false);
+  
+  return CGF.CGM.CreateRuntimeFunction(FTy, "__cxa_guard_acquire");
+}
+
+static llvm::Constant *getGuardReleaseFn(CodeGenFunction &CGF) {
+  // void __cxa_guard_release(__int64_t *guard_object);
+  
+  const llvm::Type *Int64PtrTy = 
+    llvm::Type::getInt64PtrTy(CGF.getLLVMContext());
+  
+  std::vector<const llvm::Type*> Args(1, Int64PtrTy);
+  
+  const llvm::FunctionType *FTy =
+  llvm::FunctionType::get(llvm::Type::getVoidTy(CGF.getLLVMContext()),
+                          Args, /*isVarArg=*/false);
+  
+  return CGF.CGM.CreateRuntimeFunction(FTy, "__cxa_guard_release");
+}
+
+static llvm::Constant *getGuardAbortFn(CodeGenFunction &CGF) {
+  // void __cxa_guard_abort(__int64_t *guard_object);
+  
+  const llvm::Type *Int64PtrTy = 
+    llvm::Type::getInt64PtrTy(CGF.getLLVMContext());
+  
+  std::vector<const llvm::Type*> Args(1, Int64PtrTy);
+  
+  const llvm::FunctionType *FTy =
+  llvm::FunctionType::get(llvm::Type::getVoidTy(CGF.getLLVMContext()),
+                          Args, /*isVarArg=*/false);
+  
+  return CGF.CGM.CreateRuntimeFunction(FTy, "__cxa_guard_abort");
 }
 
 void
 CodeGenFunction::EmitStaticCXXBlockVarDeclInit(const VarDecl &D,
                                                llvm::GlobalVariable *GV) {
-  // FIXME: This should use __cxa_guard_{acquire,release}?
-
-  assert(!getContext().getLangOptions().ThreadsafeStatics &&
-         "thread safe statics are currently not supported!");
-
+  bool ThreadsafeStatics = getContext().getLangOptions().ThreadsafeStatics;
+  
   llvm::SmallString<256> GuardVName;
   CGM.getMangleContext().mangleGuardVariable(&D, GuardVName);
 
   // Create the guard variable.
-  llvm::GlobalValue *GuardV =
-    new llvm::GlobalVariable(CGM.getModule(), llvm::Type::getInt64Ty(VMContext),
+  const llvm::Type *Int64Ty = llvm::Type::getInt64Ty(VMContext);
+  llvm::GlobalValue *GuardVariable =
+    new llvm::GlobalVariable(CGM.getModule(), Int64Ty,
                              false, GV->getLinkage(),
-                llvm::Constant::getNullValue(llvm::Type::getInt64Ty(VMContext)),
+                             llvm::Constant::getNullValue(Int64Ty),
                              GuardVName.str());
 
   // Load the first byte of the guard variable.
   const llvm::Type *PtrTy
     = llvm::PointerType::get(llvm::Type::getInt8Ty(VMContext), 0);
-  llvm::Value *V = Builder.CreateLoad(Builder.CreateBitCast(GuardV, PtrTy),
-                                      "tmp");
+  llvm::Value *V = 
+    Builder.CreateLoad(Builder.CreateBitCast(GuardVariable, PtrTy), "tmp");
 
-  // Compare it against 0.
-  llvm::Value *nullValue
-    = llvm::Constant::getNullValue(llvm::Type::getInt8Ty(VMContext));
-  llvm::Value *ICmp = Builder.CreateICmpEQ(V, nullValue , "tobool");
-
-  llvm::BasicBlock *InitBlock = createBasicBlock("init");
+  llvm::BasicBlock *InitCheckBlock = createBasicBlock("init.check");
   llvm::BasicBlock *EndBlock = createBasicBlock("init.end");
 
-  // If the guard variable is 0, jump to the initializer code.
-  Builder.CreateCondBr(ICmp, InitBlock, EndBlock);
+  // Check if the first byte of the guard variable is zero.
+  Builder.CreateCondBr(Builder.CreateIsNull(V, "tobool"), 
+                       InitCheckBlock, EndBlock);
 
-  EmitBlock(InitBlock);
+  EmitBlock(InitCheckBlock);
+
+  if (ThreadsafeStatics) {
+    // Call __cxa_guard_acquire.
+    V = Builder.CreateCall(getGuardAcquireFn(*this), GuardVariable);
+               
+    llvm::BasicBlock *InitBlock = createBasicBlock("init");
+  
+    Builder.CreateCondBr(Builder.CreateIsNotNull(V, "tobool"),
+                         InitBlock, EndBlock);
+  
+    EmitBlock(InitBlock);
+
+    if (Exceptions) {
+      EHCleanupBlock Cleanup(*this);
+    
+      // Call __cxa_guard_abort.
+      Builder.CreateCall(getGuardAbortFn(*this), GuardVariable);
+    }
+  }
 
   if (D.getType()->isReferenceType()) {
     QualType T = D.getType();
     // We don't want to pass true for IsInitializer here, because a static
     // reference to a temporary does not extend its lifetime.
-    RValue RV = EmitReferenceBindingToExpr(D.getInit(), T,
+    RValue RV = EmitReferenceBindingToExpr(D.getInit(),
                                            /*IsInitializer=*/false);
     EmitStoreOfScalar(RV.getScalarVal(), GV, /*Volatile=*/false, T);
 
   } else
     EmitDeclInit(*this, D, GV);
 
-  Builder.CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(VMContext),
-                                             1),
-                      Builder.CreateBitCast(GuardV, PtrTy));
+  if (ThreadsafeStatics) {
+    // Call __cxa_guard_release.
+    Builder.CreateCall(getGuardReleaseFn(*this), GuardVariable);
+  } else {
+    llvm::Value *One = 
+      llvm::ConstantInt::get(llvm::Type::getInt8Ty(VMContext), 1);
+    Builder.CreateStore(One, Builder.CreateBitCast(GuardVariable, PtrTy));
+  }
 
   EmitBlock(EndBlock);
 }

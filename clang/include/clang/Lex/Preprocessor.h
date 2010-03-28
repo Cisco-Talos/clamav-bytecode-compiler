@@ -32,6 +32,7 @@
 namespace clang {
 
 class SourceManager;
+class ExternalPreprocessorSource;
 class FileManager;
 class FileEntry;
 class HeaderSearch;
@@ -56,6 +57,9 @@ class Preprocessor {
   SourceManager     &SourceMgr;
   ScratchBuffer     *ScratchBuf;
   HeaderSearch      &HeaderInfo;
+
+  /// \brief External source of macros.
+  ExternalPreprocessorSource *ExternalSource;
 
   /// PTH - An optional PTHManager object used for getting tokens from
   ///  a token cache rather than lexing the original source file.
@@ -98,6 +102,9 @@ class Preprocessor {
 
   /// DisableMacroExpansion - True if macro expansion is disabled.
   bool DisableMacroExpansion : 1;
+
+  /// \brief Whether we have already loaded macros from the external source.
+  mutable bool ReadMacrosFromExternalSource : 1;
 
   /// Identifiers - This is mapping/lookup information for all identifiers in
   /// the program, including program keywords.
@@ -179,7 +186,7 @@ class Preprocessor {
   /// allocation.
   /// FIXME: why not use a singly linked list?
   std::vector<MacroInfo*> MICache;
-  
+
   /// MacroArgCache - This is a "freelist" of MacroArg objects that can be
   /// reused for quick allocation.
   MacroArgs *MacroArgCache;
@@ -247,6 +254,14 @@ public:
 
   PTHManager *getPTHManager() { return PTH.get(); }
 
+  void setExternalSource(ExternalPreprocessorSource *Source) {
+    ExternalSource = Source;
+  }
+
+  ExternalPreprocessorSource *getExternalSource() const {
+    return ExternalSource;
+  }
+
   /// SetCommentRetentionState - Control whether or not the preprocessor retains
   /// comments in output.
   void SetCommentRetentionState(bool KeepComments, bool KeepMacroComments) {
@@ -272,11 +287,11 @@ public:
   /// expansions going on at the time.
   PreprocessorLexer *getCurrentFileLexer() const;
 
-  /// getPPCallbacks/setPPCallbacks - Accessors for preprocessor callbacks.
+  /// getPPCallbacks/addPPCallbacks - Accessors for preprocessor callbacks.
   /// Note that this class takes ownership of any PPCallbacks object given to
   /// it.
   PPCallbacks *getPPCallbacks() const { return Callbacks; }
-  void setPPCallbacks(PPCallbacks *C) {
+  void addPPCallbacks(PPCallbacks *C) {
     if (Callbacks)
       C = new PPChainedCallbacks(C, Callbacks);
     Callbacks = C;
@@ -296,10 +311,8 @@ public:
   /// state of the macro table.  This visits every currently-defined macro.
   typedef llvm::DenseMap<IdentifierInfo*,
                          MacroInfo*>::const_iterator macro_iterator;
-  macro_iterator macro_begin() const { return Macros.begin(); }
-  macro_iterator macro_end() const { return Macros.end(); }
-
-
+  macro_iterator macro_begin(bool IncludeExternalMacros = true) const;
+  macro_iterator macro_end(bool IncludeExternalMacros = true) const;
 
   const std::string &getPredefines() const { return Predefines; }
   /// setPredefines - Set the predefines for this Preprocessor.  These
@@ -510,7 +523,7 @@ public:
   /// (1-based).
   ///
   /// \returns true if an error occurred, false otherwise.
-  bool SetCodeCompletionPoint(const FileEntry *File, 
+  bool SetCodeCompletionPoint(const FileEntry *File,
                               unsigned Line, unsigned Column);
 
   /// \brief Determine if this source location refers into the file
@@ -557,6 +570,12 @@ public:
   /// if an internal buffer is returned.
   unsigned getSpelling(const Token &Tok, const char *&Buffer) const;
 
+  /// getSpelling - This method is used to get the spelling of a token into a
+  /// SmallVector. Note that the returned StringRef may not point to the
+  /// supplied buffer if a copy can be avoided.
+  llvm::StringRef getSpelling(const Token &Tok,
+                              llvm::SmallVectorImpl<char> &Buffer) const;
+
   /// getSpellingOfSingleCharacterNumericConstant - Tok is a numeric constant
   /// with length 1, return the character.
   char getSpellingOfSingleCharacterNumericConstant(const Token &Tok) const {
@@ -589,7 +608,12 @@ public:
   /// the returned source location would not be meaningful (e.g., if
   /// it points into a macro), this routine returns an invalid
   /// source location.
-  SourceLocation getLocForEndOfToken(SourceLocation Loc);
+  ///
+  /// \param Offset an offset from the end of the token, where the source
+  /// location should refer to. The default offset (0) produces a source
+  /// location pointing just past the end of the token; an offset of 1 produces
+  /// a source location pointing to the last character in the token, etc.
+  SourceLocation getLocForEndOfToken(SourceLocation Loc, unsigned Offset = 0);
 
   /// DumpToken - Print the token to stderr, used for debugging.
   ///
@@ -678,13 +702,12 @@ public:
   /// caller is expected to provide a buffer that is large enough to hold the
   /// spelling of the filename, but is also expected to handle the case when
   /// this method decides to use a different buffer.
-  bool GetIncludeFilenameSpelling(SourceLocation Loc,
-                                  const char *&BufStart, const char *&BufEnd);
+  bool GetIncludeFilenameSpelling(SourceLocation Loc,llvm::StringRef &Filename);
 
   /// LookupFile - Given a "foo" or <foo> reference, look up the indicated file,
   /// return null on failure.  isAngled indicates whether the file reference is
   /// for system #include's or not (i.e. using <> instead of "").
-  const FileEntry *LookupFile(const char *FilenameStart,const char *FilenameEnd,
+  const FileEntry *LookupFile(llvm::StringRef Filename,
                               bool isAngled, const DirectoryLookup *FromDir,
                               const DirectoryLookup *&CurDir);
 
@@ -871,7 +894,9 @@ public:
   void HandlePragmaSystemHeader(Token &SysHeaderTok);
   void HandlePragmaDependency(Token &DependencyTok);
   void HandlePragmaComment(Token &CommentTok);
-  void HandleComment(SourceRange Comment);
+  // Return true and store the first token only if any CommentHandler
+  // has inserted some tokens and getCommentRetentionState() is false.
+  bool HandleComment(Token &Token, SourceRange Comment);
 };
 
 /// \brief Abstract base class that describes a handler that will receive
@@ -880,7 +905,9 @@ class CommentHandler {
 public:
   virtual ~CommentHandler();
 
-  virtual void HandleComment(Preprocessor &PP, SourceRange Comment) = 0;
+  // The handler shall return true if it has pushed any tokens
+  // to be read using e.g. EnterToken or EnterTokenStream.
+  virtual bool HandleComment(Preprocessor &PP, SourceRange Comment) = 0;
 };
 
 }  // end namespace clang

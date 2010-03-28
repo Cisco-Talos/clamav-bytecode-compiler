@@ -12,8 +12,7 @@ int A::*pdi1;
 int (::A::*pdi2);
 int (A::*pfi)(int);
 
-int B::*pbi; // expected-error {{expected a class or namespace}} \
-             // expected-error{{does not point into a class}}
+int B::*pbi; // expected-error {{expected a class or namespace}}
 int C::*pci; // expected-error {{'pci' does not point into a class}}
 void A::*pdv; // expected-error {{'pdv' declared as a member pointer to void}}
 int& A::*pdr; // expected-error {{'pdr' declared as a member pointer to a reference}}
@@ -80,7 +79,7 @@ void g() {
 
   void (HasMembers::*pmf)() = &HasMembers::f;
   void (*pnf)() = &Fake::f;
-  &hm.f; // FIXME: needs diagnostic expected-warning{{result unused}}
+  &hm.f; // expected-error {{must explicitly qualify}} expected-warning{{result unused}}
 
   void (HasMembers::*pmgv)() = &HasMembers::g;
   void (HasMembers::*pmgi)(int) = &HasMembers::g;
@@ -135,4 +134,16 @@ struct OverloadsPtrMem
 void i() {
   OverloadsPtrMem m;
   int foo = m->*"Awesome!";
+}
+
+namespace pr5985 {
+  struct c {
+    void h();
+    void f() {
+      void (c::*p)();
+      p = &h; // expected-error {{must explicitly qualify}}
+      p = &this->h; // expected-error {{must explicitly qualify}}
+      p = &(*this).h; // expected-error {{must explicitly qualify}}
+    }
+  };
 }

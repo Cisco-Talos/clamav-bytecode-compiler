@@ -18,6 +18,7 @@
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/Value.h"
 #include "clang/AST/Type.h"
+#include "clang/AST/CanonicalType.h"
 
 #include "CGValue.h"
 
@@ -57,7 +58,7 @@ namespace CodeGen {
   /// function definition.
   class CGFunctionInfo : public llvm::FoldingSetNode {
     struct ArgInfo {
-      QualType type;
+      CanQualType type;
       ABIArgInfo info;
     };
 
@@ -69,6 +70,9 @@ namespace CodeGen {
     /// depend on the ABI.
     unsigned EffectiveCallingConvention;
 
+    /// Whether this function is noreturn.
+    bool NoReturn;
+
     unsigned NumArgs;
     ArgInfo *Args;
 
@@ -77,8 +81,9 @@ namespace CodeGen {
     typedef ArgInfo *arg_iterator;
 
     CGFunctionInfo(unsigned CallingConvention,
-                   QualType ResTy,
-                   const llvm::SmallVector<QualType, 16> &ArgTys);
+                   bool NoReturn,
+                   CanQualType ResTy,
+                   const llvm::SmallVectorImpl<CanQualType> &ArgTys);
     ~CGFunctionInfo() { delete[] Args; }
 
     const_arg_iterator arg_begin() const { return Args + 1; }
@@ -87,6 +92,8 @@ namespace CodeGen {
     arg_iterator arg_end() { return Args + 1 + NumArgs; }
 
     unsigned  arg_size() const { return NumArgs; }
+
+    bool isNoReturn() const { return NoReturn; }
 
     /// getCallingConvention - Return the user specified calling
     /// convention.
@@ -101,13 +108,14 @@ namespace CodeGen {
       EffectiveCallingConvention = Value;
     }
 
-    QualType getReturnType() const { return Args[0].type; }
+    CanQualType getReturnType() const { return Args[0].type; }
 
     ABIArgInfo &getReturnInfo() { return Args[0].info; }
     const ABIArgInfo &getReturnInfo() const { return Args[0].info; }
 
     void Profile(llvm::FoldingSetNodeID &ID) {
       ID.AddInteger(getCallingConvention());
+      ID.AddBoolean(NoReturn);
       getReturnType().Profile(ID);
       for (arg_iterator it = arg_begin(), ie = arg_end(); it != ie; ++it)
         it->type.Profile(ID);
@@ -115,13 +123,17 @@ namespace CodeGen {
     template<class Iterator>
     static void Profile(llvm::FoldingSetNodeID &ID,
                         unsigned CallingConvention,
-                        QualType ResTy,
+                        bool NoReturn,
+                        CanQualType ResTy,
                         Iterator begin,
                         Iterator end) {
       ID.AddInteger(CallingConvention);
+      ID.AddBoolean(NoReturn);
       ResTy.Profile(ID);
-      for (; begin != end; ++begin)
-        begin->Profile(ID);
+      for (; begin != end; ++begin) {
+        CanQualType T = *begin; // force iterator to be over canonical types
+        T.Profile(ID);
+      }
     }
   };
   

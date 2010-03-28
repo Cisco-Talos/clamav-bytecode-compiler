@@ -19,7 +19,7 @@
 #include "clang/Analysis/Visitors/CFGRecStmtDeclVisitor.h"
 #include "clang/Analysis/FlowSensitive/DataflowSolver.h"
 #include "clang/Analysis/Support/SaveAndRestore.h"
-#include "clang/Analysis/PathSensitive/AnalysisContext.h"
+#include "clang/Analysis/AnalysisContext.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/raw_ostream.h"
@@ -86,6 +86,12 @@ LiveVariables::LiveVariables(AnalysisContext &AC) {
 
   RegisterDecls R(getAnalysisData());
   cfg.VisitBlockStmts(R);
+
+  // Register all parameters even if they didn't occur in the function body.
+  if (const FunctionDecl *FD = dyn_cast<FunctionDecl>(AC.getDecl()))
+    for (FunctionDecl::param_const_iterator PI = FD->param_begin(), 
+           PE = FD->param_end(); PI != PE; ++PI)
+      getAnalysisData().Register(*PI);
 }
 
 //===----------------------------------------------------------------------===//
@@ -274,9 +280,16 @@ void TransferFuncs::VisitDeclStmt(DeclStmt* DS) {
   for (DeclStmt::decl_iterator DI=DS->decl_begin(), DE = DS->decl_end();
        DI != DE; ++DI)
     if (VarDecl* VD = dyn_cast<VarDecl>(*DI)) {
-      // The initializer is evaluated after the variable comes into scope.
+      // Update liveness information by killing the VarDecl.
+      unsigned bit = AD.getIdx(VD);
+      LiveState.getDeclBit(bit) = Dead | AD.AlwaysLive.getDeclBit(bit);
+
+      // The initializer is evaluated after the variable comes into scope, but
+      // before the DeclStmt (which binds the value to the variable).
       // Since this is a reverse dataflow analysis, we must evaluate the
-      // transfer function for this expression first.
+      // transfer function for this expression after the DeclStmt.  If the
+      // initializer references the variable (which is bad) then we extend
+      // its liveness.
       if (Expr* Init = VD->getInit())
         Visit(Init);
 
@@ -286,10 +299,6 @@ void TransferFuncs::VisitDeclStmt(DeclStmt* DS) {
         StmtIterator E;
         for (; I != E; ++I) Visit(*I);
       }
-
-      // Update liveness information by killing the VarDecl.
-      unsigned bit = AD.getIdx(VD);
-      LiveState.getDeclBit(bit) = Dead | AD.AlwaysLive.getDeclBit(bit);
     }
 }
 
@@ -301,17 +310,8 @@ void TransferFuncs::VisitDeclStmt(DeclStmt* DS) {
 //===----------------------------------------------------------------------===//
 
 namespace {
-
-struct Merge {
-  typedef StmtDeclBitVector_Types::ValTy ValTy;
-
-  void operator()(ValTy& Dst, const ValTy& Src) {
-    Dst.OrDeclBits(Src);
-    Dst.OrBlkExprBits(Src);
-  }
-};
-
-typedef DataflowSolver<LiveVariables, TransferFuncs, Merge> Solver;
+  typedef StmtDeclBitVector_Types::Union Merge;
+  typedef DataflowSolver<LiveVariables, TransferFuncs, Merge> Solver;
 } // end anonymous namespace
 
 //===----------------------------------------------------------------------===//

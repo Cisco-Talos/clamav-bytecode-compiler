@@ -159,43 +159,6 @@ ASTConsumer *SyntaxOnlyAction::CreateASTConsumer(CompilerInstance &CI,
   return new ASTConsumer();
 }
 
-CodeGenAction::CodeGenAction(unsigned _Act) : Act(_Act) {}
-
-ASTConsumer *CodeGenAction::CreateASTConsumer(CompilerInstance &CI,
-                                              llvm::StringRef InFile) {
-  BackendAction BA = static_cast<BackendAction>(Act);
-  llvm::OwningPtr<llvm::raw_ostream> OS;
-  switch (BA) {
-  case Backend_EmitAssembly:
-    OS.reset(CI.createDefaultOutputFile(false, InFile, "s"));
-    break;
-  case Backend_EmitLL:
-    OS.reset(CI.createDefaultOutputFile(false, InFile, "ll"));
-    break;
-  case Backend_EmitBC:
-    OS.reset(CI.createDefaultOutputFile(true, InFile, "bc"));
-    break;
-  case Backend_EmitNothing:
-    break;
-  }
-  if (BA != Backend_EmitNothing && !OS)
-    return 0;
-
-  return CreateBackendConsumer(BA, CI.getDiagnostics(), CI.getLangOpts(),
-                               CI.getCodeGenOpts(), CI.getTargetOpts(),
-                               CI.getFrontendOpts().ShowTimers, InFile,
-                               OS.take(), CI.getLLVMContext());
-}
-
-EmitAssemblyAction::EmitAssemblyAction()
-  : CodeGenAction(Backend_EmitAssembly) {}
-
-EmitBCAction::EmitBCAction() : CodeGenAction(Backend_EmitBC) {}
-
-EmitLLVMAction::EmitLLVMAction() : CodeGenAction(Backend_EmitLL) {}
-
-EmitLLVMOnlyAction::EmitLLVMOnlyAction() : CodeGenAction(Backend_EmitNothing) {}
-
 //===----------------------------------------------------------------------===//
 // Preprocessor Actions
 //===----------------------------------------------------------------------===//
@@ -280,7 +243,9 @@ void PrintParseAction::ExecuteAction() {
 
 void PrintPreprocessedAction::ExecuteAction() {
   CompilerInstance &CI = getCompilerInstance();
-  llvm::raw_ostream *OS = CI.createDefaultOutputFile(false, getCurrentFile());
+  // Output file needs to be set to 'Binary', to avoid converting Unix style
+  // line feeds (<LF>) to Microsoft style line feeds (<CR><LF>).
+  llvm::raw_ostream *OS = CI.createDefaultOutputFile(true, getCurrentFile());
   if (!OS) return;
 
   DoPrintPreprocessedInput(CI.getPreprocessor(), OS,

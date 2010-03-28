@@ -16,7 +16,8 @@ void i()
 }
 
 
-int f1(int i, int i, int j) { // expected-error {{redefinition of parameter 'i'}}
+int f1(int i,          // expected-note {{previous declaration is here}}
+       int i, int j) { // expected-error {{redefinition of parameter 'i'}}
   i = 17;
   return j;
 } 
@@ -82,7 +83,7 @@ int Y::mem4(int i = a) // expected-error{{invalid use of nonstatic data member '
 // constructors.
 class Z {
 public:
-  Z(Z&, int i = 17); // expected-note 3 {{candidate function}}
+  Z(Z&, int i = 17); // expected-note 3 {{candidate constructor}}
 
   void f(Z& z) { 
     Z z2;    // expected-error{{no matching constructor for initialization}}
@@ -103,7 +104,7 @@ struct ZZ {
 
   void f(ZZ z = g()); // expected-error{{no matching constructor for initialization}}
 
-  ZZ(ZZ&, int = 17); // expected-note{{candidate function}}
+  ZZ(ZZ&, int = 17); // expected-note{{candidate constructor}}
 };
 
 // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#325

@@ -30,7 +30,7 @@ namespace clang {
     /// designed for the previous version could not support reading
     /// the new version), this number should be increased.
     ///
-    /// Version 3 of PCH files also requires that the Subversion branch and
+    /// Version 3 of PCH files also requires that the version control branch and
     /// revision match exactly, since there is no backward compatibility of
     /// PCH files at this time.
     const unsigned VERSION_MAJOR = 3;
@@ -219,9 +219,13 @@ namespace clang {
       /// comments were encountered in the source code.
       COMMENT_RANGES = 20,
       
-      /// \brief Record code for the Subversion branch and revision information
-      /// of the compiler used to build this PCH file.
-      SVN_BRANCH_REVISION = 21
+      /// \brief Record code for the version control branch and revision
+      /// information of the compiler used to build this PCH file.
+      VERSION_CONTROL_BRANCH_REVISION = 21,
+      
+      /// \brief Record code for the array of unused static functions.
+      UNUSED_STATIC_FUNCS = 22
+      
     };
 
     /// \brief Record types used within a source manager block.
@@ -357,8 +361,6 @@ namespace clang {
     enum TypeCode {
       /// \brief An ExtQualType record.
       TYPE_EXT_QUAL                 = 1,
-      /// \brief A FixedWidthIntType record.
-      TYPE_FIXED_WIDTH_INT          = 2,
       /// \brief A ComplexType record.
       TYPE_COMPLEX                  = 3,
       /// \brief A PointerType record.
@@ -522,7 +524,9 @@ namespace clang {
       /// associates a declaration name with one or more declaration
       /// IDs. This data is used when performing qualified name lookup
       /// into a DeclContext via DeclContext::lookup.
-      DECL_CONTEXT_VISIBLE
+      DECL_CONTEXT_VISIBLE,
+      /// \brief A NamespaceDecl record.
+      DECL_NAMESPACE
     };
 
     /// \brief Record codes for each kind of statement or expression.
@@ -678,7 +682,21 @@ namespace clang {
       /// \brief A CXXOperatorCallExpr record.
       EXPR_CXX_OPERATOR_CALL,
       /// \brief A CXXConstructExpr record.
-      EXPR_CXX_CONSTRUCT
+      EXPR_CXX_CONSTRUCT,
+      // \brief A CXXStaticCastExpr record.
+      EXPR_CXX_STATIC_CAST,
+      // \brief A CXXDynamicCastExpr record.
+      EXPR_CXX_DYNAMIC_CAST,
+      // \brief A CXXReinterpretCastExpr record.
+      EXPR_CXX_REINTERPRET_CAST,
+      // \brief A CXXConstCastExpr record.
+      EXPR_CXX_CONST_CAST,
+      // \brief A CXXFunctionalCastExpr record.
+      EXPR_CXX_FUNCTIONAL_CAST,
+      // \brief A CXXBoolLiteralExpr record.
+      EXPR_CXX_BOOL_LITERAL,
+      // \brief A CXXNullPtrLiteralExpr record.
+      EXPR_CXX_NULL_PTR_LITERAL
     };
 
     /// \brief The kinds of designators that can occur in a

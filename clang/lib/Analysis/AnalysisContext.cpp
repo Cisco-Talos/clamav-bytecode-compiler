@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "clang/Analysis/PathSensitive/AnalysisContext.h"
-#include "clang/Analysis/PathSensitive/MemRegion.h"
-#include "clang/Analysis/Analyses/LiveVariables.h"
 #include "clang/Analysis/CFG.h"
+#include "clang/Analysis/AnalysisContext.h"
+#include "clang/Analysis/Analyses/LiveVariables.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclObjC.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/AST/ParentMap.h"
 #include "clang/AST/StmtVisitor.h"
 #include "clang/Analysis/Support/BumpVector.h"
@@ -38,6 +38,9 @@ Stmt *AnalysisContext::getBody() {
     return MD->getBody();
   else if (const BlockDecl *BD = dyn_cast<BlockDecl>(D))
     return BD->getBody();
+  else if (const FunctionTemplateDecl *FunTmpl
+           = dyn_cast_or_null<FunctionTemplateDecl>(D))
+    return FunTmpl->getTemplatedDecl()->getBody();
 
   llvm_unreachable("unknown code decl");
 }
@@ -51,7 +54,7 @@ const ImplicitParamDecl *AnalysisContext::getSelfDecl() const {
 
 CFG *AnalysisContext::getCFG() {
   if (!cfg)
-    cfg = CFG::buildCFG(getBody(), &D->getASTContext());
+    cfg = CFG::buildCFG(D, getBody(), &D->getASTContext(), AddEHEdges);
   return cfg;
 }
 
@@ -83,12 +86,6 @@ AnalysisContext *AnalysisContextManager::getContext(const Decl *D) {
   return AC;
 }
 
-const BlockDecl *BlockInvocationContext::getBlockDecl() const {
-  return Data.is<const BlockDataRegion*>() ?
-    Data.get<const BlockDataRegion*>()->getDecl()
-  : Data.get<const BlockDecl*>();
-}
-
 //===----------------------------------------------------------------------===//
 // FoldingSet profiling.
 //===----------------------------------------------------------------------===//
@@ -113,11 +110,7 @@ void ScopeContext::Profile(llvm::FoldingSetNodeID &ID) {
 }
 
 void BlockInvocationContext::Profile(llvm::FoldingSetNodeID &ID) {
-  if (const BlockDataRegion *BR = getBlockRegion())
-    Profile(ID, getAnalysisContext(), getParent(), BR);
-  else
-    Profile(ID, getAnalysisContext(), getParent(),
-            Data.get<const BlockDecl*>());    
+  Profile(ID, getAnalysisContext(), getParent(), BD);
 }
 
 //===----------------------------------------------------------------------===//
@@ -166,15 +159,6 @@ LocationContextManager::getScope(AnalysisContext *ctx,
   return getLocationContext<ScopeContext, Stmt>(ctx, parent, s);
 }
 
-const BlockInvocationContext *
-LocationContextManager::getBlockInvocation(AnalysisContext *ctx,
-                                 const LocationContext *parent,
-                                 const BlockDataRegion *BR) {
-  return getLocationContext<BlockInvocationContext, BlockDataRegion>(ctx,
-                                                                     parent,
-                                                                     BR);
-}
-
 //===----------------------------------------------------------------------===//
 // LocationContext methods.
 //===----------------------------------------------------------------------===//
@@ -202,6 +186,18 @@ LocationContext::getStackFrameForDeclContext(const DeclContext *DC) const {
   return NULL;
 }
 
+bool LocationContext::isParentOf(const LocationContext *LC) const {
+  do {
+    const LocationContext *Parent = LC->getParent();
+    if (Parent == this)
+      return true;
+    else
+      LC = Parent;
+  } while (LC);
+
+  return false;
+}
+
 //===----------------------------------------------------------------------===//
 // Lazily generated map to query the external variables referenced by a Block.
 //===----------------------------------------------------------------------===//
@@ -210,6 +206,7 @@ namespace {
 class FindBlockDeclRefExprsVals : public StmtVisitor<FindBlockDeclRefExprsVals>{
   BumpVector<const VarDecl*> &BEVals;
   BumpVectorContext &BC;
+  llvm::DenseMap<const VarDecl*, unsigned> Visited;
 public:
   FindBlockDeclRefExprsVals(BumpVector<const VarDecl*> &bevals,
                             BumpVectorContext &bc)
@@ -220,10 +217,27 @@ public:
       if (Stmt *child = *I)
         Visit(child);
   }
+
+  void VisitDeclRefExpr(const DeclRefExpr *DR) {
+    // Non-local variables are also directly modified.
+    if (const VarDecl *VD = dyn_cast<VarDecl>(DR->getDecl()))
+      if (!VD->hasLocalStorage()) {
+        unsigned &flag = Visited[VD];
+        if (!flag) {
+          flag = 1;
+          BEVals.push_back(VD, BC);
+        }
+      }
+  }
   
   void VisitBlockDeclRefExpr(BlockDeclRefExpr *DR) {
-    if (const VarDecl *VD = dyn_cast<VarDecl>(DR->getDecl()))
-      BEVals.push_back(VD, BC);
+    if (const VarDecl *VD = dyn_cast<VarDecl>(DR->getDecl())) {
+      unsigned &flag = Visited[VD];
+      if (!flag) {
+        flag = 1;
+        BEVals.push_back(VD, BC);
+      }
+    }
   }
 };  
 } // end anonymous namespace

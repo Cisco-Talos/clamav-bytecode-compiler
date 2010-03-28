@@ -64,7 +64,7 @@ public:
   PTHEntryKeyVariant(struct stat* statbuf, const char* path)
     : Path(path), Kind(IsDE), StatBuf(new struct stat(*statbuf)) {}
 
-  PTHEntryKeyVariant(const char* path)
+  explicit PTHEntryKeyVariant(const char* path)
     : Path(path), Kind(IsNoExist), StatBuf(0) {}
 
   bool isFile() const { return Kind == IsFE; }
@@ -77,25 +77,25 @@ public:
 
   void EmitData(llvm::raw_ostream& Out) {
     switch (Kind) {
-      case IsFE:
-        // Emit stat information.
-        ::Emit32(Out, FE->getInode());
-        ::Emit32(Out, FE->getDevice());
-        ::Emit16(Out, FE->getFileMode());
-        ::Emit64(Out, FE->getModificationTime());
-        ::Emit64(Out, FE->getSize());
-        break;
-      case IsDE:
-        // Emit stat information.
-        ::Emit32(Out, (uint32_t) StatBuf->st_ino);
-        ::Emit32(Out, (uint32_t) StatBuf->st_dev);
-        ::Emit16(Out, (uint16_t) StatBuf->st_mode);
-        ::Emit64(Out, (uint64_t) StatBuf->st_mtime);
-        ::Emit64(Out, (uint64_t) StatBuf->st_size);
-        delete StatBuf;
-        break;
-      default:
-        break;
+    case IsFE:
+      // Emit stat information.
+      ::Emit32(Out, FE->getInode());
+      ::Emit32(Out, FE->getDevice());
+      ::Emit16(Out, FE->getFileMode());
+      ::Emit64(Out, FE->getModificationTime());
+      ::Emit64(Out, FE->getSize());
+      break;
+    case IsDE:
+      // Emit stat information.
+      ::Emit32(Out, (uint32_t) StatBuf->st_ino);
+      ::Emit32(Out, (uint32_t) StatBuf->st_dev);
+      ::Emit16(Out, (uint16_t) StatBuf->st_mode);
+      ::Emit64(Out, (uint64_t) StatBuf->st_mtime);
+      ::Emit64(Out, (uint64_t) StatBuf->st_size);
+      delete StatBuf;
+      break;
+    default:
+      break;
     }
   }
 
@@ -184,18 +184,11 @@ class PTHWriter {
   /// Emit a token to the PTH file.
   void EmitToken(const Token& T);
 
-  void Emit8(uint32_t V) {
-    Out << (unsigned char)(V);
-  }
+  void Emit8(uint32_t V) { ::Emit8(Out, V); }
 
   void Emit16(uint32_t V) { ::Emit16(Out, V); }
 
-  void Emit24(uint32_t V) {
-    Out << (unsigned char)(V);
-    Out << (unsigned char)(V >>  8);
-    Out << (unsigned char)(V >> 16);
-    assert((V >> 24) == 0);
-  }
+  void Emit24(uint32_t V) { ::Emit24(Out, V); }
 
   void Emit32(uint32_t V) { ::Emit32(Out, V); }
 
@@ -520,7 +513,7 @@ public:
     int result = StatSysCallCache::stat(path, buf);
 
     if (result != 0) // Failed 'stat'.
-      PM.insert(path, PTHEntry());
+      PM.insert(PTHEntryKeyVariant(path), PTHEntry());
     else if (S_ISDIR(buf->st_mode)) {
       // Only cache directories with absolute paths.
       if (!llvm::sys::Path(path).isAbsolute())

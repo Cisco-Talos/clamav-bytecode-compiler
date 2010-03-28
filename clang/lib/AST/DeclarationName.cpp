@@ -56,32 +56,43 @@ public:
 /// This identifier is stored here rather than directly in DeclarationName so as
 /// to allow Objective-C selectors, which are about a million times more common,
 /// to consume minimal memory.
-class CXXLiteralOperatorIdName : public DeclarationNameExtra {
+class CXXLiteralOperatorIdName
+  : public DeclarationNameExtra, public llvm::FoldingSetNode {
 public:
   IdentifierInfo *ID;
+
+  void Profile(llvm::FoldingSetNodeID &FSID) {
+    FSID.AddPointer(ID);
+  }
 };
 
-bool operator<(DeclarationName LHS, DeclarationName RHS) {
+static int compareInt(unsigned A, unsigned B) {
+  return (A < B ? -1 : (A > B ? 1 : 0));
+}
+
+int DeclarationName::compare(DeclarationName LHS, DeclarationName RHS) {
   if (LHS.getNameKind() != RHS.getNameKind())
-    return LHS.getNameKind() < RHS.getNameKind();
+    return (LHS.getNameKind() < RHS.getNameKind() ? -1 : 1);
   
   switch (LHS.getNameKind()) {
-  case DeclarationName::Identifier:
-    return LHS.getAsIdentifierInfo()->getName() < 
-                                         RHS.getAsIdentifierInfo()->getName();
+  case DeclarationName::Identifier: {
+    IdentifierInfo *LII = LHS.getAsIdentifierInfo();
+    IdentifierInfo *RII = RHS.getAsIdentifierInfo();
+    if (!LII) return RII ? -1 : 0;
+    if (!RII) return 1;
+    
+    return LII->getName().compare(RII->getName());
+  }
 
   case DeclarationName::ObjCZeroArgSelector:
   case DeclarationName::ObjCOneArgSelector:
   case DeclarationName::ObjCMultiArgSelector: {
     Selector LHSSelector = LHS.getObjCSelector();
     Selector RHSSelector = RHS.getObjCSelector();
-    for (unsigned I = 0, 
-               N = std::min(LHSSelector.getNumArgs(), RHSSelector.getNumArgs());
-         I != N; ++I) {
+    unsigned LN = LHSSelector.getNumArgs(), RN = RHSSelector.getNumArgs();
+    for (unsigned I = 0, N = std::min(LN, RN); I != N; ++I) {
       IdentifierInfo *LHSId = LHSSelector.getIdentifierInfoForSlot(I);
       IdentifierInfo *RHSId = RHSSelector.getIdentifierInfoForSlot(I);
-      if (!LHSId || !RHSId)
-        return LHSId && !RHSId;
         
       switch (LHSId->getName().compare(RHSId->getName())) {
       case -1: return true;
@@ -89,27 +100,32 @@ bool operator<(DeclarationName LHS, DeclarationName RHS) {
       default: break;
       }
     }
-    
-    return LHSSelector.getNumArgs() < RHSSelector.getNumArgs();
+
+    return compareInt(LN, RN);
   }
   
   case DeclarationName::CXXConstructorName:
   case DeclarationName::CXXDestructorName:
   case DeclarationName::CXXConversionFunctionName:
-    return QualTypeOrdering()(LHS.getCXXNameType(), RHS.getCXXNameType());
+    if (QualTypeOrdering()(LHS.getCXXNameType(), RHS.getCXXNameType()))
+      return -1;
+    if (QualTypeOrdering()(RHS.getCXXNameType(), LHS.getCXXNameType()))
+      return 1;
+    return 0;
               
   case DeclarationName::CXXOperatorName:
-    return LHS.getCXXOverloadedOperator() < RHS.getCXXOverloadedOperator();
+    return compareInt(LHS.getCXXOverloadedOperator(),
+                      RHS.getCXXOverloadedOperator());
 
   case DeclarationName::CXXLiteralOperatorName:
-    return LHS.getCXXLiteralIdentifier()->getName() <
-                                       RHS.getCXXLiteralIdentifier()->getName();
+    return LHS.getCXXLiteralIdentifier()->getName().compare(
+                                   RHS.getCXXLiteralIdentifier()->getName());
               
   case DeclarationName::CXXUsingDirective:
-    return false;
+    return 0;
   }
               
-  return false;
+  return 0;
 }
 
 } // end namespace clang
@@ -178,6 +194,11 @@ DeclarationName::NameKind DeclarationName::getNameKind() const {
   // Can't actually get here.
   assert(0 && "This should be unreachable!");
   return Identifier;
+}
+
+bool DeclarationName::isDependentName() const {
+  QualType T = getCXXNameType();
+  return !T.isNull() && T->isDependentType();
 }
 
 std::string DeclarationName::getAsString() const {
@@ -353,6 +374,7 @@ void DeclarationName::dump() const {
 
 DeclarationNameTable::DeclarationNameTable() {
   CXXSpecialNamesImpl = new llvm::FoldingSet<CXXSpecialName>;
+  CXXLiteralOperatorNames = new llvm::FoldingSet<CXXLiteralOperatorIdName>;
 
   // Initialize the overloaded operator names.
   CXXOperatorNames = new CXXOperatorIdName[NUM_OVERLOADED_OPERATORS];
@@ -364,16 +386,30 @@ DeclarationNameTable::DeclarationNameTable() {
 }
 
 DeclarationNameTable::~DeclarationNameTable() {
-  llvm::FoldingSet<CXXSpecialName> *set =
+  llvm::FoldingSet<CXXSpecialName> *SpecialNames =
     static_cast<llvm::FoldingSet<CXXSpecialName>*>(CXXSpecialNamesImpl);
-  llvm::FoldingSetIterator<CXXSpecialName> I = set->begin(), E = set->end();
+  llvm::FoldingSetIterator<CXXSpecialName>
+                           SI = SpecialNames->begin(), SE = SpecialNames->end();
 
-  while (I != E) {
-    CXXSpecialName *n = &*I++;
+  while (SI != SE) {
+    CXXSpecialName *n = &*SI++;
     delete n;
   }
 
-  delete set;
+
+  llvm::FoldingSet<CXXLiteralOperatorIdName> *LiteralNames
+    = static_cast<llvm::FoldingSet<CXXLiteralOperatorIdName>*>
+                                                      (CXXLiteralOperatorNames);
+  llvm::FoldingSetIterator<CXXLiteralOperatorIdName>
+                           LI = LiteralNames->begin(), LE = LiteralNames->end();
+
+  while (LI != LE) {
+    CXXLiteralOperatorIdName *n = &*LI++;
+    delete n;
+  }
+
+  delete SpecialNames;
+  delete LiteralNames;
   delete [] CXXOperatorNames;
 }
 
@@ -428,9 +464,23 @@ DeclarationNameTable::getCXXOperatorName(OverloadedOperatorKind Op) {
 
 DeclarationName
 DeclarationNameTable::getCXXLiteralOperatorName(IdentifierInfo *II) {
+  llvm::FoldingSet<CXXLiteralOperatorIdName> *LiteralNames
+    = static_cast<llvm::FoldingSet<CXXLiteralOperatorIdName>*>
+                                                      (CXXLiteralOperatorNames);
+
+  llvm::FoldingSetNodeID ID;
+  ID.AddPointer(II);
+
+  void *InsertPos = 0;
+  if (CXXLiteralOperatorIdName *Name =
+                               LiteralNames->FindNodeOrInsertPos(ID, InsertPos))
+    return DeclarationName (Name);
+  
   CXXLiteralOperatorIdName *LiteralName = new CXXLiteralOperatorIdName;
   LiteralName->ExtraKindOrNumArgs = DeclarationNameExtra::CXXLiteralOperator;
   LiteralName->ID = II;
+
+  LiteralNames->InsertNode(LiteralName, InsertPos);
   return DeclarationName(LiteralName);
 }
 

@@ -69,12 +69,6 @@ void PCHTypeWriter::VisitBuiltinType(const BuiltinType *T) {
   assert(false && "Built-in types are never serialized");
 }
 
-void PCHTypeWriter::VisitFixedWidthIntType(const FixedWidthIntType *T) {
-  Record.push_back(T->getWidth());
-  Record.push_back(T->isSigned());
-  Code = pch::TYPE_FIXED_WIDTH_INT;
-}
-
 void PCHTypeWriter::VisitComplexType(const ComplexType *T) {
   Writer.AddTypeRef(T->getElementType(), Record);
   Code = pch::TYPE_COMPLEX;
@@ -134,6 +128,8 @@ void PCHTypeWriter::VisitVariableArrayType(const VariableArrayType *T) {
 void PCHTypeWriter::VisitVectorType(const VectorType *T) {
   Writer.AddTypeRef(T->getElementType(), Record);
   Record.push_back(T->getNumElements());
+  Record.push_back(T->isAltiVec());
+  Record.push_back(T->isPixel());
   Code = pch::TYPE_VECTOR;
 }
 
@@ -145,6 +141,8 @@ void PCHTypeWriter::VisitExtVectorType(const ExtVectorType *T) {
 void PCHTypeWriter::VisitFunctionType(const FunctionType *T) {
   Writer.AddTypeRef(T->getResultType(), Record);
   Record.push_back(T->getNoReturnAttr());
+  // FIXME: need to stabilize encoding of calling convention...
+  Record.push_back(T->getCallConv());
 }
 
 void PCHTypeWriter::VisitFunctionNoProtoType(const FunctionNoProtoType *T) {
@@ -281,10 +279,13 @@ void TypeLocWriter::VisitQualifiedTypeLoc(QualifiedTypeLoc TL) {
   // nothing to do
 }
 void TypeLocWriter::VisitBuiltinTypeLoc(BuiltinTypeLoc TL) {
-  Writer.AddSourceLocation(TL.getNameLoc(), Record);
-}
-void TypeLocWriter::VisitFixedWidthIntTypeLoc(FixedWidthIntTypeLoc TL) {
-  Writer.AddSourceLocation(TL.getNameLoc(), Record);
+  Writer.AddSourceLocation(TL.getBuiltinLoc(), Record);
+  if (TL.needsExtraLocalData()) {
+    Record.push_back(TL.getWrittenTypeSpec());
+    Record.push_back(TL.getWrittenSignSpec());
+    Record.push_back(TL.getWrittenWidthSpec());
+    Record.push_back(TL.hasModeAttr());
+  }
 }
 void TypeLocWriter::VisitComplexTypeLoc(ComplexTypeLoc TL) {
   Writer.AddSourceLocation(TL.getNameLoc(), Record);
@@ -353,10 +354,15 @@ void TypeLocWriter::VisitTypedefTypeLoc(TypedefTypeLoc TL) {
   Writer.AddSourceLocation(TL.getNameLoc(), Record);
 }
 void TypeLocWriter::VisitTypeOfExprTypeLoc(TypeOfExprTypeLoc TL) {
-  Writer.AddSourceLocation(TL.getNameLoc(), Record);
+  Writer.AddSourceLocation(TL.getTypeofLoc(), Record);
+  Writer.AddSourceLocation(TL.getLParenLoc(), Record);
+  Writer.AddSourceLocation(TL.getRParenLoc(), Record);
 }
 void TypeLocWriter::VisitTypeOfTypeLoc(TypeOfTypeLoc TL) {
-  Writer.AddSourceLocation(TL.getNameLoc(), Record);
+  Writer.AddSourceLocation(TL.getTypeofLoc(), Record);
+  Writer.AddSourceLocation(TL.getLParenLoc(), Record);
+  Writer.AddSourceLocation(TL.getRParenLoc(), Record);
+  Writer.AddTypeSourceInfo(TL.getUnderlyingTInfo(), Record);
 }
 void TypeLocWriter::VisitDecltypeTypeLoc(DecltypeTypeLoc TL) {
   Writer.AddSourceLocation(TL.getNameLoc(), Record);
@@ -507,6 +513,15 @@ static void AddStmtsExprs(llvm::BitstreamWriter &Stream,
   RECORD(STMT_OBJC_AT_TRY);
   RECORD(STMT_OBJC_AT_SYNCHRONIZED);
   RECORD(STMT_OBJC_AT_THROW);
+  RECORD(EXPR_CXX_OPERATOR_CALL);
+  RECORD(EXPR_CXX_CONSTRUCT);
+  RECORD(EXPR_CXX_STATIC_CAST);
+  RECORD(EXPR_CXX_DYNAMIC_CAST);
+  RECORD(EXPR_CXX_REINTERPRET_CAST);
+  RECORD(EXPR_CXX_CONST_CAST);
+  RECORD(EXPR_CXX_FUNCTIONAL_CAST);
+  RECORD(EXPR_CXX_BOOL_LITERAL);
+  RECORD(EXPR_CXX_NULL_PTR_LITERAL);
 #undef RECORD
 }
 
@@ -530,6 +545,7 @@ void PCHWriter::WriteBlockInfoBlock() {
   RECORD(SPECIAL_TYPES);
   RECORD(STATISTICS);
   RECORD(TENTATIVE_DEFINITIONS);
+  RECORD(UNUSED_STATIC_FUNCS);
   RECORD(LOCALLY_SCOPED_EXTERNAL_DECLS);
   RECORD(SELECTOR_OFFSETS);
   RECORD(METHOD_POOL);
@@ -539,7 +555,7 @@ void PCHWriter::WriteBlockInfoBlock() {
   RECORD(STAT_CACHE);
   RECORD(EXT_VECTOR_DECLS);
   RECORD(COMMENT_RANGES);
-  RECORD(SVN_BRANCH_REVISION);
+  RECORD(VERSION_CONTROL_BRANCH_REVISION);
   
   // SourceManager Block.
   BLOCK(SOURCE_MANAGER_BLOCK);
@@ -559,7 +575,6 @@ void PCHWriter::WriteBlockInfoBlock() {
   // Decls and Types block.
   BLOCK(DECLTYPES_BLOCK);
   RECORD(TYPE_EXT_QUAL);
-  RECORD(TYPE_FIXED_WIDTH_INT);
   RECORD(TYPE_COMPLEX);
   RECORD(TYPE_POINTER);
   RECORD(TYPE_BLOCK_POINTER);
@@ -704,16 +719,15 @@ void PCHWriter::WriteMetadata(ASTContext &Context, const char *isysroot) {
     Stream.EmitRecordWithBlob(FileAbbrevCode, Record, MainFileNameStr);
   }
   
-  // Subversion branch/version information.
-  BitCodeAbbrev *SvnAbbrev = new BitCodeAbbrev();
-  SvnAbbrev->Add(BitCodeAbbrevOp(pch::SVN_BRANCH_REVISION));
-  SvnAbbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 32)); // SVN revision
-  SvnAbbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob)); // SVN branch/tag
-  unsigned SvnAbbrevCode = Stream.EmitAbbrev(SvnAbbrev);
+  // Repository branch/version information.
+  BitCodeAbbrev *RepoAbbrev = new BitCodeAbbrev();
+  RepoAbbrev->Add(BitCodeAbbrevOp(pch::VERSION_CONTROL_BRANCH_REVISION));
+  RepoAbbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob)); // SVN branch/tag
+  unsigned RepoAbbrevCode = Stream.EmitAbbrev(RepoAbbrev);
   Record.clear();
-  Record.push_back(pch::SVN_BRANCH_REVISION);
-  Record.push_back(getClangSubversionRevision());
-  Stream.EmitRecordWithBlob(SvnAbbrevCode, Record, getClangSubversionPath());
+  Record.push_back(pch::VERSION_CONTROL_BRANCH_REVISION);
+  Stream.EmitRecordWithBlob(RepoAbbrevCode, Record,
+                            getClangFullRepositoryVersion());
 }
 
 /// \brief Write the LangOptions structure.
@@ -735,13 +749,17 @@ void PCHWriter::WriteLanguageOptions(const LangOptions &LangOpts) {
 
   Record.push_back(LangOpts.ObjC1);  // Objective-C 1 support enabled.
   Record.push_back(LangOpts.ObjC2);  // Objective-C 2 support enabled.
-  Record.push_back(LangOpts.ObjCNonFragileABI);  // Objective-C modern abi enabled
+  Record.push_back(LangOpts.ObjCNonFragileABI);  // Objective-C 
+                                                 // modern abi enabled.
+  Record.push_back(LangOpts.ObjCNonFragileABI2); // Objective-C enhanced 
+                                                 // modern abi enabled.
 
   Record.push_back(LangOpts.PascalStrings);  // Allow Pascal strings
   Record.push_back(LangOpts.WritableStrings);  // Allow writable strings
   Record.push_back(LangOpts.LaxVectorConversions);
   Record.push_back(LangOpts.AltiVec);
   Record.push_back(LangOpts.Exceptions);  // Support exception handling.
+  Record.push_back(LangOpts.SjLjExceptions);
 
   Record.push_back(LangOpts.NeXTRuntime); // Use NeXT runtime.
   Record.push_back(LangOpts.Freestanding); // Freestanding implementation
@@ -1158,7 +1176,6 @@ void PCHWriter::WritePreprocessor(const Preprocessor &PP) {
 
   // Loop over all the macro definitions that are live at the end of the file,
   // emitting each to the PP section.
-  // FIXME: Make sure that this sees macros defined in included PCH files.
   for (Preprocessor::macro_iterator I = PP.macro_begin(), E = PP.macro_end();
        I != E; ++I) {
     // FIXME: This emits macros in hash table order, we should do it in a stable
@@ -1170,7 +1187,6 @@ void PCHWriter::WritePreprocessor(const Preprocessor &PP) {
     if (MI->isBuiltinMacro())
       continue;
 
-    // FIXME: Remove this identifier reference?
     AddIdentifierRef(I->first, Record);
     MacroOffsets[I->first] = Stream.GetCurrentBitNo();
     Record.push_back(MI->getDefinitionLoc().getRawEncoding());
@@ -1270,7 +1286,7 @@ void PCHWriter::WriteType(QualType T) {
       // For all of the concrete, non-dependent types, call the
       // appropriate visitor function.
 #define TYPE(Class, Base) \
-      case Type::Class: W.Visit##Class##Type(cast<Class##Type>(T)); break;
+    case Type::Class: W.Visit##Class##Type(cast<Class##Type>(T)); break;
 #define ABSTRACT_TYPE(Class, Base)
 #define DEPENDENT_TYPE(Class, Base)
 #include "clang/AST/TypeNodes.def"
@@ -1751,9 +1767,12 @@ void PCHWriter::WriteIdentifierTable(Preprocessor &PP) {
 void PCHWriter::WriteAttributeRecord(const Attr *Attr) {
   RecordData Record;
   for (; Attr; Attr = Attr->getNext()) {
-    Record.push_back(Attr->getKind()); // FIXME: stable encoding
+    Record.push_back(Attr->getKind()); // FIXME: stable encoding, target attrs
     Record.push_back(Attr->isInherited());
     switch (Attr->getKind()) {
+    default:
+      assert(0 && "Does not support PCH writing for this attribute yet!");
+      break;
     case Attr::Alias:
       AddString(cast<AliasAttr>(Attr)->getAliasee(), Record);
       break;
@@ -1833,12 +1852,13 @@ void PCHWriter::WriteAttributeRecord(const Attr *Attr) {
 
     case Attr::GNUInline:
     case Attr::Hiding:
+    case Attr::IBActionKind:
     case Attr::IBOutletKind:
     case Attr::Malloc:
     case Attr::NoDebug:
+    case Attr::NoInline:
     case Attr::NoReturn:
     case Attr::NoThrow:
-    case Attr::NoInline:
       break;
 
     case Attr::NonNull: {
@@ -1848,10 +1868,12 @@ void PCHWriter::WriteAttributeRecord(const Attr *Attr) {
       break;
     }
 
+    case Attr::CFReturnsNotRetained:
+    case Attr::CFReturnsRetained:
+    case Attr::NSReturnsNotRetained:
+    case Attr::NSReturnsRetained:
     case Attr::ObjCException:
     case Attr::ObjCNSObject:
-    case Attr::CFReturnsRetained:
-    case Attr::NSReturnsRetained:
     case Attr::Overloadable:
     case Attr::Override:
       break;
@@ -1894,6 +1916,7 @@ void PCHWriter::WriteAttributeRecord(const Attr *Attr) {
 
     case Attr::WarnUnusedResult:
     case Attr::Weak:
+    case Attr::WeakRef:
     case Attr::WeakImport:
       break;
     }
@@ -1957,15 +1980,18 @@ void PCHWriter::WritePCH(Sema &SemaRef, MemorizeStatCalls *StatCalls,
   }
 
   // Build a record containing all of the tentative definitions in this file, in
-  // TentativeDefinitionList order.  Generally, this record will be empty for
+  // TentativeDefinitions order.  Generally, this record will be empty for
   // headers.
   RecordData TentativeDefinitions;
-  for (unsigned i = 0, e = SemaRef.TentativeDefinitionList.size(); i != e; ++i){
-    VarDecl *VD =
-      SemaRef.TentativeDefinitions.lookup(SemaRef.TentativeDefinitionList[i]);
-    if (VD) AddDeclRef(VD, TentativeDefinitions);
+  for (unsigned i = 0, e = SemaRef.TentativeDefinitions.size(); i != e; ++i) {
+    AddDeclRef(SemaRef.TentativeDefinitions[i], TentativeDefinitions);
   }
 
+  // Build a record containing all of the static unused functions in this file.
+  RecordData UnusedStaticFuncs;
+  for (unsigned i=0, e = SemaRef.UnusedStaticFuncs.size(); i !=e; ++i) 
+    AddDeclRef(SemaRef.UnusedStaticFuncs[i], UnusedStaticFuncs);
+              
   // Build a record containing all of the locally-scoped external
   // declarations in this header file. Generally, this record will be
   // empty.
@@ -2067,6 +2093,10 @@ void PCHWriter::WritePCH(Sema &SemaRef, MemorizeStatCalls *StatCalls,
   if (!TentativeDefinitions.empty())
     Stream.EmitRecord(pch::TENTATIVE_DEFINITIONS, TentativeDefinitions);
 
+  // Write the record containing unused static functions.
+  if (!UnusedStaticFuncs.empty())
+    Stream.EmitRecord(pch::UNUSED_STATIC_FUNCS, UnusedStaticFuncs);
+  
   // Write the record containing locally-scoped external definitions.
   if (!LocallyScopedExternalDecls.empty())
     Stream.EmitRecord(pch::LOCALLY_SCOPED_EXTERNAL_DECLS,
@@ -2306,4 +2336,3 @@ void PCHWriter::AddDeclarationName(DeclarationName Name, RecordData &Record) {
     break;
   }
 }
-

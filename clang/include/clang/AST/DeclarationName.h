@@ -190,6 +190,14 @@ public:
   /// getNameKind - Determine what kind of name this is.
   NameKind getNameKind() const;
 
+  /// \brief Determines whether the name itself is dependent, e.g., because it 
+  /// involves a C++ type that is itself dependent.
+  ///
+  /// Note that this does not capture all of the notions of "dependent name",
+  /// because an identifier can be a dependent name if it is used as the 
+  /// callee in a call expression with dependent arguments.
+  bool isDependentName() const;
+  
   /// getName - Retrieve the human-readable string for this name.
   std::string getAsString() const;
 
@@ -266,30 +274,34 @@ public:
   static DeclarationName getTombstoneMarker() {
     return DeclarationName(uintptr_t(-2));
   }
+
+  static int compare(DeclarationName LHS, DeclarationName RHS);
   
   void dump() const;
 };
 
 /// Ordering on two declaration names. If both names are identifiers,
 /// this provides a lexicographical ordering.
-bool operator<(DeclarationName LHS, DeclarationName RHS);
+inline bool operator<(DeclarationName LHS, DeclarationName RHS) {
+  return DeclarationName::compare(LHS, RHS) < 0;
+}
 
 /// Ordering on two declaration names. If both names are identifiers,
 /// this provides a lexicographical ordering.
 inline bool operator>(DeclarationName LHS, DeclarationName RHS) {
-  return RHS < LHS;
+  return DeclarationName::compare(LHS, RHS) > 0;
 }
 
 /// Ordering on two declaration names. If both names are identifiers,
 /// this provides a lexicographical ordering.
 inline bool operator<=(DeclarationName LHS, DeclarationName RHS) {
-  return !(RHS < LHS);
+  return DeclarationName::compare(LHS, RHS) <= 0;
 }
 
 /// Ordering on two declaration names. If both names are identifiers,
 /// this provides a lexicographical ordering.
 inline bool operator>=(DeclarationName LHS, DeclarationName RHS) {
-  return !(LHS < RHS);
+  return DeclarationName::compare(LHS, RHS) >= 0;
 }
 
 /// DeclarationNameTable - Used to store and retrieve DeclarationName
@@ -301,6 +313,7 @@ inline bool operator>=(DeclarationName LHS, DeclarationName RHS) {
 class DeclarationNameTable {
   void *CXXSpecialNamesImpl; // Actually a FoldingSet<CXXSpecialName> *
   CXXOperatorIdName *CXXOperatorNames; // Operator names
+  void *CXXLiteralOperatorNames; // Actually a FoldingSet<...> *
 
   DeclarationNameTable(const DeclarationNameTable&);            // NONCOPYABLE
   DeclarationNameTable& operator=(const DeclarationNameTable&); // NONCOPYABLE

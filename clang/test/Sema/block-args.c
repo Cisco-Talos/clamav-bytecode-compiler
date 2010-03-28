@@ -6,7 +6,8 @@ void test() {
   take(^(int x){});
   take(^(int x, int y){});
   take(^(int x, int y){});
-  take(^(int x, int x){});  // expected-error {{redefinition of parameter 'x'}}
+  take(^(int x,      // expected-note {{previous declaration is here}}
+         int x){});  // expected-error {{redefinition of parameter 'x'}}
 
 
   take(^(int x) { return x+1; });
@@ -26,4 +27,10 @@ int main(int argc, char** argv) {
   ^(int argCount) {
     argCount = 3;
   }(argc);
+}
+
+// radar 7528255
+void f0() {
+  ^(int, double d, char) {}(1, 1.34, 'a'); // expected-error {{parameter name omitted}} \
+				 	   // expected-error {{parameter name omitted}}
 }
