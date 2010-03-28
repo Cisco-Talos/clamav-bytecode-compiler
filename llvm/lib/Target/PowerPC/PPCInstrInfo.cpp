@@ -19,6 +19,7 @@
 #include "PPCTargetMachine.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
@@ -73,8 +74,7 @@ bool PPCInstrInfo::isMoveInstr(const MachineInstr& MI,
       destReg = MI.getOperand(0).getReg();
       return true;
     }
-  } else if (oc == PPC::FMRS || oc == PPC::FMRD ||
-             oc == PPC::FMRSD) {      // fmr r1, r2
+  } else if (oc == PPC::FMR || oc == PPC::FMRSD) { // fmr r1, r2
     assert(MI.getNumOperands() >= 2 &&
            MI.getOperand(0).isReg() &&
            MI.getOperand(1).isReg() &&
@@ -344,10 +344,9 @@ bool PPCInstrInfo::copyRegToReg(MachineBasicBlock &MBB,
     BuildMI(MBB, MI, DL, get(PPC::OR), DestReg).addReg(SrcReg).addReg(SrcReg);
   } else if (DestRC == PPC::G8RCRegisterClass) {
     BuildMI(MBB, MI, DL, get(PPC::OR8), DestReg).addReg(SrcReg).addReg(SrcReg);
-  } else if (DestRC == PPC::F4RCRegisterClass) {
-    BuildMI(MBB, MI, DL, get(PPC::FMRS), DestReg).addReg(SrcReg);
-  } else if (DestRC == PPC::F8RCRegisterClass) {
-    BuildMI(MBB, MI, DL, get(PPC::FMRD), DestReg).addReg(SrcReg);
+  } else if (DestRC == PPC::F4RCRegisterClass ||
+             DestRC == PPC::F8RCRegisterClass) {
+    BuildMI(MBB, MI, DL, get(PPC::FMR), DestReg).addReg(SrcReg);
   } else if (DestRC == PPC::CRRCRegisterClass) {
     BuildMI(MBB, MI, DL, get(PPC::MCRF), DestReg).addReg(SrcReg);
   } else if (DestRC == PPC::VRRCRegisterClass) {
@@ -421,22 +420,30 @@ PPCInstrInfo::StoreRegToStackSlot(MachineFunction &MF,
                                          FrameIdx));
       return true;
     } else {
-      // FIXME: We use R0 here, because it isn't available for RA.  We need to
-      // store the CR in the low 4-bits of the saved value.  First, issue a MFCR
-      // to save all of the CRBits.
-      NewMIs.push_back(BuildMI(MF, DL, get(PPC::MFCR), PPC::R0));
+      // FIXME: We need a scatch reg here.  The trouble with using R0 is that
+      // it's possible for the stack frame to be so big the save location is
+      // out of range of immediate offsets, necessitating another register.
+      // We hack this on Darwin by reserving R2.  It's probably broken on Linux
+      // at the moment.
+
+      // We need to store the CR in the low 4-bits of the saved value.  First,
+      // issue a MFCR to save all of the CRBits.
+      unsigned ScratchReg = TM.getSubtargetImpl()->isDarwinABI() ? 
+                                                           PPC::R2 : PPC::R0;
+      NewMIs.push_back(BuildMI(MF, DL, get(PPC::MFCR), ScratchReg));
     
       // If the saved register wasn't CR0, shift the bits left so that they are
       // in CR0's slot.
       if (SrcReg != PPC::CR0) {
         unsigned ShiftBits = PPCRegisterInfo::getRegisterNumbering(SrcReg)*4;
-        // rlwinm r0, r0, ShiftBits, 0, 31.
-        NewMIs.push_back(BuildMI(MF, DL, get(PPC::RLWINM), PPC::R0)
-                       .addReg(PPC::R0).addImm(ShiftBits).addImm(0).addImm(31));
+        // rlwinm scratch, scratch, ShiftBits, 0, 31.
+        NewMIs.push_back(BuildMI(MF, DL, get(PPC::RLWINM), ScratchReg)
+                       .addReg(ScratchReg).addImm(ShiftBits)
+                       .addImm(0).addImm(31));
       }
     
       NewMIs.push_back(addFrameReference(BuildMI(MF, DL, get(PPC::STW))
-                                         .addReg(PPC::R0,
+                                         .addReg(ScratchReg,
                                                  getKillRegState(isKill)),
                                          FrameIdx));
     }
@@ -540,20 +547,28 @@ PPCInstrInfo::LoadRegFromStackSlot(MachineFunction &MF, DebugLoc DL,
     NewMIs.push_back(addFrameReference(BuildMI(MF, DL, get(PPC::LFS), DestReg),
                                        FrameIdx));
   } else if (RC == PPC::CRRCRegisterClass) {
-    // FIXME: We use R0 here, because it isn't available for RA.
-    NewMIs.push_back(addFrameReference(BuildMI(MF, DL, get(PPC::LWZ), PPC::R0),
-                                       FrameIdx));
+    // FIXME: We need a scatch reg here.  The trouble with using R0 is that
+    // it's possible for the stack frame to be so big the save location is
+    // out of range of immediate offsets, necessitating another register.
+    // We hack this on Darwin by reserving R2.  It's probably broken on Linux
+    // at the moment.
+    unsigned ScratchReg = TM.getSubtargetImpl()->isDarwinABI() ?
+                                                          PPC::R2 : PPC::R0;
+    NewMIs.push_back(addFrameReference(BuildMI(MF, DL, get(PPC::LWZ), 
+                                       ScratchReg), FrameIdx));
     
     // If the reloaded register isn't CR0, shift the bits right so that they are
     // in the right CR's slot.
     if (DestReg != PPC::CR0) {
       unsigned ShiftBits = PPCRegisterInfo::getRegisterNumbering(DestReg)*4;
       // rlwinm r11, r11, 32-ShiftBits, 0, 31.
-      NewMIs.push_back(BuildMI(MF, DL, get(PPC::RLWINM), PPC::R0)
-                    .addReg(PPC::R0).addImm(32-ShiftBits).addImm(0).addImm(31));
+      NewMIs.push_back(BuildMI(MF, DL, get(PPC::RLWINM), ScratchReg)
+                    .addReg(ScratchReg).addImm(32-ShiftBits).addImm(0)
+                    .addImm(31));
     }
     
-    NewMIs.push_back(BuildMI(MF, DL, get(PPC::MTCRF), DestReg).addReg(PPC::R0));
+    NewMIs.push_back(BuildMI(MF, DL, get(PPC::MTCRF), DestReg)
+                     .addReg(ScratchReg));
   } else if (RC == PPC::CRBITRCRegisterClass) {
    
     unsigned Reg = 0;
@@ -672,12 +687,21 @@ MachineInstr *PPCInstrInfo::foldMemoryOperandImpl(MachineFunction &MF,
                                         getUndefRegState(isUndef)),
                                 FrameIndex);
     }
-  } else if (Opc == PPC::FMRD) {
+  } else if (Opc == PPC::FMR || Opc == PPC::FMRSD) {
+    // The register may be F4RC or F8RC, and that determines the memory op.
+    unsigned OrigReg = MI->getOperand(OpNum).getReg();
+    // We cannot tell the register class from a physreg alone.
+    if (TargetRegisterInfo::isPhysicalRegister(OrigReg))
+      return NULL;
+    const TargetRegisterClass *RC = MF.getRegInfo().getRegClass(OrigReg);
+    const bool is64 = RC == PPC::F8RCRegisterClass;
+
     if (OpNum == 0) {  // move -> store
       unsigned InReg = MI->getOperand(1).getReg();
       bool isKill = MI->getOperand(1).isKill();
       bool isUndef = MI->getOperand(1).isUndef();
-      NewMI = addFrameReference(BuildMI(MF, MI->getDebugLoc(), get(PPC::STFD))
+      NewMI = addFrameReference(BuildMI(MF, MI->getDebugLoc(),
+                                        get(is64 ? PPC::STFD : PPC::STFS))
                                 .addReg(InReg,
                                         getKillRegState(isKill) |
                                         getUndefRegState(isUndef)),
@@ -686,28 +710,8 @@ MachineInstr *PPCInstrInfo::foldMemoryOperandImpl(MachineFunction &MF,
       unsigned OutReg = MI->getOperand(0).getReg();
       bool isDead = MI->getOperand(0).isDead();
       bool isUndef = MI->getOperand(0).isUndef();
-      NewMI = addFrameReference(BuildMI(MF, MI->getDebugLoc(), get(PPC::LFD))
-                                .addReg(OutReg,
-                                        RegState::Define |
-                                        getDeadRegState(isDead) |
-                                        getUndefRegState(isUndef)),
-                                FrameIndex);
-    }
-  } else if (Opc == PPC::FMRS) {
-    if (OpNum == 0) {  // move -> store
-      unsigned InReg = MI->getOperand(1).getReg();
-      bool isKill = MI->getOperand(1).isKill();
-      bool isUndef = MI->getOperand(1).isUndef();
-      NewMI = addFrameReference(BuildMI(MF, MI->getDebugLoc(), get(PPC::STFS))
-                                .addReg(InReg,
-                                        getKillRegState(isKill) |
-                                        getUndefRegState(isUndef)),
-                                FrameIndex);
-    } else {           // move -> load
-      unsigned OutReg = MI->getOperand(0).getReg();
-      bool isDead = MI->getOperand(0).isDead();
-      bool isUndef = MI->getOperand(0).isUndef();
-      NewMI = addFrameReference(BuildMI(MF, MI->getDebugLoc(), get(PPC::LFS))
+      NewMI = addFrameReference(BuildMI(MF, MI->getDebugLoc(),
+                                        get(is64 ? PPC::LFD : PPC::LFS))
                                 .addReg(OutReg,
                                         RegState::Define |
                                         getDeadRegState(isDead) |
@@ -733,7 +737,7 @@ bool PPCInstrInfo::canFoldMemoryOperand(const MachineInstr *MI,
   else if ((Opc == PPC::OR8 &&
               MI->getOperand(1).getReg() == MI->getOperand(2).getReg()))
     return true;
-  else if (Opc == PPC::FMRD || Opc == PPC::FMRS)
+  else if (Opc == PPC::FMR || Opc == PPC::FMRSD)
     return true;
 
   return false;

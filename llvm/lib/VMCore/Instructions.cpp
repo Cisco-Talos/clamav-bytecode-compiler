@@ -413,7 +413,9 @@ CallInst::CallInst(const CallInst &CI)
                 OperandTraits<CallInst>::op_end(this) - CI.getNumOperands(),
                 CI.getNumOperands()) {
   setAttributes(CI.getAttributes());
-  SubclassData = CI.SubclassData;
+  setTailCall(CI.isTailCall());
+  setCallingConv(CI.getCallingConv());
+    
   Use *OL = OperandList;
   Use *InOL = CI.OperandList;
   for (unsigned i = 0, e = CI.getNumOperands(); i != e; ++i)
@@ -521,8 +523,7 @@ static Instruction *createMalloc(Instruction *InsertBefore,
     MCall->setCallingConv(F->getCallingConv());
     if (!F->doesNotAlias(0)) F->setDoesNotAlias(0);
   }
-  assert(MCall->getType() != Type::getVoidTy(BB->getContext()) &&
-         "Malloc has void return type");
+  assert(!MCall->getType()->isVoidTy() && "Malloc has void return type");
 
   return Result;
 }
@@ -561,7 +562,7 @@ static Instruction* createFree(Value* Source, Instruction *InsertBefore,
                                BasicBlock *InsertAtEnd) {
   assert(((!InsertBefore && InsertAtEnd) || (InsertBefore && !InsertAtEnd)) &&
          "createFree needs either InsertBefore or InsertAtEnd");
-  assert(isa<PointerType>(Source->getType()) &&
+  assert(Source->getType()->isPointerTy() &&
          "Can not free something of nonpointer type!");
 
   BasicBlock* BB = InsertBefore ? InsertBefore->getParent() : InsertAtEnd;
@@ -637,7 +638,7 @@ InvokeInst::InvokeInst(const InvokeInst &II)
                    - II.getNumOperands(),
                    II.getNumOperands()) {
   setAttributes(II.getAttributes());
-  SubclassData = II.SubclassData;
+  setCallingConv(II.getCallingConv());
   Use *OL = OperandList, *InOL = II.OperandList;
   for (unsigned i = 0, e = II.getNumOperands(); i != e; ++i)
     OL[i] = InOL[i];
@@ -786,7 +787,7 @@ BasicBlock *UnreachableInst::getSuccessorV(unsigned idx) const {
 
 void BranchInst::AssertOK() {
   if (isConditional())
-    assert(getCondition()->getType() == Type::getInt1Ty(getContext()) &&
+    assert(getCondition()->getType()->isIntegerTy(1) &&
            "May only branch on boolean predicates!");
 }
 
@@ -891,7 +892,7 @@ static Value *getAISize(LLVMContext &Context, Value *Amt) {
   else {
     assert(!isa<BasicBlock>(Amt) &&
            "Passed basic block into allocation size parameter! Use other ctor");
-    assert(Amt->getType() == Type::getInt32Ty(Context) &&
+    assert(Amt->getType()->isIntegerTy(32) &&
            "Allocation array size is not a 32-bit integer!");
   }
   return Amt;
@@ -902,7 +903,7 @@ AllocaInst::AllocaInst(const Type *Ty, Value *ArraySize,
   : UnaryInstruction(PointerType::getUnqual(Ty), Alloca,
                      getAISize(Ty->getContext(), ArraySize), InsertBefore) {
   setAlignment(0);
-  assert(Ty != Type::getVoidTy(Ty->getContext()) && "Cannot allocate void!");
+  assert(!Ty->isVoidTy() && "Cannot allocate void!");
   setName(Name);
 }
 
@@ -911,7 +912,7 @@ AllocaInst::AllocaInst(const Type *Ty, Value *ArraySize,
   : UnaryInstruction(PointerType::getUnqual(Ty), Alloca,
                      getAISize(Ty->getContext(), ArraySize), InsertAtEnd) {
   setAlignment(0);
-  assert(Ty != Type::getVoidTy(Ty->getContext()) && "Cannot allocate void!");
+  assert(!Ty->isVoidTy() && "Cannot allocate void!");
   setName(Name);
 }
 
@@ -920,7 +921,7 @@ AllocaInst::AllocaInst(const Type *Ty, const Twine &Name,
   : UnaryInstruction(PointerType::getUnqual(Ty), Alloca,
                      getAISize(Ty->getContext(), 0), InsertBefore) {
   setAlignment(0);
-  assert(Ty != Type::getVoidTy(Ty->getContext()) && "Cannot allocate void!");
+  assert(!Ty->isVoidTy() && "Cannot allocate void!");
   setName(Name);
 }
 
@@ -929,7 +930,7 @@ AllocaInst::AllocaInst(const Type *Ty, const Twine &Name,
   : UnaryInstruction(PointerType::getUnqual(Ty), Alloca,
                      getAISize(Ty->getContext(), 0), InsertAtEnd) {
   setAlignment(0);
-  assert(Ty != Type::getVoidTy(Ty->getContext()) && "Cannot allocate void!");
+  assert(!Ty->isVoidTy() && "Cannot allocate void!");
   setName(Name);
 }
 
@@ -938,7 +939,7 @@ AllocaInst::AllocaInst(const Type *Ty, Value *ArraySize, unsigned Align,
   : UnaryInstruction(PointerType::getUnqual(Ty), Alloca,
                      getAISize(Ty->getContext(), ArraySize), InsertBefore) {
   setAlignment(Align);
-  assert(Ty != Type::getVoidTy(Ty->getContext()) && "Cannot allocate void!");
+  assert(!Ty->isVoidTy() && "Cannot allocate void!");
   setName(Name);
 }
 
@@ -947,7 +948,7 @@ AllocaInst::AllocaInst(const Type *Ty, Value *ArraySize, unsigned Align,
   : UnaryInstruction(PointerType::getUnqual(Ty), Alloca,
                      getAISize(Ty->getContext(), ArraySize), InsertAtEnd) {
   setAlignment(Align);
-  assert(Ty != Type::getVoidTy(Ty->getContext()) && "Cannot allocate void!");
+  assert(!Ty->isVoidTy() && "Cannot allocate void!");
   setName(Name);
 }
 
@@ -957,7 +958,7 @@ AllocaInst::~AllocaInst() {
 
 void AllocaInst::setAlignment(unsigned Align) {
   assert((Align & (Align-1)) == 0 && "Alignment is not a power of 2!");
-  SubclassData = Log2_32(Align) + 1;
+  setInstructionSubclassData(Log2_32(Align) + 1);
   assert(getAlignment() == Align && "Alignment representation error!");
 }
 
@@ -988,7 +989,7 @@ bool AllocaInst::isStaticAlloca() const {
 //===----------------------------------------------------------------------===//
 
 void LoadInst::AssertOK() {
-  assert(isa<PointerType>(getOperand(0)->getType()) &&
+  assert(getOperand(0)->getType()->isPointerTy() &&
          "Ptr must have pointer type.");
 }
 
@@ -1092,7 +1093,8 @@ LoadInst::LoadInst(Value *Ptr, const char *Name, bool isVolatile,
 
 void LoadInst::setAlignment(unsigned Align) {
   assert((Align & (Align-1)) == 0 && "Alignment is not a power of 2!");
-  SubclassData = (SubclassData & 1) | ((Log2_32(Align)+1)<<1);
+  setInstructionSubclassData((getSubclassDataFromInstruction() & 1) |
+                             ((Log2_32(Align)+1)<<1));
 }
 
 //===----------------------------------------------------------------------===//
@@ -1101,7 +1103,7 @@ void LoadInst::setAlignment(unsigned Align) {
 
 void StoreInst::AssertOK() {
   assert(getOperand(0) && getOperand(1) && "Both operands must be non-null!");
-  assert(isa<PointerType>(getOperand(1)->getType()) &&
+  assert(getOperand(1)->getType()->isPointerTy() &&
          "Ptr must have pointer type!");
   assert(getOperand(0)->getType() ==
                  cast<PointerType>(getOperand(1)->getType())->getElementType()
@@ -1187,7 +1189,8 @@ StoreInst::StoreInst(Value *val, Value *addr, bool isVolatile,
 
 void StoreInst::setAlignment(unsigned Align) {
   assert((Align & (Align-1)) == 0 && "Alignment is not a power of 2!");
-  SubclassData = (SubclassData & 1) | ((Log2_32(Align)+1)<<1);
+  setInstructionSubclassData((getSubclassDataFromInstruction() & 1) |
+                             ((Log2_32(Align)+1) << 1));
 }
 
 //===----------------------------------------------------------------------===//
@@ -1282,7 +1285,7 @@ static const Type* getIndexedTypeInternal(const Type *Ptr, IndexTy const *Idxs,
   unsigned CurIdx = 1;
   for (; CurIdx != NumIdx; ++CurIdx) {
     const CompositeType *CT = dyn_cast<CompositeType>(Agg);
-    if (!CT || isa<PointerType>(CT)) return 0;
+    if (!CT || CT->isPointerTy()) return 0;
     IndexTy Index = Idxs[CurIdx];
     if (!CT->indexValid(Index)) return 0;
     Agg = CT->getTypeAtIndex(Index);
@@ -1388,8 +1391,7 @@ ExtractElementInst::ExtractElementInst(Value *Val, Value *Index,
 
 
 bool ExtractElementInst::isValidOperands(const Value *Val, const Value *Index) {
-  if (!isa<VectorType>(Val->getType()) ||
-      Index->getType() != Type::getInt32Ty(Val->getContext()))
+  if (!Val->getType()->isVectorTy() || !Index->getType()->isIntegerTy(32))
     return false;
   return true;
 }
@@ -1430,13 +1432,13 @@ InsertElementInst::InsertElementInst(Value *Vec, Value *Elt, Value *Index,
 
 bool InsertElementInst::isValidOperands(const Value *Vec, const Value *Elt, 
                                         const Value *Index) {
-  if (!isa<VectorType>(Vec->getType()))
+  if (!Vec->getType()->isVectorTy())
     return false;   // First operand of insertelement must be vector type.
   
   if (Elt->getType() != cast<VectorType>(Vec->getType())->getElementType())
     return false;// Second operand of insertelement must be vector element type.
     
-  if (Index->getType() != Type::getInt32Ty(Vec->getContext()))
+  if (!Index->getType()->isIntegerTy(32))
     return false;  // Third operand of insertelement must be i32.
   return true;
 }
@@ -1483,12 +1485,12 @@ ShuffleVectorInst::ShuffleVectorInst(Value *V1, Value *V2, Value *Mask,
 
 bool ShuffleVectorInst::isValidOperands(const Value *V1, const Value *V2,
                                         const Value *Mask) {
-  if (!isa<VectorType>(V1->getType()) || V1->getType() != V2->getType())
+  if (!V1->getType()->isVectorTy() || V1->getType() != V2->getType())
     return false;
   
   const VectorType *MaskTy = dyn_cast<VectorType>(Mask->getType());
   if (!isa<Constant>(Mask) || MaskTy == 0 ||
-      MaskTy->getElementType() != Type::getInt32Ty(V1->getContext()))
+      !MaskTy->getElementType()->isIntegerTy(32))
     return false;
   return true;
 }
@@ -1600,7 +1602,7 @@ const Type* ExtractValueInst::getIndexedType(const Type *Agg,
   unsigned CurIdx = 0;
   for (; CurIdx != NumIdx; ++CurIdx) {
     const CompositeType *CT = dyn_cast<CompositeType>(Agg);
-    if (!CT || isa<PointerType>(CT) || isa<VectorType>(CT)) return 0;
+    if (!CT || CT->isPointerTy() || CT->isVectorTy()) return 0;
     unsigned Index = Idxs[CurIdx];
     if (!CT->indexValid(Index)) return 0;
     Agg = CT->getTypeAtIndex(Index);
@@ -1630,7 +1632,7 @@ const Type* ExtractValueInst::getIndexedType(const Type *Agg,
 static BinaryOperator::BinaryOps AdjustIType(BinaryOperator::BinaryOps iType,
                                              const Type *Ty) {
   // API compatibility: Adjust integer opcodes to floating-point opcodes.
-  if (Ty->isFPOrFPVector()) {
+  if (Ty->isFPOrFPVectorTy()) {
     if (iType == BinaryOperator::Add) iType = BinaryOperator::FAdd;
     else if (iType == BinaryOperator::Sub) iType = BinaryOperator::FSub;
     else if (iType == BinaryOperator::Mul) iType = BinaryOperator::FMul;
@@ -1676,14 +1678,14 @@ void BinaryOperator::init(BinaryOps iType) {
   case Mul:
     assert(getType() == LHS->getType() &&
            "Arithmetic operation should return same type as operands!");
-    assert(getType()->isIntOrIntVector() &&
+    assert(getType()->isIntOrIntVectorTy() &&
            "Tried to create an integer operation on a non-integer type!");
     break;
   case FAdd: case FSub:
   case FMul:
     assert(getType() == LHS->getType() &&
            "Arithmetic operation should return same type as operands!");
-    assert(getType()->isFPOrFPVector() &&
+    assert(getType()->isFPOrFPVectorTy() &&
            "Tried to create a floating-point operation on a "
            "non-floating-point type!");
     break;
@@ -1691,28 +1693,28 @@ void BinaryOperator::init(BinaryOps iType) {
   case SDiv: 
     assert(getType() == LHS->getType() &&
            "Arithmetic operation should return same type as operands!");
-    assert((getType()->isInteger() || (isa<VectorType>(getType()) && 
-            cast<VectorType>(getType())->getElementType()->isInteger())) &&
+    assert((getType()->isIntegerTy() || (getType()->isVectorTy() && 
+            cast<VectorType>(getType())->getElementType()->isIntegerTy())) &&
            "Incorrect operand type (not integer) for S/UDIV");
     break;
   case FDiv:
     assert(getType() == LHS->getType() &&
            "Arithmetic operation should return same type as operands!");
-    assert(getType()->isFPOrFPVector() &&
+    assert(getType()->isFPOrFPVectorTy() &&
            "Incorrect operand type (not floating point) for FDIV");
     break;
   case URem: 
   case SRem: 
     assert(getType() == LHS->getType() &&
            "Arithmetic operation should return same type as operands!");
-    assert((getType()->isInteger() || (isa<VectorType>(getType()) && 
-            cast<VectorType>(getType())->getElementType()->isInteger())) &&
+    assert((getType()->isIntegerTy() || (getType()->isVectorTy() && 
+            cast<VectorType>(getType())->getElementType()->isIntegerTy())) &&
            "Incorrect operand type (not integer) for S/UREM");
     break;
   case FRem:
     assert(getType() == LHS->getType() &&
            "Arithmetic operation should return same type as operands!");
-    assert(getType()->isFPOrFPVector() &&
+    assert(getType()->isFPOrFPVectorTy() &&
            "Incorrect operand type (not floating point) for FREM");
     break;
   case Shl:
@@ -1720,18 +1722,18 @@ void BinaryOperator::init(BinaryOps iType) {
   case AShr:
     assert(getType() == LHS->getType() &&
            "Shift operation should return same type as operands!");
-    assert((getType()->isInteger() ||
-            (isa<VectorType>(getType()) && 
-             cast<VectorType>(getType())->getElementType()->isInteger())) &&
+    assert((getType()->isIntegerTy() ||
+            (getType()->isVectorTy() && 
+             cast<VectorType>(getType())->getElementType()->isIntegerTy())) &&
            "Tried to create a shift operation on a non-integral type!");
     break;
   case And: case Or:
   case Xor:
     assert(getType() == LHS->getType() &&
            "Logical operation should return same type as operands!");
-    assert((getType()->isInteger() ||
-            (isa<VectorType>(getType()) && 
-             cast<VectorType>(getType())->getElementType()->isInteger())) &&
+    assert((getType()->isIntegerTy() ||
+            (getType()->isVectorTy() && 
+             cast<VectorType>(getType())->getElementType()->isIntegerTy())) &&
            "Tried to create a logical operation on a non-integral type!");
     break;
   default:
@@ -1782,6 +1784,18 @@ BinaryOperator *BinaryOperator::CreateNSWNeg(Value *Op, const Twine &Name,
                                              BasicBlock *InsertAtEnd) {
   Value *zero = ConstantFP::getZeroValueForNegation(Op->getType());
   return BinaryOperator::CreateNSWSub(zero, Op, Name, InsertAtEnd);
+}
+
+BinaryOperator *BinaryOperator::CreateNUWNeg(Value *Op, const Twine &Name,
+                                             Instruction *InsertBefore) {
+  Value *zero = ConstantFP::getZeroValueForNegation(Op->getType());
+  return BinaryOperator::CreateNUWSub(zero, Op, Name, InsertBefore);
+}
+
+BinaryOperator *BinaryOperator::CreateNUWNeg(Value *Op, const Twine &Name,
+                                             BasicBlock *InsertAtEnd) {
+  Value *zero = ConstantFP::getZeroValueForNegation(Op->getType());
+  return BinaryOperator::CreateNUWSub(zero, Op, Name, InsertAtEnd);
 }
 
 BinaryOperator *BinaryOperator::CreateFNeg(Value *Op, const Twine &Name,
@@ -1946,7 +1960,8 @@ bool CastInst::isIntegerCast() const {
     case Instruction::Trunc:
       return true;
     case Instruction::BitCast:
-      return getOperand(0)->getType()->isInteger() && getType()->isInteger();
+      return getOperand(0)->getType()->isIntegerTy() &&
+        getType()->isIntegerTy();
   }
 }
 
@@ -1962,8 +1977,8 @@ bool CastInst::isLosslessCast() const {
     return true;
   
   // Pointer to pointer is always lossless.
-  if (isa<PointerType>(SrcTy))
-    return isa<PointerType>(DstTy);
+  if (SrcTy->isPointerTy())
+    return DstTy->isPointerTy();
   return false;  // Other types have no identity values
 }
 
@@ -2077,26 +2092,27 @@ unsigned CastInst::isEliminableCastPair(
       return secondOp;
     case 3: 
       // no-op cast in second op implies firstOp as long as the DestTy 
-      // is integer
-      if (DstTy->isInteger())
+      // is integer and we are not converting between a vector and a
+      // non vector type.
+      if (!SrcTy->isVectorTy() && DstTy->isIntegerTy())
         return firstOp;
       return 0;
     case 4:
       // no-op cast in second op implies firstOp as long as the DestTy
-      // is floating point
-      if (DstTy->isFloatingPoint())
+      // is floating point.
+      if (DstTy->isFloatingPointTy())
         return firstOp;
       return 0;
     case 5: 
       // no-op cast in first op implies secondOp as long as the SrcTy
-      // is an integer
-      if (SrcTy->isInteger())
+      // is an integer.
+      if (SrcTy->isIntegerTy())
         return secondOp;
       return 0;
     case 6:
       // no-op cast in first op implies secondOp as long as the SrcTy
-      // is a floating point
-      if (SrcTy->isFloatingPoint())
+      // is a floating point.
+      if (SrcTy->isFloatingPointTy())
         return secondOp;
       return 0;
     case 7: { 
@@ -2132,12 +2148,12 @@ unsigned CastInst::isEliminableCastPair(
     case 11:
       // bitcast followed by ptrtoint is allowed as long as the bitcast
       // is a pointer to pointer cast.
-      if (isa<PointerType>(SrcTy) && isa<PointerType>(MidTy))
+      if (SrcTy->isPointerTy() && MidTy->isPointerTy())
         return secondOp;
       return 0;
     case 12:
       // inttoptr, bitcast -> intptr  if bitcast is a ptr to ptr cast
-      if (isa<PointerType>(MidTy) && isa<PointerType>(DstTy))
+      if (MidTy->isPointerTy() && DstTy->isPointerTy())
         return firstOp;
       return 0;
     case 13: {
@@ -2258,11 +2274,11 @@ CastInst *CastInst::CreateTruncOrBitCast(Value *S, const Type *Ty,
 CastInst *CastInst::CreatePointerCast(Value *S, const Type *Ty,
                                       const Twine &Name,
                                       BasicBlock *InsertAtEnd) {
-  assert(isa<PointerType>(S->getType()) && "Invalid cast");
-  assert((Ty->isInteger() || isa<PointerType>(Ty)) &&
+  assert(S->getType()->isPointerTy() && "Invalid cast");
+  assert((Ty->isIntegerTy() || Ty->isPointerTy()) &&
          "Invalid cast");
 
-  if (Ty->isInteger())
+  if (Ty->isIntegerTy())
     return Create(Instruction::PtrToInt, S, Ty, Name, InsertAtEnd);
   return Create(Instruction::BitCast, S, Ty, Name, InsertAtEnd);
 }
@@ -2271,11 +2287,11 @@ CastInst *CastInst::CreatePointerCast(Value *S, const Type *Ty,
 CastInst *CastInst::CreatePointerCast(Value *S, const Type *Ty, 
                                       const Twine &Name, 
                                       Instruction *InsertBefore) {
-  assert(isa<PointerType>(S->getType()) && "Invalid cast");
-  assert((Ty->isInteger() || isa<PointerType>(Ty)) &&
+  assert(S->getType()->isPointerTy() && "Invalid cast");
+  assert((Ty->isIntegerTy() || Ty->isPointerTy()) &&
          "Invalid cast");
 
-  if (Ty->isInteger())
+  if (Ty->isIntegerTy())
     return Create(Instruction::PtrToInt, S, Ty, Name, InsertBefore);
   return Create(Instruction::BitCast, S, Ty, Name, InsertBefore);
 }
@@ -2283,7 +2299,8 @@ CastInst *CastInst::CreatePointerCast(Value *S, const Type *Ty,
 CastInst *CastInst::CreateIntegerCast(Value *C, const Type *Ty, 
                                       bool isSigned, const Twine &Name,
                                       Instruction *InsertBefore) {
-  assert(C->getType()->isInteger() && Ty->isInteger() && "Invalid cast");
+  assert(C->getType()->isIntOrIntVectorTy() && Ty->isIntOrIntVectorTy() &&
+         "Invalid integer cast");
   unsigned SrcBits = C->getType()->getScalarSizeInBits();
   unsigned DstBits = Ty->getScalarSizeInBits();
   Instruction::CastOps opcode =
@@ -2296,7 +2313,7 @@ CastInst *CastInst::CreateIntegerCast(Value *C, const Type *Ty,
 CastInst *CastInst::CreateIntegerCast(Value *C, const Type *Ty, 
                                       bool isSigned, const Twine &Name,
                                       BasicBlock *InsertAtEnd) {
-  assert(C->getType()->isIntOrIntVector() && Ty->isIntOrIntVector() &&
+  assert(C->getType()->isIntOrIntVectorTy() && Ty->isIntOrIntVectorTy() &&
          "Invalid cast");
   unsigned SrcBits = C->getType()->getScalarSizeInBits();
   unsigned DstBits = Ty->getScalarSizeInBits();
@@ -2310,7 +2327,7 @@ CastInst *CastInst::CreateIntegerCast(Value *C, const Type *Ty,
 CastInst *CastInst::CreateFPCast(Value *C, const Type *Ty, 
                                  const Twine &Name, 
                                  Instruction *InsertBefore) {
-  assert(C->getType()->isFPOrFPVector() && Ty->isFPOrFPVector() &&
+  assert(C->getType()->isFPOrFPVectorTy() && Ty->isFPOrFPVectorTy() &&
          "Invalid cast");
   unsigned SrcBits = C->getType()->getScalarSizeInBits();
   unsigned DstBits = Ty->getScalarSizeInBits();
@@ -2323,7 +2340,7 @@ CastInst *CastInst::CreateFPCast(Value *C, const Type *Ty,
 CastInst *CastInst::CreateFPCast(Value *C, const Type *Ty, 
                                  const Twine &Name, 
                                  BasicBlock *InsertAtEnd) {
-  assert(C->getType()->isFPOrFPVector() && Ty->isFPOrFPVector() &&
+  assert(C->getType()->isFPOrFPVectorTy() && Ty->isFPOrFPVectorTy() &&
          "Invalid cast");
   unsigned SrcBits = C->getType()->getScalarSizeInBits();
   unsigned DstBits = Ty->getScalarSizeInBits();
@@ -2347,21 +2364,21 @@ bool CastInst::isCastable(const Type *SrcTy, const Type *DestTy) {
   unsigned DestBits = DestTy->getScalarSizeInBits(); // 0 for ptr
 
   // Run through the possibilities ...
-  if (DestTy->isInteger()) {                   // Casting to integral
-    if (SrcTy->isInteger()) {                  // Casting from integral
+  if (DestTy->isIntegerTy()) {                   // Casting to integral
+    if (SrcTy->isIntegerTy()) {                  // Casting from integral
         return true;
-    } else if (SrcTy->isFloatingPoint()) {     // Casting from floating pt
+    } else if (SrcTy->isFloatingPointTy()) {     // Casting from floating pt
       return true;
     } else if (const VectorType *PTy = dyn_cast<VectorType>(SrcTy)) {
                                                // Casting from vector
       return DestBits == PTy->getBitWidth();
     } else {                                   // Casting from something else
-      return isa<PointerType>(SrcTy);
+      return SrcTy->isPointerTy();
     }
-  } else if (DestTy->isFloatingPoint()) {      // Casting to floating pt
-    if (SrcTy->isInteger()) {                  // Casting from integral
+  } else if (DestTy->isFloatingPointTy()) {      // Casting to floating pt
+    if (SrcTy->isIntegerTy()) {                  // Casting from integral
       return true;
-    } else if (SrcTy->isFloatingPoint()) {     // Casting from floating pt
+    } else if (SrcTy->isFloatingPointTy()) {     // Casting from floating pt
       return true;
     } else if (const VectorType *PTy = dyn_cast<VectorType>(SrcTy)) {
                                                // Casting from vector
@@ -2377,10 +2394,10 @@ bool CastInst::isCastable(const Type *SrcTy, const Type *DestTy) {
     } else {                                    // Casting from something else
       return DestPTy->getBitWidth() == SrcBits;
     }
-  } else if (isa<PointerType>(DestTy)) {        // Casting to pointer
-    if (isa<PointerType>(SrcTy)) {              // Casting from pointer
+  } else if (DestTy->isPointerTy()) {        // Casting to pointer
+    if (SrcTy->isPointerTy()) {              // Casting from pointer
       return true;
-    } else if (SrcTy->isInteger()) {            // Casting from integral
+    } else if (SrcTy->isIntegerTy()) {            // Casting from integral
       return true;
     } else {                                    // Casting from something else
       return false;
@@ -2409,8 +2426,8 @@ CastInst::getCastOpcode(
          "Only first class types are castable!");
 
   // Run through the possibilities ...
-  if (DestTy->isInteger()) {                       // Casting to integral
-    if (SrcTy->isInteger()) {                      // Casting from integral
+  if (DestTy->isIntegerTy()) {                      // Casting to integral
+    if (SrcTy->isIntegerTy()) {                     // Casting from integral
       if (DestBits < SrcBits)
         return Trunc;                               // int -> smaller int
       else if (DestBits > SrcBits) {                // its an extension
@@ -2421,7 +2438,7 @@ CastInst::getCastOpcode(
       } else {
         return BitCast;                             // Same size, No-op cast
       }
-    } else if (SrcTy->isFloatingPoint()) {          // Casting from floating pt
+    } else if (SrcTy->isFloatingPointTy()) {        // Casting from floating pt
       if (DestIsSigned) 
         return FPToSI;                              // FP -> sint
       else
@@ -2432,17 +2449,17 @@ CastInst::getCastOpcode(
       PTy = NULL;
       return BitCast;                             // Same size, no-op cast
     } else {
-      assert(isa<PointerType>(SrcTy) &&
+      assert(SrcTy->isPointerTy() &&
              "Casting from a value that is not first-class type");
       return PtrToInt;                              // ptr -> int
     }
-  } else if (DestTy->isFloatingPoint()) {           // Casting to floating pt
-    if (SrcTy->isInteger()) {                      // Casting from integral
+  } else if (DestTy->isFloatingPointTy()) {         // Casting to floating pt
+    if (SrcTy->isIntegerTy()) {                     // Casting from integral
       if (SrcIsSigned)
         return SIToFP;                              // sint -> FP
       else
         return UIToFP;                              // uint -> FP
-    } else if (SrcTy->isFloatingPoint()) {          // Casting from floating pt
+    } else if (SrcTy->isFloatingPointTy()) {        // Casting from floating pt
       if (DestBits < SrcBits) {
         return FPTrunc;                             // FP -> smaller FP
       } else if (DestBits > SrcBits) {
@@ -2469,10 +2486,10 @@ CastInst::getCastOpcode(
     } else {
       assert(!"Illegal cast to vector (wrong type or size)");
     }
-  } else if (isa<PointerType>(DestTy)) {
-    if (isa<PointerType>(SrcTy)) {
+  } else if (DestTy->isPointerTy()) {
+    if (SrcTy->isPointerTy()) {
       return BitCast;                               // ptr -> ptr
-    } else if (SrcTy->isInteger()) {
+    } else if (SrcTy->isIntegerTy()) {
       return IntToPtr;                              // int -> ptr
     } else {
       assert(!"Casting pointer to other than pointer or int");
@@ -2500,7 +2517,8 @@ CastInst::castIsValid(Instruction::CastOps op, Value *S, const Type *DstTy) {
 
   // Check for type sanity on the arguments
   const Type *SrcTy = S->getType();
-  if (!SrcTy->isFirstClassType() || !DstTy->isFirstClassType())
+  if (!SrcTy->isFirstClassType() || !DstTy->isFirstClassType() ||
+      SrcTy->isAggregateType() || DstTy->isAggregateType())
     return false;
 
   // Get the size of the types in bits, we'll need this later
@@ -2511,50 +2529,50 @@ CastInst::castIsValid(Instruction::CastOps op, Value *S, const Type *DstTy) {
   switch (op) {
   default: return false; // This is an input error
   case Instruction::Trunc:
-    return SrcTy->isIntOrIntVector() &&
-           DstTy->isIntOrIntVector()&& SrcBitSize > DstBitSize;
+    return SrcTy->isIntOrIntVectorTy() &&
+           DstTy->isIntOrIntVectorTy()&& SrcBitSize > DstBitSize;
   case Instruction::ZExt:
-    return SrcTy->isIntOrIntVector() &&
-           DstTy->isIntOrIntVector()&& SrcBitSize < DstBitSize;
+    return SrcTy->isIntOrIntVectorTy() &&
+           DstTy->isIntOrIntVectorTy()&& SrcBitSize < DstBitSize;
   case Instruction::SExt: 
-    return SrcTy->isIntOrIntVector() &&
-           DstTy->isIntOrIntVector()&& SrcBitSize < DstBitSize;
+    return SrcTy->isIntOrIntVectorTy() &&
+           DstTy->isIntOrIntVectorTy()&& SrcBitSize < DstBitSize;
   case Instruction::FPTrunc:
-    return SrcTy->isFPOrFPVector() &&
-           DstTy->isFPOrFPVector() && 
+    return SrcTy->isFPOrFPVectorTy() &&
+           DstTy->isFPOrFPVectorTy() && 
            SrcBitSize > DstBitSize;
   case Instruction::FPExt:
-    return SrcTy->isFPOrFPVector() &&
-           DstTy->isFPOrFPVector() && 
+    return SrcTy->isFPOrFPVectorTy() &&
+           DstTy->isFPOrFPVectorTy() && 
            SrcBitSize < DstBitSize;
   case Instruction::UIToFP:
   case Instruction::SIToFP:
     if (const VectorType *SVTy = dyn_cast<VectorType>(SrcTy)) {
       if (const VectorType *DVTy = dyn_cast<VectorType>(DstTy)) {
-        return SVTy->getElementType()->isIntOrIntVector() &&
-               DVTy->getElementType()->isFPOrFPVector() &&
+        return SVTy->getElementType()->isIntOrIntVectorTy() &&
+               DVTy->getElementType()->isFPOrFPVectorTy() &&
                SVTy->getNumElements() == DVTy->getNumElements();
       }
     }
-    return SrcTy->isIntOrIntVector() && DstTy->isFPOrFPVector();
+    return SrcTy->isIntOrIntVectorTy() && DstTy->isFPOrFPVectorTy();
   case Instruction::FPToUI:
   case Instruction::FPToSI:
     if (const VectorType *SVTy = dyn_cast<VectorType>(SrcTy)) {
       if (const VectorType *DVTy = dyn_cast<VectorType>(DstTy)) {
-        return SVTy->getElementType()->isFPOrFPVector() &&
-               DVTy->getElementType()->isIntOrIntVector() &&
+        return SVTy->getElementType()->isFPOrFPVectorTy() &&
+               DVTy->getElementType()->isIntOrIntVectorTy() &&
                SVTy->getNumElements() == DVTy->getNumElements();
       }
     }
-    return SrcTy->isFPOrFPVector() && DstTy->isIntOrIntVector();
+    return SrcTy->isFPOrFPVectorTy() && DstTy->isIntOrIntVectorTy();
   case Instruction::PtrToInt:
-    return isa<PointerType>(SrcTy) && DstTy->isInteger();
+    return SrcTy->isPointerTy() && DstTy->isIntegerTy();
   case Instruction::IntToPtr:
-    return SrcTy->isInteger() && isa<PointerType>(DstTy);
+    return SrcTy->isIntegerTy() && DstTy->isPointerTy();
   case Instruction::BitCast:
     // BitCast implies a no-op cast of type only. No bits change.
     // However, you can't cast pointers to anything but pointers.
-    if (isa<PointerType>(SrcTy) != isa<PointerType>(DstTy))
+    if (SrcTy->isPointerTy() != DstTy->isPointerTy())
       return false;
 
     // Now we know we're not dealing with a pointer/non-pointer mismatch. In all
@@ -2711,6 +2729,8 @@ BitCastInst::BitCastInst(
 //                               CmpInst Classes
 //===----------------------------------------------------------------------===//
 
+void CmpInst::Anchor() const {}
+
 CmpInst::CmpInst(const Type *ty, OtherOps op, unsigned short predicate,
                  Value *LHS, Value *RHS, const Twine &Name,
                  Instruction *InsertBefore)
@@ -2720,7 +2740,7 @@ CmpInst::CmpInst(const Type *ty, OtherOps op, unsigned short predicate,
                 InsertBefore) {
     Op<0>() = LHS;
     Op<1>() = RHS;
-  SubclassData = predicate;
+  setPredicate((Predicate)predicate);
   setName(Name);
 }
 
@@ -2733,7 +2753,7 @@ CmpInst::CmpInst(const Type *ty, OtherOps op, unsigned short predicate,
                 InsertAtEnd) {
   Op<0>() = LHS;
   Op<1>() = RHS;
-  SubclassData = predicate;
+  setPredicate((Predicate)predicate);
   setName(Name);
 }
 
@@ -2859,25 +2879,53 @@ ICmpInst::makeConstantRange(Predicate pred, const APInt &C) {
   default: llvm_unreachable("Invalid ICmp opcode to ConstantRange ctor!");
   case ICmpInst::ICMP_EQ: Upper++; break;
   case ICmpInst::ICMP_NE: Lower++; break;
-  case ICmpInst::ICMP_ULT: Lower = APInt::getMinValue(BitWidth); break;
-  case ICmpInst::ICMP_SLT: Lower = APInt::getSignedMinValue(BitWidth); break;
+  case ICmpInst::ICMP_ULT:
+    Lower = APInt::getMinValue(BitWidth);
+    // Check for an empty-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/false);
+    break;
+  case ICmpInst::ICMP_SLT:
+    Lower = APInt::getSignedMinValue(BitWidth);
+    // Check for an empty-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/false);
+    break;
   case ICmpInst::ICMP_UGT: 
     Lower++; Upper = APInt::getMinValue(BitWidth);        // Min = Next(Max)
+    // Check for an empty-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/false);
     break;
   case ICmpInst::ICMP_SGT:
     Lower++; Upper = APInt::getSignedMinValue(BitWidth);  // Min = Next(Max)
+    // Check for an empty-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/false);
     break;
   case ICmpInst::ICMP_ULE: 
     Lower = APInt::getMinValue(BitWidth); Upper++; 
+    // Check for a full-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/true);
     break;
   case ICmpInst::ICMP_SLE: 
     Lower = APInt::getSignedMinValue(BitWidth); Upper++; 
+    // Check for a full-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/true);
     break;
   case ICmpInst::ICMP_UGE:
     Upper = APInt::getMinValue(BitWidth);        // Min = Next(Max)
+    // Check for a full-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/true);
     break;
   case ICmpInst::ICMP_SGE:
     Upper = APInt::getSignedMinValue(BitWidth);  // Min = Next(Max)
+    // Check for a full-set condition.
+    if (Lower == Upper)
+      return ConstantRange(BitWidth, /*isFullSet=*/true);
     break;
   }
   return ConstantRange(Lower, Upper);
@@ -3102,7 +3150,7 @@ void SwitchInst::setSuccessorV(unsigned idx, BasicBlock *B) {
 //===----------------------------------------------------------------------===//
 
 void IndirectBrInst::init(Value *Address, unsigned NumDests) {
-  assert(Address && isa<PointerType>(Address->getType()) &&
+  assert(Address && Address->getType()->isPointerTy() &&
          "Address of indirectbr must be a pointer");
   ReservedSpace = 1+NumDests;
   NumOperands = 1;

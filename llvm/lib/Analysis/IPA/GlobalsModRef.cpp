@@ -145,6 +145,16 @@ namespace {
     virtual void deleteValue(Value *V);
     virtual void copyValue(Value *From, Value *To);
 
+    /// getAdjustedAnalysisPointer - This method is used when a pass implements
+    /// an analysis interface through multiple inheritance.  If needed, it
+    /// should override this to adjust the this pointer as needed for the
+    /// specified pass info.
+    virtual void *getAdjustedAnalysisPointer(const PassInfo *PI) {
+      if (PI->isPassID(&AliasAnalysis::ID))
+        return (AliasAnalysis*)this;
+      return this;
+    }
+    
   private:
     /// getFunctionInfo - Return the function info for the function, or null if
     /// we don't have anything useful to say about it.
@@ -203,7 +213,7 @@ void GlobalsModRef::AnalyzeGlobals(Module &M) {
         ++NumNonAddrTakenGlobalVars;
 
         // If this global holds a pointer type, see if it is an indirect global.
-        if (isa<PointerType>(I->getType()->getElementType()) &&
+        if (I->getType()->getElementType()->isPointerTy() &&
             AnalyzeIndirectGlobalMemory(I))
           ++NumIndirectGlobalVars;
       }
@@ -221,7 +231,7 @@ bool GlobalsModRef::AnalyzeUsesOfPointer(Value *V,
                                          std::vector<Function*> &Readers,
                                          std::vector<Function*> &Writers,
                                          GlobalValue *OkayStoreDest) {
-  if (!isa<PointerType>(V->getType())) return true;
+  if (!V->getType()->isPointerTy()) return true;
 
   for (Value::use_iterator UI = V->use_begin(), E = V->use_end(); UI != E; ++UI)
     if (LoadInst *LI = dyn_cast<LoadInst>(*UI)) {
@@ -476,7 +486,7 @@ GlobalsModRef::alias(const Value *V1, unsigned V1Size,
     if (GV1 && !NonAddressTakenGlobals.count(GV1)) GV1 = 0;
     if (GV2 && !NonAddressTakenGlobals.count(GV2)) GV2 = 0;
 
-    // If the the two pointers are derived from two different non-addr-taken
+    // If the two pointers are derived from two different non-addr-taken
     // globals, or if one is and the other isn't, we know these can't alias.
     if ((GV1 || GV2) && GV1 != GV2)
       return NoAlias;

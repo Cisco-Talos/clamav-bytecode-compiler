@@ -161,7 +161,7 @@ void PEI::calculateCallsInformation(MachineFunction &Fn) {
         if (Size > MaxCallFrameSize) MaxCallFrameSize = Size;
         HasCalls = true;
         FrameSDOps.push_back(I);
-      } else if (I->getOpcode() == TargetInstrInfo::INLINEASM) {
+      } else if (I->isInlineAsm()) {
         // An InlineAsm might be a call; assume it is to get the stack frame
         // aligned correctly for calls.
         HasCalls = true;
@@ -175,9 +175,10 @@ void PEI::calculateCallsInformation(MachineFunction &Fn) {
     MachineBasicBlock::iterator I = *i;
 
     // If call frames are not being included as part of the stack frame, and
-    // there is no dynamic allocation (therefore referencing frame slots off
-    // sp), leave the pseudo ops alone. We'll eliminate them later.
-    if (RegInfo->hasReservedCallFrame(Fn) || RegInfo->hasFP(Fn))
+    // the target doesn't indicate otherwise, remove the call frame pseudos
+    // here. The sub/add sp instruction pairs are still inserted, but we don't
+    // need to track the SP adjustment for frame index elimination.
+    if (RegInfo->canSimplifyCallFramePseudos(Fn))
       RegInfo->eliminateCallFramePseudoInstr(Fn, *I->getParent(), I);
   }
 }
@@ -476,8 +477,6 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
   // Loop over all of the stack objects, assigning sequential addresses...
   MachineFrameInfo *FFI = Fn.getFrameInfo();
 
-  unsigned MaxAlign = 1;
-
   // Start at the beginning of the local area.
   // The Offset is the distance from the stack top in the direction
   // of stack growth -- so it's always nonnegative.
@@ -517,9 +516,6 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
       Offset += FFI->getObjectSize(i);
 
       unsigned Align = FFI->getObjectAlignment(i);
-      // If the alignment of this object is greater than that of the stack,
-      // then increase the stack alignment to match.
-      MaxAlign = std::max(MaxAlign, Align);
       // Adjust to alignment boundary
       Offset = (Offset+Align-1)/Align*Align;
 
@@ -529,9 +525,6 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
     int MaxCSFI = MaxCSFrameIndex, MinCSFI = MinCSFrameIndex;
     for (int i = MaxCSFI; i >= MinCSFI ; --i) {
       unsigned Align = FFI->getObjectAlignment(i);
-      // If the alignment of this object is greater than that of the stack,
-      // then increase the stack alignment to match.
-      MaxAlign = std::max(MaxAlign, Align);
       // Adjust to alignment boundary
       Offset = (Offset+Align-1)/Align*Align;
 
@@ -539,6 +532,8 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
       Offset += FFI->getObjectSize(i);
     }
   }
+
+  unsigned MaxAlign = FFI->getMaxAlignment();
 
   // Make sure the special register scavenging spill slot is closest to the
   // frame pointer if a frame pointer is required.
@@ -605,11 +600,6 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
 
   // Update frame info to pretend that this is part of the stack...
   FFI->setStackSize(Offset - LocalAreaOffset);
-
-  // Remember the required stack alignment in case targets need it to perform
-  // dynamic stack alignment.
-  if (MaxAlign > FFI->getMaxAlignment())
-    FFI->setMaxAlignment(MaxAlign);
 }
 
 

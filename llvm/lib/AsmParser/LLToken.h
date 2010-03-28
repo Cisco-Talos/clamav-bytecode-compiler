@@ -29,6 +29,7 @@ namespace lltok {
     less, greater,     // <  >
     lparen, rparen,    // (  )
     backslash,         // \    (not /)
+    exclaim,           // !
 
     kw_x,
     kw_begin,   kw_end,
@@ -96,6 +97,7 @@ namespace lltok {
 
     kw_type,
     kw_opaque,
+    kw_union,
 
     kw_eq, kw_ne, kw_slt, kw_sgt, kw_sle, kw_sge, kw_ult, kw_ugt, kw_ule,
     kw_uge, kw_oeq, kw_one, kw_olt, kw_ogt, kw_ole, kw_oge, kw_ord, kw_uno,
@@ -128,11 +130,8 @@ namespace lltok {
     LabelStr,          // foo:
     GlobalVar,         // @foo @"foo"
     LocalVar,          // %foo %"foo"
+    MetadataVar,       // !foo
     StringConstant,    // "foo"
-    NamedOrCustomMD,   // !foo
-
-    // Metadata valued tokens.
-    Metadata,          // !"foo" !{i8 42}
 
     // Type valued tokens (TyVal).
     Type,

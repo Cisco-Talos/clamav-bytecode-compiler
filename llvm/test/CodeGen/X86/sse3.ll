@@ -63,10 +63,10 @@ define <8 x i16> @t4(<8 x i16> %A, <8 x i16> %B) nounwind {
 	ret <8 x i16> %tmp
 ; X64: t4:
 ; X64: 	pextrw	$7, %xmm0, %eax
-; X64: 	pshufhw	$100, %xmm0, %xmm1
-; X64: 	pinsrw	$1, %eax, %xmm1
+; X64: 	pshufhw	$100, %xmm0, %xmm2
+; X64: 	pinsrw	$1, %eax, %xmm2
 ; X64: 	pextrw	$1, %xmm0, %eax
-; X64: 	movaps	%xmm1, %xmm0
+; X64: 	movaps	%xmm2, %xmm0
 ; X64: 	pinsrw	$4, %eax, %xmm0
 ; X64: 	ret
 }
@@ -144,10 +144,9 @@ define void @t9(<4 x float>* %r, <2 x i32>* %A) nounwind {
 	store <4 x float> %tmp13, <4 x float>* %r
 	ret void
 ; X64: 	t9:
-; X64: 		movsd	(%rsi), %xmm0
-; X64:	        movaps  (%rdi), %xmm1
-; X64:	        movlhps %xmm0, %xmm1
-; X64:	        movaps  %xmm1, (%rdi)
+; X64: 		movaps	(%rdi), %xmm0
+; X64:	        movhps	(%rsi), %xmm0
+; X64:	        movaps	%xmm0, (%rdi)
 ; X64: 		ret
 }
 

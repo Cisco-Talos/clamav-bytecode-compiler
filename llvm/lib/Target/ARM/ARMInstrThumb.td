@@ -113,14 +113,17 @@ def t_addrmode_s1 : Operand<i32>,
 def t_addrmode_sp : Operand<i32>,
                     ComplexPattern<i32, 2, "SelectThumbAddrModeSP", []> {
   let PrintMethod = "printThumbAddrModeSPOperand";
-  let MIOperandInfo = (ops JustSP:$base, i32imm:$offsimm);
+  let MIOperandInfo = (ops GPR:$base, i32imm:$offsimm);
 }
 
 //===----------------------------------------------------------------------===//
 //  Miscellaneous Instructions.
 //
 
-let Defs = [SP], Uses = [SP] in {
+// FIXME: Marking these as hasSideEffects is necessary to prevent machine DCE
+// from removing one half of the matched pairs. That breaks PEI, which assumes
+// these will always be in pairs, and asserts if it finds otherwise. Better way?
+let Defs = [SP], Uses = [SP], hasSideEffects = 1 in {
 def tADJCALLSTACKUP :
 PseudoInst<(outs), (ins i32imm:$amt1, i32imm:$amt2), NoItinerary,
            "@ tADJCALLSTACKUP $amt1",
@@ -131,6 +134,76 @@ PseudoInst<(outs), (ins i32imm:$amt), NoItinerary,
            "@ tADJCALLSTACKDOWN $amt",
            [(ARMcallseq_start imm:$amt)]>, Requires<[IsThumb1Only]>;
 }
+
+def tNOP : T1pI<(outs), (ins), NoItinerary, "nop", "",
+                [/* For disassembly only; pattern left blank */]>,
+           T1Encoding<0b101111> {
+  let Inst{9-8} = 0b11;
+  let Inst{7-0} = 0b00000000;
+} 
+
+def tYIELD : T1pI<(outs), (ins), NoItinerary, "yield", "",
+                  [/* For disassembly only; pattern left blank */]>,
+             T1Encoding<0b101111> {
+  let Inst{9-8} = 0b11;
+  let Inst{7-0} = 0b00010000;
+} 
+
+def tWFE : T1pI<(outs), (ins), NoItinerary, "wfe", "",
+                [/* For disassembly only; pattern left blank */]>,
+           T1Encoding<0b101111> {
+  let Inst{9-8} = 0b11;
+  let Inst{7-0} = 0b00100000;
+} 
+
+def tWFI : T1pI<(outs), (ins), NoItinerary, "wfi", "",
+                [/* For disassembly only; pattern left blank */]>,
+           T1Encoding<0b101111> {
+  let Inst{9-8} = 0b11;
+  let Inst{7-0} = 0b00110000;
+} 
+
+def tSEV : T1pI<(outs), (ins), NoItinerary, "sev", "",
+                [/* For disassembly only; pattern left blank */]>,
+           T1Encoding<0b101111> {
+  let Inst{9-8} = 0b11;
+  let Inst{7-0} = 0b01000000;
+} 
+
+def tSETENDBE : T1I<(outs), (ins), NoItinerary, "setend\tbe",
+                    [/* For disassembly only; pattern left blank */]>,
+                T1Encoding<0b101101> {
+  let Inst{9-5} = 0b10010;
+  let Inst{3} = 1;
+}
+
+def tSETENDLE : T1I<(outs), (ins), NoItinerary, "setend\tle",
+                    [/* For disassembly only; pattern left blank */]>,
+                T1Encoding<0b101101> {
+  let Inst{9-5} = 0b10010;
+  let Inst{3} = 0;
+}
+
+// The i32imm operand $val can be used by a debugger to store more information
+// about the breakpoint.
+def tBKPT : T1I<(outs), (ins i32imm:$val), NoItinerary, "bkpt\t$val",
+                [/* For disassembly only; pattern left blank */]>,
+            T1Encoding<0b101111> {
+  let Inst{9-8} = 0b10;
+}
+
+// Change Processor State is a system instruction -- for disassembly only.
+// The singleton $opt operand contains the following information:
+// opt{4-0} = mode ==> don't care
+// opt{5} = changemode ==> 0 (false for 16-bit Thumb instr)
+// opt{8-6} = AIF from Inst{2-0}
+// opt{10-9} = 1:imod from Inst{4} with 0b10 as enable and 0b11 as disable
+//
+// The opt{4-0} and opt{5} sub-fields are to accommodate 32-bit Thumb and ARM
+// CPS which has more options.
+def tCPS : T1I<(outs), (ins i32imm:$opt), NoItinerary, "cps${opt:cps}",
+              [/* For disassembly only; pattern left blank */]>,
+           T1Misc<0b0110011>;
 
 // For both thumb1 and thumb2.
 let isNotDuplicable = 1 in
@@ -200,7 +273,7 @@ let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
     let Inst{6-3} = 0b1110; // Rm = lr
   }
   // Alternative return instruction used by vararg functions.
-  def tBX_RET_vararg : TI<(outs), (ins tGPR:$target), IIC_Br, "bx\t$target", []>,
+  def tBX_RET_vararg : TI<(outs), (ins tGPR:$target), IIC_Br, "bx\t$target",[]>,
                        T1Special<{1,1,0,?}>; // A6.2.3 & A8.6.25
 }
 
@@ -208,9 +281,8 @@ let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
 let isBranch = 1, isTerminator = 1, isBarrier = 1, isIndirectBranch = 1 in {
   def tBRIND : TI<(outs), (ins GPR:$dst), IIC_Br, "mov\tpc, $dst",
                   [(brind GPR:$dst)]>,
-               T1Special<{1,0,?,?}> {
-    // <Rd> = pc
-    let Inst{7} = 1;
+               T1Special<{1,0,1,?}> {
+    // <Rd> = Inst{7:2-0} = pc
     let Inst{2-0} = 0b111;
   }
 }
@@ -229,20 +301,20 @@ let isCall = 1,
           D24, D25, D26, D27, D28, D29, D30, D31, CPSR, FPSCR] in {
   // Also used for Thumb2
   def tBL  : TIx2<0b11110, 0b11, 1,
-                  (outs), (ins i32imm:$func, variable_ops), IIC_Br, 
+                  (outs), (ins i32imm:$func, variable_ops), IIC_Br,
                   "bl\t${func:call}",
                   [(ARMtcall tglobaladdr:$func)]>,
              Requires<[IsThumb, IsNotDarwin]>;
 
   // ARMv5T and above, also used for Thumb2
   def tBLXi : TIx2<0b11110, 0b11, 0,
-                   (outs), (ins i32imm:$func, variable_ops), IIC_Br, 
+                   (outs), (ins i32imm:$func, variable_ops), IIC_Br,
                    "blx\t${func:call}",
                    [(ARMcall tglobaladdr:$func)]>,
               Requires<[IsThumb, HasV5T, IsNotDarwin]>;
 
   // Also used for Thumb2
-  def tBLXr : TI<(outs), (ins GPR:$func, variable_ops), IIC_Br, 
+  def tBLXr : TI<(outs), (ins GPR:$func, variable_ops), IIC_Br,
                   "blx\t$func",
                   [(ARMtcall GPR:$func)]>,
               Requires<[IsThumb, HasV5T, IsNotDarwin]>,
@@ -250,7 +322,7 @@ let isCall = 1,
 
   // ARMv4T
   def tBX : TIx2<{?,?,?,?,?}, {?,?}, ?,
-                  (outs), (ins tGPR:$func, variable_ops), IIC_Br, 
+                  (outs), (ins tGPR:$func, variable_ops), IIC_Br,
                   "mov\tlr, pc\n\tbx\t$func",
                   [(ARMcall_nolink tGPR:$func)]>,
             Requires<[IsThumb1Only, IsNotDarwin]>;
@@ -264,20 +336,20 @@ let isCall = 1,
           D24, D25, D26, D27, D28, D29, D30, D31, CPSR, FPSCR] in {
   // Also used for Thumb2
   def tBLr9 : TIx2<0b11110, 0b11, 1,
-                   (outs), (ins i32imm:$func, variable_ops), IIC_Br, 
+                   (outs), (ins i32imm:$func, variable_ops), IIC_Br,
                    "bl\t${func:call}",
                    [(ARMtcall tglobaladdr:$func)]>,
               Requires<[IsThumb, IsDarwin]>;
 
   // ARMv5T and above, also used for Thumb2
   def tBLXi_r9 : TIx2<0b11110, 0b11, 0,
-                      (outs), (ins i32imm:$func, variable_ops), IIC_Br, 
+                      (outs), (ins i32imm:$func, variable_ops), IIC_Br,
                       "blx\t${func:call}",
                       [(ARMcall tglobaladdr:$func)]>,
                  Requires<[IsThumb, HasV5T, IsDarwin]>;
 
   // Also used for Thumb2
-  def tBLXr_r9 : TI<(outs), (ins GPR:$func, variable_ops), IIC_Br, 
+  def tBLXr_r9 : TI<(outs), (ins GPR:$func, variable_ops), IIC_Br,
                     "blx\t$func",
                     [(ARMtcall GPR:$func)]>,
                  Requires<[IsThumb, HasV5T, IsDarwin]>,
@@ -285,7 +357,7 @@ let isCall = 1,
 
   // ARMv4T
   def tBXr9 : TIx2<{?,?,?,?,?}, {?,?}, ?,
-                   (outs), (ins tGPR:$func, variable_ops), IIC_Br, 
+                   (outs), (ins tGPR:$func, variable_ops), IIC_Br,
                    "mov\tlr, pc\n\tbx\t$func",
                    [(ARMcall_nolink tGPR:$func)]>,
               Requires<[IsThumb1Only, IsDarwin]>;
@@ -300,7 +372,7 @@ let isBranch = 1, isTerminator = 1 in {
 
   // Far jump
   let Defs = [LR] in
-  def tBfar : TIx2<0b11110, 0b11, 1, (outs), (ins brtarget:$target), IIC_Br, 
+  def tBfar : TIx2<0b11110, 0b11, 1, (outs), (ins brtarget:$target), IIC_Br,
                     "bl\t$target\t@ far jump",[]>;
 
   def tBR_JTr : T1JTI<(outs),
@@ -333,25 +405,55 @@ let isBranch = 1, isTerminator = 1 in {
               T1Misc<{1,0,?,1,?,?,?}>;
 }
 
+// A8.6.218 Supervisor Call (Software Interrupt) -- for disassembly only
+// A8.6.16 B: Encoding T1
+// If Inst{11-8} == 0b1111 then SEE SVC
+let isCall = 1 in {
+def tSVC : T1pI<(outs), (ins i32imm:$svc), IIC_Br, "svc", "\t$svc", []>,
+           Encoding16 {
+  let Inst{15-12} = 0b1101;
+  let Inst{11-8} = 0b1111;
+}
+}
+
+// A8.6.16 B: Encoding T1 -- for disassembly only
+// If Inst{11-8} == 0b1110 then UNDEFINED
+def tTRAP : T1I<(outs), (ins), IIC_Br, "trap", []>, Encoding16 {
+  let Inst{15-12} = 0b1101;
+  let Inst{11-8} = 0b1110;
+}
+
 //===----------------------------------------------------------------------===//
 //  Load Store Instructions.
 //
 
-let canFoldAsLoad = 1, isReMaterializable = 1, mayHaveSideEffects = 1 in
-def tLDR : T1pI4<(outs tGPR:$dst), (ins t_addrmode_s4:$addr), IIC_iLoadr, 
+let canFoldAsLoad = 1, isReMaterializable = 1 in
+def tLDR : T1pI4<(outs tGPR:$dst), (ins t_addrmode_s4:$addr), IIC_iLoadr,
                "ldr", "\t$dst, $addr",
                [(set tGPR:$dst, (load t_addrmode_s4:$addr))]>,
            T1LdSt<0b100>;
+def tLDRi: T1pI4<(outs tGPR:$dst), (ins t_addrmode_s4:$addr), IIC_iLoadr,
+               "ldr", "\t$dst, $addr",
+               []>,
+           T1LdSt4Imm<{1,?,?}>;
 
 def tLDRB : T1pI1<(outs tGPR:$dst), (ins t_addrmode_s1:$addr), IIC_iLoadr,
                 "ldrb", "\t$dst, $addr",
                 [(set tGPR:$dst, (zextloadi8 t_addrmode_s1:$addr))]>,
             T1LdSt<0b110>;
+def tLDRBi: T1pI1<(outs tGPR:$dst), (ins t_addrmode_s1:$addr), IIC_iLoadr,
+                "ldrb", "\t$dst, $addr",
+                []>,
+            T1LdSt1Imm<{1,?,?}>;
 
 def tLDRH : T1pI2<(outs tGPR:$dst), (ins t_addrmode_s2:$addr), IIC_iLoadr,
                 "ldrh", "\t$dst, $addr",
                 [(set tGPR:$dst, (zextloadi16 t_addrmode_s2:$addr))]>,
             T1LdSt<0b101>;
+def tLDRHi: T1pI2<(outs tGPR:$dst), (ins t_addrmode_s2:$addr), IIC_iLoadr,
+                "ldrh", "\t$dst, $addr",
+                []>,
+            T1LdSt2Imm<{1,?,?}>;
 
 let AddedComplexity = 10 in
 def tLDRSB : T1pI1<(outs tGPR:$dst), (ins t_addrmode_rr:$addr), IIC_iLoadr,
@@ -380,15 +482,14 @@ def tRestore : T1pIs<(outs tGPR:$dst), (ins t_addrmode_sp:$addr), IIC_iLoadi,
 
 // Load tconstpool
 // FIXME: Use ldr.n to work around a Darwin assembler bug.
-let canFoldAsLoad = 1, isReMaterializable = 1, mayHaveSideEffects = 1  in 
+let canFoldAsLoad = 1, isReMaterializable = 1 in
 def tLDRpci : T1pIs<(outs tGPR:$dst), (ins i32imm:$addr), IIC_iLoadi,
                   "ldr", ".n\t$dst, $addr",
                   [(set tGPR:$dst, (load (ARMWrapper tconstpool:$addr)))]>,
               T1Encoding<{0,1,0,0,1,?}>; // A6.2 & A8.6.59
 
 // Special LDR for loads from non-pc-relative constpools.
-let canFoldAsLoad = 1, mayLoad = 1, isReMaterializable = 1,
-    mayHaveSideEffects = 1  in
+let canFoldAsLoad = 1, mayLoad = 1, isReMaterializable = 1 in
 def tLDRcp  : T1pIs<(outs tGPR:$dst), (ins i32imm:$addr), IIC_iLoadi,
                   "ldr", "\t$dst, $addr", []>,
               T1LdStSP<{1,?,?}>;
@@ -397,16 +498,28 @@ def tSTR : T1pI4<(outs), (ins tGPR:$src, t_addrmode_s4:$addr), IIC_iStorer,
                "str", "\t$src, $addr",
                [(store tGPR:$src, t_addrmode_s4:$addr)]>,
            T1LdSt<0b000>;
+def tSTRi: T1pI4<(outs), (ins tGPR:$src, t_addrmode_s4:$addr), IIC_iStorer,
+               "str", "\t$src, $addr",
+               []>,
+           T1LdSt4Imm<{0,?,?}>;
 
 def tSTRB : T1pI1<(outs), (ins tGPR:$src, t_addrmode_s1:$addr), IIC_iStorer,
                  "strb", "\t$src, $addr",
                  [(truncstorei8 tGPR:$src, t_addrmode_s1:$addr)]>,
             T1LdSt<0b010>;
+def tSTRBi: T1pI1<(outs), (ins tGPR:$src, t_addrmode_s1:$addr), IIC_iStorer,
+                 "strb", "\t$src, $addr",
+                 []>,
+            T1LdSt1Imm<{0,?,?}>;
 
 def tSTRH : T1pI2<(outs), (ins tGPR:$src, t_addrmode_s2:$addr), IIC_iStorer,
                  "strh", "\t$src, $addr",
                  [(truncstorei16 tGPR:$src, t_addrmode_s2:$addr)]>,
             T1LdSt<0b001>;
+def tSTRHi: T1pI2<(outs), (ins tGPR:$src, t_addrmode_s2:$addr), IIC_iStorer,
+                 "strh", "\t$src, $addr",
+                 []>,
+            T1LdSt2Imm<{0,?,?}>;
 
 def tSTRspi : T1pIs<(outs), (ins tGPR:$src, t_addrmode_sp:$addr), IIC_iStorei,
                    "str", "\t$src, $addr",
@@ -511,10 +624,12 @@ def tBIC : T1sIt<(outs tGPR:$dst), (ins tGPR:$lhs, tGPR:$rhs), IIC_iALUr,
 
 // CMN register
 let Defs = [CPSR] in {
-def tCMN : T1pI<(outs), (ins tGPR:$lhs, tGPR:$rhs), IIC_iCMPr,
-                "cmn", "\t$lhs, $rhs",
-                [(ARMcmp tGPR:$lhs, (ineg tGPR:$rhs))]>,
-           T1DataProcessing<0b1011>;
+//FIXME: Disable CMN, as CCodes are backwards from compare expectations
+//       Compare-to-zero still works out, just not the relationals
+//def tCMN : T1pI<(outs), (ins tGPR:$lhs, tGPR:$rhs), IIC_iCMPr,
+//                "cmn", "\t$lhs, $rhs",
+//                [(ARMcmp tGPR:$lhs, (ineg tGPR:$rhs))]>,
+//           T1DataProcessing<0b1011>;
 def tCMNz : T1pI<(outs), (ins tGPR:$lhs, tGPR:$rhs), IIC_iCMPr,
                  "cmn", "\t$lhs, $rhs",
                  [(ARMcmpZ tGPR:$lhs, (ineg tGPR:$rhs))]>,
@@ -607,19 +722,19 @@ def tMOVSr      : T1I<(outs tGPR:$dst), (ins tGPR:$src), IIC_iMOVr,
 // FIXME: Make these predicable.
 def tMOVgpr2tgpr : T1I<(outs tGPR:$dst), (ins GPR:$src), IIC_iMOVr,
                        "mov\t$dst, $src", []>,
-                   T1Special<{1,0,0,1}>;
+                   T1Special<{1,0,0,?}>;
 def tMOVtgpr2gpr : T1I<(outs GPR:$dst), (ins tGPR:$src), IIC_iMOVr,
                        "mov\t$dst, $src", []>,
-                   T1Special<{1,0,1,0}>;
+                   T1Special<{1,0,?,0}>;
 def tMOVgpr2gpr  : T1I<(outs GPR:$dst), (ins GPR:$src), IIC_iMOVr,
                        "mov\t$dst, $src", []>,
-                   T1Special<{1,0,1,1}>;
+                   T1Special<{1,0,?,?}>;
 } // neverHasSideEffects
 
 // multiply register
 let isCommutable = 1 in
 def tMUL : T1sIt<(outs tGPR:$dst), (ins tGPR:$lhs, tGPR:$rhs), IIC_iMUL32,
-                 "mul", "\t$dst, $rhs",
+                 "mul", "\t$dst, $rhs, $dst", /* A8.6.105 MUL Encoding T1 */
                  [(set tGPR:$dst, (mul tGPR:$lhs, tGPR:$rhs))]>,
            T1DataProcessing<0b1101>;
 
@@ -736,7 +851,7 @@ def tUXTH  : T1pI<(outs tGPR:$dst), (ins tGPR:$src), IIC_iUNAr,
              T1Misc<{0,0,1,0,1,0,?}>;
 
 
-// Conditional move tMOVCCr - Used to implement the Thumb SELECT_CC DAG operation.
+// Conditional move tMOVCCr - Used to implement the Thumb SELECT_CC operation.
 // Expanded after instruction selection into a branch sequence.
 let usesCustomInserter = 1 in  // Expanded after instruction selection.
   def tMOVCCr_pseudo :
@@ -750,7 +865,7 @@ def tMOVCCr : T1pIt<(outs GPR:$dst), (ins GPR:$lhs, GPR:$rhs), IIC_iCMOVr,
                     "mov", "\t$dst, $rhs", []>,
               T1Special<{1,0,?,?}>;
 
-def tMOVCCi : T1pIt<(outs GPR:$dst), (ins GPR:$lhs, i32imm:$rhs), IIC_iCMOVi,
+def tMOVCCi : T1pIt<(outs tGPR:$dst), (ins tGPR:$lhs, i32imm:$rhs), IIC_iCMOVi,
                     "mov", "\t$dst, $rhs", []>,
               T1General<{1,0,0,?,?}>;
 
@@ -788,23 +903,20 @@ let isCall = 1,
 //   except for our own input by listing the relevant registers in Defs. By
 //   doing so, we also cause the prologue/epilogue code to actively preserve
 //   all of the callee-saved resgisters, which is exactly what we want.
+//   The current SP is passed in $val, and we reuse the reg as a scratch.
 let Defs =
   [ R0,  R1,  R2,  R3,  R4,  R5,  R6,  R7, R12 ] in {
-  def tInt_eh_sjlj_setjmp : ThumbXI<(outs), (ins GPR:$src),
+  def tInt_eh_sjlj_setjmp : ThumbXI<(outs),(ins tGPR:$src, tGPR:$val),
                               AddrModeNone, SizeSpecial, NoItinerary,
-                              "mov\tr12, r1\t@ begin eh.setjmp\n"
-                              "\tmov\tr1, sp\n"
-                              "\tstr\tr1, [$src, #8]\n"
-                              "\tadr\tr1, 0f\n"
-                              "\tadds\tr1, #1\n"
-                              "\tstr\tr1, [$src, #4]\n"
-                              "\tmov\tr1, r12\n"
+                              "str\t$val, [$src, #8]\t@ begin eh.setjmp\n"
+                              "\tmov\t$val, pc\n"
+                              "\tadds\t$val, #9\n"
+                              "\tstr\t$val, [$src, #4]\n"
                               "\tmovs\tr0, #0\n"
                               "\tb\t1f\n"
-                              ".align 2\n"
-                              "0:\tmovs\tr0, #1\t@ end eh.setjmp\n"
+                              "\tmovs\tr0, #1\t@ end eh.setjmp\n"
                               "1:", "",
-                              [(set R0, (ARMeh_sjlj_setjmp GPR:$src))]>;
+                   [(set R0, (ARMeh_sjlj_setjmp tGPR:$src, tGPR:$val))]>;
 }
 //===----------------------------------------------------------------------===//
 // Non-Instruction Patterns

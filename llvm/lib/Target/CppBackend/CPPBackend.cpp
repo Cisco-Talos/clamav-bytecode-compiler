@@ -221,7 +221,7 @@ namespace {
     APFloat APF = APFloat(CFP->getValueAPF());  // copy
     if (CFP->getType() == Type::getFloatTy(CFP->getContext()))
       APF.convert(APFloat::IEEEdouble, APFloat::rmNearestTiesToEven, &ignored);
-    Out << "ConstantFP::get(getGlobalContext(), ";
+    Out << "ConstantFP::get(mod->getContext(), ";
     Out << "APFloat(";
 #if HAVE_PRINTF_A
     char Buffer[100];
@@ -307,8 +307,6 @@ namespace {
       Out << "GlobalValue::DLLExportLinkage"; break;
     case GlobalValue::ExternalWeakLinkage:
       Out << "GlobalValue::ExternalWeakLinkage"; break;
-    case GlobalValue::GhostLinkage:
-      Out << "GlobalValue::GhostLinkage"; break;
     case GlobalValue::CommonLinkage:
       Out << "GlobalValue::CommonLinkage"; break;
     }
@@ -346,23 +344,23 @@ namespace {
 
   std::string CppWriter::getCppName(const Type* Ty) {
     // First, handle the primitive types .. easy
-    if (Ty->isPrimitiveType() || Ty->isInteger()) {
+    if (Ty->isPrimitiveType() || Ty->isIntegerTy()) {
       switch (Ty->getTypeID()) {
-      case Type::VoidTyID:   return "Type::getVoidTy(getGlobalContext())";
+      case Type::VoidTyID:   return "Type::getVoidTy(mod->getContext())";
       case Type::IntegerTyID: {
         unsigned BitWidth = cast<IntegerType>(Ty)->getBitWidth();
-        return "IntegerType::get(getGlobalContext(), " + utostr(BitWidth) + ")";
+        return "IntegerType::get(mod->getContext(), " + utostr(BitWidth) + ")";
       }
-      case Type::X86_FP80TyID: return "Type::getX86_FP80Ty(getGlobalContext())";
-      case Type::FloatTyID:    return "Type::getFloatTy(getGlobalContext())";
-      case Type::DoubleTyID:   return "Type::getDoubleTy(getGlobalContext())";
-      case Type::LabelTyID:    return "Type::getLabelTy(getGlobalContext())";
+      case Type::X86_FP80TyID: return "Type::getX86_FP80Ty(mod->getContext())";
+      case Type::FloatTyID:    return "Type::getFloatTy(mod->getContext())";
+      case Type::DoubleTyID:   return "Type::getDoubleTy(mod->getContext())";
+      case Type::LabelTyID:    return "Type::getLabelTy(mod->getContext())";
       default:
         error("Invalid primitive type");
         break;
       }
       // shouldn't be returned, but make it sensible
-      return "Type::getVoidTy(getGlobalContext())";
+      return "Type::getVoidTy(mod->getContext())";
     }
 
     // Now, see if we've seen the type before and return that
@@ -495,7 +493,7 @@ namespace {
 
   bool CppWriter::printTypeInternal(const Type* Ty) {
     // We don't print definitions for primitive types
-    if (Ty->isPrimitiveType() || Ty->isInteger())
+    if (Ty->isPrimitiveType() || Ty->isIntegerTy())
       return false;
 
     // If we already defined this type, we don't need to define it again.
@@ -516,7 +514,7 @@ namespace {
       TypeMap::const_iterator I = UnresolvedTypes.find(Ty);
       if (I == UnresolvedTypes.end()) {
         Out << "PATypeHolder " << typeName;
-        Out << "_fwd = OpaqueType::get(getGlobalContext());";
+        Out << "_fwd = OpaqueType::get(mod->getContext());";
         nl(Out);
         UnresolvedTypes[Ty] = typeName;
       }
@@ -617,7 +615,7 @@ namespace {
     }
     case Type::OpaqueTyID: {
       Out << "OpaqueType* " << typeName;
-      Out << " = OpaqueType::get(getGlobalContext());";
+      Out << " = OpaqueType::get(mod->getContext());";
       nl(Out);
       break;
     }
@@ -688,7 +686,7 @@ namespace {
 
       // For primitive types and types already defined, just add a name
       TypeMap::const_iterator TNI = TypeNames.find(TI->second);
-      if (TI->second->isInteger() || TI->second->isPrimitiveType() ||
+      if (TI->second->isIntegerTy() || TI->second->isPrimitiveType() ||
           TNI != TypeNames.end()) {
         Out << "mod->addTypeName(\"";
         printEscapedString(TI->first);
@@ -753,7 +751,7 @@ namespace {
     if (const ConstantInt *CI = dyn_cast<ConstantInt>(CV)) {
       std::string constValue = CI->getValue().toString(10, true);
       Out << "ConstantInt* " << constName
-          << " = ConstantInt::get(getGlobalContext(), APInt("
+          << " = ConstantInt::get(mod->getContext(), APInt("
           << cast<IntegerType>(CI->getType())->getBitWidth()
           << ", StringRef(\"" <<  constValue << "\"), 10));";
     } else if (isa<ConstantAggregateZero>(CV)) {
@@ -771,7 +769,7 @@ namespace {
           CA->getType()->getElementType() ==
               Type::getInt8Ty(CA->getContext())) {
         Out << "Constant* " << constName <<
-               " = ConstantArray::get(getGlobalContext(), \"";
+               " = ConstantArray::get(mod->getContext(), \"";
         std::string tmp = CA->getAsString();
         bool nullTerminate = false;
         if (tmp[tmp.length()-1] == 0) {
@@ -997,7 +995,7 @@ namespace {
   void CppWriter::printVariableHead(const GlobalVariable *GV) {
     nl(Out) << "GlobalVariable* " << getCppName(GV);
     if (is_inline) {
-      Out << " = mod->getGlobalVariable(getGlobalContext(), ";
+      Out << " = mod->getGlobalVariable(mod->getContext(), ";
       printEscapedString(GV->getName());
       Out << ", " << getCppName(GV->getType()->getElementType()) << ",true)";
       nl(Out) << "if (!" << getCppName(GV) << ") {";
@@ -1096,7 +1094,7 @@ namespace {
 
     case Instruction::Ret: {
       const ReturnInst* ret =  cast<ReturnInst>(I);
-      Out << "ReturnInst::Create(getGlobalContext(), "
+      Out << "ReturnInst::Create(mod->getContext(), "
           << (ret->getReturnValue() ? opNames[0] + ", " : "") << bbname << ");";
       break;
     }
@@ -1173,7 +1171,7 @@ namespace {
     }
     case Instruction::Unreachable: {
       Out << "new UnreachableInst("
-          << "getGlobalContext(), "
+          << "mod->getContext(), "
           << bbname << ");";
       break;
     }
@@ -1675,7 +1673,7 @@ namespace {
          BI != BE; ++BI) {
       std::string bbname(getCppName(BI));
       Out << "BasicBlock* " << bbname <<
-             " = BasicBlock::Create(getGlobalContext(), \"";
+             " = BasicBlock::Create(mod->getContext(), \"";
       if (BI->hasName())
         printEscapedString(BI->getName());
       Out << "\"," << getCppName(BI->getParent()) << ",0);";
@@ -2011,8 +2009,9 @@ char CppWriter::ID = 0;
 bool CPPTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
                                                 formatted_raw_ostream &o,
                                                 CodeGenFileType FileType,
-                                                CodeGenOpt::Level OptLevel) {
-  if (FileType != TargetMachine::AssemblyFile) return true;
+                                                CodeGenOpt::Level OptLevel,
+                                                bool DisableVerify) {
+  if (FileType != TargetMachine::CGFT_AssemblyFile) return true;
   PM.add(new CppWriter(o));
   return false;
 }

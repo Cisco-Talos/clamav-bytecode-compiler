@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
 
 using namespace llvm;
@@ -55,15 +56,14 @@ void formatted_raw_ostream::ComputeColumn(const char *Ptr, size_t Size) {
 /// PadToColumn - Align the output to some column number.
 ///
 /// \param NewCol - The column to move to.
-/// \param MinPad - The minimum space to give after the most recent
-/// I/O, even if the current column + minpad > newcol.
 ///
-void formatted_raw_ostream::PadToColumn(unsigned NewCol) { 
+formatted_raw_ostream &formatted_raw_ostream::PadToColumn(unsigned NewCol) { 
   // Figure out what's in the buffer and add it to the column count.
   ComputeColumn(getBufferStart(), GetNumBytesInBuffer());
 
   // Output spaces until we reach the desired column.
   indent(std::max(int(NewCol - ColumnScanned), 1));
+  return *this;
 }
 
 void formatted_raw_ostream::write_impl(const char *Ptr, size_t Size) {
@@ -89,5 +89,12 @@ formatted_raw_ostream &llvm::fouts() {
 /// standard error.  Use it like: ferrs() << "foo" << "bar";
 formatted_raw_ostream &llvm::ferrs() {
   static formatted_raw_ostream S(errs());
+  return S;
+}
+
+/// fdbgs() - This returns a reference to a formatted_raw_ostream for
+/// the debug stream.  Use it like: fdbgs() << "foo" << "bar";
+formatted_raw_ostream &llvm::fdbgs() {
+  static formatted_raw_ostream S(dbgs());
   return S;
 }

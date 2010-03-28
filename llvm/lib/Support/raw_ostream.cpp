@@ -20,7 +20,7 @@
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/StringExtras.h"
+#include <cctype>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -209,7 +209,7 @@ raw_ostream &raw_ostream::operator<<(const void *P) {
 }
 
 raw_ostream &raw_ostream::operator<<(double N) {
-  return this->operator<<(ftostr(N));
+  return this->operator<<(format("%e", N));
 }
 
 
@@ -368,6 +368,7 @@ void format_object_base::home() {
 /// if no error occurred.
 raw_fd_ostream::raw_fd_ostream(const char *Filename, std::string &ErrorInfo,
                                unsigned Flags) : pos(0) {
+  assert(Filename != 0 && "Filename is null");
   // Verify that we don't have both "append" and "excl".
   assert((!(Flags & F_Excl) || !(Flags & F_Append)) &&
          "Cannot specify both 'excl' and 'append' file creation flags!");
@@ -562,13 +563,30 @@ raw_svector_ostream::~raw_svector_ostream() {
   flush();
 }
 
-void raw_svector_ostream::write_impl(const char *Ptr, size_t Size) {
-  assert(Ptr == OS.end() && OS.size() + Size <= OS.capacity() &&
-         "Invalid write_impl() call!");
+/// resync - This is called when the SmallVector we're appending to is changed
+/// outside of the raw_svector_ostream's control.  It is only safe to do this
+/// if the raw_svector_ostream has previously been flushed.
+void raw_svector_ostream::resync() {
+  assert(GetNumBytesInBuffer() == 0 && "Didn't flush before mutating vector");
 
-  // We don't need to copy the bytes, just commit the bytes to the
-  // SmallVector.
-  OS.set_size(OS.size() + Size);
+  if (OS.capacity() - OS.size() < 64)
+    OS.reserve(OS.capacity() * 2);
+  SetBuffer(OS.end(), OS.capacity() - OS.size());
+}
+
+void raw_svector_ostream::write_impl(const char *Ptr, size_t Size) {
+  // If we're writing bytes from the end of the buffer into the smallvector, we
+  // don't need to copy the bytes, just commit the bytes because they are
+  // already in the right place.
+  if (Ptr == OS.end()) {
+    assert(OS.size() + Size <= OS.capacity() && "Invalid write_impl() call!");
+    OS.set_size(OS.size() + Size);
+  } else {
+    assert(GetNumBytesInBuffer() == 0 &&
+           "Should be writing from buffer if some bytes in it");
+    // Otherwise, do copy the bytes.
+    OS.append(Ptr, Ptr+Size);
+  }
 
   // Grow the vector if necessary.
   if (OS.capacity() - OS.size() < 64)

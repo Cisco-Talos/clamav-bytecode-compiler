@@ -78,7 +78,7 @@ void llvm::FoldSingleEntryPHINodes(BasicBlock *BB) {
 /// is dead. Also recursively delete any operands that become dead as
 /// a result. This includes tracing the def-use list from the PHI to see if
 /// it is ultimately unused or if it reaches an unused cycle.
-void llvm::DeleteDeadPHIs(BasicBlock *BB) {
+bool llvm::DeleteDeadPHIs(BasicBlock *BB) {
   // Recursively deleting a PHI may cause multiple PHIs to be deleted
   // or RAUW'd undef, so use an array of WeakVH for the PHIs to delete.
   SmallVector<WeakVH, 8> PHIs;
@@ -86,9 +86,12 @@ void llvm::DeleteDeadPHIs(BasicBlock *BB) {
        PHINode *PN = dyn_cast<PHINode>(I); ++I)
     PHIs.push_back(PN);
 
+  bool Changed = false;
   for (unsigned i = 0, e = PHIs.size(); i != e; ++i)
     if (PHINode *PN = dyn_cast_or_null<PHINode>(PHIs[i].operator Value*()))
-      RecursivelyDeleteDeadPHINode(PN);
+      Changed |= RecursivelyDeleteDeadPHINode(PN);
+
+  return Changed;
 }
 
 /// MergeBlockIntoPredecessor - Attempts to merge a block into its predecessor,
@@ -252,7 +255,7 @@ void llvm::RemoveSuccessor(TerminatorInst *TI, unsigned SuccNum) {
       Value *RetVal = 0;
 
       // Create a value to return... if the function doesn't return null...
-      if (BB->getParent()->getReturnType() != Type::getVoidTy(TI->getContext()))
+      if (!BB->getParent()->getReturnType()->isVoidTy())
         RetVal = Constant::getNullValue(BB->getParent()->getReturnType());
 
       // Create the return...
@@ -271,24 +274,31 @@ void llvm::RemoveSuccessor(TerminatorInst *TI, unsigned SuccNum) {
     ReplaceInstWithInst(TI, NewTI);
 }
 
-/// SplitEdge -  Split the edge connecting specified block. Pass P must 
-/// not be NULL. 
-BasicBlock *llvm::SplitEdge(BasicBlock *BB, BasicBlock *Succ, Pass *P) {
-  TerminatorInst *LatchTerm = BB->getTerminator();
-  unsigned SuccNum = 0;
+/// GetSuccessorNumber - Search for the specified successor of basic block BB
+/// and return its position in the terminator instruction's list of
+/// successors.  It is an error to call this with a block that is not a
+/// successor.
+unsigned llvm::GetSuccessorNumber(BasicBlock *BB, BasicBlock *Succ) {
+  TerminatorInst *Term = BB->getTerminator();
 #ifndef NDEBUG
-  unsigned e = LatchTerm->getNumSuccessors();
+  unsigned e = Term->getNumSuccessors();
 #endif
   for (unsigned i = 0; ; ++i) {
     assert(i != e && "Didn't find edge?");
-    if (LatchTerm->getSuccessor(i) == Succ) {
-      SuccNum = i;
-      break;
-    }
+    if (Term->getSuccessor(i) == Succ)
+      return i;
   }
+  return 0;
+}
+
+/// SplitEdge -  Split the edge connecting specified block. Pass P must 
+/// not be NULL. 
+BasicBlock *llvm::SplitEdge(BasicBlock *BB, BasicBlock *Succ, Pass *P) {
+  unsigned SuccNum = GetSuccessorNumber(BB, Succ);
   
   // If this is a critical edge, let SplitCriticalEdge do it.
-  if (SplitCriticalEdge(BB->getTerminator(), SuccNum, P))
+  TerminatorInst *LatchTerm = BB->getTerminator();
+  if (SplitCriticalEdge(LatchTerm, SuccNum, P))
     return LatchTerm->getSuccessor(SuccNum);
 
   // If the edge isn't critical, then BB has a single successor or Succ has a
@@ -612,11 +622,6 @@ Value *llvm::FindAvailableLoadedValue(Value *Ptr, BasicBlock *ScanBB,
     Instruction *Inst = --ScanFrom;
     if (isa<DbgInfoIntrinsic>(Inst))
       continue;
-    // We skip pointer-to-pointer bitcasts, which are NOPs.
-    // It is necessary for correctness to skip those that feed into a
-    // llvm.dbg.declare, as these are not present when debugging is off.
-    if (isa<BitCastInst>(Inst) && isa<PointerType>(Inst->getType()))
-      continue;
 
     // Restore ScanFrom to expected value in case next test succeeds
     ScanFrom++;
@@ -673,16 +678,3 @@ Value *llvm::FindAvailableLoadedValue(Value *Ptr, BasicBlock *ScanBB,
   return 0;
 }
 
-/// CopyPrecedingStopPoint - If I is immediately preceded by a StopPoint,
-/// make a copy of the stoppoint before InsertPos (presumably before copying
-/// or moving I).
-void llvm::CopyPrecedingStopPoint(Instruction *I, 
-                                  BasicBlock::iterator InsertPos) {
-  if (I != I->getParent()->begin()) {
-    BasicBlock::iterator BBI = I;  --BBI;
-    if (DbgStopPointInst *DSPI = dyn_cast<DbgStopPointInst>(BBI)) {
-      CallInst *newDSPI = cast<CallInst>(DSPI->clone());
-      newDSPI->insertBefore(InsertPos);
-    }
-  }
-}

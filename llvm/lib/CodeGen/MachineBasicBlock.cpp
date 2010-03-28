@@ -14,14 +14,18 @@
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/BasicBlock.h"
 #include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetInstrDesc.h"
 #include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Assembly/Writer.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/LeakDetector.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Assembly/Writer.h"
 #include <algorithm>
 using namespace llvm;
 
@@ -34,6 +38,18 @@ MachineBasicBlock::MachineBasicBlock(MachineFunction &mf, const BasicBlock *bb)
 MachineBasicBlock::~MachineBasicBlock() {
   LeakDetector::removeGarbageObject(this);
 }
+
+/// getSymbol - Return the MCSymbol for this basic block.
+///
+MCSymbol *MachineBasicBlock::getSymbol(MCContext &Ctx) const {
+  SmallString<60> Name;
+  const MachineFunction *MF = getParent();
+  raw_svector_ostream(Name)
+    << MF->getTarget().getMCAsmInfo()->getPrivateGlobalPrefix() << "BB"
+    << MF->getFunctionNumber() << '_' << getNumber();
+  return Ctx.GetOrCreateSymbol(Name.str());
+}
+
 
 raw_ostream &llvm::operator<<(raw_ostream &OS, const MachineBasicBlock &MBB) {
   MBB.print(OS);
@@ -127,38 +143,8 @@ MachineBasicBlock::iterator MachineBasicBlock::getFirstTerminator() {
   return I;
 }
 
-/// isOnlyReachableViaFallthough - Return true if this basic block has
-/// exactly one predecessor and the control transfer mechanism between
-/// the predecessor and this block is a fall-through.
-bool MachineBasicBlock::isOnlyReachableByFallthrough() const {
-  // If this is a landing pad, it isn't a fall through.  If it has no preds,
-  // then nothing falls through to it.
-  if (isLandingPad() || pred_empty())
-    return false;
-  
-  // If there isn't exactly one predecessor, it can't be a fall through.
-  const_pred_iterator PI = pred_begin(), PI2 = PI;
-  ++PI2;
-  if (PI2 != pred_end())
-    return false;
-  
-  // The predecessor has to be immediately before this block.
-  const MachineBasicBlock *Pred = *PI;
-  
-  if (!Pred->isLayoutSuccessor(this))
-    return false;
-  
-  // If the block is completely empty, then it definitely does fall through.
-  if (Pred->empty())
-    return true;
-  
-  // Otherwise, check the last instruction.
-  const MachineInstr &LastInst = Pred->back();
-  return !LastInst.getDesc().isBarrier();
-}
-
 void MachineBasicBlock::dump() const {
-  print(errs());
+  print(dbgs());
 }
 
 static inline void OutputReg(raw_ostream &os, unsigned RegNo,
@@ -377,7 +363,7 @@ bool MachineBasicBlock::canFallThrough() {
   MachineBasicBlock *TBB = 0, *FBB = 0;
   SmallVector<MachineOperand, 4> Cond;
   const TargetInstrInfo *TII = getParent()->getTarget().getInstrInfo();
-  if (TII->AnalyzeBranch(*this, TBB, FBB, Cond, true)) {
+  if (TII->AnalyzeBranch(*this, TBB, FBB, Cond)) {
     // If we couldn't analyze the branch, examine the last instruction.
     // If the block doesn't end in a known control barrier, assume fallthrough
     // is possible. The isPredicable check is needed because this code can be
@@ -523,7 +509,25 @@ bool MachineBasicBlock::CorrectExtraCFGEdges(MachineBasicBlock *DestA,
   return MadeChange;
 }
 
+/// findDebugLoc - find the next valid DebugLoc starting at MBBI, skipping
+/// any DBG_VALUE instructions.  Return UnknownLoc if there is none.
+DebugLoc
+MachineBasicBlock::findDebugLoc(MachineBasicBlock::iterator &MBBI) {
+  DebugLoc DL;
+  MachineBasicBlock::iterator E = end();
+  if (MBBI != E) {
+    // Skip debug declarations, we don't want a DebugLoc from them.
+    MachineBasicBlock::iterator MBBI2 = MBBI;
+    while (MBBI2 != E && MBBI2->isDebugValue())
+      MBBI2++;
+    if (MBBI2 != E)
+      DL = MBBI2->getDebugLoc();
+  }
+  return DL;
+}
+
 void llvm::WriteAsOperand(raw_ostream &OS, const MachineBasicBlock *MBB,
                           bool t) {
   OS << "BB#" << MBB->getNumber();
 }
+

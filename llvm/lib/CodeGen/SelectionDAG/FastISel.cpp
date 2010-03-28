@@ -43,7 +43,6 @@
 #include "llvm/GlobalVariable.h"
 #include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
-#include "llvm/LLVMContext.h"
 #include "llvm/CodeGen/FastISel.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
@@ -79,7 +78,7 @@ unsigned FastISel::getRegForValue(Value *V) {
   // Look up the value to see if we already have a register for it. We
   // cache values defined by Instructions across blocks, and other values
   // only locally. This is because Instructions already have the SSA
-  // def-dominatess-use requirement enforced.
+  // def-dominates-use requirement enforced.
   if (ValueMap.count(V))
     return ValueMap[V];
   unsigned Reg = LocalValueMap[V];
@@ -122,7 +121,7 @@ unsigned FastISel::getRegForValue(Value *V) {
     Reg = LocalValueMap[CE];
   } else if (isa<UndefValue>(V)) {
     Reg = createResultReg(TLI.getRegClassFor(VT));
-    BuildMI(MBB, DL, TII.get(TargetInstrInfo::IMPLICIT_DEF), Reg);
+    BuildMI(MBB, DL, TII.get(TargetOpcode::IMPLICIT_DEF), Reg);
   }
   
   // If target-independent code couldn't handle the value, give target-specific
@@ -189,7 +188,7 @@ unsigned FastISel::getRegForGEPIndex(Value *Idx) {
 /// SelectBinaryOp - Select and emit code for a binary operator instruction,
 /// which has an opcode which directly corresponds to the given ISD opcode.
 ///
-bool FastISel::SelectBinaryOp(User *I, ISD::NodeType ISDOpcode) {
+bool FastISel::SelectBinaryOp(User *I, unsigned ISDOpcode) {
   EVT VT = EVT::getEVT(I->getType(), /*HandleUnknown=*/true);
   if (VT == MVT::Other || !VT.isSimple())
     // Unhandled type. Halt "fast" selection and bail.
@@ -326,21 +325,15 @@ bool FastISel::SelectCall(User *I) {
   unsigned IID = F->getIntrinsicID();
   switch (IID) {
   default: break;
-  case Intrinsic::dbg_stoppoint: 
-  case Intrinsic::dbg_region_start: 
-  case Intrinsic::dbg_region_end: 
-  case Intrinsic::dbg_func_start:
-    // FIXME - Remove this instructions once the dust settles.
-    return true;
   case Intrinsic::dbg_declare: {
     DbgDeclareInst *DI = cast<DbgDeclareInst>(I);
-    if (!isValidDebugInfoIntrinsic(*DI, CodeGenOpt::None) || !DW
+    if (!DIDescriptor::ValidDebugInfo(DI->getVariable(), CodeGenOpt::None)||!DW
         || !DW->ShouldEmitDwarfDebug())
       return true;
 
     Value *Address = DI->getAddress();
-    if (BitCastInst *BCI = dyn_cast<BitCastInst>(Address))
-      Address = BCI->getOperand(0);
+    if (!Address)
+      return true;
     AllocaInst *AI = dyn_cast<AllocaInst>(Address);
     // Don't handle byval struct arguments or VLAs, for example.
     if (!AI) break;
@@ -349,12 +342,40 @@ bool FastISel::SelectCall(User *I) {
     if (SI == StaticAllocaMap.end()) break; // VLAs.
     int FI = SI->second;
     if (MMI) {
-      MetadataContext &TheMetadata = 
-        DI->getParent()->getContext().getMetadata();
-      unsigned MDDbgKind = TheMetadata.getMDKind("dbg");
-      MDNode *Dbg = TheMetadata.getMD(MDDbgKind, DI);
-      MMI->setVariableDbgInfo(DI->getVariable(), FI, Dbg);
+      if (MDNode *Dbg = DI->getMetadata("dbg"))
+        MMI->setVariableDbgInfo(DI->getVariable(), FI, Dbg);
     }
+    // Building the map above is target independent.  Generating DBG_VALUE
+    // inline is target dependent; do this now.
+    (void)TargetSelectInstruction(cast<Instruction>(I));
+    return true;
+  }
+  case Intrinsic::dbg_value: {
+    // This requires target support, but right now X86 is the only Fast target.
+    DbgValueInst *DI = cast<DbgValueInst>(I);
+    const TargetInstrDesc &II = TII.get(TargetOpcode::DBG_VALUE);
+    Value *V = DI->getValue();
+    if (!V) {
+      // Currently the optimizer can produce this; insert an undef to
+      // help debugging.  Probably the optimizer should not do this.
+      BuildMI(MBB, DL, II).addReg(0U).addImm(DI->getOffset()).
+                                     addMetadata(DI->getVariable());
+    } else if (ConstantInt *CI = dyn_cast<ConstantInt>(V)) {
+      BuildMI(MBB, DL, II).addImm(CI->getZExtValue()).addImm(DI->getOffset()).
+                                     addMetadata(DI->getVariable());
+    } else if (ConstantFP *CF = dyn_cast<ConstantFP>(V)) {
+      BuildMI(MBB, DL, II).addFPImm(CF).addImm(DI->getOffset()).
+                                     addMetadata(DI->getVariable());
+    } else if (unsigned Reg = lookUpRegForValue(V)) {
+      BuildMI(MBB, DL, II).addReg(Reg, RegState::Debug).addImm(DI->getOffset()).
+                                     addMetadata(DI->getVariable());
+    } else {
+      // We can't yet handle anything else here because it would require
+      // generating code, thus altering codegen because of debug info.
+      // Insert an undef so we can see what we dropped.
+      BuildMI(MBB, DL, II).addReg(0U).addImm(DI->getOffset()).
+                                     addMetadata(DI->getVariable());
+    }     
     return true;
   }
   case Intrinsic::eh_exception: {
@@ -428,7 +449,7 @@ bool FastISel::SelectCall(User *I) {
   return false;
 }
 
-bool FastISel::SelectCast(User *I, ISD::NodeType Opcode) {
+bool FastISel::SelectCast(User *I, unsigned Opcode) {
   EVT SrcVT = TLI.getValueType(I->getOperand(0)->getType());
   EVT DstVT = TLI.getValueType(I->getType());
     
@@ -746,44 +767,44 @@ FastISel::FastISel(MachineFunction &mf,
 FastISel::~FastISel() {}
 
 unsigned FastISel::FastEmit_(MVT, MVT,
-                             ISD::NodeType) {
+                             unsigned) {
   return 0;
 }
 
 unsigned FastISel::FastEmit_r(MVT, MVT,
-                              ISD::NodeType, unsigned /*Op0*/) {
+                              unsigned, unsigned /*Op0*/) {
   return 0;
 }
 
 unsigned FastISel::FastEmit_rr(MVT, MVT, 
-                               ISD::NodeType, unsigned /*Op0*/,
+                               unsigned, unsigned /*Op0*/,
                                unsigned /*Op0*/) {
   return 0;
 }
 
-unsigned FastISel::FastEmit_i(MVT, MVT, ISD::NodeType, uint64_t /*Imm*/) {
+unsigned FastISel::FastEmit_i(MVT, MVT, unsigned, uint64_t /*Imm*/) {
   return 0;
 }
 
 unsigned FastISel::FastEmit_f(MVT, MVT,
-                              ISD::NodeType, ConstantFP * /*FPImm*/) {
+                              unsigned, ConstantFP * /*FPImm*/) {
   return 0;
 }
 
 unsigned FastISel::FastEmit_ri(MVT, MVT,
-                               ISD::NodeType, unsigned /*Op0*/,
+                               unsigned, unsigned /*Op0*/,
                                uint64_t /*Imm*/) {
   return 0;
 }
 
 unsigned FastISel::FastEmit_rf(MVT, MVT,
-                               ISD::NodeType, unsigned /*Op0*/,
+                               unsigned, unsigned /*Op0*/,
                                ConstantFP * /*FPImm*/) {
   return 0;
 }
 
 unsigned FastISel::FastEmit_rri(MVT, MVT,
-                                ISD::NodeType,
+                                unsigned,
                                 unsigned /*Op0*/, unsigned /*Op1*/,
                                 uint64_t /*Imm*/) {
   return 0;
@@ -793,7 +814,7 @@ unsigned FastISel::FastEmit_rri(MVT, MVT,
 /// to emit an instruction with an immediate operand using FastEmit_ri.
 /// If that fails, it materializes the immediate into a register and try
 /// FastEmit_rr instead.
-unsigned FastISel::FastEmit_ri_(MVT VT, ISD::NodeType Opcode,
+unsigned FastISel::FastEmit_ri_(MVT VT, unsigned Opcode,
                                 unsigned Op0, uint64_t Imm,
                                 MVT ImmType) {
   // First check if immediate type is legal. If not, we can't use the ri form.
@@ -810,7 +831,7 @@ unsigned FastISel::FastEmit_ri_(MVT VT, ISD::NodeType Opcode,
 /// to emit an instruction with a floating-point immediate operand using
 /// FastEmit_rf. If that fails, it materializes the immediate into a register
 /// and try FastEmit_rr instead.
-unsigned FastISel::FastEmit_rf_(MVT VT, ISD::NodeType Opcode,
+unsigned FastISel::FastEmit_rf_(MVT VT, unsigned Opcode,
                                 unsigned Op0, ConstantFP *FPImm,
                                 MVT ImmType) {
   // First check if immediate type is legal. If not, we can't use the rf form.
@@ -978,7 +999,7 @@ unsigned FastISel::FastEmitInst_extractsubreg(MVT RetVT,
   const TargetRegisterClass* RC = MRI.getRegClass(Op0);
   
   unsigned ResultReg = createResultReg(TLI.getRegClassFor(RetVT));
-  const TargetInstrDesc &II = TII.get(TargetInstrInfo::EXTRACT_SUBREG);
+  const TargetInstrDesc &II = TII.get(TargetOpcode::EXTRACT_SUBREG);
   
   if (II.getNumDefs() >= 1)
     BuildMI(MBB, DL, II, ResultReg).addReg(Op0).addImm(Idx);

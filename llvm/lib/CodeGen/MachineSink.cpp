@@ -72,12 +72,17 @@ bool MachineSinking::AllUsesDominatedByBlock(unsigned Reg,
                                              MachineBasicBlock *MBB) const {
   assert(TargetRegisterInfo::isVirtualRegister(Reg) &&
          "Only makes sense for vregs");
-  for (MachineRegisterInfo::use_iterator I = RegInfo->use_begin(Reg),
-       E = RegInfo->use_end(); I != E; ++I) {
+  // Ignoring debug uses is necessary so debug info doesn't affect the code.
+  // This may leave a referencing dbg_value in the original block, before
+  // the definition of the vreg.  Dwarf generator handles this although the
+  // user might not get the right info at runtime.
+  for (MachineRegisterInfo::use_nodbg_iterator I = 
+       RegInfo->use_nodbg_begin(Reg),
+       E = RegInfo->use_nodbg_end(); I != E; ++I) {
     // Determine the block of the use.
     MachineInstr *UseInst = &*I;
     MachineBasicBlock *UseBlock = UseInst->getParent();
-    if (UseInst->getOpcode() == TargetInstrInfo::PHI) {
+    if (UseInst->isPHI()) {
       // PHI nodes use the operand in the predecessor block, not the block with
       // the PHI.
       UseBlock = UseInst->getOperand(I.getOperandNo()+1).getMBB();
@@ -90,7 +95,7 @@ bool MachineSinking::AllUsesDominatedByBlock(unsigned Reg,
 }
 
 bool MachineSinking::runOnMachineFunction(MachineFunction &MF) {
-  DEBUG(errs() << "******** Machine Sinking ********\n");
+  DEBUG(dbgs() << "******** Machine Sinking ********\n");
   
   const TargetMachine &TM = MF.getTarget();
   TII = TM.getInstrInfo();
@@ -135,7 +140,10 @@ bool MachineSinking::ProcessBlock(MachineBasicBlock &MBB) {
     ProcessedBegin = I == MBB.begin();
     if (!ProcessedBegin)
       --I;
-    
+
+    if (MI->isDebugValue())
+      continue;
+
     if (SinkInstruction(MI, SawStore))
       ++NumSunk, MadeChange = true;
     
@@ -149,7 +157,7 @@ bool MachineSinking::ProcessBlock(MachineBasicBlock &MBB) {
 /// instruction out of its current block into a successor.
 bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
   // Check if it's safe to move the instruction.
-  if (!MI->isSafeToMove(TII, SawStore, AA))
+  if (!MI->isSafeToMove(TII, AA, SawStore))
     return false;
   
   // FIXME: This should include support for sinking instructions within the
@@ -255,22 +263,21 @@ bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
   if (MI->getParent() == SuccToSinkTo)
     return false;
   
-  DEBUG(errs() << "Sink instr " << *MI);
-  DEBUG(errs() << "to block " << *SuccToSinkTo);
+  DEBUG(dbgs() << "Sink instr " << *MI);
+  DEBUG(dbgs() << "to block " << *SuccToSinkTo);
   
   // If the block has multiple predecessors, this would introduce computation on
   // a path that it doesn't already exist.  We could split the critical edge,
   // but for now we just punt.
   // FIXME: Split critical edges if not backedges.
   if (SuccToSinkTo->pred_size() > 1) {
-    DEBUG(errs() << " *** PUNTING: Critical edge found\n");
+    DEBUG(dbgs() << " *** PUNTING: Critical edge found\n");
     return false;
   }
   
   // Determine where to insert into.  Skip phi nodes.
   MachineBasicBlock::iterator InsertPos = SuccToSinkTo->begin();
-  while (InsertPos != SuccToSinkTo->end() && 
-         InsertPos->getOpcode() == TargetInstrInfo::PHI)
+  while (InsertPos != SuccToSinkTo->end() && InsertPos->isPHI())
     ++InsertPos;
   
   // Move the instruction.

@@ -162,6 +162,10 @@ namespace llvm {
   /// 
   FunctionPass *createGCInfoPrinter(raw_ostream &OS);
   
+  /// createMachineCSEPass - This pass performs global CSE on machine
+  /// instructions.
+  FunctionPass *createMachineCSEPass();
+
   /// createMachineLICMPass - This pass performs LICM on machine instructions.
   /// 
   FunctionPass *createMachineLICMPass();
@@ -169,6 +173,14 @@ namespace llvm {
   /// createMachineSinkingPass - This pass performs sinking on machine
   /// instructions.
   FunctionPass *createMachineSinkingPass();
+
+  /// createOptimizeExtsPass - This pass performs sign / zero extension
+  /// optimization by increasing uses of extended values.
+  FunctionPass *createOptimizeExtsPass();
+
+  /// createOptimizePHIsPass - This pass optimizes machine instruction PHIs
+  /// to take advantage of opportunities created during DAG legalization.
+  FunctionPass *createOptimizePHIsPass();
 
   /// createStackSlotColoringPass - This pass performs stack slot coloring.
   FunctionPass *createStackSlotColoringPass(bool);
@@ -179,7 +191,7 @@ namespace llvm {
   /// createMachineVerifierPass - This pass verifies cenerated machine code
   /// instructions for correctness.
   ///
-  /// @param allowPhysDoubleDefs ignore double definitions of
+  /// @param allowDoubleDefs ignore double definitions of
   ///        registers. Useful before LiveVariables has run.
   FunctionPass *createMachineVerifierPass(bool allowDoubleDefs);
 
@@ -190,10 +202,6 @@ namespace llvm {
   /// createSjLjEHPass - This pass adapts exception handling code to use
   /// the GCC-style builtin setjmp/longjmp (sjlj) to handling EH control flow.
   FunctionPass *createSjLjEHPass(const TargetLowering *tli);
-
-  /// createMaxStackAlignmentCalculatorPass() - Determine the maximum required
-  /// alignment for a function.
-  FunctionPass* createMaxStackAlignmentCalculatorPass();
 
 } // End llvm namespace
 

@@ -329,12 +329,16 @@ bool llvm::rewriteT2FrameIndex(MachineInstr &MI, unsigned FrameRegIdx,
     Offset += MI.getOperand(FrameRegIdx+1).getImm();
 
     bool isSP = FrameReg == ARM::SP;
-    if (Offset == 0) {
+    unsigned PredReg;
+    if (Offset == 0 && getInstrPredicate(&MI, PredReg) == ARMCC::AL) {
       // Turn it into a move.
       MI.setDesc(TII.get(ARM::tMOVgpr2gpr));
       MI.getOperand(FrameRegIdx).ChangeToRegister(FrameReg, false);
-      MI.RemoveOperand(FrameRegIdx+1);
-      Offset = 0;
+      // Remove offset and remaining explicit predicate operands.
+      do MI.RemoveOperand(FrameRegIdx+1);
+      while (MI.getNumOperands() > FrameRegIdx+1 &&
+             (!MI.getOperand(FrameRegIdx+1).isReg() ||
+              !MI.getOperand(FrameRegIdx+1).isImm()));
       return true;
     }
 
@@ -378,8 +382,8 @@ bool llvm::rewriteT2FrameIndex(MachineInstr &MI, unsigned FrameRegIdx,
     MI.getOperand(FrameRegIdx+1).ChangeToImmediate(ThisImmVal);
   } else {
 
-    // AddrMode4 cannot handle any offset.
-    if (AddrMode == ARMII::AddrMode4)
+    // AddrMode4 and AddrMode6 cannot handle any offset.
+    if (AddrMode == ARMII::AddrMode4 || AddrMode == ARMII::AddrMode6)
       return false;
 
     // AddrModeT2_so cannot handle any offset. If there is no offset
@@ -414,15 +418,12 @@ bool llvm::rewriteT2FrameIndex(MachineInstr &MI, unsigned FrameRegIdx,
         NewOpc = positiveOffsetOpcode(Opcode);
         NumBits = 12;
       }
-    } else {
-      // VFP and NEON address modes.
-      int InstrOffs = 0;
-      if (AddrMode == ARMII::AddrMode5) {
-        const MachineOperand &OffOp = MI.getOperand(FrameRegIdx+1);
-        InstrOffs = ARM_AM::getAM5Offset(OffOp.getImm());
-        if (ARM_AM::getAM5Op(OffOp.getImm()) == ARM_AM::sub)
-          InstrOffs *= -1;
-      }
+    } else if (AddrMode == ARMII::AddrMode5) {
+      // VFP address mode.
+      const MachineOperand &OffOp = MI.getOperand(FrameRegIdx+1);
+      int InstrOffs = ARM_AM::getAM5Offset(OffOp.getImm());
+      if (ARM_AM::getAM5Op(OffOp.getImm()) == ARM_AM::sub)
+        InstrOffs *= -1;
       NumBits = 8;
       Scale = 4;
       Offset += InstrOffs * 4;
@@ -431,6 +432,8 @@ bool llvm::rewriteT2FrameIndex(MachineInstr &MI, unsigned FrameRegIdx,
         Offset = -Offset;
         isSub = true;
       }
+    } else {
+      llvm_unreachable("Unsupported addressing mode!");
     }
 
     if (NewOpc != Opcode)

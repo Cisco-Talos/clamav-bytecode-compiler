@@ -24,7 +24,7 @@ using namespace llvm;
 
 LLVMGenericValueRef LLVMCreateGenericValueOfInt(LLVMTypeRef Ty,
                                                 unsigned long long N,
-                                                int IsSigned) {
+                                                LLVMBool IsSigned) {
   GenericValue *GenVal = new GenericValue();
   GenVal->IntVal = APInt(unwrap<IntegerType>(Ty)->getBitWidth(), N, IsSigned);
   return wrap(GenVal);
@@ -56,7 +56,7 @@ unsigned LLVMGenericValueIntWidth(LLVMGenericValueRef GenValRef) {
 }
 
 unsigned long long LLVMGenericValueToInt(LLVMGenericValueRef GenValRef,
-                                         int IsSigned) {
+                                         LLVMBool IsSigned) {
   GenericValue *GenVal = unwrap(GenValRef);
   if (IsSigned)
     return GenVal->IntVal.getSExtValue();
@@ -87,11 +87,11 @@ void LLVMDisposeGenericValue(LLVMGenericValueRef GenVal) {
 
 /*===-- Operations on execution engines -----------------------------------===*/
 
-int LLVMCreateExecutionEngine(LLVMExecutionEngineRef *OutEE,
-                              LLVMModuleProviderRef MP,
-                              char **OutError) {
+LLVMBool LLVMCreateExecutionEngineForModule(LLVMExecutionEngineRef *OutEE,
+                                            LLVMModuleRef M,
+                                            char **OutError) {
   std::string Error;
-  EngineBuilder builder(unwrap(MP));
+  EngineBuilder builder(unwrap(M));
   builder.setEngineKind(EngineKind::Either)
          .setErrorStr(&Error);
   if (ExecutionEngine *EE = builder.create()){
@@ -102,11 +102,11 @@ int LLVMCreateExecutionEngine(LLVMExecutionEngineRef *OutEE,
   return 1;
 }
 
-int LLVMCreateInterpreter(LLVMExecutionEngineRef *OutInterp,
-                          LLVMModuleProviderRef MP,
-                          char **OutError) {
+LLVMBool LLVMCreateInterpreterForModule(LLVMExecutionEngineRef *OutInterp,
+                                        LLVMModuleRef M,
+                                        char **OutError) {
   std::string Error;
-  EngineBuilder builder(unwrap(MP));
+  EngineBuilder builder(unwrap(M));
   builder.setEngineKind(EngineKind::Interpreter)
          .setErrorStr(&Error);
   if (ExecutionEngine *Interp = builder.create()) {
@@ -117,12 +117,12 @@ int LLVMCreateInterpreter(LLVMExecutionEngineRef *OutInterp,
   return 1;
 }
 
-int LLVMCreateJITCompiler(LLVMExecutionEngineRef *OutJIT,
-                          LLVMModuleProviderRef MP,
-                          unsigned OptLevel,
-                          char **OutError) {
+LLVMBool LLVMCreateJITCompilerForModule(LLVMExecutionEngineRef *OutJIT,
+                                        LLVMModuleRef M,
+                                        unsigned OptLevel,
+                                        char **OutError) {
   std::string Error;
-  EngineBuilder builder(unwrap(MP));
+  EngineBuilder builder(unwrap(M));
   builder.setEngineKind(EngineKind::JIT)
          .setErrorStr(&Error)
          .setOptLevel((CodeGenOpt::Level)OptLevel);
@@ -133,6 +133,35 @@ int LLVMCreateJITCompiler(LLVMExecutionEngineRef *OutJIT,
   *OutError = strdup(Error.c_str());
   return 1;
 }
+
+LLVMBool LLVMCreateExecutionEngine(LLVMExecutionEngineRef *OutEE,
+                                   LLVMModuleProviderRef MP,
+                                   char **OutError) {
+  /* The module provider is now actually a module. */
+  return LLVMCreateExecutionEngineForModule(OutEE,
+                                            reinterpret_cast<LLVMModuleRef>(MP),
+                                            OutError);
+}
+
+LLVMBool LLVMCreateInterpreter(LLVMExecutionEngineRef *OutInterp,
+                               LLVMModuleProviderRef MP,
+                               char **OutError) {
+  /* The module provider is now actually a module. */
+  return LLVMCreateInterpreterForModule(OutInterp,
+                                        reinterpret_cast<LLVMModuleRef>(MP),
+                                        OutError);
+}
+
+LLVMBool LLVMCreateJITCompiler(LLVMExecutionEngineRef *OutJIT,
+                               LLVMModuleProviderRef MP,
+                               unsigned OptLevel,
+                               char **OutError) {
+  /* The module provider is now actually a module. */
+  return LLVMCreateJITCompilerForModule(OutJIT,
+                                        reinterpret_cast<LLVMModuleRef>(MP),
+                                        OptLevel, OutError);
+}
+
 
 void LLVMDisposeExecutionEngine(LLVMExecutionEngineRef EE) {
   delete unwrap(EE);
@@ -173,25 +202,33 @@ void LLVMFreeMachineCodeForFunction(LLVMExecutionEngineRef EE, LLVMValueRef F) {
   unwrap(EE)->freeMachineCodeForFunction(unwrap<Function>(F));
 }
 
+void LLVMAddModule(LLVMExecutionEngineRef EE, LLVMModuleRef M){
+  unwrap(EE)->addModule(unwrap(M));
+}
+
 void LLVMAddModuleProvider(LLVMExecutionEngineRef EE, LLVMModuleProviderRef MP){
-  unwrap(EE)->addModuleProvider(unwrap(MP));
+  /* The module provider is now actually a module. */
+  LLVMAddModule(EE, reinterpret_cast<LLVMModuleRef>(MP));
 }
 
-int LLVMRemoveModuleProvider(LLVMExecutionEngineRef EE,
-                             LLVMModuleProviderRef MP,
-                             LLVMModuleRef *OutMod, char **OutError) {
-  std::string Error;
-  if (Module *Gone = unwrap(EE)->removeModuleProvider(unwrap(MP), &Error)) {
-    *OutMod = wrap(Gone);
-    return 0;
-  }
-  if (OutError)
-    *OutError = strdup(Error.c_str());
-  return 1;
+LLVMBool LLVMRemoveModule(LLVMExecutionEngineRef EE, LLVMModuleRef M,
+                          LLVMModuleRef *OutMod, char **OutError) {
+  Module *Mod = unwrap(M);
+  unwrap(EE)->removeModule(Mod);
+  *OutMod = wrap(Mod);
+  return 0;
 }
 
-int LLVMFindFunction(LLVMExecutionEngineRef EE, const char *Name,
-                     LLVMValueRef *OutFn) {
+LLVMBool LLVMRemoveModuleProvider(LLVMExecutionEngineRef EE,
+                                  LLVMModuleProviderRef MP,
+                                  LLVMModuleRef *OutMod, char **OutError) {
+  /* The module provider is now actually a module. */
+  return LLVMRemoveModule(EE, reinterpret_cast<LLVMModuleRef>(MP), OutMod,
+                          OutError);
+}
+
+LLVMBool LLVMFindFunction(LLVMExecutionEngineRef EE, const char *Name,
+                          LLVMValueRef *OutFn) {
   if (Function *F = unwrap(EE)->FindFunctionNamed(Name)) {
     *OutFn = wrap(F);
     return 0;

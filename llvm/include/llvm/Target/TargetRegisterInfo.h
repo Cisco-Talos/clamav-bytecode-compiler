@@ -169,7 +169,7 @@ public:
     return I;
   }
 
-  /// hasSubClass - return true if the the specified TargetRegisterClass
+  /// hasSubClass - return true if the specified TargetRegisterClass
   /// is a proper subset of this TargetRegisterClass.
   bool hasSubClass(const TargetRegisterClass *cs) const {
     for (int i = 0; SubClasses[i] != NULL; ++i)
@@ -587,6 +587,17 @@ public:
     return !hasFP(MF);
   }
 
+  /// canSimplifyCallFramePseudos - When possible, it's best to simplify the
+  /// call frame pseudo ops before doing frame index elimination. This is
+  /// possible only when frame index references between the pseudos won't
+  /// need adjusted for the call frame adjustments. Normally, that's true
+  /// if the function has a reserved call frame or a frame pointer. Some
+  /// targets (Thumb2, for example) may have more complicated criteria,
+  /// however, and can override this behavior.
+  virtual bool canSimplifyCallFramePseudos(MachineFunction &MF) const {
+    return hasReservedCallFrame(MF) || hasFP(MF);
+  }
+
   /// hasReservedSpillSlot - Return true if target has reserved a spill slot in
   /// the stack frame of the given function for the specified register. e.g. On
   /// x86, if the frame register is required, the first fixed stack object is
@@ -664,7 +675,7 @@ public:
   /// frame indices from instructions which may use them.  The instruction
   /// referenced by the iterator contains an MO_FrameIndex operand which must be
   /// eliminated by this method.  This method may modify or replace the
-  /// specified instruction, as long as it keeps the iterator pointing the the
+  /// specified instruction, as long as it keeps the iterator pointing at the
   /// finished product. SPAdj is the SP adjustment due to call frame setup
   /// instruction.
   ///
@@ -696,12 +707,12 @@ public:
 
   /// getFrameIndexOffset - Returns the displacement from the frame register to
   /// the stack frame of the specified index.
-  virtual int getFrameIndexOffset(MachineFunction &MF, int FI) const;
+  virtual int getFrameIndexOffset(const MachineFunction &MF, int FI) const;
 
   /// getFrameIndexReference - This method should return the base register
   /// and offset used to reference a frame index location. The offset is
   /// returned directly, and the base register is returned via FrameReg.
-  virtual int getFrameIndexReference(MachineFunction &MF, int FI,
+  virtual int getFrameIndexReference(const MachineFunction &MF, int FI,
                                      unsigned &FrameReg) const {
     // By default, assume all frame indices are referenced via whatever
     // getFrameRegister() says. The target can override this if it's doing

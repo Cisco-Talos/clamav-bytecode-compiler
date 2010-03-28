@@ -33,6 +33,7 @@ namespace llvm {
 class ArrayType;
 class IntegerType;
 class StructType;
+class UnionType;
 class PointerType;
 class VectorType;
 
@@ -275,6 +276,12 @@ public:
     return Val.isZero() && Val.isNegative();
   }
 
+  /// isZero - Return true if the value is positive or negative zero.
+  bool isZero() const { return Val.isZero(); }
+
+  /// isNaN - Return true if the value is a NaN.
+  bool isNaN() const { return Val.isNaN(); }
+
   /// isExactlyValue - We don't rely on operator== working on double values, as
   /// it returns true for things that are clearly not equal, like -0.0 and 0.0.
   /// As such, this method can be used to do an exact bit-for-bit comparison of
@@ -453,6 +460,50 @@ struct OperandTraits<ConstantStruct> : public VariadicOperandTraits<> {
 DEFINE_TRANSPARENT_CASTED_OPERAND_ACCESSORS(ConstantStruct, Constant)
 
 //===----------------------------------------------------------------------===//
+// ConstantUnion - Constant Union Declarations
+//
+class ConstantUnion : public Constant {
+  friend struct ConstantCreator<ConstantUnion, UnionType, Constant*>;
+  ConstantUnion(const ConstantUnion &);      // DO NOT IMPLEMENT
+protected:
+  ConstantUnion(const UnionType *T, Constant* Val);
+public:
+  // ConstantUnion accessors
+  static Constant *get(const UnionType *T, Constant* V);
+
+  /// Transparently provide more efficient getOperand methods.
+  DECLARE_TRANSPARENT_OPERAND_ACCESSORS(Constant);
+  
+  /// getType() specialization - Reduce amount of casting...
+  ///
+  inline const UnionType *getType() const {
+    return reinterpret_cast<const UnionType*>(Value::getType());
+  }
+
+  /// isNullValue - Return true if this is the value that would be returned by
+  /// getNullValue.  This always returns false because zero structs are always
+  /// created as ConstantAggregateZero objects.
+  virtual bool isNullValue() const {
+    return false;
+  }
+
+  virtual void destroyConstant();
+  virtual void replaceUsesOfWithOnConstant(Value *From, Value *To, Use *U);
+
+  /// Methods for support type inquiry through isa, cast, and dyn_cast:
+  static inline bool classof(const ConstantUnion *) { return true; }
+  static bool classof(const Value *V) {
+    return V->getValueID() == ConstantUnionVal;
+  }
+};
+
+template <>
+struct OperandTraits<ConstantUnion> : public FixedNumOperandTraits<1> {
+};
+
+DEFINE_TRANSPARENT_CASTED_OPERAND_ACCESSORS(ConstantUnion, Constant)
+
+//===----------------------------------------------------------------------===//
 /// ConstantVector - Constant Vector Declarations
 ///
 class ConstantVector : public Constant {
@@ -605,7 +656,7 @@ protected:
   ConstantExpr(const Type *ty, unsigned Opcode, Use *Ops, unsigned NumOps)
     : Constant(ty, ConstantExprVal, Ops, NumOps) {
     // Operation type (an Instruction opcode) is stored as the SubclassData.
-    SubclassData = Opcode;
+    setValueSubclassData(Opcode);
   }
 
   // These private methods are used by the type resolution code to create
@@ -644,19 +695,24 @@ public:
   ///
 
   /// getAlignOf constant expr - computes the alignment of a type in a target
-  /// independent way (Note: the return type is an i32; Note: assumes that i8
-  /// is byte aligned).
+  /// independent way (Note: the return type is an i64).
   static Constant *getAlignOf(const Type* Ty);
   
-  /// getSizeOf constant expr - computes the size of a type in a target
-  /// independent way (Note: the return type is an i64).
+  /// getSizeOf constant expr - computes the (alloc) size of a type (in
+  /// address-units, not bits) in a target independent way (Note: the return
+  /// type is an i64).
   ///
   static Constant *getSizeOf(const Type* Ty);
 
-  /// getOffsetOf constant expr - computes the offset of a field in a target
-  /// independent way (Note: the return type is an i64).
+  /// getOffsetOf constant expr - computes the offset of a struct field in a 
+  /// target independent way (Note: the return type is an i64).
   ///
-  static Constant *getOffsetOf(const StructType* Ty, unsigned FieldNo);
+  static Constant *getOffsetOf(const StructType* STy, unsigned FieldNo);
+
+  /// getOffsetOf constant expr - This is a generalized form of getOffsetOf,
+  /// which supports any aggregate type, and any Constant index.
+  ///
+  static Constant *getOffsetOf(const Type* Ty, Constant *FieldNo);
   
   static Constant *getNeg(Constant *C);
   static Constant *getFNeg(Constant *C);
@@ -693,9 +749,13 @@ public:
   static Constant *getBitCast (Constant *C, const Type *Ty);
 
   static Constant *getNSWNeg(Constant *C);
+  static Constant *getNUWNeg(Constant *C);
   static Constant *getNSWAdd(Constant *C1, Constant *C2);
+  static Constant *getNUWAdd(Constant *C1, Constant *C2);
   static Constant *getNSWSub(Constant *C1, Constant *C2);
+  static Constant *getNUWSub(Constant *C1, Constant *C2);
   static Constant *getNSWMul(Constant *C1, Constant *C2);
+  static Constant *getNUWMul(Constant *C1, Constant *C2);
   static Constant *getExactSDiv(Constant *C1, Constant *C2);
 
   /// Transparently provide more efficient getOperand methods.
@@ -814,7 +874,7 @@ public:
   virtual bool isNullValue() const { return false; }
 
   /// getOpcode - Return the opcode at the root of this constant expression
-  unsigned getOpcode() const { return SubclassData; }
+  unsigned getOpcode() const { return getSubclassDataFromValue(); }
 
   /// getPredicate - Return the ICMP or FCMP predicate value. Assert if this is
   /// not an ICMP or FCMP constant expression.
@@ -846,6 +906,13 @@ public:
   static inline bool classof(const ConstantExpr *) { return true; }
   static inline bool classof(const Value *V) {
     return V->getValueID() == ConstantExprVal;
+  }
+  
+private:
+  // Shadow Value::setValueSubclassData with a private forwarding method so that
+  // subclasses cannot accidentally use it.
+  void setValueSubclassData(unsigned short D) {
+    Value::setValueSubclassData(D);
   }
 };
 

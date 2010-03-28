@@ -153,6 +153,16 @@ namespace {
 
     virtual void deleteValue(Value *V) {}
     virtual void copyValue(Value *From, Value *To) {}
+    
+    /// getAdjustedAnalysisPointer - This method is used when a pass implements
+    /// an analysis interface through multiple inheritance.  If needed, it should
+    /// override this to adjust the this pointer as needed for the specified pass
+    /// info.
+    virtual void *getAdjustedAnalysisPointer(const PassInfo *PI) {
+      if (PI->isPassID(&AliasAnalysis::ID))
+        return (AliasAnalysis*)this;
+      return this;
+    }
   };
 }  // End of anonymous namespace
 
@@ -192,6 +202,16 @@ namespace {
     /// global) or not.
     bool pointsToConstantMemory(const Value *P);
 
+    /// getAdjustedAnalysisPointer - This method is used when a pass implements
+    /// an analysis interface through multiple inheritance.  If needed, it should
+    /// override this to adjust the this pointer as needed for the specified pass
+    /// info.
+    virtual void *getAdjustedAnalysisPointer(const PassInfo *PI) {
+      if (PI->isPassID(&AliasAnalysis::ID))
+        return (AliasAnalysis*)this;
+      return this;
+    }
+    
   private:
     // VisitedPHIs - Track PHI nodes visited by a aliasCheck() call.
     SmallPtrSet<const Value*, 16> VisitedPHIs;
@@ -270,7 +290,7 @@ BasicAliasAnalysis::getModRefInfo(CallSite CS, Value *P, unsigned Size) {
     for (CallSite::arg_iterator CI = CS.arg_begin(), CE = CS.arg_end();
          CI != CE; ++CI, ++ArgNo) {
       // Only look at the no-capture pointer arguments.
-      if (!isa<PointerType>((*CI)->getType()) ||
+      if (!(*CI)->getType()->isPointerTy() ||
           !CS.paramHasAttr(ArgNo+1, Attribute::NoCapture))
         continue;
       
@@ -642,7 +662,7 @@ BasicAliasAnalysis::aliasCheck(const Value *V1, unsigned V1Size,
   // Are we checking for alias of the same value?
   if (V1 == V2) return MustAlias;
 
-  if (!isa<PointerType>(V1->getType()) || !isa<PointerType>(V2->getType()))
+  if (!V1->getType()->isPointerTy() || !V2->getType()->isPointerTy())
     return NoAlias;  // Scalars cannot alias each other
 
   // Figure out what objects these things are pointing to if we can.

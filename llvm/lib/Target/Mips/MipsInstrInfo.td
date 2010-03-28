@@ -28,8 +28,8 @@ def SDT_MipsCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>]>;
 def SDT_MipsCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 
 // Call
-def MipsJmpLink : SDNode<"MipsISD::JmpLink",SDT_MipsJmpLink, [SDNPHasChain,
-                         SDNPOutFlag]>;
+def MipsJmpLink : SDNode<"MipsISD::JmpLink",SDT_MipsJmpLink, 
+                         [SDNPHasChain, SDNPOutFlag, SDNPOptInFlag]>;
 
 // Hi and Lo nodes are used to handle global addresses. Used on 
 // MipsISelLowering to lower stuff like GlobalAddress, ExternalSymbol 
@@ -120,7 +120,7 @@ def immZExt5 : PatLeaf<(imm), [{
 
 // Mips Address Mode! SDNode frameindex could possibily be a match
 // since load and store instructions from stack used it.
-def addr : ComplexPattern<i32, 2, "SelectAddr", [frameindex], []>;
+def addr : ComplexPattern<iPTR, 2, "SelectAddr", [frameindex], []>;
 
 //===----------------------------------------------------------------------===//
 // Instructions specific format
@@ -300,13 +300,12 @@ class JumpFR<bits<6> op, bits<6> func, string instr_asm>:
 // Jump and Link (Call)
 let isCall=1, hasDelaySlot=1,
   // All calls clobber the non-callee saved registers...
-  Defs = [AT, V0, V1, A0, A1, A2, A3, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, 
-          K0, K1, F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13,
-          F14, F15, F16, F17, F18, F19], Uses = [GP] in {
+  Defs = [AT, V0, V1, A0, A1, A2, A3, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9,
+          K0, K1, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9], Uses = [GP] in {
   class JumpLink<bits<6> op, string instr_asm>:
     FJ< op,
         (outs),
-        (ins calltarget:$target),
+        (ins calltarget:$target, variable_ops),
         !strconcat(instr_asm, "\t$target"),
         [(MipsJmpLink imm:$target)], IIBranch>;
 
@@ -315,14 +314,14 @@ let isCall=1, hasDelaySlot=1,
     FR< op,
         func,
         (outs),
-        (ins CPURegs:$rs),
+        (ins CPURegs:$rs, variable_ops),
         !strconcat(instr_asm, "\t$rs"),
         [(MipsJmpLink CPURegs:$rs)], IIBranch>;
 
   class BranchLink<string instr_asm>:
     FI< 0x1,
         (outs),
-        (ins CPURegs:$rs, brtarget:$target),
+        (ins CPURegs:$rs, brtarget:$target, variable_ops),
         !strconcat(instr_asm, "\t$rs, $target"),
         [], IIBranch>;
 }
@@ -593,8 +592,8 @@ def : Pat<(MipsJmpLink (i32 tglobaladdr:$dst)),
           (JAL tglobaladdr:$dst)>;
 def : Pat<(MipsJmpLink (i32 texternalsym:$dst)),
           (JAL texternalsym:$dst)>;
-def : Pat<(MipsJmpLink CPURegs:$dst),
-          (JALR CPURegs:$dst)>;
+//def : Pat<(MipsJmpLink CPURegs:$dst),
+//          (JALR CPURegs:$dst)>;
 
 // hi/lo relocs
 def : Pat<(MipsHi tglobaladdr:$in), (LUi tglobaladdr:$in)>;

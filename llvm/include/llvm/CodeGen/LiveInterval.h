@@ -320,7 +320,7 @@ namespace llvm {
     /// advanceTo - Advance the specified iterator to point to the LiveRange
     /// containing the specified position, or end() if the position is past the
     /// end of the interval.  If no LiveRange contains this position, but the
-    /// position is in a hole, this method returns an iterator pointing the the
+    /// position is in a hole, this method returns an iterator pointing to the
     /// LiveRange immediately after the hole.
     iterator advanceTo(iterator I, SlotIndex Pos) {
       if (Pos >= endIndex())
@@ -568,6 +568,16 @@ namespace llvm {
     /// getSize - Returns the sum of sizes of all the LiveRange's.
     ///
     unsigned getSize() const;
+
+    /// isSpillable - Can this interval be spilled?
+    bool isSpillable() const {
+      return weight != HUGE_VALF;
+    }
+
+    /// markNotSpillable - Mark interval as not spillable
+    void markNotSpillable() {
+      weight = HUGE_VALF;
+    }
 
     /// ComputeJoinedWeight - Set the weight of a live interval after
     /// Other has been merged into it.

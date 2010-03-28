@@ -19,9 +19,9 @@
 #include "llvm/ADT/ilist.h"
 #include "llvm/ADT/ilist_node.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/Target/TargetInstrDesc.h"
+#include "llvm/Target/TargetOpcodes.h"
 #include "llvm/Support/DebugLoc.h"
 #include <vector>
 
@@ -41,6 +41,14 @@ class MachineInstr : public ilist_node<MachineInstr> {
 public:
   typedef MachineMemOperand **mmo_iterator;
 
+  /// Flags to specify different kinds of comments to output in
+  /// assembly code.  These flags carry semantic information not
+  /// otherwise easily derivable from the IR text.
+  ///
+  enum CommentFlag {
+    ReloadReuse = 0x1
+  };
+  
 private:
   const TargetInstrDesc *TID;           // Instruction descriptor.
   unsigned short NumImplicitOps;        // Number of implicit operands (which
@@ -121,14 +129,14 @@ public:
 
   /// getAsmPrinterFlag - Return whether an AsmPrinter flag is set.
   ///
-  bool getAsmPrinterFlag(AsmPrinter::CommentFlag Flag) const {
+  bool getAsmPrinterFlag(CommentFlag Flag) const {
     return AsmPrinterFlags & Flag;
   }
 
   /// setAsmPrinterFlag - Set a flag for the AsmPrinter.
   ///
-  void setAsmPrinterFlag(unsigned short Flag) {
-    AsmPrinterFlags |= Flag;
+  void setAsmPrinterFlag(CommentFlag Flag) {
+    AsmPrinterFlags |= (unsigned short)Flag;
   }
 
   /// getDebugLoc - Returns the debug location id of this MachineInstr.
@@ -171,17 +179,16 @@ public:
     return MemRefsEnd - MemRefs == 1;
   }
 
+  enum MICheckType {
+    CheckDefs,      // Check all operands for equality
+    IgnoreDefs,     // Ignore all definitions
+    IgnoreVRegDefs  // Ignore virtual register definitions
+  };
+
   /// isIdenticalTo - Return true if this instruction is identical to (same
   /// opcode and same operands as) the specified instruction.
-  bool isIdenticalTo(const MachineInstr *Other) const {
-    if (Other->getOpcode() != getOpcode() ||
-        Other->getNumOperands() != getNumOperands())
-      return false;
-    for (unsigned i = 0, e = getNumOperands(); i != e; ++i)
-      if (!getOperand(i).isIdenticalTo(Other->getOperand(i)))
-        return false;
-    return true;
-  }
+  bool isIdenticalTo(const MachineInstr *Other,
+                     MICheckType Check = CheckDefs) const;
 
   /// removeFromParent - This method unlinks 'this' from the containing basic
   /// block, and returns it, but does not delete it.
@@ -193,12 +200,31 @@ public:
 
   /// isLabel - Returns true if the MachineInstr represents a label.
   ///
-  bool isLabel() const;
-
-  /// isDebugLabel - Returns true if the MachineInstr represents a debug label.
-  ///
-  bool isDebugLabel() const;
-
+  bool isLabel() const {
+    return getOpcode() == TargetOpcode::DBG_LABEL ||
+           getOpcode() == TargetOpcode::EH_LABEL ||
+           getOpcode() == TargetOpcode::GC_LABEL;
+  }
+  
+  bool isDebugLabel() const { return getOpcode() == TargetOpcode::DBG_LABEL; }
+  bool isEHLabel() const { return getOpcode() == TargetOpcode::EH_LABEL; }
+  bool isGCLabel() const { return getOpcode() == TargetOpcode::GC_LABEL; }
+  bool isDebugValue() const { return getOpcode() == TargetOpcode::DBG_VALUE; }
+  
+  bool isPHI() const { return getOpcode() == TargetOpcode::PHI; }
+  bool isKill() const { return getOpcode() == TargetOpcode::KILL; }
+  bool isImplicitDef() const { return getOpcode()==TargetOpcode::IMPLICIT_DEF; }
+  bool isInlineAsm() const { return getOpcode() == TargetOpcode::INLINEASM; }
+  bool isExtractSubreg() const {
+    return getOpcode() == TargetOpcode::EXTRACT_SUBREG;
+  }
+  bool isInsertSubreg() const {
+    return getOpcode() == TargetOpcode::INSERT_SUBREG;
+  }
+  bool isSubregToReg() const {
+    return getOpcode() == TargetOpcode::SUBREG_TO_REG;
+  }
+  
   /// readsRegister - Return true if the MachineInstr reads the specified
   /// register. If TargetRegisterInfo is passed, then it also checks if there
   /// is a read of a super-register.
@@ -288,7 +314,7 @@ public:
   bool addRegisterKilled(unsigned IncomingReg,
                          const TargetRegisterInfo *RegInfo,
                          bool AddIfNotFound = false);
-  
+
   /// addRegisterDead - We have determined MI defined a register without a use.
   /// Look for the operand that defines it and mark it as IsDead. If
   /// AddIfNotFound is true, add a implicit operand if it's not found. Returns
@@ -296,16 +322,21 @@ public:
   bool addRegisterDead(unsigned IncomingReg, const TargetRegisterInfo *RegInfo,
                        bool AddIfNotFound = false);
 
+  /// addRegisterDefined - We have determined MI defines a register. Make sure
+  /// there is an operand defining Reg.
+  void addRegisterDefined(unsigned IncomingReg,
+                          const TargetRegisterInfo *RegInfo);
+
   /// isSafeToMove - Return true if it is safe to move this instruction. If
   /// SawStore is set to true, it means that there is a store (or call) between
   /// the instruction's location and its intended destination.
-  bool isSafeToMove(const TargetInstrInfo *TII, bool &SawStore,
-                    AliasAnalysis *AA) const;
+  bool isSafeToMove(const TargetInstrInfo *TII, AliasAnalysis *AA,
+                    bool &SawStore) const;
 
   /// isSafeToReMat - Return true if it's safe to rematerialize the specified
   /// instruction which defined the specified register instead of copying it.
-  bool isSafeToReMat(const TargetInstrInfo *TII, unsigned DstReg,
-                     AliasAnalysis *AA) const;
+  bool isSafeToReMat(const TargetInstrInfo *TII, AliasAnalysis *AA,
+                     unsigned DstReg) const;
 
   /// hasVolatileMemoryRef - Return true if this instruction may have a
   /// volatile memory reference, or if the information describing the
@@ -315,7 +346,7 @@ public:
 
   /// isInvariantLoad - Return true if this instruction is loading from a
   /// location whose value is invariant across the function.  For example,
-  /// loading a value from the constant pool or from from the argument area of
+  /// loading a value from the constant pool or from the argument area of
   /// a function if it does not change.  This should only return true of *all*
   /// loads the instruction does are invariant (if it does multiple loads).
   bool isInvariantLoad(AliasAnalysis *AA) const;
@@ -386,6 +417,30 @@ private:
   /// this instruction from their respective use lists.  This requires that the
   /// operands not be on their use lists yet.
   void AddRegOperandsToUseLists(MachineRegisterInfo &RegInfo);
+};
+
+/// MachineInstrExpressionTrait - Special DenseMapInfo traits to compare
+/// MachineInstr* by *value* of the instruction rather than by pointer value.
+/// The hashing and equality testing functions ignore definitions so this is
+/// useful for CSE, etc.
+struct MachineInstrExpressionTrait : DenseMapInfo<MachineInstr*> {
+  static inline MachineInstr *getEmptyKey() {
+    return 0;
+  }
+
+  static inline MachineInstr *getTombstoneKey() {
+    return reinterpret_cast<MachineInstr*>(-1);
+  }
+
+  static unsigned getHashValue(const MachineInstr* const &MI);
+
+  static bool isEqual(const MachineInstr* const &LHS,
+                      const MachineInstr* const &RHS) {
+    if (RHS == getEmptyKey() || RHS == getTombstoneKey() ||
+        LHS == getEmptyKey() || LHS == getTombstoneKey())
+      return LHS == RHS;
+    return LHS->isIdenticalTo(RHS, MachineInstr::IgnoreVRegDefs);
+  }
 };
 
 //===----------------------------------------------------------------------===//

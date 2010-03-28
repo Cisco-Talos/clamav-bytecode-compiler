@@ -478,7 +478,7 @@ public:
     for (iterator I = begin(), E = end(); I != E; ++I)
       (*I)->print(OS, Depth+2);
   }
-  
+
 protected:
   friend class LoopInfoBase<BlockT, LoopT>;
   explicit LoopBase(BlockT *BB) : ParentLoop(0) {
@@ -553,6 +553,10 @@ public:
   /// normal unsigned value, if possible. Returns 0 if the trip count is unknown
   /// of not constant. Will also return 0 if the trip count is very large
   /// (>= 2^32)
+  ///
+  /// The IndVarSimplify pass transforms loops to have a form that this
+  /// function easily understands.
+  ///
   unsigned getSmallConstantTripCount() const;
 
   /// getSmallConstantTripMultiple - Returns the largest constant divisor of the
@@ -588,6 +592,8 @@ public:
   /// block, return that block. Otherwise return null.
   BasicBlock *getUniqueExitBlock() const;
 
+  void dump() const;
+  
 private:
   friend class LoopInfoBase<BasicBlock, Loop>;
   explicit Loop(BasicBlock *BB) : LoopBase<BasicBlock, Loop>(BB) {}
@@ -829,7 +835,7 @@ public:
             } else if (BlockLoop != Child) {
               LoopT *SubLoop = BlockLoop;
               // Reparent all of the blocks which used to belong to BlockLoops
-              for (unsigned j = 0, e = SubLoop->Blocks.size(); j != e; ++j)
+              for (unsigned j = 0, f = SubLoop->Blocks.size(); j != f; ++j)
                 ContainingLoops[SubLoop->Blocks[j]] = Child;
 
               // There is already a loop which contains this block, that means

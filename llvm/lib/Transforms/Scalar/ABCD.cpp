@@ -451,7 +451,7 @@ bool ABCD::runOnFunction(Function &F) {
   modified = false;
   createSSI(F);
   executeABCD(F);
-  DEBUG(inequality_graph.printGraph(errs(), F));
+  DEBUG(inequality_graph.printGraph(dbgs(), F));
   removePhis();
 
   inequality_graph.clear();
@@ -505,7 +505,7 @@ void ABCD::executeABCD(Function &F) {
       continue;
 
     ICmpInst *ICI = dyn_cast<ICmpInst>(TI->getOperand(0));
-    if (!ICI || !isa<IntegerType>(ICI->getOperand(0)->getType()))
+    if (!ICI || !ICI->getOperand(0)->getType()->isIntegerTy())
       continue;
 
     createConstraintCmpInst(ICI, TI);
@@ -713,7 +713,7 @@ void ABCD::createConstraintCmpInst(ICmpInst *ICI, TerminatorInst *TI) {
   Value *V_op1 = ICI->getOperand(0);
   Value *V_op2 = ICI->getOperand(1);
 
-  if (!isa<IntegerType>(V_op1->getType()))
+  if (!V_op1->getType()->isIntegerTy())
     return;
 
   Instruction *I_op1 = dyn_cast<Instruction>(V_op1);

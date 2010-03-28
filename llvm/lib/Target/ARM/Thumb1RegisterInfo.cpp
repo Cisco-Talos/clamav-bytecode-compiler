@@ -450,9 +450,9 @@ Thumb1RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     Offset -= AFI->getGPRCalleeSavedArea1Offset();
   else if (AFI->isGPRCalleeSavedArea2Frame(FrameIndex))
     Offset -= AFI->getGPRCalleeSavedArea2Offset();
-  else if (hasFP(MF)) {
-    assert(SPAdj == 0 && "Unexpected");
-    // There is alloca()'s in this function, must reference off the frame
+  else if (MF.getFrameInfo()->hasVarSizedObjects()) {
+    assert(SPAdj == 0 && hasFP(MF) && "Unexpected");
+    // There are alloca()'s in this function, must reference off the frame
     // pointer instead.
     FrameReg = getFrameRegister(MF);
     Offset -= AFI->getFramePtrSpillOffset();
@@ -479,11 +479,15 @@ Thumb1RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
              "Thumb add/sub sp, #imm immediate must be multiple of 4!");
     }
 
-    if (Offset == 0) {
+    unsigned PredReg;
+    if (Offset == 0 && getInstrPredicate(&MI, PredReg) == ARMCC::AL) {
       // Turn it into a move.
       MI.setDesc(TII.get(ARM::tMOVgpr2tgpr));
       MI.getOperand(i).ChangeToRegister(FrameReg, false);
-      MI.RemoveOperand(i+1);
+      // Remove offset and remaining explicit predicate operands.
+      do MI.RemoveOperand(i+1);
+      while (MI.getNumOperands() > i+1 &&
+             (!MI.getOperand(i+1).isReg() || !MI.getOperand(i+1).isImm()));
       return 0;
     }
 
@@ -774,9 +778,19 @@ static bool isCalleeSavedRegister(unsigned Reg, const unsigned *CSRegs) {
 }
 
 static bool isCSRestore(MachineInstr *MI, const unsigned *CSRegs) {
-  return (MI->getOpcode() == ARM::tRestore &&
-          MI->getOperand(1).isFI() &&
-          isCalleeSavedRegister(MI->getOperand(0).getReg(), CSRegs));
+  if (MI->getOpcode() == ARM::tRestore &&
+      MI->getOperand(1).isFI() &&
+      isCalleeSavedRegister(MI->getOperand(0).getReg(), CSRegs))
+    return true;
+  else if (MI->getOpcode() == ARM::tPOP) {
+    // The first three operands are predicates and such. The last two are
+    // imp-def and imp-use of SP. Check everything in between.
+    for (int i = 3, e = MI->getNumOperands() - 2; i != e; ++i)
+      if (!isCalleeSavedRegister(MI->getOperand(i).getReg(), CSRegs))
+        return false;
+    return true;
+  }
+  return false;
 }
 
 void Thumb1RegisterInfo::emitEpilogue(MachineFunction &MF,
@@ -790,13 +804,13 @@ void Thumb1RegisterInfo::emitEpilogue(MachineFunction &MF,
   ARMFunctionInfo *AFI = MF.getInfo<ARMFunctionInfo>();
   unsigned VARegSaveSize = AFI->getVarArgsRegSaveSize();
   int NumBytes = (int)MFI->getStackSize();
+  const unsigned *CSRegs = getCalleeSavedRegs();
 
   if (!AFI->hasStackFrame()) {
     if (NumBytes != 0)
       emitSPUpdate(MBB, MBBI, TII, dl, *this, NumBytes);
   } else {
     // Unwind MBBI to point to first LDR / VLDRD.
-    const unsigned *CSRegs = getCalleeSavedRegs();
     if (MBBI != MBB.begin()) {
       do
         --MBBI;
@@ -832,6 +846,9 @@ void Thumb1RegisterInfo::emitEpilogue(MachineFunction &MF,
   }
 
   if (VARegSaveSize) {
+    // Move back past the callee-saved register restoration
+    while (MBBI != MBB.end() && isCSRestore(MBBI, CSRegs))
+      ++MBBI;
     // Epilogue for vararg functions: pop LR to R3 and branch off it.
     AddDefaultPred(BuildMI(MBB, MBBI, dl, TII.get(ARM::tPOP)))
       .addReg(0) // No write back.
@@ -841,6 +858,7 @@ void Thumb1RegisterInfo::emitEpilogue(MachineFunction &MF,
 
     BuildMI(MBB, MBBI, dl, TII.get(ARM::tBX_RET_vararg))
       .addReg(ARM::R3, RegState::Kill);
+    // erase the old tBX_RET instruction
     MBB.erase(MBBI);
   }
 }

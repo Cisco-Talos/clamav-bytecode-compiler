@@ -19,7 +19,6 @@
 #include "llvm/Instructions.h"
 #include "llvm/Operator.h"
 #include "llvm/Module.h"
-#include "llvm/Metadata.h"
 #include "llvm/ValueSymbolTable.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/Debug.h"
@@ -41,27 +40,20 @@ static inline const Type *checkType(const Type *Ty) {
 }
 
 Value::Value(const Type *ty, unsigned scid)
-  : SubclassID(scid), HasValueHandle(0), HasMetadata(0),
+  : SubclassID(scid), HasValueHandle(0),
     SubclassOptionalData(0), SubclassData(0), VTy(checkType(ty)),
     UseList(0), Name(0) {
   if (isa<CallInst>(this) || isa<InvokeInst>(this))
-    assert((VTy->isFirstClassType() ||
-            VTy == Type::getVoidTy(ty->getContext()) ||
-            isa<OpaqueType>(ty) || VTy->getTypeID() == Type::StructTyID) &&
+    assert((VTy->isFirstClassType() || VTy->isVoidTy() ||
+            ty->isOpaqueTy() || VTy->isStructTy()) &&
            "invalid CallInst  type!");
   else if (!isa<Constant>(this) && !isa<BasicBlock>(this))
-    assert((VTy->isFirstClassType() ||
-            VTy == Type::getVoidTy(ty->getContext()) ||
-           isa<OpaqueType>(ty)) &&
+    assert((VTy->isFirstClassType() || VTy->isVoidTy() ||
+            ty->isOpaqueTy()) &&
            "Cannot create non-first-class values except for constants!");
 }
 
 Value::~Value() {
-  if (HasMetadata) {
-    LLVMContext &Context = getContext();
-    Context.pImpl->TheMetadata.ValueIsDeleted(this);
-  }
-
   // Notify all ValueHandles (if present) that this value is going away.
   if (HasValueHandle)
     ValueHandleBase::ValueIsDeleted(this);
@@ -74,9 +66,9 @@ Value::~Value() {
   // a <badref>
   //
   if (!use_empty()) {
-    errs() << "While deleting: " << *VTy << " %" << getNameStr() << "\n";
+    dbgs() << "While deleting: " << *VTy << " %" << getNameStr() << "\n";
     for (use_iterator I = use_begin(), E = use_end(); I != E; ++I)
-      errs() << "Use still stuck around after Def is destroyed:"
+      dbgs() << "Use still stuck around after Def is destroyed:"
            << **I << "\n";
   }
 #endif
@@ -178,17 +170,13 @@ void Value::setName(const Twine &NewName) {
     return;
 
   SmallString<256> NameData;
-  NewName.toVector(NameData);
-
-  const char *NameStr = NameData.data();
-  unsigned NameLen = NameData.size();
+  StringRef NameRef = NewName.toStringRef(NameData);
 
   // Name isn't changing?
-  if (getName() == StringRef(NameStr, NameLen))
+  if (getName() == NameRef)
     return;
 
-  assert(getType() != Type::getVoidTy(getContext()) &&
-         "Cannot assign a name to void values!");
+  assert(!getType()->isVoidTy() && "Cannot assign a name to void values!");
 
   // Get the symbol table to update for this object.
   ValueSymbolTable *ST;
@@ -196,7 +184,7 @@ void Value::setName(const Twine &NewName) {
     return;  // Cannot set a name on this value (e.g. constant).
 
   if (!ST) { // No symbol table to update?  Just do the change.
-    if (NameLen == 0) {
+    if (NameRef.empty()) {
       // Free the name for this value.
       Name->Destroy();
       Name = 0;
@@ -210,7 +198,7 @@ void Value::setName(const Twine &NewName) {
     // then reallocated.
 
     // Create the new name.
-    Name = ValueName::Create(NameStr, NameStr+NameLen);
+    Name = ValueName::Create(NameRef.begin(), NameRef.end());
     Name->setValue(this);
     return;
   }
@@ -223,12 +211,12 @@ void Value::setName(const Twine &NewName) {
     Name->Destroy();
     Name = 0;
 
-    if (NameLen == 0)
+    if (NameRef.empty())
       return;
   }
 
   // Name is changing to something new.
-  Name = ST->createValueName(StringRef(NameStr, NameLen), this);
+  Name = ST->createValueName(NameRef, this);
 }
 
 
@@ -306,10 +294,6 @@ void Value::uncheckedReplaceAllUsesWith(Value *New) {
   // Notify all ValueHandles (if present) that this value is going away.
   if (HasValueHandle)
     ValueHandleBase::ValueIsRAUWd(this, New);
-  if (HasMetadata) {
-    LLVMContext &Context = getContext();
-    Context.pImpl->TheMetadata.ValueIsRAUWd(this, New);
-  }
 
   while (!use_empty()) {
     Use &U = *UseList;
@@ -336,7 +320,7 @@ void Value::replaceAllUsesWith(Value *New) {
 }
 
 Value *Value::stripPointerCasts() {
-  if (!isa<PointerType>(getType()))
+  if (!getType()->isPointerTy())
     return this;
   Value *V = this;
   do {
@@ -353,16 +337,15 @@ Value *Value::stripPointerCasts() {
     } else {
       return V;
     }
-    assert(isa<PointerType>(V->getType()) && "Unexpected operand type!");
+    assert(V->getType()->isPointerTy() && "Unexpected operand type!");
   } while (1);
 }
 
-Value *Value::getUnderlyingObject() {
-  if (!isa<PointerType>(getType()))
+Value *Value::getUnderlyingObject(unsigned MaxLookup) {
+  if (!getType()->isPointerTy())
     return this;
   Value *V = this;
-  unsigned MaxLookup = 6;
-  do {
+  for (unsigned Count = 0; MaxLookup == 0 || Count < MaxLookup; ++Count) {
     if (GEPOperator *GEP = dyn_cast<GEPOperator>(V)) {
       V = GEP->getPointerOperand();
     } else if (Operator::getOpcode(V) == Instruction::BitCast) {
@@ -374,8 +357,8 @@ Value *Value::getUnderlyingObject() {
     } else {
       return V;
     }
-    assert(isa<PointerType>(V->getType()) && "Unexpected operand type!");
-  } while (--MaxLookup);
+    assert(V->getType()->isPointerTy() && "Unexpected operand type!");
+  }
   return V;
 }
 
@@ -532,7 +515,7 @@ void ValueHandleBase::ValueIsDeleted(Value *V) {
   // All callbacks, weak references, and assertingVHs should be dropped by now.
   if (V->HasValueHandle) {
 #ifndef NDEBUG      // Only in +Asserts mode...
-    errs() << "While deleting: " << *V->getType() << " %" << V->getNameStr()
+    dbgs() << "While deleting: " << *V->getType() << " %" << V->getNameStr()
            << "\n";
     if (pImpl->ValueHandles[V]->getKind() == Assert)
       llvm_unreachable("An asserting value handle still pointed to this"

@@ -22,8 +22,8 @@ define i1 @test1(i32 %A) {
 ; PR1014
 define i32 @test2(i32 %tmp1) {
 ; CHECK:      @test2
-; CHECK-NEXT:   or i32 %tmp1, 8 
-; CHECK-NEXT:   and i32
+; CHECK-NEXT:   and i32 %tmp1, 32
+; CHECK-NEXT:   or i32 %ovm, 8 
 ; CHECK-NEXT:   ret i32
         %ovm = and i32 %tmp1, 32
         %ov3 = add i32 %ovm, 145
@@ -33,11 +33,21 @@ define i32 @test2(i32 %tmp1) {
 
 define i32 @test3(i32 %tmp1) {
 ; CHECK:      @test3
-; CHECK-NEXT:   or i32 %tmp1, 8 
-; CHECK-NEXT:   and i32
+; CHECK-NEXT:   and i32 %tmp1, 32
+; CHECK-NEXT:   or i32 %tmp, 8
 ; CHECK-NEXT:   ret i32
   %ovm = or i32 %tmp1, 145 
   %ov31 = and i32 %ovm, 177
   %ov110 = xor i32 %ov31, 153
   ret i32 %ov110
+}
+
+define i32 @test4(i32 %A, i32 %B) {
+	%1 = xor i32 %A, -1
+	%2 = ashr i32 %1, %B
+	%3 = xor i32 %2, -1
+	ret i32 %3
+; CHECK: @test4
+; CHECK: %1 = ashr i32 %A, %B
+; CHECK: ret i32 %1
 }

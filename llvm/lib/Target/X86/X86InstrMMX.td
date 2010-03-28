@@ -14,56 +14,6 @@
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//
-// MMX Pattern Fragments
-//===----------------------------------------------------------------------===//
-
-def load_mmx : PatFrag<(ops node:$ptr), (v1i64 (load node:$ptr))>;
-
-def bc_v8i8  : PatFrag<(ops node:$in), (v8i8  (bitconvert node:$in))>;
-def bc_v4i16 : PatFrag<(ops node:$in), (v4i16 (bitconvert node:$in))>;
-def bc_v2i32 : PatFrag<(ops node:$in), (v2i32 (bitconvert node:$in))>;
-def bc_v1i64 : PatFrag<(ops node:$in), (v1i64 (bitconvert node:$in))>;
-
-//===----------------------------------------------------------------------===//
-// MMX Masks
-//===----------------------------------------------------------------------===//
-
-// MMX_SHUFFLE_get_shuf_imm xform function: convert vector_shuffle mask to
-// PSHUFW imm.
-def MMX_SHUFFLE_get_shuf_imm : SDNodeXForm<vector_shuffle, [{
-  return getI8Imm(X86::getShuffleSHUFImmediate(N));
-}]>;
-
-// Patterns for: vector_shuffle v1, v2, <2, 6, 3, 7, ...>
-def mmx_unpckh : PatFrag<(ops node:$lhs, node:$rhs),
-                         (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKHMask(cast<ShuffleVectorSDNode>(N));
-}]>;
-
-// Patterns for: vector_shuffle v1, v2, <0, 4, 2, 5, ...>
-def mmx_unpckl : PatFrag<(ops node:$lhs, node:$rhs),
-                         (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKLMask(cast<ShuffleVectorSDNode>(N));
-}]>;
-
-// Patterns for: vector_shuffle v1, <undef>, <0, 0, 1, 1, ...>
-def mmx_unpckh_undef : PatFrag<(ops node:$lhs, node:$rhs),
-                               (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKH_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
-}]>;
-
-// Patterns for: vector_shuffle v1, <undef>, <2, 2, 3, 3, ...>
-def mmx_unpckl_undef : PatFrag<(ops node:$lhs, node:$rhs),
-                               (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKL_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
-}]>;
-
-def mmx_pshufw : PatFrag<(ops node:$lhs, node:$rhs),
-                         (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isPSHUFDMask(cast<ShuffleVectorSDNode>(N));
-}], MMX_SHUFFLE_get_shuf_imm>;
-
-//===----------------------------------------------------------------------===//
 // MMX Multiclasses
 //===----------------------------------------------------------------------===//
 
@@ -191,7 +141,7 @@ def MMX_MOVD64rrv164 : MMXI<0x6E, MRMSrcReg, (outs VR64:$dst), (ins GR64:$src),
 let neverHasSideEffects = 1 in
 def MMX_MOVQ64rr : MMXI<0x6F, MRMSrcReg, (outs VR64:$dst), (ins VR64:$src),
                         "movq\t{$src, $dst|$dst, $src}", []>;
-let canFoldAsLoad = 1, isReMaterializable = 1, mayHaveSideEffects = 1 in
+let canFoldAsLoad = 1, isReMaterializable = 1 in
 def MMX_MOVQ64rm : MMXI<0x6F, MRMSrcMem, (outs VR64:$dst), (ins i64mem:$src),
                         "movq\t{$src, $dst|$dst, $src}",
                         [(set VR64:$dst, (load_mmx addr:$src))]>;
@@ -476,13 +426,15 @@ def MMX_CVTTPS2PIrm : MMXI<0x2C, MRMSrcMem, (outs VR64:$dst), (ins f64mem:$src),
 
 
 // Extract / Insert
-def MMX_X86pextrw : SDNode<"X86ISD::PEXTRW", SDTypeProfile<1, 2, []>, []>;
-def MMX_X86pinsrw : SDNode<"X86ISD::PINSRW", SDTypeProfile<1, 3, []>, []>;
+def MMX_X86pinsrw : SDNode<"X86ISD::MMX_PINSRW",
+                    SDTypeProfile<1, 3, [SDTCisVT<0, v4i16>, SDTCisSameAs<0,1>,
+                                         SDTCisVT<2, i32>, SDTCisPtrTy<3>]>>;
+
 
 def MMX_PEXTRWri  : MMXIi8<0xC5, MRMSrcReg,
                            (outs GR32:$dst), (ins VR64:$src1, i16i8imm:$src2),
                            "pextrw\t{$src2, $src1, $dst|$dst, $src1, $src2}",
-                           [(set GR32:$dst, (MMX_X86pextrw (v4i16 VR64:$src1),
+                           [(set GR32:$dst, (X86pextrw (v4i16 VR64:$src1),
                                              (iPTR imm:$src2)))]>;
 let Constraints = "$src1 = $dst" in {
   def MMX_PINSRWrri : MMXIi8<0xC4, MRMSrcReg,
@@ -500,6 +452,20 @@ let Constraints = "$src1 = $dst" in {
                                (i32 (anyext (loadi16 addr:$src2))),
                                (iPTR imm:$src3))))]>;
 }
+
+// MMX to XMM for vector types
+def MMX_X86movq2dq : SDNode<"X86ISD::MOVQ2DQ", SDTypeProfile<1, 1,
+                            [SDTCisVT<0, v2i64>, SDTCisVT<1, v1i64>]>>;
+
+def : Pat<(v2i64 (MMX_X86movq2dq VR64:$src)),
+          (v2i64 (MMX_MOVQ2DQrr VR64:$src))>;
+
+def : Pat<(v2i64 (MMX_X86movq2dq (load_mmx addr:$src))),
+          (v2i64 (MOVQI2PQIrm addr:$src))>;
+
+def : Pat<(v2i64 (MMX_X86movq2dq (v1i64 (bitconvert
+                            (v2i32 (scalar_to_vector (loadi32 addr:$src))))))),
+          (v2i64 (MOVDI2PDIrm addr:$src))>;
 
 // Mask creation
 def MMX_PMOVMSKBrr : MMXI<0xD7, MRMSrcReg, (outs GR32:$dst), (ins VR64:$src),
@@ -522,11 +488,10 @@ def MMX_MASKMOVQ64: MMXI64<0xF7, MRMSrcReg, (outs), (ins VR64:$src, VR64:$mask),
 
 // Alias instructions that map zero vector to pxor.
 let isReMaterializable = 1, isCodeGenOnly = 1 in {
-  def MMX_V_SET0       : MMXI<0xEF, MRMInitReg, (outs VR64:$dst), (ins),
-                              "pxor\t$dst, $dst",
+  // FIXME: Change encoding to pseudo.
+  def MMX_V_SET0       : MMXI<0xEF, MRMInitReg, (outs VR64:$dst), (ins), "",
                               [(set VR64:$dst, (v2i32 immAllZerosV))]>;
-  def MMX_V_SETALLONES : MMXI<0x76, MRMInitReg, (outs VR64:$dst), (ins),
-                              "pcmpeqd\t$dst, $dst",
+  def MMX_V_SETALLONES : MMXI<0x76, MRMInitReg, (outs VR64:$dst), (ins), "",
                               [(set VR64:$dst, (v2i32 immAllOnesV))]>;
 }
 
@@ -632,13 +597,6 @@ let AddedComplexity = 10 in {
             (MMX_PUNPCKHWDrr VR64:$src, VR64:$src)>;
   def : Pat<(v2i32 (mmx_unpckh_undef VR64:$src, (undef))),
             (MMX_PUNPCKHDQrr VR64:$src, VR64:$src)>;
-}
-
-// Patterns to perform vector shuffling with a zeroed out vector.
-let AddedComplexity = 20 in {
-  def : Pat<(bc_v2i32 (mmx_unpckl immAllZerosV,
-                       (v2i32 (scalar_to_vector (load_mmx addr:$src))))),
-            (MMX_PUNPCKLDQrm VR64:$src, VR64:$src)>;
 }
 
 // Some special case PANDN patterns.

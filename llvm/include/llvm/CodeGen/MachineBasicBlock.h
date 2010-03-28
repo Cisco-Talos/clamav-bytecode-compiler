@@ -21,6 +21,9 @@ namespace llvm {
 
 class BasicBlock;
 class MachineFunction;
+class MCContext;
+class MCSymbol;
+class StringRef;
 class raw_ostream;
 
 template <>
@@ -282,11 +285,6 @@ public:
   /// it returns end()
   iterator getFirstTerminator();
 
-  /// isOnlyReachableViaFallthough - Return true if this basic block has
-  /// exactly one predecessor and the control transfer mechanism between
-  /// the predecessor and this block is a fall-through.
-  bool isOnlyReachableByFallthrough() const;
-
   void pop_front() { Insts.pop_front(); }
   void pop_back() { Insts.pop_back(); }
   void push_back(MachineInstr *MI) { Insts.push_back(MI); }
@@ -337,6 +335,10 @@ public:
                             MachineBasicBlock *DestB,
                             bool isCond);
 
+  /// findDebugLoc - find the next valid DebugLoc starting at MBBI, skipping
+  /// any DBG_VALUE instructions.  Return UnknownLoc if there is none.
+  DebugLoc findDebugLoc(MachineBasicBlock::iterator &MBBI);
+
   // Debugging methods.
   void dump() const;
   void print(raw_ostream &OS) const;
@@ -348,6 +350,10 @@ public:
   int getNumber() const { return Number; }
   void setNumber(int N) { Number = N; }
 
+  /// getSymbol - Return the MCSymbol for this basic block.
+  ///
+  MCSymbol *getSymbol(MCContext &Ctx) const;
+  
 private:   // Methods used to maintain doubly linked list of blocks...
   friend struct ilist_traits<MachineBasicBlock>;
 

@@ -297,6 +297,7 @@ extern "C" {
       push  edx
       push  ecx
       and   esp, -16
+      sub   esp, 16
       mov   eax, dword ptr [ebp+4]
       mov   dword ptr [esp+4], eax
       mov   dword ptr [esp], ebp
@@ -348,7 +349,7 @@ X86CompilationCallback2(intptr_t *StackPtr, intptr_t RetAddr) {
 #endif
 
 #if 0
-  DEBUG(errs() << "In callback! Addr=" << (void*)RetAddr
+  DEBUG(dbgs() << "In callback! Addr=" << (void*)RetAddr
                << " ESP=" << (void*)StackPtr
                << ": Resolving call to function: "
                << TheVM->getFunctionReferencedName((void*)RetAddr) << "\n");

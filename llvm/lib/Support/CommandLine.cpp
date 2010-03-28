@@ -354,7 +354,7 @@ static Option *HandlePrefixedOrGroupedOption(StringRef &Arg, StringRef &Value,
     // we don't need to pass argc/argv in.
     assert(PGOpt->getValueExpectedFlag() != cl::ValueRequired &&
            "Option can not be cl::Grouping AND cl::ValueRequired!");
-    int Dummy;
+    int Dummy = 0;
     ErrorParsing |= ProvideOption(PGOpt, OneArgName,
                                   StringRef(), 0, 0, Dummy);
 
@@ -507,8 +507,9 @@ void cl::ParseCommandLineOptions(int argc, char **argv,
 
   // Copy the program name into ProgName, making sure not to overflow it.
   std::string ProgName = sys::Path(argv[0]).getLast();
-  if (ProgName.size() > 79) ProgName.resize(79);
-  strcpy(ProgramName, ProgName.c_str());
+  size_t Len = std::min(ProgName.size(), size_t(79));
+  memcpy(ProgramName, ProgName.data(), Len);
+  ProgramName[Len] = '\0';
 
   ProgramOverview = Overview;
   bool ErrorParsing = false;
@@ -649,7 +650,7 @@ void cl::ParseCommandLineOptions(int argc, char **argv,
     if (Handler == 0) {
       if (SinkOpts.empty()) {
         errs() << ProgramName << ": Unknown command line argument '"
-             << argv[i] << "'.  Try: '" << argv[0] << " --help'\n";
+             << argv[i] << "'.  Try: '" << argv[0] << " -help'\n";
         ErrorParsing = true;
       } else {
         for (SmallVectorImpl<Option*>::iterator I = SinkOpts.begin(),
@@ -672,7 +673,7 @@ void cl::ParseCommandLineOptions(int argc, char **argv,
     errs() << ProgramName
          << ": Not enough positional command line arguments specified!\n"
          << "Must specify at least " << NumPositionalRequired
-         << " positional arguments: See: " << argv[0] << " --help\n";
+         << " positional arguments: See: " << argv[0] << " -help\n";
 
     ErrorParsing = true;
   } else if (!HasUnlimitedPositionals
@@ -680,7 +681,7 @@ void cl::ParseCommandLineOptions(int argc, char **argv,
     errs() << ProgramName
          << ": Too many positional arguments specified!\n"
          << "Can specify at most " << PositionalOpts.size()
-         << " positional arguments: See: " << argv[0] << " --help\n";
+         << " positional arguments: See: " << argv[0] << " -help\n";
     ErrorParsing = true;
 
   } else if (ConsumeAfterOpt == 0) {
@@ -778,10 +779,10 @@ void cl::ParseCommandLineOptions(int argc, char **argv,
       free(*i);
   }
 
-  DEBUG(errs() << "Args: ";
+  DEBUG(dbgs() << "Args: ";
         for (int i = 0; i < argc; ++i)
-          errs() << argv[i] << ' ';
-        errs() << '\n';
+          dbgs() << argv[i] << ' ';
+        dbgs() << '\n';
        );
 
   // If we had an error processing our arguments, don't let the program execute
@@ -1028,7 +1029,7 @@ void generic_parser_base::printOptionInfo(const Option &O,
 
 
 //===----------------------------------------------------------------------===//
-// --help and --help-hidden option implementation
+// -help and -help-hidden option implementation
 //
 
 static int OptNameCompare(const void *LHS, const void *RHS) {
@@ -1133,7 +1134,7 @@ static HelpPrinter NormalPrinter(false);
 static HelpPrinter HiddenPrinter(true);
 
 static cl::opt<HelpPrinter, true, parser<bool> >
-HOp("help", cl::desc("Display available options (--help-hidden for more)"),
+HOp("help", cl::desc("Display available options (-help-hidden for more)"),
     cl::location(NormalPrinter), cl::ValueDisallowed);
 
 static cl::opt<HelpPrinter, true, parser<bool> >
@@ -1221,8 +1222,8 @@ void cl::PrintHelpMessage() {
   // NormalPrinter variable is a HelpPrinter and the help gets printed when
   // its operator= is invoked. That's because the "normal" usages of the
   // help printer is to be assigned true/false depending on whether the
-  // --help option was given or not. Since we're circumventing that we have
-  // to make it look like --help was given, so we assign true.
+  // -help option was given or not. Since we're circumventing that we have
+  // to make it look like -help was given, so we assign true.
   NormalPrinter = true;
 }
 

@@ -133,7 +133,7 @@ bool BranchFolder::OptimizeImpDefsBlock(MachineBasicBlock *MBB) {
   SmallSet<unsigned, 4> ImpDefRegs;
   MachineBasicBlock::iterator I = MBB->begin();
   while (I != MBB->end()) {
-    if (I->getOpcode() != TargetInstrInfo::IMPLICIT_DEF)
+    if (!I->isImplicitDef())
       break;
     unsigned Reg = I->getOperand(0).getReg();
     ImpDefRegs.insert(Reg);
@@ -203,55 +203,36 @@ bool BranchFolder::OptimizeFunction(MachineFunction &MF,
     MadeChange |= MadeChangeThisIteration;
   }
 
-  // See if any jump tables have become mergable or dead as the code generator
+  // See if any jump tables have become dead as the code generator
   // did its thing.
   MachineJumpTableInfo *JTI = MF.getJumpTableInfo();
-  const std::vector<MachineJumpTableEntry> &JTs = JTI->getJumpTables();
-  if (!JTs.empty()) {
-    // Figure out how these jump tables should be merged.
-    std::vector<unsigned> JTMapping;
-    JTMapping.reserve(JTs.size());
+  if (JTI == 0) {
+    delete RS;
+    return MadeChange;
+  }
+  
+  // Walk the function to find jump tables that are live.
+  BitVector JTIsLive(JTI->getJumpTables().size());
+  for (MachineFunction::iterator BB = MF.begin(), E = MF.end();
+       BB != E; ++BB) {
+    for (MachineBasicBlock::iterator I = BB->begin(), E = BB->end();
+         I != E; ++I)
+      for (unsigned op = 0, e = I->getNumOperands(); op != e; ++op) {
+        MachineOperand &Op = I->getOperand(op);
+        if (!Op.isJTI()) continue;
 
-    // We always keep the 0th jump table.
-    JTMapping.push_back(0);
-
-    // Scan the jump tables, seeing if there are any duplicates.  Note that this
-    // is N^2, which should be fixed someday.
-    for (unsigned i = 1, e = JTs.size(); i != e; ++i) {
-      if (JTs[i].MBBs.empty())
-        JTMapping.push_back(i);
-      else
-        JTMapping.push_back(JTI->getJumpTableIndex(JTs[i].MBBs));
-    }
-
-    // If a jump table was merge with another one, walk the function rewriting
-    // references to jump tables to reference the new JT ID's.  Keep track of
-    // whether we see a jump table idx, if not, we can delete the JT.
-    BitVector JTIsLive(JTs.size());
-    for (MachineFunction::iterator BB = MF.begin(), E = MF.end();
-         BB != E; ++BB) {
-      for (MachineBasicBlock::iterator I = BB->begin(), E = BB->end();
-           I != E; ++I)
-        for (unsigned op = 0, e = I->getNumOperands(); op != e; ++op) {
-          MachineOperand &Op = I->getOperand(op);
-          if (!Op.isJTI()) continue;
-          unsigned NewIdx = JTMapping[Op.getIndex()];
-          Op.setIndex(NewIdx);
-
-          // Remember that this JT is live.
-          JTIsLive.set(NewIdx);
-        }
-    }
-
-    // Finally, remove dead jump tables.  This happens either because the
-    // indirect jump was unreachable (and thus deleted) or because the jump
-    // table was merged with some other one.
-    for (unsigned i = 0, e = JTIsLive.size(); i != e; ++i)
-      if (!JTIsLive.test(i)) {
-        JTI->RemoveJumpTable(i);
-        MadeChange = true;
+        // Remember that this JT is live.
+        JTIsLive.set(Op.getIndex());
       }
   }
+
+  // Finally, remove dead jump tables.  This happens when the
+  // indirect jump was unreachable (and thus deleted).
+  for (unsigned i = 0, e = JTIsLive.size(); i != e; ++i)
+    if (!JTIsLive.test(i)) {
+      JTI->RemoveJumpTable(i);
+      MadeChange = true;
+    }
 
   delete RS;
   return MadeChange;
@@ -331,13 +312,15 @@ static unsigned ComputeCommonTailLength(MachineBasicBlock *MBB1,
   unsigned TailLen = 0;
   while (I1 != MBB1->begin() && I2 != MBB2->begin()) {
     --I1; --I2;
-    if (!I1->isIdenticalTo(I2) ||
+    // Don't merge debugging pseudos.
+    if (I1->isDebugValue() || I2->isDebugValue() ||
+        !I1->isIdenticalTo(I2) ||
         // FIXME: This check is dubious. It's used to get around a problem where
         // people incorrectly expect inline asm directives to remain in the same
         // relative order. This is untenable because normal compiler
         // optimizations (like this one) may reorder and/or merge these
         // directives.
-        I1->getOpcode() == TargetInstrInfo::INLINEASM) {
+        I1->isInlineAsm()) {
       ++I1; ++I2;
       break;
     }
@@ -409,6 +392,8 @@ static unsigned EstimateRuntime(MachineBasicBlock::iterator I,
                                 MachineBasicBlock::iterator E) {
   unsigned Time = 0;
   for (; I != E; ++I) {
+    if (I->isDebugValue())
+      continue;
     const TargetInstrDesc &TID = I->getDesc();
     if (TID.isCall())
       Time += 10;
@@ -957,7 +942,8 @@ ReoptimizeBlock:
       }
       // If MBB was the target of a jump table, update jump tables to go to the
       // fallthrough instead.
-      MF.getJumpTableInfo()->ReplaceMBBInJumpTables(MBB, FallThrough);
+      if (MachineJumpTableInfo *MJTI = MF.getJumpTableInfo())
+        MJTI->ReplaceMBBInJumpTables(MBB, FallThrough);
       MadeChange = true;
     }
     return MadeChange;
@@ -1191,7 +1177,8 @@ ReoptimizeBlock:
           }
 
           // Change any jumptables to go to the new MBB.
-          MF.getJumpTableInfo()->ReplaceMBBInJumpTables(MBB, CurTBB);
+          if (MachineJumpTableInfo *MJTI = MF.getJumpTableInfo())
+            MJTI->ReplaceMBBInJumpTables(MBB, CurTBB);
           if (DidChange) {
             ++NumBranchOpts;
             MadeChange = true;

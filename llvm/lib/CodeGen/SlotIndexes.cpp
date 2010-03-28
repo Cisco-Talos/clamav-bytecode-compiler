@@ -14,6 +14,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/ManagedStatic.h"
+#include "llvm/Target/TargetInstrInfo.h"
 
 using namespace llvm;
 
@@ -94,7 +95,7 @@ bool SlotIndexes::runOnMachineFunction(MachineFunction &fn) {
 
   push_back(createEntry(0, index));
 
-  // Iterate over the the function.
+  // Iterate over the function.
   for (MachineFunction::iterator mbbItr = mf->begin(), mbbEnd = mf->end();
        mbbItr != mbbEnd; ++mbbItr) {
     MachineBasicBlock *mbb = &*mbbItr;
@@ -106,7 +107,9 @@ bool SlotIndexes::runOnMachineFunction(MachineFunction &fn) {
 
     for (MachineBasicBlock::iterator miItr = mbb->begin(), miEnd = mbb->end();
          miItr != miEnd; ++miItr) {
-      MachineInstr *mi = &*miItr;
+      MachineInstr *mi = miItr;
+      if (mi->isDebugValue())
+        continue;
 
       if (miItr == mbb->getFirstTerminator()) {
         push_back(createEntry(0, index));
@@ -192,18 +195,18 @@ void SlotIndexes::renumberIndexes() {
 void SlotIndexes::dump() const {
   for (const IndexListEntry *itr = front(); itr != getTail();
        itr = itr->getNext()) {
-    errs() << itr->getIndex() << " ";
+    dbgs() << itr->getIndex() << " ";
 
     if (itr->getInstr() != 0) {
-      errs() << *itr->getInstr();
+      dbgs() << *itr->getInstr();
     } else {
-      errs() << "\n";
+      dbgs() << "\n";
     }
   }
 
   for (MBB2IdxMap::const_iterator itr = mbb2IdxMap.begin();
        itr != mbb2IdxMap.end(); ++itr) {
-    errs() << "MBB " << itr->first->getNumber() << " (" << itr->first << ") - ["
+    dbgs() << "MBB " << itr->first->getNumber() << " (" << itr->first << ") - ["
            << itr->second.first << ", " << itr->second.second << "]\n";
   }
 }
@@ -217,7 +220,7 @@ void SlotIndex::print(raw_ostream &os) const {
 
 // Dump a SlotIndex to stderr.
 void SlotIndex::dump() const {
-  print(errs());
-  errs() << "\n";
+  print(dbgs());
+  dbgs() << "\n";
 }
 

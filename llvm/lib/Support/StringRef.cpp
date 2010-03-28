@@ -8,6 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/APInt.h"
+
 using namespace llvm;
 
 // MSVC emits references to this into the translation units which reference it.
@@ -33,6 +35,56 @@ int StringRef::compare_lower(StringRef RHS) const {
   if (Length == RHS.Length)
         return 0;
   return Length < RHS.Length ? -1 : 1;
+}
+
+// Compute the edit distance between the two given strings.
+unsigned StringRef::edit_distance(llvm::StringRef Other, 
+                                  bool AllowReplacements) {
+  // The algorithm implemented below is the "classic"
+  // dynamic-programming algorithm for computing the Levenshtein
+  // distance, which is described here:
+  //
+  //   http://en.wikipedia.org/wiki/Levenshtein_distance
+  //
+  // Although the algorithm is typically described using an m x n
+  // array, only two rows are used at a time, so this implemenation
+  // just keeps two separate vectors for those two rows.
+  size_type m = size();
+  size_type n = Other.size();
+
+  const unsigned SmallBufferSize = 64;
+  unsigned SmallBuffer[SmallBufferSize];
+  unsigned *Allocated = 0;
+  unsigned *previous = SmallBuffer;
+  if (2*(n + 1) > SmallBufferSize)
+    Allocated = previous = new unsigned [2*(n+1)];
+  unsigned *current = previous + (n + 1);
+  
+  for (unsigned i = 0; i <= n; ++i) 
+    previous[i] = i;
+
+  for (size_type y = 1; y <= m; ++y) {
+    current[0] = y;
+    for (size_type x = 1; x <= n; ++x) {
+      if (AllowReplacements) {
+        current[x] = min(previous[x-1] + ((*this)[y-1] == Other[x-1]? 0u:1u),
+                         min(current[x-1], previous[x])+1);
+      }
+      else {
+        if ((*this)[y-1] == Other[x-1]) current[x] = previous[x-1];
+        else current[x] = min(current[x-1], previous[x]) + 1;
+      }
+    }
+    
+    unsigned *tmp = current;
+    current = previous;
+    previous = tmp;
+  }
+
+  unsigned Result = previous[n];
+  delete [] Allocated;
+  
+  return Result;
 }
 
 //===----------------------------------------------------------------------===//
@@ -121,23 +173,28 @@ size_t StringRef::count(StringRef Str) const {
   return Count;
 }
 
+static unsigned GetAutoSenseRadix(StringRef &Str) {
+  if (Str.startswith("0x")) {
+    Str = Str.substr(2);
+    return 16;
+  } else if (Str.startswith("0b")) {
+    Str = Str.substr(2);
+    return 2;
+  } else if (Str.startswith("0")) {
+    return 8;
+  } else {
+    return 10;
+  }
+}
+
+
 /// GetAsUnsignedInteger - Workhorse method that converts a integer character
 /// sequence of radix up to 36 to an unsigned long long value.
 static bool GetAsUnsignedInteger(StringRef Str, unsigned Radix,
                                  unsigned long long &Result) {
   // Autosense radix if not specified.
-  if (Radix == 0) {
-    if (Str.startswith("0x")) {
-      Str = Str.substr(2);
-      Radix = 16;
-    } else if (Str.startswith("0b")) {
-      Str = Str.substr(2);
-      Radix = 2;
-    } else if (Str.startswith("0"))
-      Radix = 8;
-    else
-      Radix = 10;
-  }
+  if (Radix == 0)
+    Radix = GetAutoSenseRadix(Str);
   
   // Empty strings (after the radix autosense) are invalid.
   if (Str.empty()) return true;
@@ -221,3 +278,78 @@ bool StringRef::getAsInteger(unsigned Radix, unsigned &Result) const {
   Result = Val;
   return false;
 }  
+
+bool StringRef::getAsInteger(unsigned Radix, APInt &Result) const {
+  StringRef Str = *this;
+
+  // Autosense radix if not specified.
+  if (Radix == 0)
+    Radix = GetAutoSenseRadix(Str);
+
+  assert(Radix > 1 && Radix <= 36);
+  
+  // Empty strings (after the radix autosense) are invalid.
+  if (Str.empty()) return true;
+
+  // Skip leading zeroes.  This can be a significant improvement if
+  // it means we don't need > 64 bits.
+  while (!Str.empty() && Str.front() == '0')
+    Str = Str.substr(1);
+
+  // If it was nothing but zeroes....
+  if (Str.empty()) {
+    Result = APInt(64, 0);
+    return false;
+  }
+
+  // (Over-)estimate the required number of bits.
+  unsigned Log2Radix = 0;
+  while ((1U << Log2Radix) < Radix) Log2Radix++;
+  bool IsPowerOf2Radix = ((1U << Log2Radix) == Radix);
+
+  unsigned BitWidth = Log2Radix * Str.size();
+  if (BitWidth < Result.getBitWidth())
+    BitWidth = Result.getBitWidth(); // don't shrink the result
+  else
+    Result.zext(BitWidth);
+
+  APInt RadixAP, CharAP; // unused unless !IsPowerOf2Radix
+  if (!IsPowerOf2Radix) {
+    // These must have the same bit-width as Result.
+    RadixAP = APInt(BitWidth, Radix);
+    CharAP = APInt(BitWidth, 0);
+  }
+
+  // Parse all the bytes of the string given this radix.
+  Result = 0;
+  while (!Str.empty()) {
+    unsigned CharVal;
+    if (Str[0] >= '0' && Str[0] <= '9')
+      CharVal = Str[0]-'0';
+    else if (Str[0] >= 'a' && Str[0] <= 'z')
+      CharVal = Str[0]-'a'+10;
+    else if (Str[0] >= 'A' && Str[0] <= 'Z')
+      CharVal = Str[0]-'A'+10;
+    else
+      return true;
+    
+    // If the parsed value is larger than the integer radix, the string is
+    // invalid.
+    if (CharVal >= Radix)
+      return true;
+    
+    // Add in this character.
+    if (IsPowerOf2Radix) {
+      Result <<= Log2Radix;
+      Result |= CharVal;
+    } else {
+      Result *= RadixAP;
+      CharAP = CharVal;
+      Result += CharAP;
+    }
+
+    Str = Str.substr(1);
+  }
+  
+  return false;
+}

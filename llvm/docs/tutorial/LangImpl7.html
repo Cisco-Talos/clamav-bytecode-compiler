@@ -557,12 +557,12 @@ then:		; preds = %entry
 
 else:		; preds = %entry
 	<b>%x3 = load double* %x1</b>
-	%subtmp = sub double %x3, 1.000000e+00
+	%subtmp = fsub double %x3, 1.000000e+00
 	%calltmp = call double @fib( double %subtmp )
 	<b>%x4 = load double* %x1</b>
-	%subtmp5 = sub double %x4, 2.000000e+00
+	%subtmp5 = fsub double %x4, 2.000000e+00
 	%calltmp6 = call double @fib( double %subtmp5 )
-	%addtmp = add double %calltmp, %calltmp6
+	%addtmp = fadd double %calltmp, %calltmp6
 	br label %ifcont
 
 ifcont:		; preds = %else, %then
@@ -595,11 +595,11 @@ then:
 	br label %ifcont
 
 else:
-	%subtmp = sub double <b>%x</b>, 1.000000e+00
+	%subtmp = fsub double <b>%x</b>, 1.000000e+00
 	%calltmp = call double @fib( double %subtmp )
-	%subtmp5 = sub double <b>%x</b>, 2.000000e+00
+	%subtmp5 = fsub double <b>%x</b>, 2.000000e+00
 	%calltmp6 = call double @fib( double %subtmp5 )
-	%addtmp = add double %calltmp, %calltmp6
+	%addtmp = fadd double %calltmp, %calltmp6
 	br label %ifcont
 
 ifcont:		; preds = %else, %then
@@ -625,11 +625,11 @@ entry:
 	br i1 %ifcond, label %else, label %ifcont
 
 else:
-	%subtmp = sub double %x, 1.000000e+00
+	%subtmp = fsub double %x, 1.000000e+00
 	%calltmp = call double @fib( double %subtmp )
-	%subtmp5 = sub double %x, 2.000000e+00
+	%subtmp5 = fsub double %x, 2.000000e+00
 	%calltmp6 = call double @fib( double %subtmp5 )
-	%addtmp = add double %calltmp, %calltmp6
+	%addtmp = fadd double %calltmp, %calltmp6
 	ret double %addtmp
 
 ifcont:
@@ -1004,11 +1004,9 @@ variables and var/in support.  To build this example, use:
 <pre>
 #include "llvm/DerivedTypes.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/Interpreter.h"
 #include "llvm/ExecutionEngine/JIT.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
-#include "llvm/ModuleProvider.h"
 #include "llvm/PassManager.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Target/TargetData.h"
@@ -2105,13 +2103,15 @@ int main() {
   // Make the module, which holds all the code.
   TheModule = new Module("my cool jit", Context);
 
-  ExistingModuleProvider *OurModuleProvider =
-      new ExistingModuleProvider(TheModule);
+  // Create the JIT.  This takes ownership of the module.
+  std::string ErrStr;
+  TheExecutionEngine = EngineBuilder(TheModule).setErrorStr(&amp;ErrStr).create();
+  if (!TheExecutionEngine) {
+    fprintf(stderr, "Could not create ExecutionEngine: %s\n", ErrStr.c_str());
+    exit(1);
+  }
 
-  // Create the JIT.  This takes ownership of the module and module provider.
-  TheExecutionEngine = EngineBuilder(OurModuleProvider).create();
-
-  FunctionPassManager OurFPM(OurModuleProvider);
+  FunctionPassManager OurFPM(TheModule);
 
   // Set up the optimizer pipeline.  Start with registering info about how the
   // target lays out data structures.
@@ -2158,7 +2158,7 @@ int main() {
 
   <a href="mailto:sabre@nondot.org">Chris Lattner</a><br>
   <a href="http://llvm.org">The LLVM Compiler Infrastructure</a><br>
-  Last modified: $Date: 2007-10-17 11:05:13 -0700 (Wed, 17 Oct 2007) $
+  Last modified: $Date$
 </address>
 </body>
 </html>

@@ -48,7 +48,7 @@ entry:
   %V = icmp eq <2 x i64> %x, undef
   ret <2 x i1> %V
 ; CHECK: @test5
-; CHECK: ret <2 x i1> undef
+; CHECK: ret <2 x i1> <i1 true, i1 true>
 }
 
 define i32 @test6(i32 %a, i32 %b) {
@@ -110,5 +110,24 @@ define i1 @test11(i32 %x) {
   ret i1 %b
 ; CHECK: @test11  
 ; CHECK: ret i1 true
+}
+
+; PR6195
+define i1 @test12(i1 %A) {
+  %S = select i1 %A, i64 -4294967295, i64 8589934591
+  %B = icmp ne i64 bitcast (<2 x i32> <i32 1, i32 -1> to i64), %S
+  ret i1 %B
+; CHECK: @test12
+; CHECK-NEXT: %B = select i1
+; CHECK-NEXT: ret i1 %B
+}
+
+; PR6481
+define i1 @test13(i8 %X) nounwind readnone {
+entry:
+        %cmp = icmp slt i8 undef, %X
+        ret i1 %cmp
+; CHECK: @test13
+; CHECK: ret i1 false
 }
 

@@ -354,8 +354,6 @@ public:
   // Pass Pipeline Configuration
   virtual bool addInstSelector(PassManagerBase &amp;PM, bool Fast);
   virtual bool addPreEmitPass(PassManagerBase &amp;PM, bool Fast);
-  virtual bool addAssemblyEmitter(PassManagerBase &amp;PM, bool Fast, 
-                                  std::ostream &amp;Out);
 };
 
 } // end namespace llvm
@@ -2152,12 +2150,6 @@ in <tt>XXXGenAsmWriter.inc</tt> contains an implementation of the
 <li><tt>printImplicitDef</tt></li>
 
 <li><tt>printInlineAsm</tt></li>
-
-<li><tt>printLabel</tt></li>
-
-<li><tt>printPICJumpTableEntry</tt></li>
-
-<li><tt>printPICJumpTableSetLabel</tt></li>
 </ul>
 
 <p>

@@ -40,13 +40,12 @@ namespace llvm {
   bool UnwindTablesMandatory;
   Reloc::Model RelocationModel;
   CodeModel::Model CMModel;
-  bool PerformTailCallOpt;
+  bool GuaranteedTailCallOpt;
   unsigned StackAlignment;
   bool RealignStack;
   bool DisableJumpTables;
   bool StrongPHIElim;
   bool AsmVerbosityDefault(false);
-  bool DisableScheduling;
 }
 
 static cl::opt<bool, true>
@@ -174,9 +173,9 @@ DefCodeModel("code-model",
                "Large code model"),
     clEnumValEnd));
 static cl::opt<bool, true>
-EnablePerformTailCallOpt("tailcallopt",
-  cl::desc("Turn on tail call optimization."),
-  cl::location(PerformTailCallOpt),
+EnableGuaranteedTailCallOpt("tailcallopt",
+  cl::desc("Turn fastcc calls into tail calls by (potentially) changing ABI."),
+  cl::location(GuaranteedTailCallOpt),
   cl::init(false));
 static cl::opt<unsigned, true>
 OverrideStackAlignment("stack-alignment",
@@ -197,11 +196,6 @@ static cl::opt<bool, true>
 EnableStrongPHIElim(cl::Hidden, "strong-phi-elim",
   cl::desc("Use strong PHI elimination."),
   cl::location(StrongPHIElim),
-  cl::init(false));
-static cl::opt<bool, true>
-DisableInstScheduling("disable-scheduling",
-  cl::desc("Disable instruction scheduling"),
-  cl::location(DisableScheduling),
   cl::init(false));
 
 //---------------------------------------------------------------------------

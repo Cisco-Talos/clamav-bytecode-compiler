@@ -30,6 +30,7 @@
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 #include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetMachine.h"
@@ -59,17 +60,17 @@ LiveVariables::VarInfo::findKill(const MachineBasicBlock *MBB) const {
 }
 
 void LiveVariables::VarInfo::dump() const {
-  errs() << "  Alive in blocks: ";
+  dbgs() << "  Alive in blocks: ";
   for (SparseBitVector<>::iterator I = AliveBlocks.begin(),
            E = AliveBlocks.end(); I != E; ++I)
-    errs() << *I << ", ";
-  errs() << "\n  Killed by:";
+    dbgs() << *I << ", ";
+  dbgs() << "\n  Killed by:";
   if (Kills.empty())
-    errs() << " No instructions.\n";
+    dbgs() << " No instructions.\n";
   else {
     for (unsigned i = 0, e = Kills.size(); i != e; ++i)
-      errs() << "\n    #" << i << ": " << *Kills[i];
-    errs() << "\n";
+      dbgs() << "\n    #" << i << ": " << *Kills[i];
+    dbgs() << "\n";
   }
 }
 
@@ -289,7 +290,6 @@ MachineInstr *LiveVariables::FindLastRefOrPartRef(unsigned Reg) {
 
   MachineInstr *LastRefOrPartRef = LastUse ? LastUse : LastDef;
   unsigned LastRefOrPartRefDist = DistanceMap[LastRefOrPartRef];
-  MachineInstr *LastPartDef = 0;
   unsigned LastPartDefDist = 0;
   for (const unsigned *SubRegs = TRI->getSubRegisters(Reg);
        unsigned SubReg = *SubRegs; ++SubRegs) {
@@ -298,13 +298,9 @@ MachineInstr *LiveVariables::FindLastRefOrPartRef(unsigned Reg) {
       // There was a def of this sub-register in between. This is a partial
       // def, keep track of the last one.
       unsigned Dist = DistanceMap[Def];
-      if (Dist > LastPartDefDist) {
+      if (Dist > LastPartDefDist)
         LastPartDefDist = Dist;
-        LastPartDef = Def;
-      }
-      continue;
-    }
-    if (MachineInstr *Use = PhysRegUse[SubReg]) {
+    } else if (MachineInstr *Use = PhysRegUse[SubReg]) {
       unsigned Dist = DistanceMap[Use];
       if (Dist > LastRefOrPartRefDist) {
         LastRefOrPartRefDist = Dist;
@@ -369,27 +365,7 @@ bool LiveVariables::HandlePhysRegKill(unsigned Reg, MachineInstr *MI) {
     }
   }
 
-  if (LastRefOrPartRef == PhysRegDef[Reg] && LastRefOrPartRef != MI) {
-    if (LastPartDef)
-      // The last partial def kills the register.
-      LastPartDef->addOperand(MachineOperand::CreateReg(Reg, false/*IsDef*/,
-                                                true/*IsImp*/, true/*IsKill*/));
-    else {
-      MachineOperand *MO =
-        LastRefOrPartRef->findRegisterDefOperand(Reg, false, TRI);
-      bool NeedEC = MO->isEarlyClobber() && MO->getReg() != Reg;
-      // If the last reference is the last def, then it's not used at all.
-      // That is, unless we are currently processing the last reference itself.
-      LastRefOrPartRef->addRegisterDead(Reg, TRI, true);
-      if (NeedEC) {
-        // If we are adding a subreg def and the superreg def is marked early
-        // clobber, add an early clobber marker to the subreg def.
-        MO = LastRefOrPartRef->findRegisterDefOperand(Reg);
-        if (MO)
-          MO->setIsEarlyClobber();
-      }
-    }
-  } else if (!PhysRegUse[Reg]) {
+  if (!PhysRegUse[Reg]) {
     // Partial uses. Mark register def dead and add implicit def of
     // sub-registers which are used.
     // EAX<dead>  = op  AL<imp-def>
@@ -422,6 +398,26 @@ bool LiveVariables::HandlePhysRegKill(unsigned Reg, MachineInstr *MI) {
       }
       for (const unsigned *SS = TRI->getSubRegisters(SubReg); *SS; ++SS)
         PartUses.erase(*SS);
+    }
+  } else if (LastRefOrPartRef == PhysRegDef[Reg] && LastRefOrPartRef != MI) {
+    if (LastPartDef)
+      // The last partial def kills the register.
+      LastPartDef->addOperand(MachineOperand::CreateReg(Reg, false/*IsDef*/,
+                                                true/*IsImp*/, true/*IsKill*/));
+    else {
+      MachineOperand *MO =
+        LastRefOrPartRef->findRegisterDefOperand(Reg, false, TRI);
+      bool NeedEC = MO->isEarlyClobber() && MO->getReg() != Reg;
+      // If the last reference is the last def, then it's not used at all.
+      // That is, unless we are currently processing the last reference itself.
+      LastRefOrPartRef->addRegisterDead(Reg, TRI, true);
+      if (NeedEC) {
+        // If we are adding a subreg def and the superreg def is marked early
+        // clobber, add an early clobber marker to the subreg def.
+        MO = LastRefOrPartRef->findRegisterDefOperand(Reg);
+        if (MO)
+          MO->setIsEarlyClobber();
+      }
     }
   } else
     LastRefOrPartRef->addRegisterKilled(Reg, TRI, true);
@@ -514,6 +510,7 @@ bool LiveVariables::runOnMachineFunction(MachineFunction &mf) {
   PHIVarInfo = new SmallVector<unsigned, 4>[MF->getNumBlockIDs()];
   std::fill(PhysRegDef,  PhysRegDef  + NumRegs, (MachineInstr*)0);
   std::fill(PhysRegUse,  PhysRegUse  + NumRegs, (MachineInstr*)0);
+  PHIJoins.clear();
 
   /// Get some space for a respectable number of registers.
   VirtRegInfo.resize(64);
@@ -547,6 +544,8 @@ bool LiveVariables::runOnMachineFunction(MachineFunction &mf) {
     for (MachineBasicBlock::iterator I = MBB->begin(), E = MBB->end();
          I != E; ++I) {
       MachineInstr *MI = I;
+      if (MI->isDebugValue())
+        continue;
       DistanceMap.insert(std::make_pair(MI, Dist++));
 
       // Process all of the operands of the instruction...
@@ -554,7 +553,7 @@ bool LiveVariables::runOnMachineFunction(MachineFunction &mf) {
 
       // Unless it is a PHI node.  In this case, ONLY process the DEF, not any
       // of the uses.  They will be handled in other basic blocks.
-      if (MI->getOpcode() == TargetInstrInfo::PHI)
+      if (MI->isPHI())
         NumOperandsToProcess = 1;
 
       SmallVector<unsigned, 4> UseRegs;
@@ -696,7 +695,7 @@ void LiveVariables::analyzePHINodes(const MachineFunction& Fn) {
   for (MachineFunction::const_iterator I = Fn.begin(), E = Fn.end();
        I != E; ++I)
     for (MachineBasicBlock::const_iterator BBI = I->begin(), BBE = I->end();
-         BBI != BBE && BBI->getOpcode() == TargetInstrInfo::PHI; ++BBI)
+         BBI != BBE && BBI->isPHI(); ++BBI)
       for (unsigned i = 1, e = BBI->getNumOperands(); i != e; i += 2)
         PHIVarInfo[BBI->getOperand(i + 1).getMBB()->getNumber()]
           .push_back(BBI->getOperand(i).getReg());
@@ -775,8 +774,7 @@ void LiveVariables::addNewBlock(MachineBasicBlock *BB,
 
   // All registers used by PHI nodes in SuccBB must be live through BB.
   for (MachineBasicBlock::const_iterator BBI = SuccBB->begin(),
-         BBE = SuccBB->end();
-       BBI != BBE && BBI->getOpcode() == TargetInstrInfo::PHI; ++BBI)
+         BBE = SuccBB->end(); BBI != BBE && BBI->isPHI(); ++BBI)
     for (unsigned i = 1, e = BBI->getNumOperands(); i != e; i += 2)
       if (BBI->getOperand(i+1).getMBB() == BB)
         getVarInfo(BBI->getOperand(i).getReg()).AliveBlocks.set(NumNew);

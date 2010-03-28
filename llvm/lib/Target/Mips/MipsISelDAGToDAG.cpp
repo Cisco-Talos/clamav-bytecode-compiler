@@ -59,8 +59,6 @@ public:
   SelectionDAGISel(tm),
   TM(tm), Subtarget(tm.getSubtarget<MipsSubtarget>()) {}
   
-  virtual void InstructionSelect();
-
   // Pass Name
   virtual const char *getPassName() const {
     return "MIPS DAG->DAG Pattern Instruction Selection";
@@ -84,43 +82,24 @@ private:
   }
 
   SDNode *getGlobalBaseReg();
-  SDNode *Select(SDValue N);
+  SDNode *Select(SDNode *N);
 
   // Complex Pattern.
-  bool SelectAddr(SDValue Op, SDValue N, 
+  bool SelectAddr(SDNode *Op, SDValue N, 
                   SDValue &Base, SDValue &Offset);
 
-  SDNode *SelectLoadFp64(SDValue N);
-  SDNode *SelectStoreFp64(SDValue N);
+  SDNode *SelectLoadFp64(SDNode *N);
+  SDNode *SelectStoreFp64(SDNode *N);
 
   // getI32Imm - Return a target constant with the specified
   // value, of type i32.
   inline SDValue getI32Imm(unsigned Imm) {
     return CurDAG->getTargetConstant(Imm, MVT::i32);
   }
-
-
-  #ifndef NDEBUG
-  unsigned Indent;
-  #endif
 };
 
 }
 
-/// InstructionSelect - This callback is invoked by
-/// SelectionDAGISel when it has created a SelectionDAG for us to codegen.
-void MipsDAGToDAGISel::InstructionSelect() {
-  // Codegen the basic block.
-  DEBUG(errs() << "===== Instruction selection begins:\n");
-  DEBUG(Indent = 0);
-
-  // Select target instructions for the DAG.
-  SelectRoot(*CurDAG);
-
-  DEBUG(errs() << "===== Instruction selection ends:\n");
-
-  CurDAG->RemoveDeadNodes();
-}
 
 /// getGlobalBaseReg - Output the instructions required to put the
 /// GOT address into a register.
@@ -132,7 +111,7 @@ SDNode *MipsDAGToDAGISel::getGlobalBaseReg() {
 /// ComplexPattern used on MipsInstrInfo
 /// Used on Mips Load/Store instructions
 bool MipsDAGToDAGISel::
-SelectAddr(SDValue Op, SDValue Addr, SDValue &Offset, SDValue &Base)
+SelectAddr(SDNode *Op, SDValue Addr, SDValue &Offset, SDValue &Base)
 {
   // if Address is FI, get the TargetFrameIndex.
   if (FrameIndexSDNode *FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
@@ -199,19 +178,19 @@ SelectAddr(SDValue Op, SDValue Addr, SDValue &Offset, SDValue &Base)
   return true;
 }
 
-SDNode *MipsDAGToDAGISel::SelectLoadFp64(SDValue N) {
+SDNode *MipsDAGToDAGISel::SelectLoadFp64(SDNode *N) {
   MVT::SimpleValueType NVT = 
-    N.getNode()->getValueType(0).getSimpleVT().SimpleTy;
+    N->getValueType(0).getSimpleVT().SimpleTy;
 
   if (!Subtarget.isMips1() || NVT != MVT::f64)
     return NULL;
 
-  if (!Predicate_unindexedload(N.getNode()) ||
-      !Predicate_load(N.getNode()))
+  if (!Predicate_unindexedload(N) ||
+      !Predicate_load(N))
     return NULL;
 
-  SDValue Chain = N.getOperand(0);
-  SDValue N1 = N.getOperand(1);
+  SDValue Chain = N->getOperand(0);
+  SDValue N1 = N->getOperand(1);
   SDValue Offset0, Offset1, Base;
 
   if (!SelectAddr(N, N1, Offset0, Base) ||
@@ -220,7 +199,7 @@ SDNode *MipsDAGToDAGISel::SelectLoadFp64(SDValue N) {
 
   MachineSDNode::mmo_iterator MemRefs0 = MF->allocateMemRefsArray(1);
   MemRefs0[0] = cast<MemSDNode>(N)->getMemOperand();
-  DebugLoc dl = N.getDebugLoc();
+  DebugLoc dl = N->getDebugLoc();
 
   // The second load should start after for 4 bytes. 
   if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(Offset0))
@@ -245,7 +224,7 @@ SDNode *MipsDAGToDAGISel::SelectLoadFp64(SDValue N) {
   //    lwc $f1, X+4($3)
   SDNode *LD0 = CurDAG->getMachineNode(Mips::LWC1, dl, MVT::f32, 
                                     MVT::Other, Offset0, Base, Chain);
-  SDValue Undef = SDValue(CurDAG->getMachineNode(TargetInstrInfo::IMPLICIT_DEF,
+  SDValue Undef = SDValue(CurDAG->getMachineNode(TargetOpcode::IMPLICIT_DEF,
                                                  dl, NVT), 0);
   SDValue I0 = CurDAG->getTargetInsertSubreg(Mips::SUBREG_FPEVEN, dl, 
                             MVT::f64, Undef, SDValue(LD0, 0));
@@ -255,27 +234,27 @@ SDNode *MipsDAGToDAGISel::SelectLoadFp64(SDValue N) {
   SDValue I1 = CurDAG->getTargetInsertSubreg(Mips::SUBREG_FPODD, dl, 
                             MVT::f64, I0, SDValue(LD1, 0));
 
-  ReplaceUses(N, I1);
-  ReplaceUses(N.getValue(1), Chain);
+  ReplaceUses(SDValue(N, 0), I1);
+  ReplaceUses(SDValue(N, 1), Chain);
   cast<MachineSDNode>(LD0)->setMemRefs(MemRefs0, MemRefs0 + 1);
   cast<MachineSDNode>(LD1)->setMemRefs(MemRefs0, MemRefs0 + 1);
   return I1.getNode();
 }
 
-SDNode *MipsDAGToDAGISel::SelectStoreFp64(SDValue N) {
+SDNode *MipsDAGToDAGISel::SelectStoreFp64(SDNode *N) {
 
   if (!Subtarget.isMips1() || 
-      N.getOperand(1).getValueType() != MVT::f64)
+      N->getOperand(1).getValueType() != MVT::f64)
     return NULL;
 
-  SDValue Chain = N.getOperand(0);
+  SDValue Chain = N->getOperand(0);
 
-  if (!Predicate_unindexedstore(N.getNode()) ||
-      !Predicate_store(N.getNode()))
+  if (!Predicate_unindexedstore(N) ||
+      !Predicate_store(N))
     return NULL;
 
-  SDValue N1 = N.getOperand(1);
-  SDValue N2 = N.getOperand(2);
+  SDValue N1 = N->getOperand(1);
+  SDValue N2 = N->getOperand(2);
   SDValue Offset0, Offset1, Base;
 
   if (!SelectAddr(N, N2, Offset0, Base) ||
@@ -285,7 +264,7 @@ SDNode *MipsDAGToDAGISel::SelectStoreFp64(SDValue N) {
 
   MachineSDNode::mmo_iterator MemRefs0 = MF->allocateMemRefsArray(1);
   MemRefs0[0] = cast<MemSDNode>(N)->getMemOperand();
-  DebugLoc dl = N.getDebugLoc();
+  DebugLoc dl = N->getDebugLoc();
 
   // Get the even and odd part from the f64 register
   SDValue FPOdd = CurDAG->getTargetExtractSubreg(Mips::SUBREG_FPODD, 
@@ -318,29 +297,22 @@ SDNode *MipsDAGToDAGISel::SelectStoreFp64(SDValue N) {
                                        MVT::Other, Ops1, 4), 0);
   cast<MachineSDNode>(Chain.getNode())->setMemRefs(MemRefs0, MemRefs0 + 1);
 
-  ReplaceUses(N.getValue(0), Chain);
+  ReplaceUses(SDValue(N, 0), Chain);
   return Chain.getNode();
 }
 
 /// Select instructions not customized! Used for
 /// expanded, promoted and normal instructions
-SDNode* MipsDAGToDAGISel::Select(SDValue N) {
-  SDNode *Node = N.getNode();
+SDNode* MipsDAGToDAGISel::Select(SDNode *Node) {
   unsigned Opcode = Node->getOpcode();
   DebugLoc dl = Node->getDebugLoc();
 
   // Dump information about the Node being selected
-  DEBUG(errs().indent(Indent) << "Selecting: ";
-        Node->dump(CurDAG);
-        errs() << "\n");
-  DEBUG(Indent += 2);
+  DEBUG(errs() << "Selecting: "; Node->dump(CurDAG); errs() << "\n");
 
   // If we have a custom node, we already have selected!
   if (Node->isMachineOpcode()) {
-    DEBUG(errs().indent(Indent-2) << "== ";
-          Node->dump(CurDAG);
-          errs() << "\n");
-    DEBUG(Indent -= 2);
+    DEBUG(errs() << "== "; Node->dump(CurDAG); errs() << "\n");
     return NULL;
   }
 
@@ -379,7 +351,7 @@ SDNode* MipsDAGToDAGISel::Select(SDValue N) {
       SDNode *AddCarry = CurDAG->getMachineNode(Mips::ADDu, dl, VT, 
                                                 SDValue(Carry,0), RHS);
 
-      return CurDAG->SelectNodeTo(N.getNode(), MOp, VT, MVT::Flag,
+      return CurDAG->SelectNodeTo(Node, MOp, VT, MVT::Flag,
                                   LHS, SDValue(AddCarry,0));
     }
 
@@ -397,19 +369,19 @@ SDNode* MipsDAGToDAGISel::Select(SDValue N) {
       else
         Op = (Opcode == ISD::UDIVREM ? Mips::DIVu : Mips::DIV);
 
-      SDNode *Node = CurDAG->getMachineNode(Op, dl, MVT::Flag, Op1, Op2);
+      SDNode *MulDiv = CurDAG->getMachineNode(Op, dl, MVT::Flag, Op1, Op2);
 
-      SDValue InFlag = SDValue(Node, 0);
+      SDValue InFlag = SDValue(MulDiv, 0);
       SDNode *Lo = CurDAG->getMachineNode(Mips::MFLO, dl, MVT::i32, 
                                           MVT::Flag, InFlag);
       InFlag = SDValue(Lo,1);
       SDNode *Hi = CurDAG->getMachineNode(Mips::MFHI, dl, MVT::i32, InFlag);
 
-      if (!N.getValue(0).use_empty()) 
-        ReplaceUses(N.getValue(0), SDValue(Lo,0));
+      if (!SDValue(Node, 0).use_empty()) 
+        ReplaceUses(SDValue(Node, 0), SDValue(Lo,0));
 
-      if (!N.getValue(1).use_empty()) 
-        ReplaceUses(N.getValue(1), SDValue(Hi,0));
+      if (!SDValue(Node, 1).use_empty()) 
+        ReplaceUses(SDValue(Node, 1), SDValue(Hi,0));
 
       return NULL;
     }
@@ -427,7 +399,7 @@ SDNode* MipsDAGToDAGISel::Select(SDValue N) {
 
       SDValue InFlag = SDValue(MulNode, 0);
 
-      if (MulOp == ISD::MUL)
+      if (Opcode == ISD::MUL)
         return CurDAG->getMachineNode(Mips::MFLO, dl, MVT::i32, InFlag);
       else
         return CurDAG->getMachineNode(Mips::MFHI, dl, MVT::i32, InFlag);
@@ -460,23 +432,31 @@ SDNode* MipsDAGToDAGISel::Select(SDValue N) {
       return getGlobalBaseReg();
 
     case ISD::ConstantFP: {
-      ConstantFPSDNode *CN = dyn_cast<ConstantFPSDNode>(N);
-      if (N.getValueType() == MVT::f64 && CN->isExactlyValue(+0.0)) { 
-        SDValue Zero = CurDAG->getRegister(Mips::ZERO, MVT::i32);
-        ReplaceUses(N, Zero);
-        return Zero.getNode();
+      ConstantFPSDNode *CN = dyn_cast<ConstantFPSDNode>(Node);
+      if (Node->getValueType(0) == MVT::f64 && CN->isExactlyValue(+0.0)) { 
+        SDValue Zero = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), dl, 
+                                        Mips::ZERO, MVT::i32);
+        SDValue Undef = SDValue(
+          CurDAG->getMachineNode(TargetOpcode::IMPLICIT_DEF, dl, MVT::f64), 0);
+        SDNode *MTC = CurDAG->getMachineNode(Mips::MTC1, dl, MVT::f32, Zero);
+        SDValue I0 = CurDAG->getTargetInsertSubreg(Mips::SUBREG_FPEVEN, dl, 
+                            MVT::f64, Undef, SDValue(MTC, 0));
+        SDValue I1 = CurDAG->getTargetInsertSubreg(Mips::SUBREG_FPODD, dl, 
+                            MVT::f64, I0, SDValue(MTC, 0));
+        ReplaceUses(SDValue(Node, 0), I1);
+        return I1.getNode();
       }
       break;
     }
 
     case ISD::LOAD:
-      if (SDNode *ResNode = SelectLoadFp64(N))
+      if (SDNode *ResNode = SelectLoadFp64(Node))
         return ResNode;
       // Other cases are autogenerated.
       break;
 
     case ISD::STORE:
-      if (SDNode *ResNode = SelectStoreFp64(N))
+      if (SDNode *ResNode = SelectStoreFp64(Node))
         return ResNode;
       // Other cases are autogenerated.
       break;
@@ -487,10 +467,15 @@ SDNode* MipsDAGToDAGISel::Select(SDValue N) {
     /// be loaded with 3 instructions. 
     case MipsISD::JmpLink: {
       if (TM.getRelocationModel() == Reloc::PIC_) {
+        unsigned LastOpNum = Node->getNumOperands()-1;
+
         SDValue Chain  = Node->getOperand(0);
         SDValue Callee = Node->getOperand(1);
-        SDValue T9Reg = CurDAG->getRegister(Mips::T9, MVT::i32);
-        SDValue InFlag(0, 0);
+        SDValue InFlag;
+
+        // Skip the incomming flag if present
+        if (Node->getOperand(LastOpNum).getValueType() == MVT::Flag)
+          LastOpNum--;
 
         if ( (isa<GlobalAddressSDNode>(Callee)) ||
              (isa<ExternalSymbolSDNode>(Callee)) )
@@ -505,34 +490,42 @@ SDNode* MipsDAGToDAGISel::Select(SDValue N) {
           Chain = Load.getValue(1);
 
           // Call target must be on T9
-          Chain = CurDAG->getCopyToReg(Chain, dl, T9Reg, Load, InFlag);
+          Chain = CurDAG->getCopyToReg(Chain, dl, Mips::T9, Load, InFlag);
         } else 
           /// Indirect call
-          Chain = CurDAG->getCopyToReg(Chain, dl, T9Reg, Callee, InFlag);
+          Chain = CurDAG->getCopyToReg(Chain, dl, Mips::T9, Callee, InFlag);
+
+        // Map the JmpLink operands to JALR
+        SDVTList NodeTys = CurDAG->getVTList(MVT::Other, MVT::Flag);
+        SmallVector<SDValue, 8> Ops;
+        Ops.push_back(CurDAG->getRegister(Mips::T9, MVT::i32));
+
+        for (unsigned i = 2, e = LastOpNum+1; i != e; ++i)
+          Ops.push_back(Node->getOperand(i));
+        Ops.push_back(Chain);
+        Ops.push_back(Chain.getValue(1));
 
         // Emit Jump and Link Register
-        SDNode *ResNode = CurDAG->getMachineNode(Mips::JALR, dl, MVT::Other,
-                                  MVT::Flag, T9Reg, Chain);
-        Chain  = SDValue(ResNode, 0);
-        InFlag = SDValue(ResNode, 1);
-        ReplaceUses(SDValue(Node, 0), Chain);
-        ReplaceUses(SDValue(Node, 1), InFlag);
+        SDNode *ResNode = CurDAG->getMachineNode(Mips::JALR, dl, NodeTys, 
+                                  &Ops[0], Ops.size());
+
+        // Replace Chain and InFlag
+        ReplaceUses(SDValue(Node, 0), SDValue(ResNode, 0));
+        ReplaceUses(SDValue(Node, 1), SDValue(ResNode, 1));
         return ResNode;
       } 
     }
   }
 
   // Select the default instruction
-  SDNode *ResNode = SelectCode(N);
+  SDNode *ResNode = SelectCode(Node);
 
-  DEBUG(errs().indent(Indent-2) << "=> ");
-  if (ResNode == NULL || ResNode == N.getNode())
-    DEBUG(N.getNode()->dump(CurDAG));
+  DEBUG(errs() << "=> ");
+  if (ResNode == NULL || ResNode == Node)
+    DEBUG(Node->dump(CurDAG));
   else
     DEBUG(ResNode->dump(CurDAG));
   DEBUG(errs() << "\n");
-  DEBUG(Indent -= 2);
-
   return ResNode;
 }
 

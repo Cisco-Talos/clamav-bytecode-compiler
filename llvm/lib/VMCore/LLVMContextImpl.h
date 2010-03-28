@@ -23,6 +23,7 @@
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Assembly/Writer.h"
+#include "llvm/Support/ValueHandle.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
@@ -115,6 +116,10 @@ public:
     ConstantStruct, true /*largekey*/> StructConstantsTy;
   StructConstantsTy StructConstants;
   
+  typedef ConstantUniqueMap<Constant*, UnionType, ConstantUnion>
+      UnionConstantsTy;
+  UnionConstantsTy UnionConstants;
+  
   typedef ConstantUniqueMap<std::vector<Constant*>, VectorType,
                             ConstantVector> VectorConstantsTy;
   VectorConstantsTy VectorConstants;
@@ -158,12 +163,16 @@ public:
   TypeMap<PointerValType, PointerType> PointerTypes;
   TypeMap<FunctionValType, FunctionType> FunctionTypes;
   TypeMap<StructValType, StructType> StructTypes;
+  TypeMap<UnionValType, UnionType> UnionTypes;
   TypeMap<IntegerValType, IntegerType> IntegerTypes;
 
   // Opaque types are not structurally uniqued, so don't use TypeMap.
   typedef SmallPtrSet<const OpaqueType*, 8> OpaqueTypesTy;
   OpaqueTypesTy OpaqueTypes;
-  
+
+  /// Used as an abstract type that will never be resolved.
+  OpaqueType *const AlwaysOpaqueTy;
+
 
   /// ValueHandles - This map keeps track of all of the value handles that are
   /// watching a Value*.  The Value::HasValueHandle bit is used to know
@@ -171,7 +180,17 @@ public:
   typedef DenseMap<Value*, ValueHandleBase*> ValueHandlesTy;
   ValueHandlesTy ValueHandles;
   
-  MetadataContext TheMetadata;
+  /// CustomMDKindNames - Map to hold the metadata string to ID mapping.
+  StringMap<unsigned> CustomMDKindNames;
+  
+  typedef std::pair<unsigned, TrackingVH<MDNode> > MDPairTy;
+  typedef SmallVector<MDPairTy, 2> MDMapTy;
+
+  /// MetadataStore - Collection of per-instruction metadata used in this
+  /// context.
+  DenseMap<const Instruction *, MDMapTy> MetadataStore;
+  
+  
   LLVMContextImpl(LLVMContext &C) : TheTrueVal(0), TheFalseVal(0),
     VoidTy(C, Type::VoidTyID),
     LabelTy(C, Type::LabelTyID),
@@ -185,10 +204,14 @@ public:
     Int8Ty(C, 8),
     Int16Ty(C, 16),
     Int32Ty(C, 32),
-    Int64Ty(C, 64) { }
+    Int64Ty(C, 64),
+    AlwaysOpaqueTy(new OpaqueType(C)) {
+    // Make sure the AlwaysOpaqueTy stays alive as long as the Context.
+    AlwaysOpaqueTy->addRef();
+    OpaqueTypes.insert(AlwaysOpaqueTy);
+  }
 
-  ~LLVMContextImpl()
-  {
+  ~LLVMContextImpl() {
     ExprConstants.freeConstants();
     ArrayConstants.freeConstants();
     StructConstants.freeConstants();
@@ -206,11 +229,27 @@ public:
       if (I->second->use_empty())
         delete I->second;
     }
-    MDNodeSet.clear();
+    AlwaysOpaqueTy->dropRef();
     for (OpaqueTypesTy::iterator I = OpaqueTypes.begin(), E = OpaqueTypes.end();
         I != E; ++I) {
       (*I)->AbstractTypeUsers.clear();
       delete *I;
+    }
+    // Destroy MDNode operands first.
+    for (FoldingSetIterator<MDNode> I = MDNodeSet.begin(), E = MDNodeSet.end();
+         I != E;) {
+      MDNode *N = &(*I);
+      ++I;
+      N->replaceAllOperandsWithNull();
+    }
+    while (!MDNodeSet.empty()) {
+      MDNode *N = &(*MDNodeSet.begin());
+      N->destroy();
+    }
+    // Destroy MDStrings.
+    for (StringMap<MDString*>::iterator I = MDStringCache.begin(),
+           E = MDStringCache.end(); I != E; ++I) {
+      delete I->second;
     }
   }
 };

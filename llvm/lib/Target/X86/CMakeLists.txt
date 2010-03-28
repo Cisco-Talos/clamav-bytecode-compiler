@@ -15,6 +15,7 @@ tablegen(X86GenCallingConv.inc -gen-callingconv)
 tablegen(X86GenSubtarget.inc -gen-subtarget)
 
 set(sources
+  X86AsmBackend.cpp
   X86CodeEmitter.cpp
   X86COFFMachineModuleInfo.cpp
   X86ELFWriterInfo.cpp
@@ -25,6 +26,8 @@ set(sources
   X86InstrInfo.cpp
   X86JITInfo.cpp
   X86MCAsmInfo.cpp
+  X86MCCodeEmitter.cpp 
+  X86MCTargetExpr.cpp
   X86RegisterInfo.cpp
   X86Subtarget.cpp
   X86TargetMachine.cpp

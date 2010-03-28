@@ -155,7 +155,6 @@ file prints this (at the time of this writing):</p>
   <b>bit</b> hasCtrlDep = 0;
   <b>bit</b> isNotDuplicable = 0;
   <b>bit</b> hasSideEffects = 0;
-  <b>bit</b> mayHaveSideEffects = 0;
   <b>bit</b> neverHasSideEffects = 0;
   InstrItinClass Itinerary = NoItinerary;
   <b>string</b> Constraints = "";
@@ -189,7 +188,7 @@ backend, and is only shown as an example.</p>
 
 <p>As you can see, a lot of information is needed for every instruction
 supported by the code generator, and specifying it all manually would be
-unmaintainble, prone to bugs, and tiring to do in the first place.  Because we
+unmaintainable, prone to bugs, and tiring to do in the first place.  Because we
 are using TableGen, all of the information was derived from the following
 definition:</p>
 
@@ -423,6 +422,10 @@ class.  This operation is analogous to $(foreach) in GNU make.</dd>
   <dd>An integer {0,1} indicating whether list 'a' is empty.</dd>
 <dt><tt>!if(a,b,c)</tt></dt>
   <dd>'b' if the result of integer operator 'a' is nonzero, 'c' otherwise.</dd>
+<dt><tt>!eq(a,b)</tt></dt>
+  <dd>Integer one if string a is equal to string b, zero otherwise.  This
+      only operates on string objects.  Use !cast<string> to compare other
+      types of objects.</dd>
 </dl>
 
 <p>Note that all of the values have rules specifying how they convert to values

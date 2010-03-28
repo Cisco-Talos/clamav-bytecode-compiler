@@ -44,13 +44,13 @@ namespace {
     const Type *FunctionContextTy;
     Constant *RegisterFn;
     Constant *UnregisterFn;
-    Constant *ResumeFn;
     Constant *BuiltinSetjmpFn;
     Constant *FrameAddrFn;
     Constant *LSDAAddrFn;
     Value *PersonalityFn;
     Constant *SelectorFn;
     Constant *ExceptionFn;
+    Constant *CallSiteFn;
 
     Value *CallSite;
   public:
@@ -66,8 +66,8 @@ namespace {
     }
 
   private:
-    void markInvokeCallSite(InvokeInst *II, unsigned InvokeNo,
-                            Value *CallSite,
+    void insertCallSiteStore(Instruction *I, int Number, Value *CallSite);
+    void markInvokeCallSite(InvokeInst *II, int InvokeNo, Value *CallSite,
                             SwitchInst *CatchSwitch);
     void splitLiveRangesLiveAcrossInvokes(SmallVector<InvokeInst*,16> &Invokes);
     bool insertSjLjEHSupport(Function &F);
@@ -106,27 +106,33 @@ bool SjLjEHPass::doInitialization(Module &M) {
                           Type::getVoidTy(M.getContext()),
                           PointerType::getUnqual(FunctionContextTy),
                           (Type *)0);
-  ResumeFn =
-    M.getOrInsertFunction("_Unwind_SjLj_Resume",
-                          Type::getVoidTy(M.getContext()),
-                          VoidPtrTy,
-                          (Type *)0);
   FrameAddrFn = Intrinsic::getDeclaration(&M, Intrinsic::frameaddress);
   BuiltinSetjmpFn = Intrinsic::getDeclaration(&M, Intrinsic::eh_sjlj_setjmp);
   LSDAAddrFn = Intrinsic::getDeclaration(&M, Intrinsic::eh_sjlj_lsda);
   SelectorFn = Intrinsic::getDeclaration(&M, Intrinsic::eh_selector);
   ExceptionFn = Intrinsic::getDeclaration(&M, Intrinsic::eh_exception);
+  CallSiteFn = Intrinsic::getDeclaration(&M, Intrinsic::eh_sjlj_callsite);
   PersonalityFn = 0;
 
   return true;
 }
 
+/// insertCallSiteStore - Insert a store of the call-site value to the
+/// function context
+void SjLjEHPass::insertCallSiteStore(Instruction *I, int Number,
+                                     Value *CallSite) {
+  ConstantInt *CallSiteNoC = ConstantInt::get(Type::getInt32Ty(I->getContext()),
+                                              Number);
+  // Insert a store of the call-site number
+  new StoreInst(CallSiteNoC, CallSite, true, I);  // volatile
+}
+
 /// markInvokeCallSite - Insert code to mark the call_site for this invoke
-void SjLjEHPass::markInvokeCallSite(InvokeInst *II, unsigned InvokeNo,
+void SjLjEHPass::markInvokeCallSite(InvokeInst *II, int InvokeNo,
                                     Value *CallSite,
                                     SwitchInst *CatchSwitch) {
   ConstantInt *CallSiteNoC= ConstantInt::get(Type::getInt32Ty(II->getContext()),
-                                            InvokeNo);
+                                              InvokeNo);
   // The runtime comes back to the dispatcher with the call_site - 1 in
   // the context. Odd, but there it is.
   ConstantInt *SwitchValC = ConstantInt::get(Type::getInt32Ty(II->getContext()),
@@ -143,15 +149,17 @@ void SjLjEHPass::markInvokeCallSite(InvokeInst *II, unsigned InvokeNo,
     }
   }
 
-  // Insert a store of the invoke num before the invoke and store zero into the
-  // location afterward.
-  new StoreInst(CallSiteNoC, CallSite, true, II);  // volatile
+  // Insert the store of the call site value
+  insertCallSiteStore(II, InvokeNo, CallSite);
+
+  // Record the call site value for the back end so it stays associated with
+  // the invoke.
+  CallInst::Create(CallSiteFn, CallSiteNoC, "", II);
 
   // Add a switch case to our unwind block.
   CatchSwitch->addCase(SwitchValC, II->getUnwindDest());
-  // We still want this to look like an invoke so we emit the LSDA properly
-  // FIXME: ??? Or will this cause strangeness with mis-matched IDs like
-  //  when it was in the front end?
+  // We still want this to look like an invoke so we emit the LSDA properly,
+  // so we don't transform the invoke into a call here.
 }
 
 /// MarkBlocksLiveIn - Insert BB and all of its predescessors into LiveBBs until
@@ -271,8 +279,8 @@ bool SjLjEHPass::insertSjLjEHSupport(Function &F) {
   SmallVector<InvokeInst*,16> Invokes;
 
   // Look through the terminators of the basic blocks to find invokes, returns
-  // and unwinds
-  for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB)
+  // and unwinds.
+  for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
     if (ReturnInst *RI = dyn_cast<ReturnInst>(BB->getTerminator())) {
       // Remember all return instructions in case we insert an invoke into this
       // function.
@@ -282,6 +290,7 @@ bool SjLjEHPass::insertSjLjEHSupport(Function &F) {
     } else if (UnwindInst *UI = dyn_cast<UnwindInst>(BB->getTerminator())) {
       Unwinds.push_back(UI);
     }
+  }
   // If we don't have any invokes or unwinds, there's nothing to do.
   if (Unwinds.empty() && Invokes.empty()) return false;
 
@@ -381,9 +390,6 @@ bool SjLjEHPass::insertSjLjEHSupport(Function &F) {
       I->eraseFromParent();
     }
 
-
-
-
     // The entry block changes to have the eh.sjlj.setjmp, with a conditional
     // branch to a dispatch block for non-zero returns. If we return normally,
     // we're not handling an exception and just register the function context
@@ -397,13 +403,15 @@ bool SjLjEHPass::insertSjLjEHSupport(Function &F) {
     // Insert a load in the Catch block, and a switch on its value.  By default,
     // we go to a block that just does an unwind (which is the correct action
     // for a standard call).
-    BasicBlock *UnwindBlock = BasicBlock::Create(F.getContext(), "unwindbb", &F);
+    BasicBlock *UnwindBlock =
+      BasicBlock::Create(F.getContext(), "unwindbb", &F);
     Unwinds.push_back(new UnwindInst(F.getContext(), UnwindBlock));
 
     Value *DispatchLoad = new LoadInst(CallSite, "invoke.num", true,
                                        DispatchBlock);
     SwitchInst *DispatchSwitch =
-      SwitchInst::Create(DispatchLoad, UnwindBlock, Invokes.size(), DispatchBlock);
+      SwitchInst::Create(DispatchLoad, UnwindBlock, Invokes.size(),
+                         DispatchBlock);
     // Split the entry block to insert the conditional branch for the setjmp.
     BasicBlock *ContBlock = EntryBB->splitBasicBlock(EntryBB->getTerminator(),
                                                      "eh.sjlj.setjmp.cont");
@@ -478,24 +486,21 @@ bool SjLjEHPass::insertSjLjEHSupport(Function &F) {
     for (unsigned i = 0, e = Invokes.size(); i != e; ++i)
       markInvokeCallSite(Invokes[i], i+1, CallSite, DispatchSwitch);
 
-    // The front end has likely added calls to _Unwind_Resume. We need
-    // to find those calls and mark the call_site as -1 immediately prior.
-    // resume is a noreturn function, so any block that has a call to it
-    // should end in an 'unreachable' instruction with the call immediately
-    // prior. That's how we'll search.
-    // ??? There's got to be a better way. this is fugly.
-    for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB)
-      if ((dyn_cast<UnreachableInst>(BB->getTerminator()))) {
-        BasicBlock::iterator I = BB->getTerminator();
-        // Check the previous instruction and see if it's a resume call
-        if (I == BB->begin()) continue;
-        if (CallInst *CI = dyn_cast<CallInst>(--I)) {
-          if (CI->getCalledFunction() == ResumeFn) {
-            Value *NegativeOne = Constant::getAllOnesValue(Int32Ty);
-            new StoreInst(NegativeOne, CallSite, true, I);  // volatile
-          }
+    // Mark call instructions that aren't nounwind as no-action
+    // (call_site == -1). Skip the entry block, as prior to then, no function
+    // context has been created for this function and any unexpected exceptions
+    // thrown will go directly to the caller's context, which is what we want
+    // anyway, so no need to do anything here.
+    for (Function::iterator BB = F.begin(), E = F.end(); ++BB != E;) {
+      for (BasicBlock::iterator I = BB->begin(), end = BB->end(); I != end; ++I)
+        if (CallInst *CI = dyn_cast<CallInst>(I)) {
+          // Ignore calls to the EH builtins (eh.selector, eh.exception)
+          Constant *Callee = CI->getCalledFunction();
+          if (Callee != SelectorFn && Callee != ExceptionFn
+              && !CI->doesNotThrow())
+            insertCallSiteStore(CI, -1, CallSite);
         }
-      }
+    }
 
     // Replace all unwinds with a branch to the unwind handler.
     // ??? Should this ever happen with sjlj exceptions?

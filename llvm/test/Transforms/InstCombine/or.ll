@@ -126,8 +126,8 @@ define i1 @test14(i32 %A, i32 %B) {
         %D = or i1 %C1, %C2
         ret i1 %D
 ; CHECK: @test14
-; CHECK: %D = icmp ne i32 %A, %B
-; CHECK: ret i1 %D
+; CHECK: icmp ne i32 %A, %B
+; CHECK: ret i1
 }
 
 define i1 @test15(i32 %A, i32 %B) {
@@ -137,8 +137,8 @@ define i1 @test15(i32 %A, i32 %B) {
         %D = or i1 %C1, %C2
         ret i1 %D
 ; CHECK: @test15
-; CHECK: %D = icmp ule i32 %A, %B
-; CHECK: ret i1 %D
+; CHECK:  icmp ule i32 %A, %B
+; CHECK: ret i1
 }
 
 define i32 @test16(i32 %A) {
@@ -171,8 +171,8 @@ define i1 @test18(i32 %A) {
         ret i1 %D
 ; CHECK: @test18
 ; CHECK: add i32
-; CHECK: %D = icmp ugt 
-; CHECK: ret i1 %D
+; CHECK:  icmp ugt 
+; CHECK: ret i1 
 }
 
 define i1 @test19(i32 %A) {
@@ -183,8 +183,8 @@ define i1 @test19(i32 %A) {
         ret i1 %D
 ; CHECK: @test19
 ; CHECK: add i32
-; CHECK: %D = icmp ult 
-; CHECK: ret i1 %D
+; CHECK: icmp ult 
+; CHECK: ret i1
 }
 
 define i32 @test20(i32 %x) {
@@ -236,8 +236,8 @@ define i1 @test24(double %X, double %Y) {
         ret i1 %bothcond
         
 ; CHECK: @test24
-; CHECK:   %bothcond = fcmp uno double %Y, %X              ; <i1> [#uses=1]
-; CHECK:   ret i1 %bothcond
+; CHECK:    = fcmp uno double %Y, %X
+; CHECK:   ret i1 
 }
 
 ; PR3266 & PR5276
@@ -268,19 +268,17 @@ define i1 @test26(i32 %A, i32 %B) {
 ; CHECK: ret i1 
 }
 
-; PR5634
 define i1 @test27(i32* %A, i32* %B) {
-        %C1 = icmp eq i32* %A, null
-        %C2 = icmp eq i32* %B, null
-        ; (A == 0) & (A == 0)   -->   (A|B) == 0
-        %D = and i1 %C1, %C2
-        ret i1 %D
+  %C1 = ptrtoint i32* %A to i32
+  %C2 = ptrtoint i32* %B to i32
+  %D = or i32 %C1, %C2
+  %E = icmp eq i32 %D, 0
+  ret i1 %E
 ; CHECK: @test27
-; CHECK: ptrtoint i32* %A
-; CHECK: ptrtoint i32* %B
-; CHECK: or i32 
-; CHECK: icmp eq i32 {{.*}}, 0
-; CHECK: ret i1 
+; CHECK: icmp eq i32* %A, null
+; CHECK: icmp eq i32* %B, null
+; CHECK: and i1
+; CHECK: ret i1
 }
 
 ; PR5634
@@ -295,3 +293,60 @@ define i1 @test28(i32 %A, i32 %B) {
 ; CHECK: icmp ne i32 {{.*}}, 0
 ; CHECK: ret i1 
 }
+
+define i1 @test29(i32* %A, i32* %B) {
+  %C1 = ptrtoint i32* %A to i32
+  %C2 = ptrtoint i32* %B to i32
+  %D = or i32 %C1, %C2
+  %E = icmp ne i32 %D, 0
+  ret i1 %E
+; CHECK: @test29
+; CHECK: icmp ne i32* %A, null
+; CHECK: icmp ne i32* %B, null
+; CHECK: or i1
+; CHECK: ret i1
+}
+
+; PR4216
+define i32 @test30(i32 %A) {
+entry:
+  %B = or i32 %A, 32962
+  %C = and i32 %A, -65536
+  %D = and i32 %B, 40186
+  %E = or i32 %D, %C
+  ret i32 %E
+; CHECK: @test30
+; CHECK: %B = or i32 %A, 32962
+; CHECK: %E = and i32 %B, -25350
+; CHECK: ret i32 %E
+}
+
+; PR4216
+define i64 @test31(i64 %A) nounwind readnone ssp noredzone {
+  %B = or i64 %A, 194
+  %D = and i64 %B, 250
+
+  %C = or i64 %A, 32768
+  %E = and i64 %C, 4294941696
+
+  %F = or i64 %D, %E
+  ret i64 %F
+; CHECK: @test31
+; CHECK-NEXT: %bitfield = or i64 %A, 32962
+; CHECK-NEXT: %F = and i64 %bitfield, 4294941946
+; CHECK-NEXT: ret i64 %F
+}
+
+define <4 x i32> @test32(<4 x i1> %and.i1352, <4 x i32> %vecinit6.i176, <4 x i32> %vecinit6.i191) {
+  %and.i135 = sext <4 x i1> %and.i1352 to <4 x i32> ; <<4 x i32>> [#uses=2]
+  %and.i129 = and <4 x i32> %vecinit6.i176, %and.i135 ; <<4 x i32>> [#uses=1]
+  %neg.i = xor <4 x i32> %and.i135, <i32 -1, i32 -1, i32 -1, i32 -1> ; <<4 x i32>> [#uses=1]
+  %and.i = and <4 x i32> %vecinit6.i191, %neg.i   ; <<4 x i32>> [#uses=1]
+  %or.i = or <4 x i32> %and.i, %and.i129          ; <<4 x i32>> [#uses=1]
+  ret <4 x i32> %or.i
+; Don't turn this into a vector select until codegen matures to handle them
+; better.
+; CHECK: @test32
+; CHECK: or <4 x i32> %and.i, %and.i129
+}
+

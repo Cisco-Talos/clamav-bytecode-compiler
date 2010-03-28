@@ -52,6 +52,7 @@ set(LLVM_ALL_TARGETS
   CellSPU
   CppBackend
   Mips
+  MBlaze
   MSIL
   MSP430
   PIC16
@@ -296,6 +297,7 @@ add_subdirectory(lib/Bitcode/Reader)
 add_subdirectory(lib/Bitcode/Writer)
 add_subdirectory(lib/Transforms/Utils)
 add_subdirectory(lib/Transforms/Instrumentation)
+add_subdirectory(lib/Transforms/InstCombine)
 add_subdirectory(lib/Transforms/Scalar)
 add_subdirectory(lib/Transforms/IPO)
 add_subdirectory(lib/Transforms/Hello)
@@ -303,6 +305,7 @@ add_subdirectory(lib/Linker)
 add_subdirectory(lib/Analysis)
 add_subdirectory(lib/Analysis/IPA)
 add_subdirectory(lib/MC)
+add_subdirectory(lib/MC/MCParser)
 add_subdirectory(test)
 
 add_subdirectory(utils/FileCheck)

@@ -1,4 +1,4 @@
-; RUN: llvm-as < %s | llc -march=msp430 | FileCheck %s
+; RUN: llc < %s -march=msp430 | FileCheck %s
 target datalayout = "e-p:16:16:16-i8:8:8-i16:16:16-i32:16:16"
 target triple = "msp430-generic-generic"
 
@@ -32,7 +32,7 @@ define void @am3(i16 %i, i8 %x) nounwind {
 	ret void
 }
 ; CHECK: am3:
-; CHECK:		bis.b	r14, &bar(r15)
+; CHECK:		bis.b	r14, bar(r15)
 
 define void @am4(i16 %x) nounwind {
 	%1 = volatile load i16* inttoptr(i16 32 to i16*)
@@ -77,5 +77,5 @@ define void @am7(i16 %n, i8 %x) nounwind {
 	ret void
 }
 ; CHECK: am7:
-; CHECK:		bis.b	r14, &duh+2(r15)
+; CHECK:		bis.b	r14, duh+2(r15)
 

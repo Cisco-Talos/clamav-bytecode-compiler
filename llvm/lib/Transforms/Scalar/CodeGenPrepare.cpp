@@ -32,16 +32,12 @@
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Assembly/Writer.h"
 #include "llvm/Support/CallSite.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/GetElementPtrTypeIterator.h"
 #include "llvm/Support/PatternMatch.h"
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 using namespace llvm::PatternMatch;
-
-static cl::opt<bool> FactorCommonPreds("split-critical-paths-tweak",
-                                       cl::init(false), cl::Hidden);
 
 namespace {
   class CodeGenPrepare : public FunctionPass {
@@ -61,6 +57,10 @@ namespace {
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addPreserved<ProfileInfo>();
+    }
+
+    virtual void releaseMemory() {
+      BackEdges.clear();
     }
 
   private:
@@ -237,7 +237,7 @@ void CodeGenPrepare::EliminateMostlyEmptyBlock(BasicBlock *BB) {
   BranchInst *BI = cast<BranchInst>(BB->getTerminator());
   BasicBlock *DestBB = BI->getSuccessor(0);
 
-  DEBUG(errs() << "MERGING MOSTLY EMPTY BLOCKS - BEFORE:\n" << *BB << *DestBB);
+  DEBUG(dbgs() << "MERGING MOSTLY EMPTY BLOCKS - BEFORE:\n" << *BB << *DestBB);
 
   // If the destination block has a single pred, then this is a trivial edge,
   // just collapse it.
@@ -251,7 +251,7 @@ void CodeGenPrepare::EliminateMostlyEmptyBlock(BasicBlock *BB) {
       if (isEntry && BB != &BB->getParent()->getEntryBlock())
         BB->moveBefore(&BB->getParent()->getEntryBlock());
       
-      DEBUG(errs() << "AFTER:\n" << *DestBB << "\n\n\n");
+      DEBUG(dbgs() << "AFTER:\n" << *DestBB << "\n\n\n");
       return;
     }
   }
@@ -294,7 +294,71 @@ void CodeGenPrepare::EliminateMostlyEmptyBlock(BasicBlock *BB) {
   }
   BB->eraseFromParent();
 
-  DEBUG(errs() << "AFTER:\n" << *DestBB << "\n\n\n");
+  DEBUG(dbgs() << "AFTER:\n" << *DestBB << "\n\n\n");
+}
+
+/// FindReusablePredBB - Check all of the predecessors of the block DestPHI
+/// lives in to see if there is a block that we can reuse as a critical edge
+/// from TIBB.
+static BasicBlock *FindReusablePredBB(PHINode *DestPHI, BasicBlock *TIBB) {
+  BasicBlock *Dest = DestPHI->getParent();
+  
+  /// TIPHIValues - This array is lazily computed to determine the values of
+  /// PHIs in Dest that TI would provide.
+  SmallVector<Value*, 32> TIPHIValues;
+  
+  /// TIBBEntryNo - This is a cache to speed up pred queries for TIBB.
+  unsigned TIBBEntryNo = 0;
+  
+  // Check to see if Dest has any blocks that can be used as a split edge for
+  // this terminator.
+  for (unsigned pi = 0, e = DestPHI->getNumIncomingValues(); pi != e; ++pi) {
+    BasicBlock *Pred = DestPHI->getIncomingBlock(pi);
+    // To be usable, the pred has to end with an uncond branch to the dest.
+    BranchInst *PredBr = dyn_cast<BranchInst>(Pred->getTerminator());
+    if (!PredBr || !PredBr->isUnconditional())
+      continue;
+    // Must be empty other than the branch and debug info.
+    BasicBlock::iterator I = Pred->begin();
+    while (isa<DbgInfoIntrinsic>(I))
+      I++;
+    if (&*I != PredBr)
+      continue;
+    // Cannot be the entry block; its label does not get emitted.
+    if (Pred == &Dest->getParent()->getEntryBlock())
+      continue;
+    
+    // Finally, since we know that Dest has phi nodes in it, we have to make
+    // sure that jumping to Pred will have the same effect as going to Dest in
+    // terms of PHI values.
+    PHINode *PN;
+    unsigned PHINo = 0;
+    unsigned PredEntryNo = pi;
+    
+    bool FoundMatch = true;
+    for (BasicBlock::iterator I = Dest->begin();
+         (PN = dyn_cast<PHINode>(I)); ++I, ++PHINo) {
+      if (PHINo == TIPHIValues.size()) {
+        if (PN->getIncomingBlock(TIBBEntryNo) != TIBB)
+          TIBBEntryNo = PN->getBasicBlockIndex(TIBB);
+        TIPHIValues.push_back(PN->getIncomingValue(TIBBEntryNo));
+      }
+      
+      // If the PHI entry doesn't work, we can't use this pred.
+      if (PN->getIncomingBlock(PredEntryNo) != Pred)
+        PredEntryNo = PN->getBasicBlockIndex(Pred);
+      
+      if (TIPHIValues[PHINo] != PN->getIncomingValue(PredEntryNo)) {
+        FoundMatch = false;
+        break;
+      }
+    }
+    
+    // If we found a workable predecessor, change TI to branch to Succ.
+    if (FoundMatch)
+      return Pred;
+  }
+  return 0;  
 }
 
 
@@ -311,13 +375,12 @@ static void SplitEdgeNicely(TerminatorInst *TI, unsigned SuccNum,
   BasicBlock *Dest = TI->getSuccessor(SuccNum);
   assert(isa<PHINode>(Dest->begin()) &&
          "This should only be called if Dest has a PHI!");
+  PHINode *DestPHI = cast<PHINode>(Dest->begin());
 
   // Do not split edges to EH landing pads.
-  if (InvokeInst *Invoke = dyn_cast<InvokeInst>(TI)) {
+  if (InvokeInst *Invoke = dyn_cast<InvokeInst>(TI))
     if (Invoke->getSuccessor(1) == Dest)
       return;
-  }
-  
 
   // As a hack, never split backedges of loops.  Even though the copy for any
   // PHIs inserted on the backedge would be dead for exits from the loop, we
@@ -325,92 +388,16 @@ static void SplitEdgeNicely(TerminatorInst *TI, unsigned SuccNum,
   if (BackEdges.count(std::make_pair(TIBB, Dest)))
     return;
 
-  if (!FactorCommonPreds) {
-    /// TIPHIValues - This array is lazily computed to determine the values of
-    /// PHIs in Dest that TI would provide.
-    SmallVector<Value*, 32> TIPHIValues;
-
-    // Check to see if Dest has any blocks that can be used as a split edge for
-    // this terminator.
-    for (pred_iterator PI = pred_begin(Dest), E = pred_end(Dest); PI != E; ++PI) {
-      BasicBlock *Pred = *PI;
-      // To be usable, the pred has to end with an uncond branch to the dest.
-      BranchInst *PredBr = dyn_cast<BranchInst>(Pred->getTerminator());
-      if (!PredBr || !PredBr->isUnconditional())
-        continue;
-      // Must be empty other than the branch and debug info.
-      BasicBlock::iterator I = Pred->begin();
-      while (isa<DbgInfoIntrinsic>(I))
-        I++;
-      if (dyn_cast<Instruction>(I) != PredBr)
-        continue;
-      // Cannot be the entry block; its label does not get emitted.
-      if (Pred == &(Dest->getParent()->getEntryBlock()))
-        continue;
-
-      // Finally, since we know that Dest has phi nodes in it, we have to make
-      // sure that jumping to Pred will have the same effect as going to Dest in
-      // terms of PHI values.
-      PHINode *PN;
-      unsigned PHINo = 0;
-      bool FoundMatch = true;
-      for (BasicBlock::iterator I = Dest->begin();
-           (PN = dyn_cast<PHINode>(I)); ++I, ++PHINo) {
-        if (PHINo == TIPHIValues.size())
-          TIPHIValues.push_back(PN->getIncomingValueForBlock(TIBB));
-
-        // If the PHI entry doesn't work, we can't use this pred.
-        if (TIPHIValues[PHINo] != PN->getIncomingValueForBlock(Pred)) {
-          FoundMatch = false;
-          break;
-        }
-      }
-
-      // If we found a workable predecessor, change TI to branch to Succ.
-      if (FoundMatch) {
-        ProfileInfo *PFI = P->getAnalysisIfAvailable<ProfileInfo>();
-        if (PFI)
-          PFI->splitEdge(TIBB, Dest, Pred);
-        Dest->removePredecessor(TIBB);
-        TI->setSuccessor(SuccNum, Pred);
-        return;
-      }
-    }
-
-    SplitCriticalEdge(TI, SuccNum, P, true);
+  if (BasicBlock *ReuseBB = FindReusablePredBB(DestPHI, TIBB)) {
+    ProfileInfo *PFI = P->getAnalysisIfAvailable<ProfileInfo>();
+    if (PFI)
+      PFI->splitEdge(TIBB, Dest, ReuseBB);
+    Dest->removePredecessor(TIBB);
+    TI->setSuccessor(SuccNum, ReuseBB);
     return;
   }
 
-  PHINode *PN;
-  SmallVector<Value*, 8> TIPHIValues;
-  for (BasicBlock::iterator I = Dest->begin();
-       (PN = dyn_cast<PHINode>(I)); ++I)
-    TIPHIValues.push_back(PN->getIncomingValueForBlock(TIBB));
-
-  SmallVector<BasicBlock*, 8> IdenticalPreds;
-  for (pred_iterator PI = pred_begin(Dest), E = pred_end(Dest); PI != E; ++PI) {
-    BasicBlock *Pred = *PI;
-    if (BackEdges.count(std::make_pair(Pred, Dest)))
-      continue;
-    if (PI == TIBB)
-      IdenticalPreds.push_back(Pred);
-    else {
-      bool Identical = true;
-      unsigned PHINo = 0;
-      for (BasicBlock::iterator I = Dest->begin();
-           (PN = dyn_cast<PHINode>(I)); ++I, ++PHINo)
-        if (TIPHIValues[PHINo] != PN->getIncomingValueForBlock(Pred)) {
-          Identical = false;
-          break;
-        }
-      if (Identical)
-        IdenticalPreds.push_back(Pred);
-    }
-  }
-
-  assert(!IdenticalPreds.empty());
-  SplitBlockPredecessors(Dest, &IdenticalPreds[0], IdenticalPreds.size(),
-                         ".critedge", P);
+  SplitCriticalEdge(TI, SuccNum, P, true);
 }
 
 
@@ -591,7 +578,7 @@ bool CodeGenPrepare::OptimizeMemoryInst(Instruction *MemoryInst, Value *Addr,
 
   // If all the instructions matched are already in this BB, don't do anything.
   if (!AnyNonLocal) {
-    DEBUG(errs() << "CGP: Found      local addrmode: " << AddrMode << "\n");
+    DEBUG(dbgs() << "CGP: Found      local addrmode: " << AddrMode << "\n");
     return false;
   }
 
@@ -606,23 +593,39 @@ bool CodeGenPrepare::OptimizeMemoryInst(Instruction *MemoryInst, Value *Addr,
   // computation.
   Value *&SunkAddr = SunkAddrs[Addr];
   if (SunkAddr) {
-    DEBUG(errs() << "CGP: Reusing nonlocal addrmode: " << AddrMode << " for "
+    DEBUG(dbgs() << "CGP: Reusing nonlocal addrmode: " << AddrMode << " for "
                  << *MemoryInst);
     if (SunkAddr->getType() != Addr->getType())
       SunkAddr = new BitCastInst(SunkAddr, Addr->getType(), "tmp", InsertPt);
   } else {
-    DEBUG(errs() << "CGP: SINKING nonlocal addrmode: " << AddrMode << " for "
+    DEBUG(dbgs() << "CGP: SINKING nonlocal addrmode: " << AddrMode << " for "
                  << *MemoryInst);
     const Type *IntPtrTy =
           TLI->getTargetData()->getIntPtrType(AccessTy->getContext());
 
     Value *Result = 0;
-    // Start with the scale value.
+
+    // Start with the base register. Do this first so that subsequent address
+    // matching finds it last, which will prevent it from trying to match it
+    // as the scaled value in case it happens to be a mul. That would be
+    // problematic if we've sunk a different mul for the scale, because then
+    // we'd end up sinking both muls.
+    if (AddrMode.BaseReg) {
+      Value *V = AddrMode.BaseReg;
+      if (V->getType()->isPointerTy())
+        V = new PtrToIntInst(V, IntPtrTy, "sunkaddr", InsertPt);
+      if (V->getType() != IntPtrTy)
+        V = CastInst::CreateIntegerCast(V, IntPtrTy, /*isSigned=*/true,
+                                        "sunkaddr", InsertPt);
+      Result = V;
+    }
+
+    // Add the scale value.
     if (AddrMode.Scale) {
       Value *V = AddrMode.ScaledReg;
       if (V->getType() == IntPtrTy) {
         // done.
-      } else if (isa<PointerType>(V->getType())) {
+      } else if (V->getType()->isPointerTy()) {
         V = new PtrToIntInst(V, IntPtrTy, "sunkaddr", InsertPt);
       } else if (cast<IntegerType>(IntPtrTy)->getBitWidth() <
                  cast<IntegerType>(V->getType())->getBitWidth()) {
@@ -634,17 +637,6 @@ bool CodeGenPrepare::OptimizeMemoryInst(Instruction *MemoryInst, Value *Addr,
         V = BinaryOperator::CreateMul(V, ConstantInt::get(IntPtrTy,
                                                                 AddrMode.Scale),
                                       "sunkaddr", InsertPt);
-      Result = V;
-    }
-
-    // Add in the base register.
-    if (AddrMode.BaseReg) {
-      Value *V = AddrMode.BaseReg;
-      if (isa<PointerType>(V->getType()))
-        V = new PtrToIntInst(V, IntPtrTy, "sunkaddr", InsertPt);
-      if (V->getType() != IntPtrTy)
-        V = CastInst::CreateIntegerCast(V, IntPtrTy, /*isSigned=*/true,
-                                        "sunkaddr", InsertPt);
       if (Result)
         Result = BinaryOperator::CreateAdd(Result, V, "sunkaddr", InsertPt);
       else

@@ -35,7 +35,6 @@ class SparcDAGToDAGISel : public SelectionDAGISel {
   /// make the right decision when generating code for different targets.
   const SparcSubtarget &Subtarget;
   SparcTargetMachine& TM;
-  MachineBasicBlock *CurBB;
 public:
   explicit SparcDAGToDAGISel(SparcTargetMachine &tm)
     : SelectionDAGISel(tm),
@@ -43,11 +42,11 @@ public:
       TM(tm) {
   }
 
-  SDNode *Select(SDValue Op);
+  SDNode *Select(SDNode *N);
 
   // Complex Pattern Selectors.
-  bool SelectADDRrr(SDValue Op, SDValue N, SDValue &R1, SDValue &R2);
-  bool SelectADDRri(SDValue Op, SDValue N, SDValue &Base,
+  bool SelectADDRrr(SDNode *Op, SDValue N, SDValue &R1, SDValue &R2);
+  bool SelectADDRri(SDNode *Op, SDValue N, SDValue &Base,
                     SDValue &Offset);
 
   /// SelectInlineAsmMemoryOperand - Implement addressing mode selection for
@@ -55,10 +54,6 @@ public:
   virtual bool SelectInlineAsmMemoryOperand(const SDValue &Op,
                                             char ConstraintCode,
                                             std::vector<SDValue> &OutOps);
-
-  /// InstructionSelect - This callback is invoked by
-  /// SelectionDAGISel when it has created a SelectionDAG for us to codegen.
-  virtual void InstructionSelect();
 
   virtual const char *getPassName() const {
     return "SPARC DAG->DAG Pattern Instruction Selection";
@@ -72,22 +67,13 @@ private:
 };
 }  // end anonymous namespace
 
-/// InstructionSelect - This callback is invoked by
-/// SelectionDAGISel when it has created a SelectionDAG for us to codegen.
-void SparcDAGToDAGISel::InstructionSelect() {
-  CurBB = BB;
-  // Select target instructions for the DAG.
-  SelectRoot(*CurDAG);
-  CurDAG->RemoveDeadNodes();
-}
-
 SDNode* SparcDAGToDAGISel::getGlobalBaseReg() {
-  MachineFunction *MF = CurBB->getParent();
+  MachineFunction *MF = BB->getParent();
   unsigned GlobalBaseReg = TM.getInstrInfo()->getGlobalBaseReg(MF);
   return CurDAG->getRegister(GlobalBaseReg, TLI.getPointerTy()).getNode();
 }
 
-bool SparcDAGToDAGISel::SelectADDRri(SDValue Op, SDValue Addr,
+bool SparcDAGToDAGISel::SelectADDRri(SDNode *Op, SDValue Addr,
                                      SDValue &Base, SDValue &Offset) {
   if (FrameIndexSDNode *FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
     Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i32);
@@ -128,7 +114,7 @@ bool SparcDAGToDAGISel::SelectADDRri(SDValue Op, SDValue Addr,
   return true;
 }
 
-bool SparcDAGToDAGISel::SelectADDRrr(SDValue Op, SDValue Addr,
+bool SparcDAGToDAGISel::SelectADDRrr(SDNode *Op, SDValue Addr,
                                      SDValue &R1,  SDValue &R2) {
   if (Addr.getOpcode() == ISD::FrameIndex) return false;
   if (Addr.getOpcode() == ISD::TargetExternalSymbol ||
@@ -152,8 +138,7 @@ bool SparcDAGToDAGISel::SelectADDRrr(SDValue Op, SDValue Addr,
   return true;
 }
 
-SDNode *SparcDAGToDAGISel::Select(SDValue Op) {
-  SDNode *N = Op.getNode();
+SDNode *SparcDAGToDAGISel::Select(SDNode *N) {
   DebugLoc dl = N->getDebugLoc();
   if (N->isMachineOpcode())
     return NULL;   // Already selected.
@@ -199,7 +184,7 @@ SDNode *SparcDAGToDAGISel::Select(SDValue Op) {
   }
   }
 
-  return SelectCode(Op);
+  return SelectCode(N);
 }
 
 
@@ -213,8 +198,8 @@ SparcDAGToDAGISel::SelectInlineAsmMemoryOperand(const SDValue &Op,
   switch (ConstraintCode) {
   default: return true;
   case 'm':   // memory
-   if (!SelectADDRrr(Op, Op, Op0, Op1))
-     SelectADDRri(Op, Op, Op0, Op1);
+   if (!SelectADDRrr(Op.getNode(), Op, Op0, Op1))
+     SelectADDRri(Op.getNode(), Op, Op0, Op1);
    break;
   }
 

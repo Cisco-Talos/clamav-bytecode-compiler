@@ -68,7 +68,7 @@ void PIC16DbgInfo::PopulateDerivedTypeInfo (DIType Ty, unsigned short &TypeNo,
       TypeNo = TypeNo << PIC16Dbg::S_DERIVED;
   }
   
-  // We also need to encode the the information about the base type of
+  // We also need to encode the information about the base type of
   // pointer in TypeNo.
   DIType BaseType = DIDerivedType(Ty.getNode()).getTypeDerivedFrom();
   PopulateDebugInfo(BaseType, TypeNo, HasAux, Aux, TagName);
@@ -259,8 +259,9 @@ void PIC16DbgInfo::ChangeDebugLoc(const MachineFunction &MF,
   if (! EmitDebugDirectives) return;
   assert (! DL.isUnknown()  && "can't change to invalid debug loc");
 
-  MDNode *CU = MF.getDebugLocTuple(DL).Scope;
-  unsigned line = MF.getDebugLocTuple(DL).Line;
+  DILocation Loc = MF.getDILocation(DL);
+  MDNode *CU = Loc.getScope().getNode();
+  unsigned line = Loc.getLineNumber();
 
   SwitchToCU(CU);
   SwitchToLine(line, IsInBeginFunction);
@@ -418,7 +419,7 @@ void PIC16DbgInfo::EmitAuxEntry(const std::string VarName, int Aux[], int Num,
   if (TagName != "")
     O << ", " << TagName;
   for (int i = 0; i<Num; i++)
-    O << "," << Aux[i];
+    O << "," << (Aux[i] && 0xff);
 }
 
 /// EmitSymbol - Emit .def for a symbol. Value is offset for the member.

@@ -35,10 +35,8 @@ DSTROOT = $(OBJROOT)/../dst
 PREFIX = /usr/local
 
 # Unless assertions are forced on in the GMAKE command line, disable them.
-ifdef ENABLE_ASSERTIONS
-LLVM_ASSERTIONS := yes
-else
-LLVM_ASSERTIONS := no
+ifndef ENABLE_ASSERTIONS
+ENABLE_ASSERTIONS := no
 endif
 
 # Default is optimized build.
@@ -61,7 +59,7 @@ install: $(OBJROOT) $(SYMROOT) $(DSTROOT)
 	cd $(OBJROOT) && \
 	  $(SRC)/utils/buildit/build_llvm "$(RC_ARCHS)" "$(TARGETS)" \
 	    $(SRC) $(PREFIX) $(DSTROOT) $(SYMROOT) \
-	    $(LLVM_ASSERTIONS) $(LLVM_OPTIMIZED) \
+	    $(ENABLE_ASSERTIONS) $(LLVM_OPTIMIZED) \
 	    $(RC_ProjectSourceVersion) $(RC_ProjectSourceSubversion) 
 
 

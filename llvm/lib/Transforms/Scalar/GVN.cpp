@@ -20,6 +20,7 @@
 #include "llvm/BasicBlock.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
+#include "llvm/GlobalVariable.h"
 #include "llvm/Function.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/LLVMContext.h"
@@ -59,6 +60,7 @@ STATISTIC(NumPRELoad,   "Number of loads PRE'd");
 static cl::opt<bool> EnablePRE("enable-pre",
                                cl::init(true), cl::Hidden);
 static cl::opt<bool> EnableLoadPRE("enable-load-pre", cl::init(true));
+static cl::opt<bool> EnableFullLoadPRE("enable-full-load-pre", cl::init(false));
 
 //===----------------------------------------------------------------------===//
 //                         ValueTable Class
@@ -69,18 +71,44 @@ static cl::opt<bool> EnableLoadPRE("enable-load-pre", cl::init(true));
 /// two values.
 namespace {
   struct Expression {
-    enum ExpressionOpcode { ADD, FADD, SUB, FSUB, MUL, FMUL,
-                            UDIV, SDIV, FDIV, UREM, SREM,
-                            FREM, SHL, LSHR, ASHR, AND, OR, XOR, ICMPEQ,
-                            ICMPNE, ICMPUGT, ICMPUGE, ICMPULT, ICMPULE,
-                            ICMPSGT, ICMPSGE, ICMPSLT, ICMPSLE, FCMPOEQ,
-                            FCMPOGT, FCMPOGE, FCMPOLT, FCMPOLE, FCMPONE,
-                            FCMPORD, FCMPUNO, FCMPUEQ, FCMPUGT, FCMPUGE,
-                            FCMPULT, FCMPULE, FCMPUNE, EXTRACT, INSERT,
-                            SHUFFLE, SELECT, TRUNC, ZEXT, SEXT, FPTOUI,
-                            FPTOSI, UITOFP, SITOFP, FPTRUNC, FPEXT,
-                            PTRTOINT, INTTOPTR, BITCAST, GEP, CALL, CONSTANT,
-                            INSERTVALUE, EXTRACTVALUE, EMPTY, TOMBSTONE };
+    enum ExpressionOpcode { 
+      ADD = Instruction::Add,
+      FADD = Instruction::FAdd,
+      SUB = Instruction::Sub,
+      FSUB = Instruction::FSub,
+      MUL = Instruction::Mul,
+      FMUL = Instruction::FMul,
+      UDIV = Instruction::UDiv,
+      SDIV = Instruction::SDiv,
+      FDIV = Instruction::FDiv,
+      UREM = Instruction::URem,
+      SREM = Instruction::SRem,
+      FREM = Instruction::FRem,
+      SHL = Instruction::Shl,
+      LSHR = Instruction::LShr,
+      ASHR = Instruction::AShr,
+      AND = Instruction::And,
+      OR = Instruction::Or,
+      XOR = Instruction::Xor,
+      TRUNC = Instruction::Trunc,
+      ZEXT = Instruction::ZExt,
+      SEXT = Instruction::SExt,
+      FPTOUI = Instruction::FPToUI,
+      FPTOSI = Instruction::FPToSI,
+      UITOFP = Instruction::UIToFP,
+      SITOFP = Instruction::SIToFP,
+      FPTRUNC = Instruction::FPTrunc,
+      FPEXT = Instruction::FPExt,
+      PTRTOINT = Instruction::PtrToInt,
+      INTTOPTR = Instruction::IntToPtr,
+      BITCAST = Instruction::BitCast,
+      ICMPEQ, ICMPNE, ICMPUGT, ICMPUGE, ICMPULT, ICMPULE,
+      ICMPSGT, ICMPSGE, ICMPSLT, ICMPSLE, FCMPOEQ,
+      FCMPOGT, FCMPOGE, FCMPOLT, FCMPOLE, FCMPONE,
+      FCMPORD, FCMPUNO, FCMPUEQ, FCMPUGT, FCMPUGE,
+      FCMPULT, FCMPULE, FCMPUNE, EXTRACT, INSERT,
+      SHUFFLE, SELECT, GEP, CALL, CONSTANT,
+      INSERTVALUE, EXTRACTVALUE, EMPTY, TOMBSTONE };
 
     ExpressionOpcode opcode;
     const Type* type;
@@ -126,9 +154,7 @@ namespace {
 
       uint32_t nextValueNumber;
 
-      Expression::ExpressionOpcode getOpcode(BinaryOperator* BO);
       Expression::ExpressionOpcode getOpcode(CmpInst* C);
-      Expression::ExpressionOpcode getOpcode(CastInst* C);
       Expression create_expression(BinaryOperator* BO);
       Expression create_expression(CmpInst* C);
       Expression create_expression(ShuffleVectorInst* V);
@@ -199,30 +225,6 @@ struct isPodLike<Expression> { static const bool value = true; };
 //===----------------------------------------------------------------------===//
 //                     ValueTable Internal Functions
 //===----------------------------------------------------------------------===//
-Expression::ExpressionOpcode ValueTable::getOpcode(BinaryOperator* BO) {
-  switch(BO->getOpcode()) {
-  default: // THIS SHOULD NEVER HAPPEN
-    llvm_unreachable("Binary operator with unknown opcode?");
-  case Instruction::Add:  return Expression::ADD;
-  case Instruction::FAdd: return Expression::FADD;
-  case Instruction::Sub:  return Expression::SUB;
-  case Instruction::FSub: return Expression::FSUB;
-  case Instruction::Mul:  return Expression::MUL;
-  case Instruction::FMul: return Expression::FMUL;
-  case Instruction::UDiv: return Expression::UDIV;
-  case Instruction::SDiv: return Expression::SDIV;
-  case Instruction::FDiv: return Expression::FDIV;
-  case Instruction::URem: return Expression::UREM;
-  case Instruction::SRem: return Expression::SREM;
-  case Instruction::FRem: return Expression::FREM;
-  case Instruction::Shl:  return Expression::SHL;
-  case Instruction::LShr: return Expression::LSHR;
-  case Instruction::AShr: return Expression::ASHR;
-  case Instruction::And:  return Expression::AND;
-  case Instruction::Or:   return Expression::OR;
-  case Instruction::Xor:  return Expression::XOR;
-  }
-}
 
 Expression::ExpressionOpcode ValueTable::getOpcode(CmpInst* C) {
   if (isa<ICmpInst>(C)) {
@@ -262,25 +264,6 @@ Expression::ExpressionOpcode ValueTable::getOpcode(CmpInst* C) {
   }
 }
 
-Expression::ExpressionOpcode ValueTable::getOpcode(CastInst* C) {
-  switch(C->getOpcode()) {
-  default: // THIS SHOULD NEVER HAPPEN
-    llvm_unreachable("Cast operator with unknown opcode?");
-  case Instruction::Trunc:    return Expression::TRUNC;
-  case Instruction::ZExt:     return Expression::ZEXT;
-  case Instruction::SExt:     return Expression::SEXT;
-  case Instruction::FPToUI:   return Expression::FPTOUI;
-  case Instruction::FPToSI:   return Expression::FPTOSI;
-  case Instruction::UIToFP:   return Expression::UITOFP;
-  case Instruction::SIToFP:   return Expression::SITOFP;
-  case Instruction::FPTrunc:  return Expression::FPTRUNC;
-  case Instruction::FPExt:    return Expression::FPEXT;
-  case Instruction::PtrToInt: return Expression::PTRTOINT;
-  case Instruction::IntToPtr: return Expression::INTTOPTR;
-  case Instruction::BitCast:  return Expression::BITCAST;
-  }
-}
-
 Expression ValueTable::create_expression(CallInst* C) {
   Expression e;
 
@@ -301,7 +284,7 @@ Expression ValueTable::create_expression(BinaryOperator* BO) {
   e.varargs.push_back(lookup_or_add(BO->getOperand(1)));
   e.function = 0;
   e.type = BO->getType();
-  e.opcode = getOpcode(BO);
+  e.opcode = static_cast<Expression::ExpressionOpcode>(BO->getOpcode());
 
   return e;
 }
@@ -324,7 +307,7 @@ Expression ValueTable::create_expression(CastInst* C) {
   e.varargs.push_back(lookup_or_add(C->getOperand(0)));
   e.function = 0;
   e.type = C->getType();
-  e.opcode = getOpcode(C);
+  e.opcode = static_cast<Expression::ExpressionOpcode>(C->getOpcode());
 
   return e;
 }
@@ -679,17 +662,19 @@ namespace {
     bool runOnFunction(Function &F);
   public:
     static char ID; // Pass identification, replacement for typeid
-    explicit GVN(bool nopre = false, bool noloads = false)
-      : FunctionPass(&ID), NoPRE(nopre), NoLoads(noloads), MD(0) { }
+    explicit GVN(bool noloads = false)
+      : FunctionPass(&ID), NoLoads(noloads), MD(0) { }
 
   private:
-    bool NoPRE;
     bool NoLoads;
     MemoryDependenceAnalysis *MD;
     DominatorTree *DT;
 
     ValueTable VN;
     DenseMap<BasicBlock*, ValueNumberScope*> localAvail;
+
+    // List of critical edges to be split between iterations.
+    SmallVector<std::pair<TerminatorInst*, unsigned>, 4> toSplit;
 
     // This transformation requires dominator postdominator info
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
@@ -718,14 +703,15 @@ namespace {
     Value *lookupNumber(BasicBlock *BB, uint32_t num);
     void cleanupGlobalSets();
     void verifyRemoved(const Instruction *I) const;
+    bool splitCriticalEdges();
   };
 
   char GVN::ID = 0;
 }
 
 // createGVNPass - The public interface to this file...
-FunctionPass *llvm::createGVNPass(bool NoPRE, bool NoLoads) {
-  return new GVN(NoPRE, NoLoads);
+FunctionPass *llvm::createGVNPass(bool NoLoads) {
+  return new GVN(NoLoads);
 }
 
 static RegisterPass<GVN> X("gvn",
@@ -828,7 +814,7 @@ SpeculationFailure:
   SmallVector<BasicBlock*, 32> BBWorklist;
   BBWorklist.push_back(BB);
 
-  while (!BBWorklist.empty()) {
+  do {
     BasicBlock *Entry = BBWorklist.pop_back_val();
     // Note that this sets blocks to 0 (unavailable) if they happen to not
     // already be in FullyAvailableBlocks.  This is safe.
@@ -840,7 +826,7 @@ SpeculationFailure:
 
     for (succ_iterator I = succ_begin(Entry), E = succ_end(Entry); I != E; ++I)
       BBWorklist.push_back(*I);
-  }
+  } while (!BBWorklist.empty());
 
   return false;
 }
@@ -853,9 +839,9 @@ static bool CanCoerceMustAliasedValueToLoad(Value *StoredVal,
                                             const TargetData &TD) {
   // If the loaded or stored value is an first class array or struct, don't try
   // to transform them.  We need to be able to bitcast to integer.
-  if (isa<StructType>(LoadTy) || isa<ArrayType>(LoadTy) ||
-      isa<StructType>(StoredVal->getType()) ||
-      isa<ArrayType>(StoredVal->getType()))
+  if (LoadTy->isStructTy() || LoadTy->isArrayTy() ||
+      StoredVal->getType()->isStructTy() ||
+      StoredVal->getType()->isArrayTy())
     return false;
   
   // The store has to be at least as big as the load.
@@ -887,26 +873,26 @@ static Value *CoerceAvailableValueToLoadType(Value *StoredVal,
   
   // If the store and reload are the same size, we can always reuse it.
   if (StoreSize == LoadSize) {
-    if (isa<PointerType>(StoredValTy) && isa<PointerType>(LoadedTy)) {
+    if (StoredValTy->isPointerTy() && LoadedTy->isPointerTy()) {
       // Pointer to Pointer -> use bitcast.
       return new BitCastInst(StoredVal, LoadedTy, "", InsertPt);
     }
     
     // Convert source pointers to integers, which can be bitcast.
-    if (isa<PointerType>(StoredValTy)) {
+    if (StoredValTy->isPointerTy()) {
       StoredValTy = TD.getIntPtrType(StoredValTy->getContext());
       StoredVal = new PtrToIntInst(StoredVal, StoredValTy, "", InsertPt);
     }
     
     const Type *TypeToCastTo = LoadedTy;
-    if (isa<PointerType>(TypeToCastTo))
+    if (TypeToCastTo->isPointerTy())
       TypeToCastTo = TD.getIntPtrType(StoredValTy->getContext());
     
     if (StoredValTy != TypeToCastTo)
       StoredVal = new BitCastInst(StoredVal, TypeToCastTo, "", InsertPt);
     
     // Cast to pointer if the load needs a pointer type.
-    if (isa<PointerType>(LoadedTy))
+    if (LoadedTy->isPointerTy())
       StoredVal = new IntToPtrInst(StoredVal, LoadedTy, "", InsertPt);
     
     return StoredVal;
@@ -918,13 +904,13 @@ static Value *CoerceAvailableValueToLoadType(Value *StoredVal,
   assert(StoreSize >= LoadSize && "CanCoerceMustAliasedValueToLoad fail");
   
   // Convert source pointers to integers, which can be manipulated.
-  if (isa<PointerType>(StoredValTy)) {
+  if (StoredValTy->isPointerTy()) {
     StoredValTy = TD.getIntPtrType(StoredValTy->getContext());
     StoredVal = new PtrToIntInst(StoredVal, StoredValTy, "", InsertPt);
   }
   
   // Convert vectors and fp to integer, which can be manipulated.
-  if (!isa<IntegerType>(StoredValTy)) {
+  if (!StoredValTy->isIntegerTy()) {
     StoredValTy = IntegerType::get(StoredValTy->getContext(), StoreSize);
     StoredVal = new BitCastInst(StoredVal, StoredValTy, "", InsertPt);
   }
@@ -944,7 +930,7 @@ static Value *CoerceAvailableValueToLoadType(Value *StoredVal,
     return StoredVal;
   
   // If the result is a pointer, inttoptr.
-  if (isa<PointerType>(LoadedTy))
+  if (LoadedTy->isPointerTy())
     return new IntToPtrInst(StoredVal, LoadedTy, "inttoptr", InsertPt);
   
   // Otherwise, bitcast.
@@ -1006,7 +992,7 @@ static int AnalyzeLoadFromClobberingWrite(const Type *LoadTy, Value *LoadPtr,
                                           const TargetData &TD) {
   // If the loaded or stored value is an first class array or struct, don't try
   // to transform them.  We need to be able to bitcast to integer.
-  if (isa<StructType>(LoadTy) || isa<ArrayType>(LoadTy))
+  if (LoadTy->isStructTy() || LoadTy->isArrayTy())
     return -1;
   
   int64_t StoreOffset = 0, LoadOffset = 0;
@@ -1021,7 +1007,7 @@ static int AnalyzeLoadFromClobberingWrite(const Type *LoadTy, Value *LoadPtr,
   // FIXME: Study to see if/when this happens.
   if (LoadOffset == StoreOffset) {
 #if 0
-    errs() << "STORE/LOAD DEP WITH COMMON POINTER MISSED:\n"
+    dbgs() << "STORE/LOAD DEP WITH COMMON POINTER MISSED:\n"
     << "Base       = " << *StoreBase << "\n"
     << "Store Ptr  = " << *WritePtr << "\n"
     << "Store Offs = " << StoreOffset << "\n"
@@ -1052,7 +1038,7 @@ static int AnalyzeLoadFromClobberingWrite(const Type *LoadTy, Value *LoadPtr,
   }
   if (isAAFailure) {
 #if 0
-    errs() << "STORE LOAD DEP WITH COMMON BASE:\n"
+    dbgs() << "STORE LOAD DEP WITH COMMON BASE:\n"
     << "Base       = " << *StoreBase << "\n"
     << "Store Ptr  = " << *WritePtr << "\n"
     << "Store Offs = " << StoreOffset << "\n"
@@ -1081,8 +1067,8 @@ static int AnalyzeLoadFromClobberingStore(const Type *LoadTy, Value *LoadPtr,
                                           StoreInst *DepSI,
                                           const TargetData &TD) {
   // Cannot handle reading from store of first-class aggregate yet.
-  if (isa<StructType>(DepSI->getOperand(0)->getType()) ||
-      isa<ArrayType>(DepSI->getOperand(0)->getType()))
+  if (DepSI->getOperand(0)->getType()->isStructTy() ||
+      DepSI->getOperand(0)->getType()->isArrayTy())
     return -1;
 
   Value *StorePtr = DepSI->getPointerOperand();
@@ -1153,9 +1139,9 @@ static Value *GetStoreValueForLoad(Value *SrcVal, unsigned Offset,
   
   // Compute which bits of the stored value are being used by the load.  Convert
   // to an integer type to start with.
-  if (isa<PointerType>(SrcVal->getType()))
+  if (SrcVal->getType()->isPointerTy())
     SrcVal = Builder.CreatePtrToInt(SrcVal, TD.getIntPtrType(Ctx), "tmp");
-  if (!isa<IntegerType>(SrcVal->getType()))
+  if (!SrcVal->getType()->isIntegerTy())
     SrcVal = Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, StoreSize*8),
                                    "tmp");
   
@@ -1340,7 +1326,7 @@ static Value *ConstructSSAForLoadSet(LoadInst *LI,
   Value *V = SSAUpdate.GetValueInMiddleOfBlock(LI->getParent());
   
   // If new PHI nodes were created, notify alias analysis.
-  if (isa<PointerType>(V->getType()))
+  if (V->getType()->isPointerTy())
     for (unsigned i = 0, e = NewPHIs.size(); i != e; ++i)
       AA->copyValue(LI, NewPHIs[i]);
 
@@ -1361,7 +1347,7 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
   SmallVector<NonLocalDepResult, 64> Deps;
   MD->getNonLocalPointerDependency(LI->getOperand(0), true, LI->getParent(),
                                    Deps);
-  //DEBUG(errs() << "INVESTIGATING NONLOCAL LOAD: "
+  //DEBUG(dbgs() << "INVESTIGATING NONLOCAL LOAD: "
   //             << Deps.size() << *LI << '\n');
 
   // If we had to process more than one hundred blocks to find the
@@ -1374,9 +1360,9 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
   // clobber in the current block.  Reject this early.
   if (Deps.size() == 1 && Deps[0].getResult().isClobber()) {
     DEBUG(
-      errs() << "GVN: non-local load ";
-      WriteAsOperand(errs(), LI);
-      errs() << " is clobbered by " << *Deps[0].getResult().getInst() << '\n';
+      dbgs() << "GVN: non-local load ";
+      WriteAsOperand(dbgs(), LI);
+      dbgs() << " is clobbered by " << *Deps[0].getResult().getInst() << '\n';
     );
     return false;
   }
@@ -1499,7 +1485,7 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
   // load, then it is fully redundant and we can use PHI insertion to compute
   // its value.  Insert PHIs and remove the fully redundant value now.
   if (UnavailableBlocks.empty()) {
-    DEBUG(errs() << "GVN REMOVING NONLOCAL LOAD: " << *LI << '\n');
+    DEBUG(dbgs() << "GVN REMOVING NONLOCAL LOAD: " << *LI << '\n');
     
     // Perform PHI construction.
     Value *V = ConstructSSAForLoadSet(LI, ValuesPerBlock, TD, *DT,
@@ -1508,8 +1494,9 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
 
     if (isa<PHINode>(V))
       V->takeName(LI);
-    if (isa<PointerType>(V->getType()))
+    if (V->getType()->isPointerTy())
       MD->invalidateCachedPointerInfo(V);
+    VN.erase(LI);
     toErase.push_back(LI);
     NumGVNLoad++;
     return true;
@@ -1540,8 +1527,6 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
   while (TmpBB->getSinglePredecessor()) {
     isSinglePred = true;
     TmpBB = TmpBB->getSinglePredecessor();
-    if (!TmpBB) // If haven't found any, bail now.
-      return false;
     if (TmpBB == LoadBB) // Infinite (unreachable) loop.
       return false;
     if (Blockers.count(TmpBB))
@@ -1557,10 +1542,14 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
   // at least one of the values is LI.  Since this means that we won't be able
   // to eliminate LI even if we insert uses in the other predecessors, we will
   // end up increasing code size.  Reject this by scanning for LI.
-  for (unsigned i = 0, e = ValuesPerBlock.size(); i != e; ++i)
+  for (unsigned i = 0, e = ValuesPerBlock.size(); i != e; ++i) {
     if (ValuesPerBlock[i].isSimpleValue() &&
-        ValuesPerBlock[i].getSimpleValue() == LI)
-      return false;
+        ValuesPerBlock[i].getSimpleValue() == LI) {
+      // Skip cases where LI is the only definition, even for EnableFullLoadPRE.
+      if (!EnableFullLoadPRE || e == 1)
+        return false;
+    }
+  }
 
   // FIXME: It is extremely unclear what this loop is doing, other than
   // artificially restricting loadpre.
@@ -1584,73 +1573,119 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
       return false;
   }
 
-  // Okay, we have some hope :).  Check to see if the loaded value is fully
-  // available in all but one predecessor.
-  // FIXME: If we could restructure the CFG, we could make a common pred with
-  // all the preds that don't have an available LI and insert a new load into
-  // that one block.
-  BasicBlock *UnavailablePred = 0;
-
+  // Check to see how many predecessors have the loaded value fully
+  // available.
+  DenseMap<BasicBlock*, Value*> PredLoads;
   DenseMap<BasicBlock*, char> FullyAvailableBlocks;
   for (unsigned i = 0, e = ValuesPerBlock.size(); i != e; ++i)
     FullyAvailableBlocks[ValuesPerBlock[i].BB] = true;
   for (unsigned i = 0, e = UnavailableBlocks.size(); i != e; ++i)
     FullyAvailableBlocks[UnavailableBlocks[i]] = false;
 
+  bool NeedToSplitEdges = false;
   for (pred_iterator PI = pred_begin(LoadBB), E = pred_end(LoadBB);
        PI != E; ++PI) {
-    if (IsValueFullyAvailableInBlock(*PI, FullyAvailableBlocks))
+    BasicBlock *Pred = *PI;
+    if (IsValueFullyAvailableInBlock(Pred, FullyAvailableBlocks)) {
       continue;
+    }
+    PredLoads[Pred] = 0;
 
-    // If this load is not available in multiple predecessors, reject it.
-    if (UnavailablePred && UnavailablePred != *PI)
-      return false;
-    UnavailablePred = *PI;
+    if (Pred->getTerminator()->getNumSuccessors() != 1) {
+      if (isa<IndirectBrInst>(Pred->getTerminator())) {
+        DEBUG(dbgs() << "COULD NOT PRE LOAD BECAUSE OF INDBR CRITICAL EDGE '"
+              << Pred->getName() << "': " << *LI << '\n');
+        return false;
+      }
+      unsigned SuccNum = GetSuccessorNumber(Pred, LoadBB);
+      toSplit.push_back(std::make_pair(Pred->getTerminator(), SuccNum));
+      NeedToSplitEdges = true;
+    }
   }
+  if (NeedToSplitEdges)
+    return false;
 
-  assert(UnavailablePred != 0 &&
+  // Decide whether PRE is profitable for this load.
+  unsigned NumUnavailablePreds = PredLoads.size();
+  assert(NumUnavailablePreds != 0 &&
          "Fully available value should be eliminated above!");
-
-  // We don't currently handle critical edges :(
-  if (UnavailablePred->getTerminator()->getNumSuccessors() != 1) {
-    DEBUG(errs() << "COULD NOT PRE LOAD BECAUSE OF CRITICAL EDGE '"
-                 << UnavailablePred->getName() << "': " << *LI << '\n');
-    return false;
+  if (!EnableFullLoadPRE) {
+    // If this load is unavailable in multiple predecessors, reject it.
+    // FIXME: If we could restructure the CFG, we could make a common pred with
+    // all the preds that don't have an available LI and insert a new load into
+    // that one block.
+    if (NumUnavailablePreds != 1)
+      return false;
   }
-  
-  // Do PHI translation to get its value in the predecessor if necessary.  The
-  // returned pointer (if non-null) is guaranteed to dominate UnavailablePred.
-  //
+
+  // Check if the load can safely be moved to all the unavailable predecessors.
+  bool CanDoPRE = true;
   SmallVector<Instruction*, 8> NewInsts;
-  
-  // If all preds have a single successor, then we know it is safe to insert the
-  // load on the pred (?!?), so we can insert code to materialize the pointer if
-  // it is not available.
-  PHITransAddr Address(LI->getOperand(0), TD);
-  Value *LoadPtr = 0;
-  if (allSingleSucc) {
-    LoadPtr = Address.PHITranslateWithInsertion(LoadBB, UnavailablePred,
-                                                *DT, NewInsts);
-  } else {
-    Address.PHITranslateValue(LoadBB, UnavailablePred);
-    LoadPtr = Address.getAddr();
-    
-    // Make sure the value is live in the predecessor.
-    if (Instruction *Inst = dyn_cast_or_null<Instruction>(LoadPtr))
-      if (!DT->dominates(Inst->getParent(), UnavailablePred))
-        LoadPtr = 0;
+  for (DenseMap<BasicBlock*, Value*>::iterator I = PredLoads.begin(),
+         E = PredLoads.end(); I != E; ++I) {
+    BasicBlock *UnavailablePred = I->first;
+
+    // Do PHI translation to get its value in the predecessor if necessary.  The
+    // returned pointer (if non-null) is guaranteed to dominate UnavailablePred.
+
+    // If all preds have a single successor, then we know it is safe to insert
+    // the load on the pred (?!?), so we can insert code to materialize the
+    // pointer if it is not available.
+    PHITransAddr Address(LI->getOperand(0), TD);
+    Value *LoadPtr = 0;
+    if (allSingleSucc) {
+      LoadPtr = Address.PHITranslateWithInsertion(LoadBB, UnavailablePred,
+                                                  *DT, NewInsts);
+    } else {
+      Address.PHITranslateValue(LoadBB, UnavailablePred, DT);
+      LoadPtr = Address.getAddr();
+    }
+
+    // If we couldn't find or insert a computation of this phi translated value,
+    // we fail PRE.
+    if (LoadPtr == 0) {
+      DEBUG(dbgs() << "COULDN'T INSERT PHI TRANSLATED VALUE OF: "
+            << *LI->getOperand(0) << "\n");
+      CanDoPRE = false;
+      break;
+    }
+
+    // Make sure it is valid to move this load here.  We have to watch out for:
+    //  @1 = getelementptr (i8* p, ...
+    //  test p and branch if == 0
+    //  load @1
+    // It is valid to have the getelementptr before the test, even if p can be 0,
+    // as getelementptr only does address arithmetic.
+    // If we are not pushing the value through any multiple-successor blocks
+    // we do not have this case.  Otherwise, check that the load is safe to
+    // put anywhere; this can be improved, but should be conservatively safe.
+    if (!allSingleSucc &&
+        // FIXME: REEVALUTE THIS.
+        !isSafeToLoadUnconditionally(LoadPtr,
+                                     UnavailablePred->getTerminator(),
+                                     LI->getAlignment(), TD)) {
+      CanDoPRE = false;
+      break;
+    }
+
+    I->second = LoadPtr;
   }
 
-  // If we couldn't find or insert a computation of this phi translated value,
-  // we fail PRE.
-  if (LoadPtr == 0) {
-    assert(NewInsts.empty() && "Shouldn't insert insts on failure");
-    DEBUG(errs() << "COULDN'T INSERT PHI TRANSLATED VALUE OF: "
-                 << *LI->getOperand(0) << "\n");
+  if (!CanDoPRE) {
+    while (!NewInsts.empty())
+      NewInsts.pop_back_val()->eraseFromParent();
     return false;
   }
 
-  // Assign value numbers to these new instructions.
+  // Okay, we can eliminate this load by inserting a reload in the predecessor
+  // and using PHI construction to get the value in the other predecessors, do
+  // it.
+  DEBUG(dbgs() << "GVN REMOVING PRE LOAD: " << *LI << '\n');
+  DEBUG(if (!NewInsts.empty())
+          dbgs() << "INSERTED " << NewInsts.size() << " INSTS: "
+                 << *NewInsts.back() << '\n');
+  
+  // Assign value numbers to the new instructions.
   for (unsigned i = 0, e = NewInsts.size(); i != e; ++i) {
     // FIXME: We really _ought_ to insert these value numbers into their 
     // parent's availability map.  However, in doing so, we risk getting into
@@ -1658,37 +1693,22 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
     // marking a value as AVAIL-IN, which isn't what we intend.
     VN.lookup_or_add(NewInsts[i]);
   }
-  
-  // Make sure it is valid to move this load here.  We have to watch out for:
-  //  @1 = getelementptr (i8* p, ...
-  //  test p and branch if == 0
-  //  load @1
-  // It is valid to have the getelementptr before the test, even if p can be 0,
-  // as getelementptr only does address arithmetic.
-  // If we are not pushing the value through any multiple-successor blocks
-  // we do not have this case.  Otherwise, check that the load is safe to
-  // put anywhere; this can be improved, but should be conservatively safe.
-  if (!allSingleSucc &&
-      // FIXME: REEVALUTE THIS.
-      !isSafeToLoadUnconditionally(LoadPtr, UnavailablePred->getTerminator())) {
-    assert(NewInsts.empty() && "Should not have inserted instructions");
-    return false;
+
+  for (DenseMap<BasicBlock*, Value*>::iterator I = PredLoads.begin(),
+         E = PredLoads.end(); I != E; ++I) {
+    BasicBlock *UnavailablePred = I->first;
+    Value *LoadPtr = I->second;
+
+    Value *NewLoad = new LoadInst(LoadPtr, LI->getName()+".pre", false,
+                                  LI->getAlignment(),
+                                  UnavailablePred->getTerminator());
+
+    // Add the newly created load.
+    ValuesPerBlock.push_back(AvailableValueInBlock::get(UnavailablePred,
+                                                        NewLoad));
+    MD->invalidateCachedPointerInfo(LoadPtr);
+    DEBUG(dbgs() << "GVN INSERTED " << *NewLoad << '\n');
   }
-
-  // Okay, we can eliminate this load by inserting a reload in the predecessor
-  // and using PHI construction to get the value in the other predecessors, do
-  // it.
-  DEBUG(errs() << "GVN REMOVING PRE LOAD: " << *LI << '\n');
-  DEBUG(if (!NewInsts.empty())
-          errs() << "INSERTED " << NewInsts.size() << " INSTS: "
-                 << *NewInsts.back() << '\n');
-  
-  Value *NewLoad = new LoadInst(LoadPtr, LI->getName()+".pre", false,
-                                LI->getAlignment(),
-                                UnavailablePred->getTerminator());
-
-  // Add the newly created load.
-  ValuesPerBlock.push_back(AvailableValueInBlock::get(UnavailablePred,NewLoad));
 
   // Perform PHI construction.
   Value *V = ConstructSSAForLoadSet(LI, ValuesPerBlock, TD, *DT,
@@ -1696,8 +1716,9 @@ bool GVN::processNonLocalLoad(LoadInst *LI,
   LI->replaceAllUsesWith(V);
   if (isa<PHINode>(V))
     V->takeName(LI);
-  if (isa<PointerType>(V->getType()))
+  if (V->getType()->isPointerTy())
     MD->invalidateCachedPointerInfo(V);
+  VN.erase(LI);
   toErase.push_back(LI);
   NumPRELoad++;
   return true;
@@ -1751,13 +1772,14 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
     }
         
     if (AvailVal) {
-      DEBUG(errs() << "GVN COERCED INST:\n" << *Dep.getInst() << '\n'
+      DEBUG(dbgs() << "GVN COERCED INST:\n" << *Dep.getInst() << '\n'
             << *AvailVal << '\n' << *L << "\n\n\n");
       
       // Replace the load!
       L->replaceAllUsesWith(AvailVal);
-      if (isa<PointerType>(AvailVal->getType()))
+      if (AvailVal->getType()->isPointerTy())
         MD->invalidateCachedPointerInfo(AvailVal);
+      VN.erase(L);
       toErase.push_back(L);
       NumGVNLoad++;
       return true;
@@ -1765,10 +1787,10 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
         
     DEBUG(
       // fast print dep, using operator<< on instruction would be too slow
-      errs() << "GVN: load ";
-      WriteAsOperand(errs(), L);
+      dbgs() << "GVN: load ";
+      WriteAsOperand(dbgs(), L);
       Instruction *I = Dep.getInst();
-      errs() << " is clobbered by " << *I << '\n';
+      dbgs() << " is clobbered by " << *I << '\n';
     );
     return false;
   }
@@ -1792,7 +1814,7 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
         if (StoredVal == 0)
           return false;
         
-        DEBUG(errs() << "GVN COERCED STORE:\n" << *DepSI << '\n' << *StoredVal
+        DEBUG(dbgs() << "GVN COERCED STORE:\n" << *DepSI << '\n' << *StoredVal
                      << '\n' << *L << "\n\n\n");
       }
       else 
@@ -1801,8 +1823,9 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
 
     // Remove it!
     L->replaceAllUsesWith(StoredVal);
-    if (isa<PointerType>(StoredVal->getType()))
+    if (StoredVal->getType()->isPointerTy())
       MD->invalidateCachedPointerInfo(StoredVal);
+    VN.erase(L);
     toErase.push_back(L);
     NumGVNLoad++;
     return true;
@@ -1821,7 +1844,7 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
         if (AvailableVal == 0)
           return false;
       
-        DEBUG(errs() << "GVN COERCED LOAD:\n" << *DepLI << "\n" << *AvailableVal
+        DEBUG(dbgs() << "GVN COERCED LOAD:\n" << *DepLI << "\n" << *AvailableVal
                      << "\n" << *L << "\n\n\n");
       }
       else 
@@ -1830,8 +1853,9 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
     
     // Remove it!
     L->replaceAllUsesWith(AvailableVal);
-    if (isa<PointerType>(DepLI->getType()))
+    if (DepLI->getType()->isPointerTy())
       MD->invalidateCachedPointerInfo(DepLI);
+    VN.erase(L);
     toErase.push_back(L);
     NumGVNLoad++;
     return true;
@@ -1842,6 +1866,7 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
   // intervening stores, for example.
   if (isa<AllocaInst>(DepInst) || isMalloc(DepInst)) {
     L->replaceAllUsesWith(UndefValue::get(L->getType()));
+    VN.erase(L);
     toErase.push_back(L);
     NumGVNLoad++;
     return true;
@@ -1852,6 +1877,7 @@ bool GVN::processLoad(LoadInst *L, SmallVectorImpl<Instruction*> &toErase) {
   if (IntrinsicInst* II = dyn_cast<IntrinsicInst>(DepInst)) {
     if (II->getIntrinsicID() == Intrinsic::lifetime_start) {
       L->replaceAllUsesWith(UndefValue::get(L->getType()));
+      VN.erase(L);
       toErase.push_back(L);
       NumGVNLoad++;
       return true;
@@ -1882,6 +1908,10 @@ Value *GVN::lookupNumber(BasicBlock *BB, uint32_t num) {
 /// by inserting it into the appropriate sets
 bool GVN::processInstruction(Instruction *I,
                              SmallVectorImpl<Instruction*> &toErase) {
+  // Ignore dbg info intrinsics.
+  if (isa<DbgInfoIntrinsic>(I))
+    return false;
+
   if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
     bool Changed = processLoad(LI, toErase);
 
@@ -1930,7 +1960,7 @@ bool GVN::processInstruction(Instruction *I,
 
     if (constVal) {
       p->replaceAllUsesWith(constVal);
-      if (MD && isa<PointerType>(constVal->getType()))
+      if (MD && constVal->getType()->isPointerTy())
         MD->invalidateCachedPointerInfo(constVal);
       VN.erase(p);
 
@@ -1951,7 +1981,7 @@ bool GVN::processInstruction(Instruction *I,
     // Remove it!
     VN.erase(I);
     I->replaceAllUsesWith(repl);
-    if (MD && isa<PointerType>(repl->getType()))
+    if (MD && repl->getType()->isPointerTy())
       MD->invalidateCachedPointerInfo(repl);
     toErase.push_back(I);
     return true;
@@ -1989,8 +2019,10 @@ bool GVN::runOnFunction(Function& F) {
   unsigned Iteration = 0;
 
   while (ShouldContinue) {
-    DEBUG(errs() << "GVN iteration: " << Iteration << "\n");
+    DEBUG(dbgs() << "GVN iteration: " << Iteration << "\n");
     ShouldContinue = iterateOnFunction(F);
+    if (splitCriticalEdges())
+      ShouldContinue = true;
     Changed |= ShouldContinue;
     ++Iteration;
   }
@@ -2037,7 +2069,7 @@ bool GVN::processBlock(BasicBlock *BB) {
 
     for (SmallVector<Instruction*, 4>::iterator I = toErase.begin(),
          E = toErase.end(); I != E; ++I) {
-      DEBUG(errs() << "GVN removed: " << **I << '\n');
+      DEBUG(dbgs() << "GVN removed: " << **I << '\n');
       if (MD) MD->removeInstruction(*I);
       (*I)->eraseFromParent();
       DEBUG(verifyRemoved(*I));
@@ -2057,7 +2089,6 @@ bool GVN::processBlock(BasicBlock *BB) {
 /// control flow patterns and attempts to perform simple PRE at the join point.
 bool GVN::performPRE(Function &F) {
   bool Changed = false;
-  SmallVector<std::pair<TerminatorInst*, unsigned>, 4> toSplit;
   DenseMap<BasicBlock*, Value*> predMap;
   for (df_iterator<BasicBlock*> DI = df_begin(&F.getEntryBlock()),
        DE = df_end(&F.getEntryBlock()); DI != DE; ++DI) {
@@ -2093,7 +2124,7 @@ bool GVN::performPRE(Function &F) {
       for (pred_iterator PI = pred_begin(CurrentBlock),
            PE = pred_end(CurrentBlock); PI != PE; ++PI) {
         // We're not interested in PRE where the block is its
-        // own predecessor, on in blocks with predecessors
+        // own predecessor, or in blocks with predecessors
         // that are not reachable.
         if (*PI == CurrentBlock) {
           NumWithout = 2;
@@ -2128,23 +2159,16 @@ bool GVN::performPRE(Function &F) {
       // We can't do PRE safely on a critical edge, so instead we schedule
       // the edge to be split and perform the PRE the next time we iterate
       // on the function.
-      unsigned SuccNum = 0;
-      for (unsigned i = 0, e = PREPred->getTerminator()->getNumSuccessors();
-           i != e; ++i)
-        if (PREPred->getTerminator()->getSuccessor(i) == CurrentBlock) {
-          SuccNum = i;
-          break;
-        }
-
+      unsigned SuccNum = GetSuccessorNumber(PREPred, CurrentBlock);
       if (isCriticalEdge(PREPred->getTerminator(), SuccNum)) {
         toSplit.push_back(std::make_pair(PREPred->getTerminator(), SuccNum));
         continue;
       }
 
-      // Instantiate the expression the in predecessor that lacked it.
+      // Instantiate the expression in the predecessor that lacked it.
       // Because we are going top-down through the block, all value numbers
       // will be available in the predecessor by the time we need them.  Any
-      // that weren't original present will have been instantiated earlier
+      // that weren't originally present will have been instantiated earlier
       // in this loop.
       Instruction *PREInstr = CurInst->clone();
       bool success = true;
@@ -2191,11 +2215,11 @@ bool GVN::performPRE(Function &F) {
       localAvail[CurrentBlock]->table[ValNo] = Phi;
 
       CurInst->replaceAllUsesWith(Phi);
-      if (MD && isa<PointerType>(Phi->getType()))
+      if (MD && Phi->getType()->isPointerTy())
         MD->invalidateCachedPointerInfo(Phi);
       VN.erase(CurInst);
 
-      DEBUG(errs() << "GVN PRE removed: " << *CurInst << '\n');
+      DEBUG(dbgs() << "GVN PRE removed: " << *CurInst << '\n');
       if (MD) MD->removeInstruction(CurInst);
       CurInst->eraseFromParent();
       DEBUG(verifyRemoved(CurInst));
@@ -2203,11 +2227,23 @@ bool GVN::performPRE(Function &F) {
     }
   }
 
-  for (SmallVector<std::pair<TerminatorInst*, unsigned>, 4>::iterator
-       I = toSplit.begin(), E = toSplit.end(); I != E; ++I)
-    SplitCriticalEdge(I->first, I->second, this);
+  if (splitCriticalEdges())
+    Changed = true;
 
-  return Changed || toSplit.size();
+  return Changed;
+}
+
+/// splitCriticalEdges - Split critical edges found during the previous
+/// iteration that may enable further optimization.
+bool GVN::splitCriticalEdges() {
+  if (toSplit.empty())
+    return false;
+  do {
+    std::pair<TerminatorInst*, unsigned> Edge = toSplit.pop_back_val();
+    SplitCriticalEdge(Edge.first, Edge.second, this);
+  } while (!toSplit.empty());
+  if (MD) MD->invalidateCachedPredecessors();
+  return true;
 }
 
 /// iterateOnFunction - Executes one iteration of GVN

@@ -350,7 +350,8 @@ ARMLoadStoreOpt::MergeLDR_STR(MachineBasicBlock &MBB, unsigned SIndex,
       : ARMRegisterInfo::getRegisterNumbering(Reg);
     // AM4 - register numbers in ascending order.
     // AM5 - consecutive register numbers in ascending order.
-    if (NewOffset == Offset + (int)Size &&
+    if (Reg != ARM::SP &&
+        NewOffset == Offset + (int)Size &&
         ((isAM4 && RegNum > PRegNum) || RegNum == PRegNum+1)) {
       Offset += Size;
       PRegNum = RegNum;
@@ -740,6 +741,31 @@ bool ARMLoadStoreOpt::MergeBaseUpdateLoadStore(MachineBasicBlock &MBB,
 /// isMemoryOp - Returns true if instruction is a memory operations (that this
 /// pass is capable of operating on).
 static bool isMemoryOp(const MachineInstr *MI) {
+  if (MI->hasOneMemOperand()) {
+    const MachineMemOperand *MMO = *MI->memoperands_begin();
+
+    // Don't touch volatile memory accesses - we may be changing their order.
+    if (MMO->isVolatile())
+      return false;
+
+    // Unaligned ldr/str is emulated by some kernels, but unaligned ldm/stm is
+    // not.
+    if (MMO->getAlignment() < 4)
+      return false;
+  }
+
+  // str <undef> could probably be eliminated entirely, but for now we just want
+  // to avoid making a mess of it.
+  // FIXME: Use str <undef> as a wildcard to enable better stm folding.
+  if (MI->getNumOperands() > 0 && MI->getOperand(0).isReg() &&
+      MI->getOperand(0).isUndef())
+    return false;
+
+  // Likewise don't mess with references to undefined addresses.
+  if (MI->getNumOperands() > 1 && MI->getOperand(1).isReg() &&
+      MI->getOperand(1).isUndef())
+    return false;
+
   int Opcode = MI->getOpcode();
   switch (Opcode) {
   default: break;

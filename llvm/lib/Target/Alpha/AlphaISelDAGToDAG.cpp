@@ -64,7 +64,7 @@ namespace {
     /// that the bits 1-7 of LHS are already zero.  If LHS is non-null, we are
     /// in checking mode.  If LHS is null, we assume that the mask has already
     /// been validated before.
-    uint64_t get_zapImm(SDValue LHS, uint64_t Constant) {
+    uint64_t get_zapImm(SDValue LHS, uint64_t Constant) const {
       uint64_t BitsToCheck = 0;
       unsigned Result = 0;
       for (unsigned i = 0; i != 8; ++i) {
@@ -157,11 +157,7 @@ namespace {
 
     // Select - Convert the specified operand from a target-independent to a
     // target-specific node if it hasn't already been changed.
-    SDNode *Select(SDValue Op);
-    
-    /// InstructionSelect - This callback is invoked by
-    /// SelectionDAGISel when it has created a SelectionDAG for us to codegen.
-    virtual void InstructionSelect();
+    SDNode *Select(SDNode *N);
     
     virtual const char *getPassName() const {
       return "Alpha DAG->DAG Pattern Instruction Selection";
@@ -202,7 +198,7 @@ private:
 
     SDNode *getGlobalBaseReg();
     SDNode *getGlobalRetAddr();
-    void SelectCALL(SDValue Op);
+    void SelectCALL(SDNode *Op);
 
   };
 }
@@ -222,27 +218,17 @@ SDNode *AlphaDAGToDAGISel::getGlobalRetAddr() {
   return CurDAG->getRegister(GlobalRetAddr, TLI.getPointerTy()).getNode();
 }
 
-/// InstructionSelect - This callback is invoked by
-/// SelectionDAGISel when it has created a SelectionDAG for us to codegen.
-void AlphaDAGToDAGISel::InstructionSelect() {
-  // Select target instructions for the DAG.
-  SelectRoot(*CurDAG);
-  CurDAG->RemoveDeadNodes();
-}
-
 // Select - Convert the specified operand from a target-independent to a
 // target-specific node if it hasn't already been changed.
-SDNode *AlphaDAGToDAGISel::Select(SDValue Op) {
-  SDNode *N = Op.getNode();
-  if (N->isMachineOpcode()) {
+SDNode *AlphaDAGToDAGISel::Select(SDNode *N) {
+  if (N->isMachineOpcode())
     return NULL;   // Already selected.
-  }
   DebugLoc dl = N->getDebugLoc();
 
   switch (N->getOpcode()) {
   default: break;
   case AlphaISD::CALL:
-    SelectCALL(Op);
+    SelectCALL(N);
     return NULL;
 
   case ISD::FrameIndex: {
@@ -258,9 +244,9 @@ SDNode *AlphaDAGToDAGISel::Select(SDValue Op) {
   
   case AlphaISD::DivCall: {
     SDValue Chain = CurDAG->getEntryNode();
-    SDValue N0 = Op.getOperand(0);
-    SDValue N1 = Op.getOperand(1);
-    SDValue N2 = Op.getOperand(2);
+    SDValue N0 = N->getOperand(0);
+    SDValue N1 = N->getOperand(1);
+    SDValue N2 = N->getOperand(2);
     Chain = CurDAG->getCopyToReg(Chain, dl, Alpha::R24, N1, 
                                  SDValue(0,0));
     Chain = CurDAG->getCopyToReg(Chain, dl, Alpha::R25, N2, 
@@ -287,7 +273,7 @@ SDNode *AlphaDAGToDAGISel::Select(SDValue Op) {
     if (uval == 0) {
       SDValue Result = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), dl,
                                                 Alpha::R31, MVT::i64);
-      ReplaceUses(Op, Result);
+      ReplaceUses(SDValue(N, 0), Result);
       return NULL;
     }
 
@@ -415,13 +401,12 @@ SDNode *AlphaDAGToDAGISel::Select(SDValue Op) {
 
   }
 
-  return SelectCode(Op);
+  return SelectCode(N);
 }
 
-void AlphaDAGToDAGISel::SelectCALL(SDValue Op) {
+void AlphaDAGToDAGISel::SelectCALL(SDNode *N) {
   //TODO: add flag stuff to prevent nondeturministic breakage!
 
-  SDNode *N = Op.getNode();
   SDValue Chain = N->getOperand(0);
   SDValue Addr = N->getOperand(1);
   SDValue InFlag = N->getOperand(N->getNumOperands() - 1);
@@ -442,8 +427,8 @@ void AlphaDAGToDAGISel::SelectCALL(SDValue Op) {
    }
    InFlag = Chain.getValue(1);
 
-  ReplaceUses(Op.getValue(0), Chain);
-  ReplaceUses(Op.getValue(1), InFlag);
+  ReplaceUses(SDValue(N, 0), Chain);
+  ReplaceUses(SDValue(N, 1), InFlag);
 }
 
 

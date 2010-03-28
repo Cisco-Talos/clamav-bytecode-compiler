@@ -14,6 +14,7 @@
 #include "CodeGenInstruction.h"
 #include "Record.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/ADT/STLExtras.h"
 #include <set>
 using namespace llvm;
 
@@ -32,10 +33,10 @@ static void ParseConstraint(const std::string &CStr, CodeGenInstruction *I) {
       I->ParseOperandName(Name, false);
 
     // Build the string for the operand
-    std::string OpConstraint = "(1 << TOI::EARLY_CLOBBER)";
-    if (!I->OperandList[Op.first].Constraints[Op.second].empty())
+    if (!I->OperandList[Op.first].Constraints[Op.second].isNone())
       throw "Operand '" + Name + "' cannot have multiple constraints!";
-    I->OperandList[Op.first].Constraints[Op.second] = OpConstraint;
+    I->OperandList[Op.first].Constraints[Op.second] =
+      CodeGenInstruction::ConstraintInfo::getEarlyClobber();
     return;
   }
 
@@ -64,13 +65,11 @@ static void ParseConstraint(const std::string &CStr, CodeGenInstruction *I) {
 
 
   unsigned FlatOpNo = I->getFlattenedOperandNumber(SrcOp);
-  // Build the string for the operand.
-  std::string OpConstraint =
-  "((" + utostr(FlatOpNo) + " << 16) | (1 << TOI::TIED_TO))";
 
-  if (!I->OperandList[DestOp.first].Constraints[DestOp.second].empty())
+  if (!I->OperandList[DestOp.first].Constraints[DestOp.second].isNone())
     throw "Operand '" + DestOpName + "' cannot have multiple constraints!";
-  I->OperandList[DestOp.first].Constraints[DestOp.second] = OpConstraint;
+  I->OperandList[DestOp.first].Constraints[DestOp.second] =
+    CodeGenInstruction::ConstraintInfo::getTied(FlatOpNo);
 }
 
 static void ParseConstraints(const std::string &CStr, CodeGenInstruction *I) {
@@ -118,7 +117,6 @@ CodeGenInstruction::CodeGenInstruction(Record *R, const std::string &AsmStr)
   hasCtrlDep   = R->getValueAsBit("hasCtrlDep");
   isNotDuplicable = R->getValueAsBit("isNotDuplicable");
   hasSideEffects = R->getValueAsBit("hasSideEffects");
-  mayHaveSideEffects = R->getValueAsBit("mayHaveSideEffects");
   neverHasSideEffects = R->getValueAsBit("neverHasSideEffects");
   isAsCheapAsAMove = R->getValueAsBit("isAsCheapAsAMove");
   hasExtraSrcRegAllocReq = R->getValueAsBit("hasExtraSrcRegAllocReq");
@@ -126,7 +124,7 @@ CodeGenInstruction::CodeGenInstruction(Record *R, const std::string &AsmStr)
   hasOptionalDef = false;
   isVariadic = false;
 
-  if (mayHaveSideEffects + neverHasSideEffects + hasSideEffects > 1)
+  if (neverHasSideEffects + hasSideEffects > 1)
     throw R->getName() + ": multiple conflicting side-effect flags set!";
 
   DagInit *DI;
@@ -209,22 +207,18 @@ CodeGenInstruction::CodeGenInstruction(Record *R, const std::string &AsmStr)
   // For backward compatibility: isTwoAddress means operand 1 is tied to
   // operand 0.
   if (isTwoAddress) {
-    if (!OperandList[1].Constraints[0].empty())
+    if (!OperandList[1].Constraints[0].isNone())
       throw R->getName() + ": cannot use isTwoAddress property: instruction "
             "already has constraint set!";
-    OperandList[1].Constraints[0] = "((0 << 16) | (1 << TOI::TIED_TO))";
+    OperandList[1].Constraints[0] =
+      CodeGenInstruction::ConstraintInfo::getTied(0);
   }
-
-  // Any operands with unset constraints get 0 as their constraint.
-  for (unsigned op = 0, e = OperandList.size(); op != e; ++op)
-    for (unsigned j = 0, e = OperandList[op].MINumOperands; j != e; ++j)
-      if (OperandList[op].Constraints[j].empty())
-        OperandList[op].Constraints[j] = "0";
 
   // Parse the DisableEncoding field.
   std::string DisableEncoding = R->getValueAsString("DisableEncoding");
   while (1) {
-    std::string OpName = getToken(DisableEncoding, " ,\t");
+    std::string OpName;
+    tie(OpName, DisableEncoding) = getToken(DisableEncoding, " ,\t");
     if (OpName.empty()) break;
 
     // Figure out which operand this is.
