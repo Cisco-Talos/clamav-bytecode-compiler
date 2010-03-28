@@ -110,8 +110,9 @@ static bool loadAPIList(std::vector<std::string> &APIList)
 bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
                                                    formatted_raw_ostream &o,
                                                    CodeGenFileType FileType,
-                                                   CodeGenOpt::Level OptLevel) {
-  if (FileType != TargetMachine::AssemblyFile) return true;
+                                                   CodeGenOpt::Level OptLevel,
+                                                   bool DisableVerify) {
+  if (FileType != TargetMachine::CGFT_AssemblyFile) return true;
 
   std::vector<std::string> APIList;
   loadAPIList(APIList);

@@ -266,14 +266,14 @@ class ClamBCVerifier : public FunctionPass,
         const Type *ETy = *TTI;
         if (isa<StructType>(ETy)) {
           if (NamedMDNode *NMD = M->getNamedMetadata("llvm.boundsinfo."+M->getTypeName(ETy))) {
-            MDNode *MD = cast<MDNode>(NMD->getElement(0));
-            ConstantInt *PtrField = cast<ConstantInt>(MD->getElement(0));
+            MDNode *MD = cast<MDNode>(NMD->getOperand(0));
+            ConstantInt *PtrField = cast<ConstantInt>(MD->getOperand(0));
             ConstantInt *lastIdx = cast<ConstantInt>(*(GO->idx_begin() + GO->getNumIndices()-1));
             atLeastOne = true;
             if (PtrField->getValue() == lastIdx->getValue()) {
               SmallVector<Value*, 8> Indices(GO->idx_begin(),
                                              GO->idx_end()-1);
-              Indices.push_back(cast<ConstantInt>(MD->getElement(1)));
+              Indices.push_back(cast<ConstantInt>(MD->getOperand(1)));
               sizeField = cast<GEPOperator>(
                 ConstantExpr::getGetElementPtr(
                   cast<Constant>(GO->getPointerOperand()),
@@ -290,14 +290,14 @@ class ClamBCVerifier : public FunctionPass,
           unsigned FieldNo = cast<ConstantInt>(Indices[CurIDX])->getZExtValue();
           sizeField = 0;
           if (NamedMDNode *NMD = M->getNamedMetadata("llvm.boundsinfo."+M->getTypeName(STy))) {
-            MDNode *MD = cast<MDNode>(NMD->getElement(0));
-            ConstantInt *PtrField = cast<ConstantInt>(MD->getElement(0));
+            MDNode *MD = cast<MDNode>(NMD->getOperand(0));
+            ConstantInt *PtrField = cast<ConstantInt>(MD->getOperand(0));
             atLeastOne = true;// Having a boundsinfo implies that neither fields are null,
             //and store at least one element. TODO:validate this!
             if (PtrField->getValue() == FieldNo) {
               SmallVector<Value*, 8> Indices(IndicesVector.begin(),
                                              IndicesVector.begin() + CurIDX);
-              Indices.push_back(cast<ConstantInt>(MD->getElement(1)));
+              Indices.push_back(cast<ConstantInt>(MD->getOperand(1)));
               sizeField = cast<GEPOperator>(GetElementPtrInst::Create(V,
                                                                       Indices.begin(),
                                                                       Indices.end()));

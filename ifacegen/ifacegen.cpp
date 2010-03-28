@@ -751,6 +751,7 @@ private:
 #define KEYCXX0X 2
 #define KEYGNU 1
 #define KEYMS 1
+#define KEYALTIVEC 1
 
 void Parser::InitLangKeywords()
 {

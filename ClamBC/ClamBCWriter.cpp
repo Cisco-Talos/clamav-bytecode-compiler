@@ -584,14 +584,13 @@ bool ClamBCWriter::doInitialization(Module &M) {
     Dumper = createDbgInfoPrinterPass();
   fid = 0;
   OModule->writeGlobalMap(MapOut);
-  TheMetadata = &M.getContext().getMetadata();
-  MDDbgKind = TheMetadata->getMDKind("dbg");
+  MDDbgKind = M.getContext().getMDKindID("dbg");
   return false;
 }
 
 void ClamBCWriter::printType(const Type *Ty, const Function *F, const Instruction *I)
 {
-  if (Ty->isInteger()) {
+  if (Ty->isIntegerTy()) {
     LLVMContext &C = Ty->getContext();
     if ((Ty != Type::getInt1Ty(C) && Ty != Type::getInt8Ty(C) && 
          Ty !=Type::getInt16Ty(C) && Ty != Type::getInt32Ty(C) && 
@@ -599,7 +598,7 @@ void ClamBCWriter::printType(const Type *Ty, const Function *F, const Instructio
       stop("The ClamAV bytecode backend does not currently support"
            "integer types of widths other than 1, 8, 16, 32, 64.", F, I);
     }
-  } else if (Ty->isFloatingPoint()) {
+  } else if (Ty->isFloatingPointTy()) {
     stop("The ClamAV bytecode backend does not support floating point"
          "types", F, I);
   }
@@ -727,7 +726,7 @@ void ClamBCWriter::printBasicBlock(BasicBlock *BB) {
       printNumber(0);
     visit(*II);
     if (OModule->hasDbgIds() && MDDbgKind) {
-      MDNode *Dbg = TheMetadata->getMD(MDDbgKind, II);
+      MDNode *Dbg = II->getMetadata(MDDbgKind);
       if (Dbg) {
         dbgInfo.push_back(OModule->getDbgId(Dbg));
         anyDbg = true;
@@ -740,7 +739,7 @@ void ClamBCWriter::printBasicBlock(BasicBlock *BB) {
   OModule->printOne('T');
   visit(*BB->getTerminator());
   if (OModule->hasDbgIds() && MDDbgKind) {
-    MDNode *Dbg = TheMetadata->getMD(MDDbgKind, &*BB->getTerminator());
+    MDNode *Dbg = BB->getTerminator()->getMetadata(MDDbgKind);
     if (Dbg) {
       dbgInfo.push_back(OModule->getDbgId(Dbg));
       anyDbg = true;

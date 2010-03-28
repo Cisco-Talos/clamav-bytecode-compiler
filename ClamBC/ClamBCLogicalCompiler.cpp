@@ -35,7 +35,6 @@
 #include "llvm/DerivedTypes.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Module.h"
-#include "llvm/ModuleProvider.h"
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 #include "llvm/Support/ConstantRange.h"
@@ -582,7 +581,7 @@ bool SpeculativeExecution::runOnFunction(Function &F)
 
 static void SpeculativelyExecute(Function &F)
 {
-  FunctionPassManager *PM = new FunctionPassManager(new ExistingModuleProvider(F.getParent()));
+  FunctionPassManager *PM = new FunctionPassManager(F.getParent());
   PM->add(new TargetData(F.getParent()));
   PM->add(createCFGSimplificationPass());
   PM->add(createPromoteMemoryToRegisterPass());
@@ -1051,7 +1050,9 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     if (F->use_empty())
       F->eraseFromParent();
   }
-  Node->addElement(MDString::get(M.getContext(), LogicalSignature));
+  Value *S = MDString::get(M.getContext(), LogicalSignature);
+  MDNode *N = MDNode::get(M.getContext(),  &S, 1);
+  Node->addOperand(N);
   return true;
 }
 

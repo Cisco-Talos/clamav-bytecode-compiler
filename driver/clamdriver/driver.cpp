@@ -39,6 +39,7 @@
 #include "clang/Driver/CC1Options.h"
 #include "clang/Driver/DriverDiagnostic.h"
 #include "clang/Driver/OptTable.h"
+#include "clang/Frontend/CodeGenAction.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/CompilerInvocation.h"
 #include "clang/Frontend/FrontendActions.h"
@@ -206,7 +207,7 @@ static int compileInternal(const char *input, int optimize, const char *argv0,
   PassManager Passes;
   FunctionPassManager *FPasses = NULL;
   if (optimize) {
-    FPasses = new FunctionPassManager(new ExistingModuleProvider(M.get()));
+    FPasses = new FunctionPassManager(M.get());
     FPasses->add(new TargetData(M.get()));//XXX
     createStandardFunctionPasses(FPasses, optimize);
   }
@@ -254,7 +255,7 @@ static int compileInternal(const char *input, int optimize, const char *argv0,
 
   PassManager PM;
   PM.add(new TargetData(M.get()));//XXX
-  if (Target->addPassesToEmitWholeFile(PM, *Out2, TargetMachine::AssemblyFile, OLvl)) {
+  if (Target->addPassesToEmitWholeFile(PM, *Out2, TargetMachine::CGFT_AssemblyFile, OLvl)) {
       errs() << argv0<< ": target does not support generation of this"
              << " file type!\n";
       if (Out2 != &fouts()) delete Out2;
@@ -311,7 +312,8 @@ static int CompileSubprocess(const char **argv, int argc,
   }
 
   // Initialize CompilerInstance from commandline args
-  CompilerInstance Clang(&llvm::getGlobalContext(), false);
+  CompilerInstance Clang;
+  Clang.setLLVMContext(new llvm::LLVMContext);
   LLVMInitializeClamBCTargetInfo();
   LLVMInitializeClamBCTarget();
 

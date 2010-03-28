@@ -27,6 +27,7 @@
 #include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Intrinsics.h"
+#include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/InstIterator.h"
@@ -48,11 +49,10 @@ void ClamBCRegAlloc::handlePHI(PHINode *PN) {
   }
   AllocaInst *AI = new AllocaInst(PN->getType(), ".phi",
                                   &BB->getParent()->getEntryBlock().front());
-  MetadataContext &TheMetadata = PN->getContext().getMetadata();
   llvm::IRBuilder<false> builder(PN->getContext());
-  unsigned MDDbgKind = TheMetadata.getMDKind("dbg");
+  unsigned MDDbgKind = PN->getContext().getMDKindID("dbg");
   if (MDDbgKind) {
-    if (MDNode *Dbg = TheMetadata.getMD(MDDbgKind, PN))
+    if (MDNode *Dbg = PN->getMetadata(MDDbgKind))
       builder.SetCurrentDebugLocation(Dbg);
   }
   for (unsigned i=0;i<PN->getNumIncomingValues();i++) {
@@ -60,7 +60,7 @@ void ClamBCRegAlloc::handlePHI(PHINode *PN) {
     Value *V = PN->getIncomingValue(i);
     builder.SetInsertPoint(BB, BB->getTerminator());
     Instruction *I = builder.CreateStore(V, AI);
-    builder.SetDebugLocation(I);
+    builder.SetInstDebugLocation(I);
   }
   BasicBlock::iterator It = PN;
   do {
@@ -68,7 +68,7 @@ void ClamBCRegAlloc::handlePHI(PHINode *PN) {
   } while (isa<PHINode>(It));
   builder.SetInsertPoint(PN->getParent(), &*It);
   LoadInst *LI = builder.CreateLoad(AI, ".phiload");
-  builder.SetDebugLocation(LI);
+  builder.SetInstDebugLocation(LI);
   PN->replaceAllUsesWith(LI);
   PN->eraseFromParent();
 }

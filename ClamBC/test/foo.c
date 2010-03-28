@@ -245,5 +245,7 @@ int entrypoint()
     if (!n)
 	return 0;
     n--;
-    return yc_decrypt(fbuf, filesize, __clambc_exeinfo.section, n, 0,0);
+    struct cli_exe_section section;
+    get_pe_section(&section, n-1);
+    return yc_decrypt(fbuf, filesize, &section, n, 0,0);
 }

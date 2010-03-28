@@ -36,7 +36,8 @@ struct ClamBCTargetMachine : public TargetMachine {
   virtual bool addPassesToEmitWholeFile(PassManager &PM, 
                                         formatted_raw_ostream &Out,
                                         CodeGenFileType FileType,
-                                        CodeGenOpt::Level OptLevel);
+                                        CodeGenOpt::Level OptLevel,
+                                        bool DisableVerify=false);
 
   virtual const TargetData *getTargetData() const { return 0; }
 };

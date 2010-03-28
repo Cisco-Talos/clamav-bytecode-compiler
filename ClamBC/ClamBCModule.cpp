@@ -34,7 +34,6 @@
 #include "llvm/DerivedTypes.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Module.h"
-#include "llvm/ModuleProvider.h"
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 #include "llvm/Support/CommandLine.h"
@@ -141,7 +140,7 @@ bool ClamBCModule::runOnModule(Module &M)
   // Logical signature created by ClamBCLogicalCompiler.
   NamedMDNode *Node = M.getNamedMetadata("clambc.logicalsignature");
   assert(Node);//ClamBCLogicalCompiler should have created it
-  LogicalSignature = cast<MDString>(Node->getElement(0))->getString();
+  LogicalSignature = cast<MDString>(Node->getOperand(0)->getOperand(0))->getString();
 
   unsigned tid, cid, fid;
   startTID = tid = clamav::initTypeIDs(typeIDs, M.getContext());
@@ -228,8 +227,7 @@ bool ClamBCModule::runOnModule(Module &M)
     stop("Bytecode must define an entrypoint with 0 parameters!\n");
 
   unsigned dbgid = 0;
-  TheMetadata = &M.getContext().getMetadata();
-  MDDbgKind = TheMetadata->getMDKind("dbg");
+  MDDbgKind = M.getContext().getMDKindID("dbg");
   for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
     Function &F = *I;
     if (F.isDeclaration()) {
@@ -271,7 +269,7 @@ bool ClamBCModule::runOnModule(Module &M)
       if (isa<DbgInfoIntrinsic>(&*II))
         continue;
       if (WriteDI) {
-        if (MDNode *Dbg = TheMetadata->getMD(MDDbgKind, &*II)) {
+        if (MDNode *Dbg = II->getMetadata(MDDbgKind)) {
           if (!dbgMap.count(Dbg))
             dbgMap[Dbg] = dbgid++;
           anyDbgIds = true;
@@ -630,7 +628,7 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
     printNumber(Out, 0, false);
   }
   if (anyDbgIds) {
-    std::vector<const MetadataBase*> mds;
+    std::vector<const MDNode*> mds;
     mds.resize(dbgMap.size());
     printEOL();
     Out << "D";
@@ -641,14 +639,14 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
     }
     unsigned mdnodes = mdid;
     for (unsigned i=0;i<mdnodes;i++) {
-      const MetadataBase *B = mds[i];
+      const MDNode *B = mds[i];
       std::vector<const MDNode*> nodes;
       nodes.push_back(cast<MDNode>(B));
       while (!nodes.empty()) {
         const MDNode *N = nodes.back();
         nodes.pop_back();
-        for (unsigned i=0;i<N->getNumElements();i++) {
-          if (MDNode *MD = dyn_cast_or_null<MDNode>(N->getElement(i))) {
+        for (unsigned i=0;i<N->getNumOperands();i++) {
+          if (MDNode *MD = dyn_cast_or_null<MDNode>(N->getOperand(i))) {
             if (!dbgMap.count(MD)) {
               mds.push_back(MD);
               dbgMap[MD] = mdid++;
@@ -665,13 +663,13 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
     } else
       printNumber(Out, size);
     unsigned cnt = 0, c=0;
-    for (std::vector<const MetadataBase*>::iterator I=mds.begin(),E=mds.end();
+    for (std::vector<const MDNode*>::iterator I=mds.begin(),E=mds.end();
          I != E; ++I) {
       if (const MDNode *N = dyn_cast<MDNode>(*I)) {
-        printNumber(Out, N->getNumElements());
+        printNumber(Out, N->getNumOperands());
         errs() <<  c++ << ":";
-        for (unsigned i=0;i<N->getNumElements();i++) {
-          Value *V = N->getElement(i);
+        for (unsigned i=0;i<N->getNumOperands();i++) {
+          Value *V = N->getOperand(i);
           if (!V) {
             printNumber(Out, 0);
             printNumber(Out, ~0u);
@@ -726,11 +724,9 @@ void ClamBCModule::printMsg(const std::string &Msg, const Function *F,
     F = I->getParent()->getParent();
   if (I) {
     unsigned MDDbgKind;
-    llvm::MetadataContext *TheMetadata;
-    TheMetadata = &I->getParent()->getParent()->getContext().getMetadata();
-    MDDbgKind = TheMetadata->getMDKind("dbg");
+    MDDbgKind = I->getContext().getMDKindID("dbg");
     if (MDDbgKind) {
-      if (MDNode *Dbg = TheMetadata->getMD(MDDbgKind, I)) {
+      if (MDNode *Dbg = I->getMetadata(MDDbgKind)) {
         DILocation Loc(Dbg);
         locationPrinted = true;
         errs() << Loc.getDirectory() << "/" << Loc.getFilename();

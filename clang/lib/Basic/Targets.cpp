@@ -1890,8 +1890,8 @@ namespace {
     }
 
     virtual void getTargetDefines(const LangOptions &Opts,
-                                 std::vector<char> &Defines) const {
-      Define(Defines, "__CLAMBC__");
+                                  MacroBuilder &Builder) const {
+      Builder.defineMacro("__CLAMBC__");
     }
     virtual void getTargetBuiltins(const Builtin::Info *&Records,
                                    unsigned &NumRecords) const {

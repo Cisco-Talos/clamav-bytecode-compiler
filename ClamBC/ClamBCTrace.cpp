@@ -32,7 +32,6 @@
 #include "llvm/DerivedTypes.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Module.h"
-#include "llvm/ModuleProvider.h"
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 #include "llvm/System/Host.h"
@@ -68,8 +67,7 @@ char ClamBCTrace::ID;
   bool ClamBCTrace::runOnModule(Module &M) {
     if (!InsertTracing)
       return false;
-    MetadataContext *TheMetadata = &M.getContext().getMetadata();
-    unsigned MDDbgKind = TheMetadata->getMDKind("dbg");
+    unsigned MDDbgKind = M.getContext().getMDKindID("dbg");
     DenseMap<MDNode*, unsigned> scopeIDs;
     unsigned scopeid = 0;
     IRBuilder<> builder(M.getContext());
@@ -106,7 +104,7 @@ char ClamBCTrace::ID;
         BasicBlock::iterator BBIt = J->begin();
         while (BBIt != J->end()) {
           while (isa<AllocaInst>(BBIt) || isa<PHINode>(BBIt)) ++BBIt;
-          MDNode *Dbg = TheMetadata->getMD(MDDbgKind, BBIt);
+          MDNode *Dbg = BBIt->getMetadata(MDDbgKind);
           if (!Dbg) {
             ++BBIt;
             continue;

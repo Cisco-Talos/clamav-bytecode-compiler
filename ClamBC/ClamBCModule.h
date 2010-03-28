@@ -57,7 +57,7 @@ class ClamBCModule : public llvm::ModulePass {
   typedef llvm::DenseMap<const llvm::Function*, unsigned> FunctionMapTy;
   typedef llvm::DenseMap<const llvm::GlobalVariable*, unsigned> GlobalMapTy;
   typedef llvm::DenseMap<const llvm::ConstantExpr*, const llvm::GlobalVariable*> CEMapTy;
-  typedef llvm::DenseMap<const llvm::MetadataBase*, unsigned> DbgMapTy;
+  typedef llvm::DenseMap<const llvm::MDNode*, unsigned> DbgMapTy;
   llvm::SmallVector<char, 4096> lineBuffer;
   std::vector<std::string> allLines;
   llvm::raw_svector_ostream Out;
@@ -87,7 +87,7 @@ public:
                         const std::vector<std::string> &APIList);
 
   void writeGlobalMap(llvm::raw_ostream* Out);
-  unsigned getDbgId(const llvm::MetadataBase *MB)
+  unsigned getDbgId(const llvm::MDNode *MB)
   {
     DbgMapTy::iterator I = dbgMap.find(MB);
     assert(I != dbgMap.end() && "Requested ID for non-existent Dbg MDNode");

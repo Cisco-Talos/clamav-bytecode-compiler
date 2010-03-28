@@ -36,6 +36,7 @@
 #include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Intrinsics.h"
+#include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
@@ -290,12 +291,12 @@ namespace {
           Type::getInt32Ty(BB->getContext()),args,false);
         Constant *func_abort =
           BB->getParent()->getParent()->getOrInsertFunction("abort", abrtTy);
-        Constant *func_rterr =
-          BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
+//        Constant *func_rterr =
+//          BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
         AbrtBB = BasicBlock::Create(BB->getContext(), "", BB->getParent());
         PN = PHINode::Create(Type::getInt32Ty(BB->getContext()),"",
                                       AbrtBB);
-        CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", AbrtBB);
+//        CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", AbrtBB);
         CallInst* AbrtC = CallInst::Create(func_abort, "", AbrtBB);
         AbrtC->setCallingConv(CallingConv::C);
         AbrtC->setTailCall(true);
@@ -307,10 +308,9 @@ namespace {
       } else {
         PN = cast<PHINode>(AbrtBB->begin());
       }
-      llvm::MetadataContext *TheMetadata = &BB->getParent()->getParent()->getContext().getMetadata();
-      unsigned MDDbgKind = TheMetadata->getMDKind("dbg");
+      unsigned MDDbgKind = I->getContext().getMDKindID("dbg");
       unsigned locationid = 0;
-      if (MDNode *Dbg = TheMetadata->getMD(MDDbgKind, I)) {
+      if (MDNode *Dbg = I->getMetadata(MDDbgKind)) {
         DILocation Loc(Dbg);
         locationid = Loc.getLineNumber() << 8;
         unsigned col = Loc.getColumnNumber();

@@ -102,7 +102,6 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
             /* these have opcodes associated */
             break;
           case Intrinsic::not_intrinsic:
-          case Intrinsic::dbg_stoppoint:
             break;
           }
         }
