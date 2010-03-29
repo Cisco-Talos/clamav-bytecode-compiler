@@ -8,5 +8,7 @@ typedef unsigned long uint64_t;
 typedef long int64_t;
 typedef unsigned int size_t;
 typedef int off_t;
+typedef uint64_t uintptr_t;
+typedef int64_t intptr_t;
 typedef struct signature {
 typedef struct {

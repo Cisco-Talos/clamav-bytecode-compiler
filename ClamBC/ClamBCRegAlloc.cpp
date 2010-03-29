@@ -130,11 +130,13 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
         ValueMap[II]=getValueID(II->getOperand(0));
         continue;
       }
+#if 0
       if (isa<PtrToIntInst>(BC)) {
         // sub ptrtoint, ptrtoint is supported
         SkipMap.insert(II);
         continue;
       }
+#endif
     }
     if (II->hasOneUse()) {
       // single-use store to alloca -> store directly to alloca

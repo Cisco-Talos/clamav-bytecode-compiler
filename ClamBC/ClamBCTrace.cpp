@@ -164,7 +164,7 @@ char ClamBCTrace::ID;
               if (isa<IntegerType>(AI->getType())) {
                 Value *V = builder.CreateIntCast(AI, Type::getInt32Ty(M.getContext()), false);
                 Value *ValueName = builder.CreateGlobalStringPtr(AI->getName().data());
-                builder.CreateCall2(trace_value, ValueName, V);
+//                builder.CreateCall2(trace_value, ValueName, V);
               } else if (isa<PointerType>(AI->getType())) {
                 Value *V = builder.CreatePointerCast(AI, 
                                                      PointerType::getUnqual(Type::getInt8Ty(M.getContext())));
@@ -185,7 +185,7 @@ char ClamBCTrace::ID;
           if (isa<IntegerType>(II->getType())) {
             builder.SetInsertPoint(&*J, BBIt);
             Value *V = builder.CreateIntCast(II, Type::getInt32Ty(M.getContext()), false);
-            builder.CreateCall2(trace_value, ValueName, V);
+//            builder.CreateCall2(trace_value, ValueName, V);
           } else if (isa<PointerType>(II->getType())) {
             builder.SetInsertPoint(&*J, BBIt);
             Value *V = builder.CreatePointerCast(II, 

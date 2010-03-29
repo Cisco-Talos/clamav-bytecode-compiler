@@ -113,7 +113,8 @@ static void extract_obj(unsigned pos, unsigned jsnorm)
     inflate_process(inf);
     avail = buffer_pipe_read_avail(out);
     uint8_t *outdata = buffer_pipe_read_get(out, avail);
-    write(outdata, avail);
+    if (avail)
+      write(outdata, avail);
     buffer_pipe_read_stopped(out, avail);
   } while (avail);
   seek(back, SEEK_SET);

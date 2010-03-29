@@ -58,7 +58,7 @@ void debug(...) __attribute__((overloadable, unavailable));
 /* Logical signature handling */
 
 typedef struct signature {
-    unsigned id;
+    uint64_t id;
 } __Signature;
 
 #define PE_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_PE_UNPACKER;
@@ -268,21 +268,21 @@ static void* memchr(const void* s, int c, size_t n)
  * @param[in] c character to fill buffer with
  * @param[in] n length of buffer
  * @return \p src*/
-void* memset(void *src, int c, uint32_t n) __attribute__((nothrow)) __attribute__((__nonnull__((1))));
+void* memset(void *src, int c, uintptr_t n) __attribute__((nothrow)) __attribute__((__nonnull__((1))));
 
 /** Copies data between two possibly overlapping buffers.
  * @param[out] dst destination buffer
  * @param[in] src source buffer
  * @param[in] n amount of bytes to copy
  * @return dst */
-void *memmove (void *dst, const void *src, uint32_t n)
+void *memmove (void *dst, const void *src, uintptr_t n)
     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
 /** Copies data between two non-overlapping buffers.
  * @param[out] dst destination buffer
  * @param[in] src source buffer
  * @param[in] n amount of bytes to copy
  * @return dst */
-void *memcpy (void *restrict dst, const void *restrict src, uint32_t n)
+void *memcpy (void *restrict dst, const void *restrict src, uintptr_t n)
     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
 
 /** Compares two memory buffers.

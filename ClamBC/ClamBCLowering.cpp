@@ -128,6 +128,16 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
         V->dump();
         BO->dump();
         BO->replaceAllUsesWith(V);
+      } else if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(II)) {
+        LLVMContext &C = GEPI->getContext();
+        Builder.SetInsertPoint(GEPI->getParent(), GEPI);
+        for (unsigned i=1;i<GEPI->getNumOperands();i++) {
+          Value *V = GEPI->getOperand(i);
+          if (V->getType() != Type::getInt32Ty(C)) {
+            Value *V2 = Builder.CreateTrunc(V, Type::getInt32Ty(C));
+            GEPI->setOperand(i, V2);
+          }
+        }
       }
     }
 }

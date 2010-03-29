@@ -259,6 +259,12 @@ private :
   void visitCastInst (CastInst &I)
   {
     assert (!I.isLosslessCast());
+    LLVMContext &C = I.getContext();
+    if (isa<PtrToIntInst>(I) && I.getType() == Type::getInt64Ty(C)) {
+      printFixedNumber(OP_BC_PTRTOINT64, 2);
+      printOperand(I, I.getOperand(0));
+      return;
+    }
     HandleOpcodes(I);
   }
 
@@ -320,8 +326,10 @@ private :
       // sub ptrtoint, ptrtoint
       //TODO: push ptrtoinst through phi nodes!
       LLVMContext &C = I.getContext();
-      PtrToIntInst *L = dyn_cast<PtrToIntInst>(I.getOperand(0));
-      PtrToIntInst *R = dyn_cast<PtrToIntInst>(I.getOperand(1));
+      Instruction *LI = dyn_cast<Instruction>(I.getOperand(0));
+      Instruction *RI = dyn_cast<Instruction>(I.getOperand(1));
+      PtrToIntInst *L = dyn_cast<PtrToIntInst>(LI);
+      PtrToIntInst *R = dyn_cast<PtrToIntInst>(RI);
       if (L && R && I.getType() == Type::getInt32Ty(C)) {
         printFixedNumber(OP_BC_PTRDIFF32, 2);
         printOperand(I, L->getOperand(0));

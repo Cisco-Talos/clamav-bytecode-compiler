@@ -21,7 +21,7 @@ int entrypoint()
   inflate_process(id);
   avail = buffer_pipe_read_avail(output_buf);
   out_b = buffer_pipe_read_get(output_buf, avail);
-  if (memcmp(out_b, "test;", 5))
+  if (memcmp(out_b, "test", 4))
     return 0xdead3;
   inflate_done(id);
   return 0xbeef;

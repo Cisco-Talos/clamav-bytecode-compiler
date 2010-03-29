@@ -1874,18 +1874,18 @@ namespace {
     ClamBCTargetInfo(const std::string& triple) : TargetInfo(triple) {
       TLSSupported = false;
       /* FIXME: 64 crashes on pe*.c */
-      PointerWidth = 32;
-      PointerAlign = 32;
+      PointerWidth = 64;
+      PointerAlign = 64;
       IntWidth = IntAlign = 32;
       LongWidth = LongLongWidth = 64;
       LongAlign = LongLongAlign = 64;
       SizeType = UnsignedInt;
       PtrDiffType = SignedInt;
-      IntPtrType = SignedInt;
+      IntPtrType = SignedLong;
       IntMaxType = SignedLong;
       UIntMaxType = UnsignedLong;
       /* FIXME: e-p:64:64:64 crashes on yc_bytecode */
-      DescriptionString = "e-p:32:8:8-i1:8:8-i8:8:8-i16:16:16-i32:32:32-"
+      DescriptionString = "e-p:64:8:8-i1:8:8-i8:8:8-i16:16:16-i32:32:32-"
         "i64:64:64:a0:0:64";
     }
 
