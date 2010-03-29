@@ -19,6 +19,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Function.h"
 #include "llvm/IntrinsicInst.h"
+#include "llvm/LLVMContext.h"
 #include "llvm/Metadata.h"
 #include "llvm/Assembly/Writer.h"
 #include "llvm/Analysis/DebugInfo.h"
@@ -75,8 +76,8 @@ void PrintDbgInfo::printVariableDeclaration(const Value *V) {
 bool PrintDbgInfo::runOnFunction(Function &F) {
   if (F.isDeclaration())
     return false;
-
   Out << "function " << F.getName() << "\n\n";
+  unsigned MDDbgKind = F.getContext().getMDKindID("dbg");
 
   for (Function::iterator I = F.begin(), E = F.end(); I != E; ++I) {
     BasicBlock *BB = I;
@@ -92,7 +93,14 @@ bool PrintDbgInfo::runOnFunction(Function &F) {
 
     for (BasicBlock::const_iterator i = BB->begin(), e = BB->end();
          i != e; ++i) {
-
+        Out << *i;
+        if (MDNode *Dbg = i->getMetadata(MDDbgKind)) {
+          DILocation Loc(Dbg);
+          Out << "; " << Loc.getFilename() <<
+            ":" << Loc.getLineNumber() << ":" <<
+            Loc.getColumnNumber();
+        }
+        Out << "\n";
         printVariableDeclaration(i);
 
         if (const User *U = dyn_cast<User>(i)) {
