@@ -117,8 +117,7 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   std::vector<std::string> APIList;
   loadAPIList(APIList);
   ClamBCModule *module = new ClamBCModule(o, APIList);
-
-  PM.add(createStripDebugDeclarePass());
+  
   //  PM.add(createStripSymbolsPass(true));
   PM.add(createGlobalDCEPass());
   PM.add(createStripDeadPrototypesPass());
@@ -146,6 +145,7 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createVerifierPass());
   if (DumpIR)
     PM.add(createBitcodeWriterPass(outs()));
+  PM.add(createStripDebugDeclarePass());
   PM.add(module);
   PM.add(createVerifierPass());
   PM.add(createClamBCWriter(module));

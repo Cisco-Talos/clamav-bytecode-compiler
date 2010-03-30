@@ -41,6 +41,10 @@ int entrypoint(void)
 {
     unsigned count = count_match(Signatures.check2);
     if (count >= 2)
-	foundVirus(count == 2 ? "A" : "B");
+//	foundVirus(count == 2 ? "A" : "B");
+      if (count == 2)
+	foundVirus("A");
+      else
+        foundVirus("B");
     return 0;
 }

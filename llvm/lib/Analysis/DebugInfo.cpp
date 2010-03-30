@@ -1316,6 +1316,33 @@ static const DbgDeclareInst *findDbgDeclare(const Value *V) {
   return 0;
 }
 
+/// Finds the llvm.dbg.value intrinsic corresponding to this value if any.
+/// It looks through pointer casts too.
+static const DbgValueInst *findDbgValue(const Value *V) {
+  V = V->stripPointerCasts();
+  
+  if (!isa<Instruction>(V) && !isa<Argument>(V))
+    return 0;
+
+  BasicBlock::const_iterator BI, BE;
+  if (const Instruction *I = dyn_cast<Instruction>(V)) {
+    BI = I;
+    ++BI;
+    BE = I->getParent()->end();
+  } else if (const Argument *A = dyn_cast<Argument>(V)) {
+    BI = A->getParent()->getEntryBlock().begin();
+    BE = A->getParent()->getEntryBlock().end();
+  }
+
+  for (;BI != BE;++BI) {
+      if (const DbgValueInst *DVI = dyn_cast<DbgValueInst>(BI))
+        if (DVI->getValue() == V)
+          return DVI;
+  }
+
+  return 0;
+}
+
 bool llvm::getLocationInfo(const Value *V, std::string &DisplayName,
                            std::string &Type, unsigned &LineNo,
                            std::string &File, std::string &Dir) {
@@ -1334,9 +1361,15 @@ bool llvm::getLocationInfo(const Value *V, std::string &DisplayName,
     Unit = Var.getCompileUnit();
     TypeD = Var.getType();
   } else {
-    const DbgDeclareInst *DDI = findDbgDeclare(V);
-    if (!DDI) return false;
-    DIVariable Var(cast<MDNode>(DDI->getVariable()));
+    const MDNode *N = 0;
+    if (const DbgDeclareInst *DDI = findDbgDeclare(V)) {
+      N = DDI->getVariable();
+    } else if (const DbgValueInst *DVI = findDbgValue(V)) {
+      N = DVI->getVariable();
+    }
+    if (!N)
+      return false;
+    DIVariable Var(const_cast<MDNode*>(N));
 
     StringRef D = Var.getName();
     if (!D.empty())

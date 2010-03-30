@@ -12,6 +12,8 @@ int entrypoint()
     return 0xdead1;
   avail = buffer_pipe_write_avail(input_buf);
   input_b = buffer_pipe_write_get(input_buf, avail);
+  if (!input_b)
+    return 0xdead0;
   memcpy(input_b, input, sizeof(input));
   buffer_pipe_write_stopped(input_buf, sizeof(input));
 
@@ -21,7 +23,7 @@ int entrypoint()
   inflate_process(id);
   avail = buffer_pipe_read_avail(output_buf);
   out_b = buffer_pipe_read_get(output_buf, avail);
-  if (memcmp(out_b, "test", 4))
+  if (out_b && memcmp(out_b, "test", 4))
     return 0xdead3;
   inflate_done(id);
   return 0xbeef;
