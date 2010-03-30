@@ -22,6 +22,8 @@
 #define DEBUG_TYPE "clambc-rtcheck"
 #include "ClamBCModule.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/SCCIterator.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Analysis/DebugInfo.h"
 #include "llvm/Analysis/Dominators.h"
@@ -54,9 +56,12 @@ using namespace llvm;
 namespace {
 
   class PtrVerifier : public FunctionPass {
+  private:
+    DenseSet<Function*> badFunctions;
+    CallGraphNode *rootNode;
   public:
     static char ID;
-    PtrVerifier() : FunctionPass((intptr_t)&ID) {}
+    PtrVerifier() : FunctionPass((intptr_t)&ID),rootNode(0) {}
 
     virtual bool runOnFunction(Function &F) {
       DEBUG(F.dump());
@@ -65,6 +70,32 @@ namespace {
       BoundsMap.clear();
       AbrtBB = 0;
       valid = true;
+
+      if (!rootNode) {
+        rootNode = getAnalysis<CallGraph>().getRoot();
+        // No recursive functions for now.
+        // In the future we may insert runtime checks for stack depth.
+        for (scc_iterator<CallGraphNode*> SCCI = scc_begin(rootNode),
+             E = scc_end(rootNode); SCCI != E; ++SCCI) {
+          const std::vector<CallGraphNode*> &nextSCC = *SCCI;
+          if (nextSCC.size() > 1 || SCCI.hasLoop()) {
+            errs() << "INVALID: Recursion detected, callgraph SCC components: ";
+            for (std::vector<CallGraphNode*>::const_iterator I = nextSCC.begin(),
+                 E = nextSCC.end(); I != E; ++I) {
+              Function *FF = (*I)->getFunction();
+              if (FF) {
+                errs() << FF->getName() << ", ";
+                badFunctions.insert(FF);
+              }
+            }
+            if (SCCI.hasLoop())
+              errs() << "(self-loop)";
+            errs() << "\n";
+          }
+          // we could also have recursion via function pointers, but we don't
+          // allow calls to unknown functions, see runOnFunction() below
+        }
+      }
 
       BasicBlock::iterator It = F.getEntryBlock().begin();
       while (isa<AllocaInst>(It) || isa<PHINode>(It)) ++It;
@@ -144,6 +175,8 @@ namespace {
           }
         }
       }
+      if (badFunctions.count(&F))
+        valid = 0;
 
       if (!valid) {
 	DEBUG(F.dump());
@@ -174,11 +207,16 @@ namespace {
       return Changed;
     }
 
+    virtual void releaseMemory() {
+      badFunctions.clear();
+    }
+
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<TargetData>();
       AU.addRequired<DominatorTree>();
       AU.addRequired<ScalarEvolution>();
       AU.addRequired<PointerTracking>();
+      AU.addRequired<CallGraph>();
     }
 
     bool isValid() const { return valid; }
