@@ -328,13 +328,15 @@ private :
       LLVMContext &C = I.getContext();
       Instruction *LI = dyn_cast<Instruction>(I.getOperand(0));
       Instruction *RI = dyn_cast<Instruction>(I.getOperand(1));
-      PtrToIntInst *L = dyn_cast<PtrToIntInst>(LI);
-      PtrToIntInst *R = dyn_cast<PtrToIntInst>(RI);
-      if (L && R && I.getType() == Type::getInt32Ty(C)) {
-        printFixedNumber(OP_BC_PTRDIFF32, 2);
-        printOperand(I, L->getOperand(0));
-        printOperand(I, R->getOperand(0));
-        return;
+      if (LI && RI) {
+        PtrToIntInst *L = dyn_cast<PtrToIntInst>(LI);
+        PtrToIntInst *R = dyn_cast<PtrToIntInst>(RI);
+        if (L && R && I.getType() == Type::getInt32Ty(C)) {
+          printFixedNumber(OP_BC_PTRDIFF32, 2);
+          printOperand(I, L->getOperand(0));
+          printOperand(I, R->getOperand(0));
+          return;
+        }
       }
     }
     HandleOpcodes(I);
