@@ -220,7 +220,7 @@ namespace {
           Value *B = getPointerBounds(Inc);
           if (!B) {
             good = false;
-            B = ConstantInt::get(PN->getType(), 0);
+            B = ConstantInt::get(newPN->getType(), 0);
             DEBUG(dbgs() << "bounds not found while solving phi node: " << *Inc
                   << "\n");
           }
