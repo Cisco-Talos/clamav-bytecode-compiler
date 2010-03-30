@@ -21,6 +21,7 @@
  */
 #define DEBUG_TYPE "clambc-rtcheck"
 #include "ClamBCModule.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/CallGraph.h"
@@ -152,7 +153,13 @@ namespace {
             valid &= validateAccess(CI->getOperand(2), CI->getOperand(3), CI);
             continue;
           }
-          for (unsigned i=0;i<FTy->getNumParams();i++) {
+	  unsigned i;
+#ifdef CLAMBC_COMPILER
+	  i = 0;
+#else
+	  i = 1;// skip hidden ctx*
+#endif
+          for (;i<FTy->getNumParams();i++) {
             if (isa<PointerType>(FTy->getParamType(i))) {
               Value *Ptr = CI->getOperand(i+1);
               if (i+1 >= FTy->getNumParams()) {
@@ -300,6 +307,26 @@ namespace {
         return BoundsMap[Base];
       const Type *I64Ty =
         Type::getInt64Ty(Base->getContext());
+#ifndef CLAMBC_COMPILER
+      // first arg is hidden ctx
+      if (Argument *A = dyn_cast<Argument>(Base)) {
+	  if (A->getArgNo() == 0) {
+	      const Type *Ty = cast<PointerType>(A->getType())->getElementType();
+	      return ConstantInt::get(I64Ty, TD->getTypeAllocSize(Ty));
+	  }
+      }
+      if (LoadInst *LI = dyn_cast<LoadInst>(Base)) {
+	  Value *V = LI->getPointerOperand()->stripPointerCasts()->getUnderlyingObject();
+	  if (Argument *A = dyn_cast<Argument>(V)) {
+	      if (A->getArgNo() == 0) {
+		  // pointers from hidden ctx are trusted to be at least the
+		  // size they say they are
+		  const Type *Ty = cast<PointerType>(LI->getType())->getElementType();
+		  return ConstantInt::get(I64Ty, TD->getTypeAllocSize(Ty));
+	      }
+	  }
+      }
+#endif
       if (PHINode *PN = dyn_cast<PHINode>(Base)) {
         BasicBlock::iterator It = PN;
         ++It;

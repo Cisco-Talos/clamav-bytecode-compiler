@@ -10,6 +10,7 @@
 LEVEL = ../../..
 LIBRARYNAME = LLVMClamBC
 DIRS = TargetInfo
+CXXFLAGS=-DCLAMBC_COMPILER
 include $(LEVEL)/Makefile.common
 GIT_VERSION := $(shell cd $(LLVM_SRC_ROOT); git describe --always)
 .PHONY: version.h
