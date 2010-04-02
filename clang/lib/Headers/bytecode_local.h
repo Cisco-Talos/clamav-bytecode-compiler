@@ -204,12 +204,15 @@ static force_inline bool hasExeInfo(void)
     return __clambc_pedata.offset != -1;
 }
 
-/** Returns whether this is a PE32+ executable */
+/** Returns whether this is a PE32+ executable.
+  @return true if this is a PE32+ executable
+*/
 static force_inline bool isPE64(void)
 {
   return le16_to_host(__clambc_pedata.opt64.Magic) == 0x020b;
 }
 
+/** Returns MajorLinkerVersion for this PE file.*/
 static force_inline uint8_t getPEMajorLinkerVersion(void)
 {
   return isPE64() ?
@@ -217,13 +220,15 @@ static force_inline uint8_t getPEMajorLinkerVersion(void)
     __clambc_pedata.opt32.MajorLinkerVersion;
 }
 
+/** Returns MinorLinkerVersion for this PE file.*/
 static force_inline uint8_t getPEMinorLinkerVersion(void)
 {
   return isPE64() ?
-    __clambc_pedata.opt64.MajorLinkerVersion :
-    __clambc_pedata.opt32.MajorLinkerVersion;
+    __clambc_pedata.opt64.MinorLinkerVersion :
+    __clambc_pedata.opt32.MinorLinkerVersion;
 }
 
+/** Return the PE SizeOfCode. */
 static force_inline uint32_t getPESizeOfCode(void)
 {
   return le32_to_host(isPE64() ?
@@ -231,6 +236,7 @@ static force_inline uint32_t getPESizeOfCode(void)
                       __clambc_pedata.opt32.SizeOfCode);
 }
 
+/** Return the PE SizeofInitializedData. */
 static force_inline uint32_t getPESizeOfInitializedData(void)
 {
   return le32_to_host(isPE64() ?
@@ -238,6 +244,7 @@ static force_inline uint32_t getPESizeOfInitializedData(void)
                       __clambc_pedata.opt32.SizeOfInitializedData);
 }
 
+/** Return the PE SizeofUninitializedData. */
 static force_inline uint32_t getPESizeOfUninitializedData(void)
 {
   return le32_to_host(isPE64() ?
@@ -245,6 +252,7 @@ static force_inline uint32_t getPESizeOfUninitializedData(void)
                       __clambc_pedata.opt32.SizeOfUninitializedData);
 }
 
+/** Return the PE BaseOfCode.*/
 static force_inline uint32_t getPEBaseOfCode(void)
 {
   return le32_to_host(isPE64() ?
@@ -252,6 +260,7 @@ static force_inline uint32_t getPEBaseOfCode(void)
                       __clambc_pedata.opt32.BaseOfCode);
 }
 
+/** Return the PE BaseOfData.*/
 static force_inline uint32_t getPEBaseOfData(void)
 {
   return le32_to_host(isPE64() ?
@@ -259,6 +268,7 @@ static force_inline uint32_t getPEBaseOfData(void)
                       __clambc_pedata.opt32.BaseOfData);
 }
 
+/** Return the PE ImageBase as 64-bit integer.*/
 static force_inline uint64_t getPEImageBase(void)
 {
   return le64_to_host(isPE64() ?
@@ -266,6 +276,7 @@ static force_inline uint64_t getPEImageBase(void)
                       __clambc_pedata.opt32.ImageBase);
 }
 
+/** Return the PE SectionAlignment.*/
 static force_inline uint32_t getPESectionAlignment(void)
 {
   return le32_to_host(isPE64() ?
@@ -273,6 +284,7 @@ static force_inline uint32_t getPESectionAlignment(void)
                       __clambc_pedata.opt32.SectionAlignment);
 }
 
+/** Return the PE FileAlignment. */
 static force_inline uint32_t getPEFileAlignment(void)
 {
   return le32_to_host(isPE64() ?
@@ -280,6 +292,7 @@ static force_inline uint32_t getPEFileAlignment(void)
                       __clambc_pedata.opt32.FileAlignment);
 }
 
+/** Return the PE MajorOperatingSystemVersion. */
 static force_inline uint16_t getPEMajorOperatingSystemVersion(void)
 {
   return le16_to_host(isPE64() ?
@@ -287,6 +300,7 @@ static force_inline uint16_t getPEMajorOperatingSystemVersion(void)
                       __clambc_pedata.opt32.MajorOperatingSystemVersion);
 }
 
+/** Return the PE MinorOperatingSystemVersion. */
 static force_inline uint16_t getPEMinorOperatingSystemVersion(void)
 {
   return le16_to_host(isPE64() ?
@@ -294,6 +308,7 @@ static force_inline uint16_t getPEMinorOperatingSystemVersion(void)
                       __clambc_pedata.opt32.MinorOperatingSystemVersion);
 }
 
+/** Return the PE MajorImageVersion */
 static force_inline uint16_t getPEMajorImageVersion(void)
 {
   return le16_to_host(isPE64() ?
@@ -301,6 +316,7 @@ static force_inline uint16_t getPEMajorImageVersion(void)
                       __clambc_pedata.opt32.MajorImageVersion);
 }
 
+/** Return the PE MinorImageVersion */
 static force_inline uint16_t getPEMinorImageVersion(void)
 {
   return le16_to_host(isPE64() ?
@@ -308,6 +324,7 @@ static force_inline uint16_t getPEMinorImageVersion(void)
                       __clambc_pedata.opt32.MinorImageVersion);
 }
 
+/** Return the PE MajorSubsystemVersion */
 static force_inline uint16_t getPEMajorSubsystemVersion(void)
 {
   return le16_to_host(isPE64() ?
@@ -315,6 +332,7 @@ static force_inline uint16_t getPEMajorSubsystemVersion(void)
                       __clambc_pedata.opt32.MajorSubsystemVersion);
 }
 
+/** Return the PE MinorSubsystemVersion */
 static force_inline uint16_t getPEMinorSubsystemVersion(void)
 {
   return le16_to_host(isPE64() ?
@@ -322,6 +340,7 @@ static force_inline uint16_t getPEMinorSubsystemVersion(void)
                       __clambc_pedata.opt32.MinorSubsystemVersion);
 }
 
+/** Return the PE Win32VersionValue. */
 static force_inline uint32_t getPEWin32VersionValue(void)
 {
   return le32_to_host(isPE64() ?
@@ -329,6 +348,7 @@ static force_inline uint32_t getPEWin32VersionValue(void)
                       __clambc_pedata.opt32.Win32VersionValue);
 }
 
+/** Return the PE SizeOfImage. */
 static force_inline uint32_t getPESizeOfImage(void)
 {
   return le32_to_host(isPE64() ?
@@ -336,6 +356,7 @@ static force_inline uint32_t getPESizeOfImage(void)
                       __clambc_pedata.opt32.SizeOfImage);
 }
 
+/** Return the PE SizeOfHeaders. */
 static force_inline uint32_t getPESizeOfHeaders(void)
 {
   return le32_to_host(isPE64() ?
@@ -343,6 +364,7 @@ static force_inline uint32_t getPESizeOfHeaders(void)
                       __clambc_pedata.opt32.SizeOfHeaders);
 }
 
+/** Return the PE CheckSum. */
 static force_inline uint32_t getPECheckSum(void)
 {
   return le32_to_host(isPE64() ?
@@ -350,6 +372,7 @@ static force_inline uint32_t getPECheckSum(void)
                       __clambc_pedata.opt32.CheckSum);
 }
 
+/** Return the PE Subsystem. */
 static force_inline uint16_t getPESubsystem(void)
 {
   return le16_to_host(isPE64() ?
@@ -357,6 +380,7 @@ static force_inline uint16_t getPESubsystem(void)
                       __clambc_pedata.opt32.Subsystem);
 }
 
+/** Return the PE DllCharacteristics. */
 static force_inline uint16_t getPEDllCharacteristics(void)
 {
   return le16_to_host(isPE64() ?
@@ -364,6 +388,7 @@ static force_inline uint16_t getPEDllCharacteristics(void)
                       __clambc_pedata.opt32.DllCharacteristics);
 }
 
+/** Return the PE SizeOfStackReserve. */
 static force_inline uint32_t getPESizeOfStackReserve(void)
 {
   return le32_to_host(isPE64() ?
@@ -371,6 +396,7 @@ static force_inline uint32_t getPESizeOfStackReserve(void)
                       __clambc_pedata.opt32.SizeOfStackReserve);
 }
 
+/** Return the PE SizeOfStackCommit. */
 static force_inline uint32_t getPESizeOfStackCommit(void)
 {
   return le32_to_host(isPE64() ?
@@ -378,6 +404,7 @@ static force_inline uint32_t getPESizeOfStackCommit(void)
                       __clambc_pedata.opt32.SizeOfStackCommit);
 }
 
+/** Return the PE SizeOfHeapReserve. */
 static force_inline uint32_t getPESizeOfHeapReserve(void)
 {
   return le32_to_host(isPE64() ?
@@ -385,6 +412,7 @@ static force_inline uint32_t getPESizeOfHeapReserve(void)
                       __clambc_pedata.opt32.SizeOfHeapReserve);
 }
 
+/** Return the PE SizeOfHeapCommit. */
 static force_inline uint32_t getPESizeOfHeapCommit(void)
 {
   return le32_to_host(isPE64() ?
@@ -392,6 +420,7 @@ static force_inline uint32_t getPESizeOfHeapCommit(void)
                       __clambc_pedata.opt32.SizeOfHeapCommit);
 }
 
+/** Return the PE LoaderFlags. */
 static force_inline uint32_t getPELoaderFlags(void)
 {
   return le32_to_host(isPE64() ?
@@ -399,37 +428,40 @@ static force_inline uint32_t getPELoaderFlags(void)
                       __clambc_pedata.opt32.LoaderFlags);
 }
 
-/** CPU this executable runs on, see libclamav/pe.c for possible values */
+/** Returns the CPU this executable runs on, see libclamav/pe.c for possible values */
 static force_inline uint16_t getPEMachine()
 {
   return le16_to_host(__clambc_pedata.file_hdr.Machine);
 }
 
-/** Debug symboltable */
+/** Returns pointer to the PE debug symbol table */
 static force_inline uint32_t getPEPointerToSymbolTable()
 {
   return le32_to_host(__clambc_pedata.file_hdr.PointerToSymbolTable);
 }
 
-/** Number of debug symbols */
+/** Returns the PE number of debug symbols*/
 static force_inline uint32_t getPENumberOfSymbols()
 {
   return le32_to_host(__clambc_pedata.file_hdr.NumberOfSymbols);
 }
 
-/** Get size of PE optional header (== 244) */
-static force_inline uint32_t getPESizeOfOptionalHeader()
+/** Returns the size of PE optional header. */
+static force_inline uint16_t getPESizeOfOptionalHeader()
 {
   return le16_to_host(__clambc_pedata.file_hdr.SizeOfOptionalHeader);
 }
 
-/** Get PE characteristics */
+/** Returns PE characteristics. */
 static force_inline uint16_t getPECharacteristics()
 {
   return le16_to_host(__clambc_pedata.file_hdr.Characteristics);
 }
 
-/** Get virtual address of specified image data directory */
+/** Gets the virtual address of specified image data directory.
+  @param n image directory requested
+  @return Virtual Address of requested image directory
+*/
 static force_inline uint32_t getPEImageDataVA(unsigned n)
 {
   return n < 16 ? le32_to_host(isPE64() ?
@@ -438,7 +470,10 @@ static force_inline uint32_t getPEImageDataVA(unsigned n)
     : 0;
 }
 
-/** Get size of image data directory */
+/** Gets the size of the specified image data directory.
+  @param n image directory requested
+  @return Size of requested image directory
+*/
 static force_inline uint32_t getPEImageDataSize(unsigned n)
 {
   return n < 16 ? le32_to_host(isPE64() ?
@@ -454,12 +489,18 @@ static force_inline uint16_t getNumberOfSections(void)
     return __clambc_pedata.nsections;
 }
 
+/** Gets the offset to the PE header. */
 static uint32_t getPELFANew(void)
 {
     return le32_to_host(__clambc_pedata.e_lfanew);
 }
 
-/** Read name of PE section */
+/** Read name of requested PE section.
+  @param[out] name name of PE section
+  @param[in] n PE section requested
+  @return 0 if successful, 
+        <0 otherwise
+*/
 static force_inline int readPESectionName(unsigned char name[8], unsigned n)
 {
   if (n >= getNumberOfSections())
