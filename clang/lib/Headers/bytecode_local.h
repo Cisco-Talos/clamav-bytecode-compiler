@@ -223,11 +223,179 @@ static force_inline uint8_t getPEMinorLinkerVersion(void)
     __clambc_pedata.opt32.MajorLinkerVersion;
 }
 
-static force_inline uint8_t getPESizeOfCode(void)
+static force_inline uint32_t getPESizeOfCode(void)
 {
   return le32_to_host(isPE64() ?
                       __clambc_pedata.opt64.SizeOfCode :
                       __clambc_pedata.opt32.SizeOfCode);
+}
+
+static force_inline uint32_t getPESizeOfInitializedData(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfInitializedData :
+                      __clambc_pedata.opt32.SizeOfInitializedData);
+}
+
+static force_inline uint32_t getPESizeOfUninitializedData(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfUninitializedData :
+                      __clambc_pedata.opt32.SizeOfUninitializedData);
+}
+
+static force_inline uint32_t getPEBaseOfCode(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.BaseOfCode :
+                      __clambc_pedata.opt32.BaseOfCode);
+}
+
+static force_inline uint32_t getPEBaseOfData(void)
+{
+  return le32_to_host(isPE64() ?
+                      0 :
+                      __clambc_pedata.opt32.BaseOfData);
+}
+
+static force_inline uint64_t getPEImageBase(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.ImageBase :
+                      __clambc_pedata.opt32.ImageBase);
+}
+
+static force_inline uint32_t getPESectionAlignment(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SectionAlignment :
+                      __clambc_pedata.opt32.SectionAlignment);
+}
+
+static force_inline uint32_t getPEFileAlignment(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.FileAlignment :
+                      __clambc_pedata.opt32.FileAlignment);
+}
+
+static force_inline uint16_t getPEMajorOperatingSystemVersion(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.MajorOperatingSystemVersion :
+                      __clambc_pedata.opt32.MajorOperatingSystemVersion);
+}
+
+static force_inline uint16_t getPEMinorOperatingSystemVersion(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.MinorOperatingSystemVersion :
+                      __clambc_pedata.opt32.MinorOperatingSystemVersion);
+}
+
+static force_inline uint16_t getPEMajorImageVersion(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.MajorImageVersion :
+                      __clambc_pedata.opt32.MajorImageVersion);
+}
+
+static force_inline uint16_t getPEMinorImageVersion(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.MinorImageVersion :
+                      __clambc_pedata.opt32.MinorImageVersion);
+}
+
+static force_inline uint16_t getPEMajorSubsystemVersion(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.MajorSubsystemVersion :
+                      __clambc_pedata.opt32.MajorSubsystemVersion);
+}
+
+static force_inline uint16_t getPEMinorSubsystemVersion(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.MinorSubsystemVersion :
+                      __clambc_pedata.opt32.MinorSubsystemVersion);
+}
+
+static force_inline uint32_t getPEWin32VersionValue(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.Win32VersionValue :
+                      __clambc_pedata.opt32.Win32VersionValue);
+}
+
+static force_inline uint32_t getPESizeOfImage(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfImage :
+                      __clambc_pedata.opt32.SizeOfImage);
+}
+
+static force_inline uint32_t getPESizeOfHeaders(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfHeaders :
+                      __clambc_pedata.opt32.SizeOfHeaders);
+}
+
+static force_inline uint32_t getPECheckSum(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.CheckSum :
+                      __clambc_pedata.opt32.CheckSum);
+}
+
+static force_inline uint16_t getPESubsystem(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.Subsystem :
+                      __clambc_pedata.opt32.Subsystem);
+}
+
+static force_inline uint16_t getPEDllCharacteristics(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.DllCharacteristics :
+                      __clambc_pedata.opt32.DllCharacteristics);
+}
+
+static force_inline uint32_t getPESizeOfStackReserve(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfStackReserve :
+                      __clambc_pedata.opt32.SizeOfStackReserve);
+}
+
+static force_inline uint32_t getPESizeOfStackCommit(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfStackCommit :
+                      __clambc_pedata.opt32.SizeOfStackCommit);
+}
+
+static force_inline uint32_t getPESizeOfHeapReserve(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfHeapReserve :
+                      __clambc_pedata.opt32.SizeOfHeapReserve);
+}
+
+static force_inline uint32_t getPESizeOfHeapCommit(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfHeapCommit :
+                      __clambc_pedata.opt32.SizeOfHeapCommit);
+}
+
+static force_inline uint32_t getPELoaderFlags(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.LoaderFlags :
+                      __clambc_pedata.opt32.LoaderFlags);
 }
 
 /** Returns the offset of the EntryPoint in the executable file.
