@@ -24,9 +24,9 @@
   \fancyplain{}{\bfseries\thepage}%
 }
 \rfoot[\fancyplain{}{\bfseries\scriptsize%
-  Generated on Fri Mar 12 19:39:59 2010 by Doxygen }]{}
+  Generated on Fri Apr 2 16:08:23 2010 by Doxygen }]{}
 \lfoot[]{\fancyplain{}{\bfseries\scriptsize%
-  Generated on Fri Mar 12 19:39:59 2010 by Doxygen }}
+  Generated on Fri Apr 2 16:08:23 2010 by Doxygen }}
 \cfoot{}
 
 %---------- Internal commands used in this style file ----------------
@@ -43,7 +43,7 @@
     \setlength{\itemsep}{-4pt}%
     \renewcommand{\makelabel}{\entrylabel}%
   }%
-  \item[#1:]%
+  \item[#1]%
 }{%
   \end{list}%
 }
@@ -221,9 +221,8 @@
 
 % Used by @internal
 \newenvironment{DoxyInternal}[1]{%
-  \begin{DoxyDesc}{#1}%
+  \paragraph*{#1}%
 }{%
-  \end{DoxyDesc}%
 }
 
 % Used by @par and @paragraph

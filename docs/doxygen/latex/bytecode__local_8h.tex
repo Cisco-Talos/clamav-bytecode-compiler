@@ -41,15 +41,7 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_afb7a07b6a6a582
 \item 
 static force\_\-inline void \hyperlink{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}{foundVirus} (const char $\ast$virusname)
 \item 
-static force\_\-inline bool \hyperlink{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{hasExeInfo} (void)
-\item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{getFilesize} (void)
-\item 
-static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{getEntryPoint} (void)
-\item 
-static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}{getExeOffset} (void)
-\item 
-static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{getNumberOfSections} (void)
 \item 
 bool \hyperlink{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{\_\-\_\-is\_\-bigendian} (void) \_\-\_\-attribute\_\-\_\-((const )) \_\-\_\-attribute\_\-\_\-((nothrow))
 \item 
@@ -63,13 +55,97 @@ static uint16\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a50ecabc9fb33d2
 \item 
 static void force\_\-inline \hyperlink{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}{cli\_\-writeint32} (void $\ast$offset, uint32\_\-t v)
 \item 
+static force\_\-inline bool \hyperlink{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{hasExeInfo} (void)
+\item 
+static force\_\-inline bool \hyperlink{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}{isPE64} (void)
+\item 
+static force\_\-inline uint8\_\-t \hyperlink{bytecode__local_8h_a862c48febe8f611f2d84fed6b66e4d61}{getPEMajorLinkerVersion} (void)
+\item 
+static force\_\-inline uint8\_\-t \hyperlink{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}{getPEMinorLinkerVersion} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}{getPESizeOfCode} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}{getPESizeOfInitializedData} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}{getPESizeOfUninitializedData} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a4856f8c8b2250e9ff7a15bfc651e9dc5}{getPEBaseOfCode} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a906067648342e627e35608446ae28faf}{getPEBaseOfData} (void)
+\item 
+static force\_\-inline uint64\_\-t \hyperlink{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}{getPEImageBase} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}{getPESectionAlignment} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}{getPEFileAlignment} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}{getPEMajorOperatingSystemVersion} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}{getPEMinorOperatingSystemVersion} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_aea163191c14a5af87883231d7358070f}{getPEMajorImageVersion} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}{getPEMinorImageVersion} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}{getPEMajorSubsystemVersion} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}{getPEMinorSubsystemVersion} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}{getPEWin32VersionValue} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}{getPESizeOfImage} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}{getPESizeOfHeaders} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}{getPECheckSum} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}{getPESubsystem} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}{getPEDllCharacteristics} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}{getPESizeOfStackReserve} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}{getPESizeOfStackCommit} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}{getPESizeOfHeapReserve} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}{getPESizeOfHeapCommit} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}{getPELoaderFlags} (void)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}{getPEMachine} ()
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}{getPEPointerToSymbolTable} ()
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}{getPENumberOfSymbols} ()
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}{getPESizeOfOptionalHeader} ()
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}{getPECharacteristics} ()
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a0f7d1ed436f3436fc83e546c330807df}{getPEImageDataVA} (unsigned n)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a8ac3b55238a160e3946a48888c3c75ac}{getPEImageDataSize} (unsigned n)
+\item 
+static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{getNumberOfSections} (void)
+\item 
+static uint32\_\-t \hyperlink{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}{getPELFANew} (void)
+\item 
+static force\_\-inline int \hyperlink{bytecode__local_8h_a783b0c34b69dfcdcc3c00e0172e53938}{readPESectionName} (unsigned char name\mbox{[}8\mbox{]}, unsigned n)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{getEntryPoint} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}{getExeOffset} (void)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}{getImageBase} (void)
+\item 
 static void $\ast$ \hyperlink{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}{memchr} (const void $\ast$s, int c, size\_\-t n)
 \item 
-void $\ast$ \hyperlink{bytecode__local_8h_ae8b469c17c2517af747cfc9dc1992af9}{memset} (void $\ast$src, int c, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((nothrow)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-((1))))
+void $\ast$ \hyperlink{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}{memset} (void $\ast$src, int c, uintptr\_\-t n) \_\-\_\-attribute\_\-\_\-((nothrow)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-((1))))
 \item 
-void $\ast$ \hyperlink{bytecode__local_8h_aaa7068aedf20b3c0da2e967277f2de66}{memmove} (void $\ast$dst, const void $\ast$src, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+void $\ast$ \hyperlink{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}{memmove} (void $\ast$dst, const void $\ast$src, uintptr\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
 \item 
-void $\ast$void $\ast$ \hyperlink{bytecode__local_8h_afe26a59b2e7ebaa9520dcf45344fc045}{memcpy} (void $\ast$restrict dst, const void $\ast$restrict src, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+void $\ast$void $\ast$ \hyperlink{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}{memcpy} (void $\ast$restrict dst, const void $\ast$restrict src, uintptr\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
 \item 
 void $\ast$void $\ast$int \hyperlink{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}{memcmp} (const void $\ast$s1, const void $\ast$s2, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-pure\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
 \item 
@@ -257,7 +333,12 @@ offset of embedded executable inside file.
 Returns the currently scanned file's size. \begin{DoxyReturn}{Returns}
 file size as 32-\/bit unsigned integer 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{
+\hypertarget{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getImageBase@{getImageBase}}
+\index{getImageBase@{getImageBase}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getImageBase (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}
+Returns the ImageBase with the correct endian conversion \hypertarget{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getNumberOfSections@{getNumberOfSections}}
 \index{getNumberOfSections@{getNumberOfSections}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getNumberOfSections}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getNumberOfSections (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
@@ -265,13 +346,208 @@ file size as 32-\/bit unsigned integer
 Returns the number of sections in this executable file. \begin{DoxyReturn}{Returns}
 number of sections as 16-\/bit unsigned integer 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{
+\hypertarget{bytecode__local_8h_a4856f8c8b2250e9ff7a15bfc651e9dc5}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEBaseOfCode@{getPEBaseOfCode}}
+\index{getPEBaseOfCode@{getPEBaseOfCode}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEBaseOfCode}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEBaseOfCode (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a4856f8c8b2250e9ff7a15bfc651e9dc5}
+Return the PE BaseOfCode. \hypertarget{bytecode__local_8h_a906067648342e627e35608446ae28faf}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEBaseOfData@{getPEBaseOfData}}
+\index{getPEBaseOfData@{getPEBaseOfData}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEBaseOfData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEBaseOfData (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a906067648342e627e35608446ae28faf}
+Return the PE BaseOfData. \hypertarget{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPECharacteristics@{getPECharacteristics}}
+\index{getPECharacteristics@{getPECharacteristics}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPECharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPECharacteristics ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}
+Returns PE characteristics. \hypertarget{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPECheckSum@{getPECheckSum}}
+\index{getPECheckSum@{getPECheckSum}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPECheckSum}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPECheckSum (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}
+Return the PE CheckSum. \hypertarget{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDllCharacteristics@{getPEDllCharacteristics}}
+\index{getPEDllCharacteristics@{getPEDllCharacteristics}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEDllCharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEDllCharacteristics (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}
+Return the PE DllCharacteristics. \hypertarget{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEFileAlignment@{getPEFileAlignment}}
+\index{getPEFileAlignment@{getPEFileAlignment}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEFileAlignment}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEFileAlignment (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}
+Return the PE FileAlignment. \hypertarget{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEImageBase@{getPEImageBase}}
+\index{getPEImageBase@{getPEImageBase}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint64\_\-t getPEImageBase (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}
+Return the PE ImageBase as 64-\/bit integer. \hypertarget{bytecode__local_8h_a8ac3b55238a160e3946a48888c3c75ac}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEImageDataSize@{getPEImageDataSize}}
+\index{getPEImageDataSize@{getPEImageDataSize}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEImageDataSize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEImageDataSize (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a8ac3b55238a160e3946a48888c3c75ac}
+Gets the size of the specified image data directory. 
+\begin{DoxyParams}{Parameters}
+\item[{\em n}]image directory requested \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Size of requested image directory 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a0f7d1ed436f3436fc83e546c330807df}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEImageDataVA@{getPEImageDataVA}}
+\index{getPEImageDataVA@{getPEImageDataVA}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEImageDataVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEImageDataVA (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a0f7d1ed436f3436fc83e546c330807df}
+Gets the virtual address of specified image data directory. 
+\begin{DoxyParams}{Parameters}
+\item[{\em n}]image directory requested \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Virtual Address of requested image directory 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPELFANew@{getPELFANew}}
+\index{getPELFANew@{getPELFANew}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPELFANew}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getPELFANew (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}
+Gets the offset to the PE header. \hypertarget{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPELoaderFlags@{getPELoaderFlags}}
+\index{getPELoaderFlags@{getPELoaderFlags}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPELoaderFlags}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPELoaderFlags (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}
+Return the PE LoaderFlags. \hypertarget{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMachine@{getPEMachine}}
+\index{getPEMachine@{getPEMachine}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMachine}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMachine ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}
+Returns the CPU this executable runs on, see libclamav/pe.c for possible values \hypertarget{bytecode__local_8h_aea163191c14a5af87883231d7358070f}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorImageVersion@{getPEMajorImageVersion}}
+\index{getPEMajorImageVersion@{getPEMajorImageVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMajorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorImageVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_aea163191c14a5af87883231d7358070f}
+Return the PE MajorImageVersion \hypertarget{bytecode__local_8h_a862c48febe8f611f2d84fed6b66e4d61}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorLinkerVersion@{getPEMajorLinkerVersion}}
+\index{getPEMajorLinkerVersion@{getPEMajorLinkerVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMajorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint8\_\-t getPEMajorLinkerVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a862c48febe8f611f2d84fed6b66e4d61}
+Returns MajorLinkerVersion for this PE file. \hypertarget{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorOperatingSystemVersion@{getPEMajorOperatingSystemVersion}}
+\index{getPEMajorOperatingSystemVersion@{getPEMajorOperatingSystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMajorOperatingSystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorOperatingSystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}
+Return the PE MajorOperatingSystemVersion. \hypertarget{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorSubsystemVersion@{getPEMajorSubsystemVersion}}
+\index{getPEMajorSubsystemVersion@{getPEMajorSubsystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMajorSubsystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorSubsystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}
+Return the PE MajorSubsystemVersion \hypertarget{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorImageVersion@{getPEMinorImageVersion}}
+\index{getPEMinorImageVersion@{getPEMinorImageVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMinorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorImageVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}
+Return the PE MinorImageVersion \hypertarget{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorLinkerVersion@{getPEMinorLinkerVersion}}
+\index{getPEMinorLinkerVersion@{getPEMinorLinkerVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMinorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint8\_\-t getPEMinorLinkerVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}
+Returns MinorLinkerVersion for this PE file. \hypertarget{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorOperatingSystemVersion@{getPEMinorOperatingSystemVersion}}
+\index{getPEMinorOperatingSystemVersion@{getPEMinorOperatingSystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMinorOperatingSystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorOperatingSystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}
+Return the PE MinorOperatingSystemVersion. \hypertarget{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorSubsystemVersion@{getPEMinorSubsystemVersion}}
+\index{getPEMinorSubsystemVersion@{getPEMinorSubsystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEMinorSubsystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorSubsystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}
+Return the PE MinorSubsystemVersion \hypertarget{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPENumberOfSymbols@{getPENumberOfSymbols}}
+\index{getPENumberOfSymbols@{getPENumberOfSymbols}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPENumberOfSymbols}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPENumberOfSymbols ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}
+Returns the PE number of debug symbols \hypertarget{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEPointerToSymbolTable@{getPEPointerToSymbolTable}}
+\index{getPEPointerToSymbolTable@{getPEPointerToSymbolTable}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEPointerToSymbolTable}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEPointerToSymbolTable ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}
+Returns pointer to the PE debug symbol table \hypertarget{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESectionAlignment@{getPESectionAlignment}}
+\index{getPESectionAlignment@{getPESectionAlignment}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESectionAlignment}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESectionAlignment (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}
+Return the PE SectionAlignment. \hypertarget{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfCode@{getPESizeOfCode}}
+\index{getPESizeOfCode@{getPESizeOfCode}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfCode}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfCode (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}
+Return the PE SizeOfCode. \hypertarget{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfHeaders@{getPESizeOfHeaders}}
+\index{getPESizeOfHeaders@{getPESizeOfHeaders}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfHeaders}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeaders (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}
+Return the PE SizeOfHeaders. \hypertarget{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfHeapCommit@{getPESizeOfHeapCommit}}
+\index{getPESizeOfHeapCommit@{getPESizeOfHeapCommit}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfHeapCommit}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeapCommit (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}
+Return the PE SizeOfHeapCommit. \hypertarget{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfHeapReserve@{getPESizeOfHeapReserve}}
+\index{getPESizeOfHeapReserve@{getPESizeOfHeapReserve}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfHeapReserve}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeapReserve (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}
+Return the PE SizeOfHeapReserve. \hypertarget{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfImage@{getPESizeOfImage}}
+\index{getPESizeOfImage@{getPESizeOfImage}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfImage}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfImage (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}
+Return the PE SizeOfImage. \hypertarget{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfInitializedData@{getPESizeOfInitializedData}}
+\index{getPESizeOfInitializedData@{getPESizeOfInitializedData}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfInitializedData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfInitializedData (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}
+Return the PE SizeofInitializedData. \hypertarget{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfOptionalHeader@{getPESizeOfOptionalHeader}}
+\index{getPESizeOfOptionalHeader@{getPESizeOfOptionalHeader}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfOptionalHeader}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESizeOfOptionalHeader ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}
+Returns the size of PE optional header. \hypertarget{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfStackCommit@{getPESizeOfStackCommit}}
+\index{getPESizeOfStackCommit@{getPESizeOfStackCommit}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfStackCommit}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfStackCommit (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}
+Return the PE SizeOfStackCommit. \hypertarget{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfStackReserve@{getPESizeOfStackReserve}}
+\index{getPESizeOfStackReserve@{getPESizeOfStackReserve}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfStackReserve}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfStackReserve (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}
+Return the PE SizeOfStackReserve. \hypertarget{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfUninitializedData@{getPESizeOfUninitializedData}}
+\index{getPESizeOfUninitializedData@{getPESizeOfUninitializedData}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESizeOfUninitializedData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfUninitializedData (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}
+Return the PE SizeofUninitializedData. \hypertarget{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESubsystem@{getPESubsystem}}
+\index{getPESubsystem@{getPESubsystem}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPESubsystem}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESubsystem (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}
+Return the PE Subsystem. \hypertarget{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEWin32VersionValue@{getPEWin32VersionValue}}
+\index{getPEWin32VersionValue@{getPEWin32VersionValue}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEWin32VersionValue}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEWin32VersionValue (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}
+Return the PE Win32VersionValue. \hypertarget{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!hasExeInfo@{hasExeInfo}}
 \index{hasExeInfo@{hasExeInfo}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{hasExeInfo}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool hasExeInfo (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a6241ff42b1300527c64034931f027738}
 Returns whether the current file has executable information. \begin{DoxyReturn}{Returns}
 true if the file has exe info, false otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!isPE64@{isPE64}}
+\index{isPE64@{isPE64}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{isPE64}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool isPE64 (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}
+Returns whether this is a PE32+ executable. \begin{DoxyReturn}{Returns}
+true if this is a PE32+ executable 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!le16\_\-to\_\-host@{le16\_\-to\_\-host}}
@@ -328,36 +604,47 @@ Compares two memory buffers.
 \begin{DoxyReturn}{Returns}
 an integer less than, equal to, or greater than zero if the first {\ttfamily n} bytes of {\ttfamily s1} are found, respectively, to be less than, to match, or be greater than the first {\ttfamily n} bytes of {\ttfamily s2}. 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_afe26a59b2e7ebaa9520dcf45344fc045}{
+\hypertarget{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memcpy@{memcpy}}
 \index{memcpy@{memcpy}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memcpy}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ memcpy (void $\ast$restrict {\em dst}, \/  const void $\ast$restrict {\em src}, \/  uint32\_\-t {\em n})}\hfill}
-\label{bytecode__local_8h_afe26a59b2e7ebaa9520dcf45344fc045}
+\paragraph[{memcpy}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ memcpy (void $\ast$restrict {\em dst}, \/  const void $\ast$restrict {\em src}, \/  uintptr\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}
 Copies data between two non-\/overlapping buffers. 
 \begin{DoxyParams}{Parameters}
 \item[\mbox{$\rightarrow$} {\em dst}]destination buffer \item[\mbox{$\leftarrow$} {\em src}]source buffer \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 dst 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_aaa7068aedf20b3c0da2e967277f2de66}{
+\hypertarget{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memmove@{memmove}}
 \index{memmove@{memmove}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memmove}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memmove (void $\ast$ {\em dst}, \/  const void $\ast$ {\em src}, \/  uint32\_\-t {\em n})}\hfill}
-\label{bytecode__local_8h_aaa7068aedf20b3c0da2e967277f2de66}
+\paragraph[{memmove}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memmove (void $\ast$ {\em dst}, \/  const void $\ast$ {\em src}, \/  uintptr\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}
 Copies data between two possibly overlapping buffers. 
 \begin{DoxyParams}{Parameters}
 \item[\mbox{$\rightarrow$} {\em dst}]destination buffer \item[\mbox{$\leftarrow$} {\em src}]source buffer \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 dst 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_ae8b469c17c2517af747cfc9dc1992af9}{
+\hypertarget{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memset@{memset}}
 \index{memset@{memset}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memset}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memset (void $\ast$ {\em src}, \/  int {\em c}, \/  uint32\_\-t {\em n})}\hfill}
-\label{bytecode__local_8h_ae8b469c17c2517af747cfc9dc1992af9}
+\paragraph[{memset}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memset (void $\ast$ {\em src}, \/  int {\em c}, \/  uintptr\_\-t {\em n})}\hfill}
+\label{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}
 Fills the specified buffer to the specified value. 
 \begin{DoxyParams}{Parameters}
 \item[\mbox{$\rightarrow$} {\em src}]pointer to buffer \item[\mbox{$\leftarrow$} {\em c}]character to fill buffer with \item[\mbox{$\leftarrow$} {\em n}]length of buffer \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 {\ttfamily src} 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a783b0c34b69dfcdcc3c00e0172e53938}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!readPESectionName@{readPESectionName}}
+\index{readPESectionName@{readPESectionName}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{readPESectionName}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline int readPESectionName (unsigned char {\em name}\mbox{[}8\mbox{]}, \/  unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a783b0c34b69dfcdcc3c00e0172e53938}
+Read name of requested PE section. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\rightarrow$} {\em name}]name of PE section \item[\mbox{$\leftarrow$} {\em n}]PE section requested \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 if successful, $<$0 otherwise 
 \end{DoxyReturn}
