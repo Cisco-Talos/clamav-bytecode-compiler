@@ -118,39 +118,11 @@ static force_inline void foundVirus(const char *virusname)
     setvirusname((const uint8_t*)virusname, 0);
 }
 
-/** Returns whether the current file has executable information.
- * @return true if the file has exe info, false otherwise */
-static force_inline bool hasExeInfo(void)
-{
-    return __clambc_pedata.offset != -1;
-}
-
 /** Returns the currently scanned file's size.
   * @return file size as 32-bit unsigned integer */
 static force_inline uint32_t getFilesize(void)
 {
   return __clambc_filesize[0];
-}
-
-/** Returns the offset of the EntryPoint in the executable file.
- * @return offset of EP as 32-bit unsigned integer */
-static force_inline uint32_t getEntryPoint(void)
-{
-    return __clambc_pedata.ep;
-}
-
-/** Returns the offset of the executable in the file.
- * @return offset of embedded executable inside file. */
-static force_inline uint32_t getExeOffset(void)
-{
-    return __clambc_pedata.offset;
-}
-
-/** Returns the number of sections in this executable file.
- * @return number of sections as 16-bit unsigned integer */
-static force_inline uint16_t getNumberOfSections(void)
-{
-    return __clambc_pedata.nsections;
 }
 
 union unaligned_32 {
@@ -223,6 +195,36 @@ static void force_inline cli_writeint32(void* offset, uint32_t v)
 {
     ((union unaligned_32 *)offset)->una_u32 = le32_to_host(v);
 }
+
+/* --------------------- PE helper functions ------------------------ */
+/** Returns whether the current file has executable information.
+ * @return true if the file has exe info, false otherwise */
+static force_inline bool hasExeInfo(void)
+{
+    return __clambc_pedata.offset != -1;
+}
+
+/** Returns the offset of the EntryPoint in the executable file.
+ * @return offset of EP as 32-bit unsigned integer */
+static force_inline uint32_t getEntryPoint(void)
+{
+    return __clambc_pedata.ep;
+}
+
+/** Returns the offset of the executable in the file.
+ * @return offset of embedded executable inside file. */
+static force_inline uint32_t getExeOffset(void)
+{
+    return __clambc_pedata.offset;
+}
+
+/** Returns the number of sections in this executable file.
+ * @return number of sections as 16-bit unsigned integer */
+static force_inline uint16_t getNumberOfSections(void)
+{
+    return __clambc_pedata.nsections;
+}
+
 
 /** Returns the ImageBase with the correct endian conversion */
 static force_inline uint32_t getImageBase(void)
