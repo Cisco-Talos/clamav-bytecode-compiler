@@ -204,6 +204,32 @@ static force_inline bool hasExeInfo(void)
     return __clambc_pedata.offset != -1;
 }
 
+static force_inline bool isPE64(void)
+{
+  return le16_to_host(__clambc_pedata.opt64.Magic) == 0x020b;
+}
+
+static force_inline uint8_t getPEMajorLinkerVersion(void)
+{
+  return isPE64() ?
+    __clambc_pedata.opt64.MajorLinkerVersion :
+    __clambc_pedata.opt32.MajorLinkerVersion;
+}
+
+static force_inline uint8_t getPEMinorLinkerVersion(void)
+{
+  return isPE64() ?
+    __clambc_pedata.opt64.MajorLinkerVersion :
+    __clambc_pedata.opt32.MajorLinkerVersion;
+}
+
+static force_inline uint8_t getPESizeOfCode(void)
+{
+  return le32_to_host(isPE64() ?
+                      __clambc_pedata.opt64.SizeOfCode :
+                      __clambc_pedata.opt32.SizeOfCode);
+}
+
 /** Returns the offset of the EntryPoint in the executable file.
  * @return offset of EP as 32-bit unsigned integer */
 static force_inline uint32_t getEntryPoint(void)
@@ -239,7 +265,7 @@ static uint32_t getVirtualEntryPoint(void)
 
 static uint32_t getLFANew(void)
 {
-    return __clambc_pedata.e_lfanew;
+    return le32_to_host(__clambc_pedata.e_lfanew);
 }
 
 static uint32_t getSectionRVA(unsigned i)
