@@ -55,7 +55,8 @@ int entrypoint() {
 	debug("VA of cyphertext is ");debug(va_of_cyphertext);
 
 	// Make the VA an RVA - that is subtract the imagebase from it
-	uint32_t rva_of_cyphertext = va_of_cyphertext -  __clambc_pedata.opt32.ImageBase;
+	uint32_t rva_of_cyphertext = va_of_cyphertext -
+          le32_to_host(__clambc_pedata.opt32.ImageBase);
 	debug("RVA of cyphertext is ");debug(rva_of_cyphertext);
 
 	// Turn the RVA of the cyphertext into a file (raw) offset
