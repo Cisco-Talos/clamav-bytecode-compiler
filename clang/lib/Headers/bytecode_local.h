@@ -224,6 +224,12 @@ static void force_inline cli_writeint32(void* offset, uint32_t v)
     ((union unaligned_32 *)offset)->una_u32 = le32_to_host(v);
 }
 
+/** Returns the ImageBase with the correct endian conversion */
+static force_inline uint32_t getImageBase(void)
+{
+  return le32_to_host(__clambc_pedata.opt32.ImageBase);
+}
+
 static uint32_t getVirtualEntryPoint(void)
 {
     return le32_to_host(__clambc_pedata.opt32.AddressOfEntryPoint);
