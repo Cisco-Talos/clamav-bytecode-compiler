@@ -204,6 +204,7 @@ static force_inline bool hasExeInfo(void)
     return __clambc_pedata.offset != -1;
 }
 
+/** Returns whether this is a PE32+ executable */
 static force_inline bool isPE64(void)
 {
   return le16_to_host(__clambc_pedata.opt64.Magic) == 0x020b;
@@ -223,11 +224,93 @@ static force_inline uint8_t getPEMinorLinkerVersion(void)
     __clambc_pedata.opt32.MajorLinkerVersion;
 }
 
-static force_inline uint8_t getPESizeOfCode(void)
+static force_inline uint32_t getPESizeOfCode(void)
 {
   return le32_to_host(isPE64() ?
                       __clambc_pedata.opt64.SizeOfCode :
                       __clambc_pedata.opt32.SizeOfCode);
+}
+
+/** CPU this executable runs on, see libclamav/pe.c for possible values */
+static force_inline uint16_t getPEMachine()
+{
+  return le16_to_host(__clambc_pedata.file_hdr.Machine);
+}
+
+/** Debug symboltable */
+static force_inline uint32_t getPEPointerToSymbolTable()
+{
+  return le32_to_host(__clambc_pedata.file_hdr.PointerToSymbolTable);
+}
+
+/** Number of debug symbols */
+static force_inline uint32_t getPENumberOfSymbols()
+{
+  return le32_to_host(__clambc_pedata.file_hdr.NumberOfSymbols);
+}
+
+/** Get size of PE optional header (== 244) */
+static force_inline uint32_t getPESizeOfOptionalHeader()
+{
+  return le16_to_host(__clambc_pedata.file_hdr.NumberOfSymbols);
+}
+
+/** Get PE characteristics */
+static force_inline uint16_t getPECharacteristics()
+{
+  return le16_to_host(__clambc_pedata.file_hdr.Characteristics);
+}
+
+/** Get virtual address of specified image data directory */
+static force_inline uint32_t getPEImageDataVA(unsigned n)
+{
+  return n < 16 ? le32_to_host(isPE64() ?
+                               __clambc_pedata.opt64.DataDirectory[n].VirtualAddress :
+                               __clambc_pedata.opt32.DataDirectory[n].VirtualAddress)
+    : 0;
+}
+
+/** Get size of image data directory */
+static force_inline uint32_t getPEImageDataSize(unsigned n)
+{
+  return n < 16 ? le32_to_host(isPE64() ?
+                               __clambc_pedata.opt64.DataDirectory[n].Size :
+                               __clambc_pedata.opt32.DataDirectory[n].Size)
+    : 0;
+}
+
+/** Returns the number of sections in this executable file.
+ * @return number of sections as 16-bit unsigned integer */
+static force_inline uint16_t getNumberOfSections(void)
+{
+    return __clambc_pedata.nsections;
+}
+
+static uint32_t getPELFANew(void)
+{
+    return le32_to_host(__clambc_pedata.e_lfanew);
+}
+
+/** Read name of PE section */
+static force_inline int readPESectionName(unsigned char name[8], unsigned n)
+{
+  if (n >= getNumberOfSections())
+    return -1;
+  uint32_t at = getPELFANew() + sizeof(struct pe_image_file_hdr) + sizeof(struct pe_image_optional_hdr32);
+  if (!isPE64()) {
+    /* Seek to the end of the long header */
+    at += getPESizeOfOptionalHeader() - sizeof(struct pe_image_optional_hdr32);
+  } else {
+    at += sizeof(struct pe_image_optional_hdr64) - sizeof(struct pe_image_optional_hdr32);
+  }
+  at += n * sizeof(struct pe_image_file_hdr);
+  int32_t pos = seek(at, SEEK_SET);
+  if (pos == -1)
+    return -2;
+  if (read(name, 8) != 8)
+    return -3;
+  seek(pos, SEEK_SET);
+  return 0;
 }
 
 /** Returns the offset of the EntryPoint in the executable file.
@@ -244,14 +327,6 @@ static force_inline uint32_t getExeOffset(void)
     return __clambc_pedata.offset;
 }
 
-/** Returns the number of sections in this executable file.
- * @return number of sections as 16-bit unsigned integer */
-static force_inline uint16_t getNumberOfSections(void)
-{
-    return __clambc_pedata.nsections;
-}
-
-
 /** Returns the ImageBase with the correct endian conversion */
 static force_inline uint32_t getImageBase(void)
 {
@@ -263,11 +338,6 @@ static uint32_t getVirtualEntryPoint(void)
     return le32_to_host(__clambc_pedata.opt32.AddressOfEntryPoint);
 }
 
-static uint32_t getLFANew(void)
-{
-    return le32_to_host(__clambc_pedata.e_lfanew);
-}
-
 static uint32_t getSectionRVA(unsigned i)
 {
   struct cli_exe_section section;
@@ -275,6 +345,16 @@ static uint32_t getSectionRVA(unsigned i)
     return -1;
   return section.rva;
 }
+
+static uint32_t getSectionVirtualSize(unsigned i)
+{
+  struct cli_exe_section section;
+  if (get_pe_section(&section, i) == -1)
+    return -1;
+  return section.vsz;
+}
+
+
 #ifdef __cplusplus
 #define restrict
 #endif
