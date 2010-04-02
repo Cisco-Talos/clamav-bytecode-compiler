@@ -163,6 +163,15 @@ static uint32_t force_inline le32_to_host(uint32_t v)
 
 /** Converts the specified value if needed, knowing it is in little endian
  * order.
+ * @param[in] v 64-bit integer as read from a file
+ * @return integer converted to host's endianess */
+static uint32_t force_inline le64_to_host(uint32_t v)
+{
+    return __is_bigendian() ? __builtin_bswap64(v) : v;
+}
+
+/** Converts the specified value if needed, knowing it is in little endian
+ * order.
  * @param[in] v 16-bit integer as read from a file
  * @return integer converted to host's endianess */
 static uint16_t force_inline le16_to_host(uint16_t v)
@@ -212,6 +221,7 @@ static force_inline bool isPE64(void)
   return le16_to_host(__clambc_pedata.opt64.Magic) == 0x020b;
 }
 
+static force_inline 
 /** Returns MajorLinkerVersion for this PE file.*/
 static force_inline uint8_t getPEMajorLinkerVersion(void)
 {
@@ -434,6 +444,12 @@ static force_inline uint16_t getPEMachine()
   return le16_to_host(__clambc_pedata.file_hdr.Machine);
 }
 
+/** Returns the PE TimeDateStamp from headers */
+static force_inline uint32_t getPETimeDateStamp()
+{
+  return le32_to_host(__clambc_pedata.file_hdr.TimeDateStamp);
+}
+
 /** Returns pointer to the PE debug symbol table */
 static force_inline uint32_t getPEPointerToSymbolTable()
 {
@@ -544,7 +560,9 @@ static force_inline uint32_t getImageBase(void)
 
 static uint32_t getVirtualEntryPoint(void)
 {
-    return le32_to_host(__clambc_pedata.opt32.AddressOfEntryPoint);
+    return le32_to_host(isPE64() ?
+                        __clambc_pedata.opt64.AddressOfEntryPoint:
+                        __clambc_pedata.opt32.AddressOfEntryPoint);
 }
 
 static uint32_t getSectionRVA(unsigned i)
