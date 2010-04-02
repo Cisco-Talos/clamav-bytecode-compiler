@@ -47,6 +47,8 @@ bool \hyperlink{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{\_\-\_\-is
 \item 
 static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}{le32\_\-to\_\-host} (uint32\_\-t v)
 \item 
+static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a4f0da4f8a39ff1f89028829a20390945}{le64\_\-to\_\-host} (uint32\_\-t v)
+\item 
 static uint16\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}{le16\_\-to\_\-host} (uint16\_\-t v)
 \item 
 static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a3d6a38ce39dd509a2526a67f8f00f845}{cli\_\-readint32} (const void $\ast$buff)
@@ -59,7 +61,7 @@ static force\_\-inline bool \hyperlink{bytecode__local_8h_a6241ff42b1300527c6403
 \item 
 static force\_\-inline bool \hyperlink{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}{isPE64} (void)
 \item 
-static force\_\-inline uint8\_\-t \hyperlink{bytecode__local_8h_a862c48febe8f611f2d84fed6b66e4d61}{getPEMajorLinkerVersion} (void)
+static static force\_\-inline force\_\-inline uint8\_\-t \hyperlink{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}{getPEMajorLinkerVersion} (void)
 \item 
 static force\_\-inline uint8\_\-t \hyperlink{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}{getPEMinorLinkerVersion} (void)
 \item 
@@ -114,6 +116,8 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae9c031fc42de43
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}{getPELoaderFlags} (void)
 \item 
 static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}{getPEMachine} ()
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}{getPETimeDateStamp} ()
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}{getPEPointerToSymbolTable} ()
 \item 
@@ -423,11 +427,11 @@ Returns the CPU this executable runs on, see libclamav/pe.c for possible values 
 \index{getPEMajorImageVersion@{getPEMajorImageVersion}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPEMajorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorImageVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_aea163191c14a5af87883231d7358070f}
-Return the PE MajorImageVersion \hypertarget{bytecode__local_8h_a862c48febe8f611f2d84fed6b66e4d61}{
+Return the PE MajorImageVersion \hypertarget{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorLinkerVersion@{getPEMajorLinkerVersion}}
 \index{getPEMajorLinkerVersion@{getPEMajorLinkerVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMajorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint8\_\-t getPEMajorLinkerVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
-\label{bytecode__local_8h_a862c48febe8f611f2d84fed6b66e4d61}
+\paragraph[{getPEMajorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static static force\_\-inline force\_\-inline uint8\_\-t getPEMajorLinkerVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}
 Returns MajorLinkerVersion for this PE file. \hypertarget{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorOperatingSystemVersion@{getPEMajorOperatingSystemVersion}}
 \index{getPEMajorOperatingSystemVersion@{getPEMajorOperatingSystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -528,7 +532,12 @@ Return the PE SizeofUninitializedData. \hypertarget{bytecode__local_8h_a4027528d
 \index{getPESubsystem@{getPESubsystem}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPESubsystem}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESubsystem (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}
-Return the PE Subsystem. \hypertarget{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}{
+Return the PE Subsystem. \hypertarget{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPETimeDateStamp@{getPETimeDateStamp}}
+\index{getPETimeDateStamp@{getPETimeDateStamp}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPETimeDateStamp}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPETimeDateStamp ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}
+Returns the PE TimeDateStamp from headers \hypertarget{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEWin32VersionValue@{getPEWin32VersionValue}}
 \index{getPEWin32VersionValue@{getPEWin32VersionValue}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPEWin32VersionValue}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEWin32VersionValue (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
@@ -568,6 +577,17 @@ integer converted to host's endianess
 Converts the specified value if needed, knowing it is in little endian order. 
 \begin{DoxyParams}{Parameters}
 \item[\mbox{$\leftarrow$} {\em v}]32-\/bit integer as read from a file \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+integer converted to host's endianess 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a4f0da4f8a39ff1f89028829a20390945}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!le64\_\-to\_\-host@{le64\_\-to\_\-host}}
+\index{le64\_\-to\_\-host@{le64\_\-to\_\-host}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{le64\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline le64\_\-to\_\-host (uint32\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a4f0da4f8a39ff1f89028829a20390945}
+Converts the specified value if needed, knowing it is in little endian order. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em v}]64-\/bit integer as read from a file \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 integer converted to host's endianess 
 \end{DoxyReturn}
