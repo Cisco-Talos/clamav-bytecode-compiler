@@ -24,6 +24,8 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/Twine.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
@@ -133,14 +135,9 @@ public:
   virtual bool runOnModule(llvm::Module &M);
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
 
-  static void printMsg(const std::string &Msg, const llvm::Function *F=0,
-                       const llvm::Instruction *I=0);
-  static void stop(const char * Msg, const llvm::Function *F=0,
-                   const llvm::Instruction *I=0);
-  static void stop(const std::string &Msg, const llvm::Function *F=0,
-                   const llvm::Instruction *I=0);
-  static void stop(const llvm::Twine &Msg, const llvm::Function *F=0,
-                   const llvm::Instruction *I=0);
+  static void stop(const llvm::Twine& Msg, const llvm::Module *M);
+  static void stop(const llvm::Twine& Msg, const llvm::Function *F);
+  static void stop(const llvm::Twine& Msg, const llvm::Instruction *I);
   void printNumber(uint64_t n, bool constant=false) {
     printNumber(Out, n, constant);
   }
@@ -155,7 +152,7 @@ public:
   void dumpTypes(llvm::raw_ostream &Out);
 private:
   void printModuleHeader(llvm::Module &M, unsigned startTID, unsigned maxLine);
-  void printConstant(llvm::Constant *C);
+  void printConstant(llvm::Module &M, llvm::Constant *C);
   void printGlobals(llvm::Module &M, uint16_t startTID);
   void compileLogicalSignature(llvm::Function &F, unsigned target);
 

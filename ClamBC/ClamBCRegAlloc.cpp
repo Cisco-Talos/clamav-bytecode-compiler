@@ -112,7 +112,7 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
     if (CastInst *BC = dyn_cast<CastInst>(II)) {
       if (BitCastInst *BCI = dyn_cast<BitCastInst>(BC)) {
         if (!BCI->isLosslessCast()) {
-          ClamBCModule::stop("Non lossless bitcast is not supported", 0, BCI);
+          ClamBCModule::stop("Non lossless bitcast is not supported", BCI);
         }
         const Type *SrcTy = BC->getOperand(0)->getType();
         const Type *DstTy = BC->getType();
@@ -120,7 +120,7 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
         while ((SPTy = dyn_cast<PointerType>(SrcTy))) {
           DPTy = dyn_cast<PointerType>(DstTy);
           if (!DPTy)
-            ClamBCModule::stop("Cast from pointer to non-pointer element", 0,
+            ClamBCModule::stop("Cast from pointer to non-pointer element",
                                BCI);
           SrcTy = SPTy->getElementType();
           DstTy = DPTy->getElementType();

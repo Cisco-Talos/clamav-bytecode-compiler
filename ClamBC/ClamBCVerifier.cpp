@@ -19,6 +19,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
+#include "ClamBCDiagnostics.h"
 #include "ClamBCModule.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Analysis/Dominators.h"
@@ -59,11 +60,6 @@ class ClamBCVerifier : public FunctionPass,
     DominatorTree *DT;
     BasicBlock *AbrtBB;
 
-    void printMsg(const std::string& Msg, Instruction &I)
-    {
-      ::ClamBCModule::printMsg(Msg, 0, &I);
-    }
-
     friend class InstVisitor<ClamBCVerifier,bool>;
 
     bool visitUnreachableInst(UnreachableInst &I)
@@ -102,21 +98,22 @@ class ClamBCVerifier : public FunctionPass,
     bool visitCallInst(CallInst &CI) {
       Function *F = CI.getCalledFunction();
       if (!F) {
-        printMsg("Indirect call checking not implemented yet!", CI);
+        printDiagnostic("Indirect call checking not implemented yet!", &CI);
         return false;
       }
       if (F->getCallingConv() != CI.getCallingConv()) {
-        printMsg("Calling conventions don't match!", CI);
+        printDiagnostic("Calling conventions don't match!", &CI);
         return false;
       }
       if (F->isVarArg()) {
         if (!F->getFunctionType()->getNumParams())
-          printMsg(("Calling implicitly declared function '" +
-                   F->getName()+
-                   "' is not supported (did you forget to implement "
-                   "it, or called the wrong function?)").str(), CI);
+          printDiagnostic(("Calling implicitly declared function '" +
+                           F->getName()+ "' is not supported (did you forget to"
+                           "implement it, or typoed the function name?)").str(),
+                          &CI);
         else
-          printMsg("Checking calls to vararg functions/functions without a prototype is not supported!", CI);
+          printDiagnostic("Checking calls to vararg functions/functions without"
+                          "a prototype is not supported!", &CI);
         return false;
       }
       return true;
@@ -126,7 +123,8 @@ class ClamBCVerifier : public FunctionPass,
     {
       for (unsigned i=0;i<PN.getNumIncomingValues();i++) {
         if (isa<UndefValue>(PN.getIncomingValue(i))) {
-          printMsg("Undefined value in phi", PN);
+          const Module *M = PN.getParent()->getParent()->getParent();
+          printDiagnosticValue("Undefined value in phi", M, &PN);
           break;
         }
       }
@@ -134,7 +132,7 @@ class ClamBCVerifier : public FunctionPass,
     }
 
     bool visitInstruction(Instruction &I) {
-      printMsg("Unhandled instruction", I);
+      printDiagnostic("Unhandled instruction in verifier", &I);
       return false;
     }
 
@@ -147,7 +145,6 @@ class ClamBCVerifier : public FunctionPass,
     {
       return PT->getAllocationElementCount(V);
     }
-
 
     // returns the basicblock that dominates all uses of I.
     BasicBlock *findDomBB(Instruction *II)
@@ -419,7 +416,7 @@ class ClamBCVerifier : public FunctionPass,
     {
       std::string Msg;
       if (!checkGEP(GEP, Msg)) {
-        printMsg(Msg, GEP);
+        printDiagnostic(Msg, &GEP);
         return false;
       }
       return true;
@@ -429,7 +426,7 @@ class ClamBCVerifier : public FunctionPass,
     {
       if (checkAccess(LI.getPointerOperand()))
         return true;
-      printMsg("Arbitrary load instructions not yet implemented!\n", LI);
+      printDiagnostic("Arbitrary load instructions not yet implemented!", &LI);
       return false;
     }
 
@@ -437,7 +434,7 @@ class ClamBCVerifier : public FunctionPass,
     {
       if (checkAccess(SI.getPointerOperand()))
         return true;
-      printMsg("Arbitrary store instructions not yet implemented!\n", SI);
+      printDiagnostic("Arbitrary store instructions not yet implemented!", &SI);
       return false;
     }
 
@@ -468,7 +465,7 @@ class ClamBCVerifier : public FunctionPass,
       }
       if (!OK)
         ClamBCModule::stop("Verifier rejected bytecode function due to errors",
-                           &F, 0);
+                           &F);
       return false;
     }
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {

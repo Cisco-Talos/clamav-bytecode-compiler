@@ -21,6 +21,7 @@
  */
 #define DEBUG_TYPE "clambc-rtcheck"
 #include "ClamBCModule.h"
+#include "ClamBCDiagnostics.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
@@ -125,7 +126,7 @@ namespace {
           Value *V = CI->getCalledValue()->stripPointerCasts();
           Function *F = dyn_cast<Function>(V);
           if (!F) {
-            printLocation(errs(), CI);
+            printLocation(CI, true);
             errs() << "Could not determine call target\n";
             valid = 0;
             continue;
@@ -171,7 +172,7 @@ namespace {
             if (isa<PointerType>(FTy->getParamType(i))) {
               Value *Ptr = CI->getOperand(i+1);
               if (i+1 >= FTy->getNumParams()) {
-                printLocation(errs(), CI);
+                printLocation(CI, false);
                 errs() << "Call to external function with pointer parameter last cannot be analyzed\n";
                 errs() << *CI << "\n";
                 valid = 0;
@@ -179,7 +180,7 @@ namespace {
               }
               Value *Size = CI->getOperand(i+2);
               if (!Size->getType()->isIntegerTy()) {
-                printLocation(errs(), CI);
+                printLocation(CI, false);
                 errs() << "Pointer argument must be followed by integer argument representing its size\n";
                 errs() << *CI << "\n";
                 valid = 0;
@@ -195,7 +196,7 @@ namespace {
 
       if (!valid) {
 	DEBUG(F.dump());
-        ClamBCModule::stop("Verification found errors!", &F, 0);	
+        ClamBCModule::stop("Verification found errors!", &F);	
 	// replace function with call to abort
         std::vector<const Type*>args;
         FunctionType* abrtTy = FunctionType::get(
@@ -525,31 +526,6 @@ namespace {
       }
       return false;
     }
-    static void printValue(llvm::raw_ostream &Out, llvm::Value *V) {
-      std::string DisplayName;
-      std::string Type;
-      unsigned Line;
-      std::string File;
-      std::string Dir;
-      if (!getLocationInfo(V, DisplayName, Type, Line, File, Dir)) {
-        Out << *V << "\n";
-        return;
-      }
-      Out << "'" << DisplayName << "' (" << File << ":" << Line << ")";
-    }
-
-    static void printLocation(llvm::raw_ostream &Out, llvm::Instruction *I) {
-      if (MDNode *N = I->getMetadata("dbg")) {
-        DILocation Loc(N);
-        Out << Loc.getFilename() << ":" << Loc.getLineNumber();
-        if (unsigned Col = Loc.getColumnNumber()) {
-          Out << ":" << Col;
-        }
-        Out << ": ";
-        return;
-      }
-      Out << *I << ":\n";
-    }
 
     bool validateAccess(Value *Pointer, Value *Length, Instruction *I)
     {
@@ -560,13 +536,13 @@ namespace {
         // get bounds
         Value *Bounds = getPointerBounds(SBase);
         if (!Bounds) {
-          printLocation(errs(), I);
+          printLocation(I, true);
           errs() << "no bounds for base ";
-          printValue(errs(), SBase);
+          printValue(SBase);
           errs() << " while checking access to ";
-          printValue(errs(), Pointer);
+          printValue(Pointer);
           errs() << " of length ";
-          printValue(errs(), Length);
+          printValue(Length);
           errs() << "\n";
 
           return false;
@@ -574,17 +550,17 @@ namespace {
 
         if (CallInst *CI = dyn_cast<CallInst>(Base->stripPointerCasts())) {
           if (I->getParent() == CI->getParent()) {
-            printLocation(errs(), I);
+            printLocation(I, true);
             errs() << "no null pointer check of pointer ";
-            printValue(errs(), Base);
+            printValue(Base, false, true);
             errs() << " obtained by function call";
             errs() << " before use in same block\n";
             return false;
           }
           if (!checkCondition(CI, I)) {
-            printLocation(errs(), I);
+            printLocation(I, true);
             errs() << "no null pointer check of pointer ";
-            printValue(errs(), Base);
+            printValue(Base, false, true);
             errs() << " obtained by function call";
             errs() << " before use\n";
             return false;

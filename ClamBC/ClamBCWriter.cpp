@@ -144,12 +144,13 @@ private :
   void printEOL() {
     OModule->printEOL();
   }
-  void stop(const std::string &Msg, const llvm::Function *F=0,
-            const llvm::Instruction *I=0)
-  {
-    ClamBCModule::stop(Msg, F, I);
+  void stop(const std::string &Msg, const llvm::Function *F) {
+    ClamBCModule::stop(Msg, F);
   }
-  void printCount(unsigned count, const std::string &What);
+  void stop(const std::string &Msg, const llvm::Instruction *I) {
+    ClamBCModule::stop(Msg, I);
+  }
+  void printCount(Module &M, unsigned count, const std::string &What);
   void printType(const Type *Ty, const Function *F=0, const Instruction *I=0);
   void printFunction(Function &);
   void printMapping(const Value *V, unsigned id, bool newline=false);
@@ -180,7 +181,7 @@ private :
     unsigned ops = GEP.getNumIndices();
     assert(ops && "GEP without indices?");
     if (ops > 15) {
-      stop("Too many levels of pointer indexing, at most 15 is supported!", 0,
+      stop("Too many levels of pointer indexing, at most 15 is supported!",
            &GEP);
     }
 
@@ -203,7 +204,7 @@ private :
       printFixedNumber(OP_BC_GEPN, 2);
       // If needed we could use DecomposeGEPExpression here.
       if (ops >= 16)
-        stop("GEP with more than 15 indices", 0, &GEP);
+        stop("GEP with more than 15 indices", &GEP);
       printFixedNumber(ops, 1);
       break;
     }
@@ -253,7 +254,7 @@ private :
       printOperand(SI, V);
       return;
     }
-    stop("Arbitrary store instructions not yet implemented!\n", 0, &SI);
+    stop("Arbitrary store instructions not yet implemented!\n", &SI);
   }
 
   void visitCastInst (CastInst &I)
@@ -284,7 +285,7 @@ private :
     assert(n < 16 && "At most 15 operands are supported!");
 
     if (!mapped)
-      stop("Instruction is not mapped", 0, &I);
+      stop("Instruction is not mapped", &I);
 
     assert(operand_counts[mapped] == n && "Operand count mismatch");
     printFixedNumber(mapped, 2);
@@ -365,7 +366,7 @@ private :
     if (Constant *C = dyn_cast<Constant>(V)) {
       if (ConstantInt *CI = dyn_cast<ConstantInt>(C)) {
         if (CI->getBitWidth() > 64)
-          stop("Integers of more than 64-bits are not supported", 0, &I);
+          stop("Integers of more than 64-bits are not supported", &I);
         uint64_t v = CI->getValue().getZExtValue();
         printNumber(v, true);
         printFixedNumber((CI->getBitWidth()+7)/8, 1);
@@ -382,7 +383,7 @@ private :
           printNumber(0, true);
           printFixedNumber(0, 1);
         } else {
-          stop("Unhandled constant type", 0, &I);
+          stop("Unhandled constant type", &I);
         }
       }
     } else {
@@ -425,7 +426,7 @@ private :
       opc = OP_BC_ICMP_SLT;
       break;
     default:
-      stop("Unsupported icmp predicate", 0, &I);
+      stop("Unsupported icmp predicate", &I);
     }
     printFixedNumber(opc, 2);
     printType(I.getOperand(0)->getType());
@@ -452,7 +453,7 @@ private :
       A &= ~(Attribute::SExt | Attribute::ZExt);
     if (A) {
       std::string Msg = Attribute::getAsString(A);
-      stop("Unsupported attributes in call: "+Msg, 0, &CI);
+      stop("Unsupported attributes in call: "+Msg, &CI);
     }
   }
 
@@ -491,11 +492,11 @@ private :
         printFixedNumber(OP_BC_BSWAP64, 2);
         break;
       default:
-        stop("Unsupported bswap bitwidth", 0, &CI);
+        stop("Unsupported bswap bitwidth", &CI);
       }
       break;
     default:
-      stop("Unsupported intrinsic call ", 0, &CI);
+      stop("Unsupported intrinsic call ", &CI);
     }
     for (unsigned i=1;i<numop+1;i++)
       printOperand(CI, CI.getOperand(i));
@@ -504,13 +505,13 @@ private :
   void visitCallInst(CallInst &CI) {
     Function *F = CI.getCalledFunction();
     if (!F) {
-      stop("Indirect calls are not implemented yet!", 0, &CI);
+      stop("Indirect calls are not implemented yet!", &CI);
     }
     if (F->getCallingConv() != CI.getCallingConv()) {
-      stop("Calling conventions don't match!", 0, &CI);
+      stop("Calling conventions don't match!", &CI);
     }
     if (F->isVarArg()) {
-      stop("Calls to vararg functions are not supported!", 0, &CI);
+      stop("Calls to vararg functions are not supported!", &CI);
     }
     if (F->isDeclaration() && F->getName().equals("__is_bigendian")) {
       printFixedNumber(OP_BC_ISBIGENDIAN, 2);
@@ -548,7 +549,7 @@ private :
     } else {
       printFixedNumber(OP_BC_CALL_DIRECT, 2);
       if (F->arg_size() > 255)
-        stop("Calls can have max 15 parameters", 0, &CI);
+        stop("Calls can have max 15 parameters", &CI);
       printFixedNumber(F->arg_size(), 1);
       printNumber(OModule->getFunctionID(F));
     }
@@ -559,7 +560,7 @@ private :
   }
 
   void visitInstruction(Instruction &I) {
-    stop("ClamAV bytecode backend does not know about ", 0, &I);
+    stop("ClamAV bytecode backend does not know about ", &I);
   }
 };
 char ClamBCWriter::ID = 0;
@@ -606,11 +607,11 @@ void ClamBCWriter::printType(const Type *Ty, const Function *F, const Instructio
          Ty !=Type::getInt16Ty(C) && Ty != Type::getInt32Ty(C) && 
          Ty != Type::getInt64Ty(C))) {
       stop("The ClamAV bytecode backend does not currently support"
-           "integer types of widths other than 1, 8, 16, 32, 64.", F, I);
+           "integer types of widths other than 1, 8, 16, 32, 64.", I);
     }
   } else if (Ty->isFloatingPointTy()) {
     stop("The ClamAV bytecode backend does not support floating point"
-         "types", F, I);
+         "types", I);
   }
 
   unsigned id = OModule->getTypeID(Ty);
@@ -618,11 +619,11 @@ void ClamBCWriter::printType(const Type *Ty, const Function *F, const Instructio
   printNumber(id);
 }
 
-void ClamBCWriter::printCount(unsigned id, const std::string &What)
+void ClamBCWriter::printCount(Module &M, unsigned id, const std::string &What)
 {
   if (id >= 65536) {
     std::string Msg("Attempted to use more than 64k " + What);
-    stop(Msg);
+    ClamBCModule::stop(Msg, &M);
   }
   printNumber(id);
 }
@@ -654,12 +655,12 @@ void ClamBCWriter::printMapping(const Value *V, unsigned id, bool newline)
       id++;
     }
     if (id >= 32768) /* upper 32k "operands" are globals */
-      stop("Attempted to use more than 32k instructions");
+      stop("Attempted to use more than 32k instructions", &F);
 
 
     std::vector<const Value*> reverseValueMap;
     id = RA->buildReverseMap(reverseValueMap);
-    printCount(id - F.arg_size(), "values");
+    printCount(*F.getParent(), id - F.arg_size(), "values");
     /* We can't iterate directly on the densemap when writing bytecode, because:
      *  - iteration is non-deterministic, because DenseMaps are  sorted by pointer
      *      values that change each run
@@ -671,7 +672,7 @@ void ClamBCWriter::printMapping(const Value *V, unsigned id, bool newline)
       assert(V && "Null Value in idmap?");
       if (const AllocaInst *AI = dyn_cast<AllocaInst>(V)) {
         if (AI->isArrayAllocation() && !isa<ArrayType>(AI->getAllocatedType()))
-          stop("VLAs are not (yet) supported", &F, AI);
+          stop("VLAs are not (yet) supported", AI);
         Ty = AI->getAllocatedType();
       } else {
         Ty = V->getType();
@@ -697,7 +698,7 @@ void ClamBCWriter::printMapping(const Value *V, unsigned id, bool newline)
     for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
       BBMap[&*BB] = id++;
     }
-    printCount(id, "basic blocks");
+    printCount(*F.getParent(), id, "basic blocks");
 
     for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
       printBasicBlock(BB);
@@ -725,7 +726,7 @@ void ClamBCWriter::printBasicBlock(BasicBlock *BB) {
     if (isa<AllocaInst>(II) || isa<DbgInfoIntrinsic>(II))
       continue;
     if (isInlineAsm(*II))
-      stop("Inline assembly is not allowed", BB->getParent(), &*II);
+      stop("Inline assembly is not allowed", II);
     if (RA->skipInstruction(&*II))
       continue;
     const Type *Ty = II->getType();

@@ -88,8 +88,7 @@ char ClamBCTrace::ID;
     if (!trace_directory->use_empty() || !trace_scope->use_empty()
         || !trace_source->use_empty() || !trace_op->use_empty() ||
         !trace_value->use_empty() || !trace_ptr->use_empty())
-      ClamBCModule::stop("Tracing API can only be used by compiler!\n");
-
+      ClamBCModule::stop("Tracing API can only be used by compiler!\n", &M);
 
     for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
       Function &F = *I;

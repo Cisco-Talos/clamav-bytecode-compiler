@@ -22,6 +22,7 @@
 #define DEBUG_TYPE "bcmodule"
 #include "llvm/System/DataTypes.h"
 #include "clambc.h"
+#include "ClamBCDiagnostics.h"
 #include "ClamBCModule.h"
 #include "ClamBCCommon.h"
 #include "llvm/ADT/FoldingSet.h"
@@ -133,7 +134,7 @@ bool ClamBCModule::runOnModule(Module &M)
     kind = cast<ConstantInt>(GVKind->getInitializer())->getValue().getZExtValue();
     GVKind->setLinkage(GlobalValue::InternalLinkage);
     if (kind >= 65536)
-      ClamBCModule::stop("Bytecode kind cannot be higher than 64k\n");
+      ClamBCModule::stop("Bytecode kind cannot be higher than 64k\n", &M);
   }
   DEBUG(errs() << "Bytecode kind is " << kind << "\n");
 
@@ -164,14 +165,15 @@ bool ClamBCModule::runOnModule(Module &M)
           continue;
         }
         errs() << "UNSUPPORTED: " << *CE << "\n";
-        ClamBCModule::stop("Unsupported constant expression");
+        ClamBCModule::stop("Unsupported constant expression", &M);
       }
       ConstantInt *C0 = dyn_cast<ConstantInt>(CE->getOperand(1));
       ConstantInt *C1 = dyn_cast<ConstantInt>(CE->getOperand(2));
       uint64_t v = C1->getValue().getZExtValue();
       if (!C0->isZero()) {
         errs() << "UNSUPPORTED: " << *CE << "\n";
-        ClamBCModule::stop("Unsupported constant expression, nonzero first index");
+        ClamBCModule::stop("Unsupported constant expression, nonzero first"
+                           " index", &M);
       }
 //      if (CE->getNumOperands() > 3) {
         TargetData *TD = &getAnalysis<TargetData>();
@@ -224,7 +226,7 @@ bool ClamBCModule::runOnModule(Module &M)
 
   Function *Ep = M.getFunction("entrypoint");
   if (!Ep || Ep->getFunctionType()->getNumParams() != 0)
-    stop("Bytecode must define an entrypoint with 0 parameters!\n");
+    stop("Bytecode must define an entrypoint with 0 parameters!\n", &M);
 
   unsigned dbgid = 0;
   MDDbgKind = M.getContext().getMDKindID("dbg");
@@ -308,7 +310,7 @@ bool ClamBCModule::runOnModule(Module &M)
         if (isa<PointerType>(Ty))
           continue;
         errs() << *STy << "\n";
-        stop("Bytecode cannot use abstract types (only pointers to them)!");
+        stop("Bytecode cannot use abstract types (only pointers to them)!", &M);
       }
       if (!typeIDs.count(STy)) {
         extraTypes.push_back(STy);
@@ -319,7 +321,7 @@ bool ClamBCModule::runOnModule(Module &M)
   }
 
   if (tid >= 65536)
-    stop("Attempted to use more than 64k types");
+    stop("Attempted to use more than 64k types", &M);
 
   printGlobals(M, startTID);
   return true;
@@ -348,7 +350,7 @@ void ClamBCModule::describeType(llvm::raw_ostream &Out, const Type *Ty, Module
       if (isa<PointerType>(I->get())) {
         WriteTypeSymbolic(errs(), STy, M);
         STy->dump();
-        stop("Pointers inside structs are not supported\n");
+        stop("Pointers inside structs are not supported\n", M);
       }
       printNumber(Out, getTypeID(I->get()));
     }
@@ -371,7 +373,7 @@ void ClamBCModule::describeType(llvm::raw_ostream &Out, const Type *Ty, Module
     return;
   }
 
-  stop ("Unsupported type "+Ty->getDescription());
+  stop ("Unsupported type "+Ty->getDescription(), M);
 }
 
 extern "C" const char *clambc_getversion(void);
@@ -439,7 +441,7 @@ void ClamBCModule::printModuleHeader(Module &M, unsigned startTID, unsigned
     OutReal << virusnames;
 }
 
-void ClamBCModule::printConstant(Constant *C)
+void ClamBCModule::printConstant(Module &M, Constant *C)
 {
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
     ConstantExpr *VCE = dyn_cast<ConstantExpr>(CE->stripPointerCasts());
@@ -484,19 +486,20 @@ void ClamBCModule::printConstant(Constant *C)
   if (isa<ConstantArray>(C) || isa<ConstantStruct>(C)) {
     assert(C->getNumOperands() && "[0xty] arrays are not supported!");
     for (User::op_iterator I=C->op_begin(), E=C->op_end(); I != E; ++I) {
-      printConstant(cast<Constant>(*I));
+      printConstant(M, cast<Constant>(*I));
     }
     return;
   }
   //TODO: better diagnostics here
   if (isa<ConstantFP>(C)) {
-    stop("Floating point constants are not supported!");
+    stop("Floating point constants are not supported!", &M);
   }
   if (isa<ConstantExpr>(C)) {
     C->dump();
-    stop("Global variable has runtime-computable constant expression initializer");
+    stop("Global variable has runtime-computable constant expression"
+         " initializer", &M);
   }
-  stop("Unsupported constant type");
+  stop("Unsupported constant type", &M);
 }
 
 void ClamBCModule::printGlobals(Module &M, uint16_t stid)
@@ -528,7 +531,8 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
     // Forbid declaring functions with same name as API call
     if (!I->isDeclaration()) {
       if (apiMap.count(Name)) {
-        stop("Attempted to declare function that is part of ClamAV API: "+Name);
+        stop("Attempted to declare function that is part of ClamAV API: "+Name,
+             I);
       }
       continue;
     }
@@ -540,7 +544,7 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
       continue;
     StringMap<unsigned>::iterator J = apiMap.find(Name);
     if (J == apiMap.end()) {
-      stop("Call to unknown external function: "+Name);
+      stop("Call to unknown external function: "+Name, I);
     }
 
     apiCalls[&*I] = J->second;
@@ -592,22 +596,26 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
     if (!I->isConstant()) {
       // Non-constant globals can introduce potential race conditions, we
       // don't want that.
-      stop("Attempting to declare non-constant global variable: " + I->getName());
+      stop("Attempting to declare non-constant global variable: " +
+           I->getName(), &M);
     }
     if (!I->hasDefinitiveInitializer()) {
-      stop("Attempting to declare a global variable without initializer: " + I->getName());
+      stop("Attempting to declare a global variable without initializer: " +
+           I->getName(), &M);
     }
     if (I->isThreadLocal()) {
-      stop("Attempting to declare thread local global variable: " + I->getName());
+      stop("Attempting to declare thread local global variable: " +
+           I->getName(), &M);
     }
     if (I->hasSection()) {
-      stop("Attempting to declare section for global variable: " + I->getName());
+      stop("Attempting to declare section for global variable: " +
+           I->getName(), &M);
     }
     Constant *C = I->getInitializer();
     globalInits.push_back(C);
     globals[I] = i++;
     if (i >= 32768) {
-      stop("Attempted to use more than 32k global variables!");
+      stop("Attempted to use more than 32k global variables!", &M);
     }
   }
   printNumber(Out, globalInits.size());
@@ -624,7 +632,7 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
     uint16_t id = getTypeID((*I)->getType());
     printNumber(Out, id);
     // value of constant
-    printConstant(*I);
+    printConstant(M, *I);
     printNumber(Out, 0, false);
   }
   if (anyDbgIds) {
@@ -713,74 +721,21 @@ static inline void printSep(bool hasColors)
     errs().changeColor(raw_ostream::SAVEDCOLOR, true);
 }
 
-void ClamBCModule::printMsg(const std::string &Msg, const Function *F,
-                            const Instruction *I)
+void ClamBCModule::stop(const Twine& Msg, const Module *M)
 {
-  bool locationPrinted = false;
-  bool hasColors = sys::Process::StandardErrHasColors();
-  if (hasColors)
-    errs().changeColor(raw_ostream::SAVEDCOLOR, true);
-  if (!F && I)
-    F = I->getParent()->getParent();
-  if (I) {
-    unsigned MDDbgKind;
-    MDDbgKind = I->getContext().getMDKindID("dbg");
-    if (MDDbgKind) {
-      if (MDNode *Dbg = I->getMetadata(MDDbgKind)) {
-        DILocation Loc(Dbg);
-        locationPrinted = true;
-        errs() << Loc.getDirectory() << "/" << Loc.getFilename();
-        printSep(hasColors);
-        errs() << Loc.getLineNumber();
-        if (unsigned Col = Loc.getColumnNumber()) {
-          printSep(hasColors);
-          errs() << Col;
-        }
-        printSep(hasColors);
-      }
-    }
-  }
-
-  if (F) {
-    if (!locationPrinted) {
-      errs() << F->getParent()->getModuleIdentifier() << ": ";
-    }
-    errs() << F->getName();
-    printSep(hasColors);
-    errs() << " ";
-    DEBUG(F->dump());
-  }
-
-  if (hasColors)
-    errs().changeColor(raw_ostream::RED, true);
-  errs() << "INVALID: " << Msg;
-  if (hasColors)
-    errs().resetColor();
-  errs() << "\n";
-  if (I) {
-    errs() << "\t at instruction: " << *I;
-    DEBUG(I->getParent()->dump());
-  }
-}
-
-void ClamBCModule::stop(const std::string &Msg, const Function *F,
-                        const Instruction *I)
-{
-  printMsg(Msg, F, I);
+  printDiagnostic(Msg, M);
   exit(42);
 }
 
-void ClamBCModule::stop(const char *Msg, const Function *F,
-                        const Instruction *I)
+void ClamBCModule::stop(const Twine& Msg, const Function *F)
 {
-  printMsg(Msg, F, I);
+  printDiagnostic(Msg, F);
   exit(42);
 }
 
-void ClamBCModule::stop(const Twine &Msg, const Function *F,
-                        const Instruction *I)
+void ClamBCModule::stop(const Twine& Msg, const Instruction *I)
 {
-  printMsg(Msg.str(), F, I);
+  printDiagnostic(Msg, I);
   exit(42);
 }
 
@@ -822,7 +777,7 @@ void ClamBCModule::finished(Module &M)
   if (!SrcFile.empty()) {
     MemoryBuffer *MB = MemoryBuffer::getFile(SrcFile, &ErrStr);
     if (!MB) {
-      stop("Unable to (re)open input file: "+SrcFile);
+      stop("Unable to (re)open input file: "+SrcFile, &M);
     }
     // mapped file is \0 terminated by getFile()
     const char *start = MB->getBufferStart();
