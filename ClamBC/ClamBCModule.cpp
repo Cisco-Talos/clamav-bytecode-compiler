@@ -140,8 +140,8 @@ bool ClamBCModule::runOnModule(Module &M)
 
   // Logical signature created by ClamBCLogicalCompiler.
   NamedMDNode *Node = M.getNamedMetadata("clambc.logicalsignature");
-  assert(Node);//ClamBCLogicalCompiler should have created it
-  LogicalSignature = cast<MDString>(Node->getOperand(0)->getOperand(0))->getString();
+  LogicalSignature = Node ?
+    cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
 
   unsigned tid, cid, fid;
   startTID = tid = clamav::initTypeIDs(typeIDs, M.getContext());

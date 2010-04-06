@@ -52,7 +52,7 @@ static void printLocation(const llvm::Module *M)
       DICompileUnit CU(G.getCompileUnit());
       if (!CU.isMain())
         continue;
-      errs() << CU.getDirectory() << "/" << CU.getFilename() << ": ";
+      errs() << /*CU.getDirectory() << "/" <<*/ CU.getFilename() << ": ";
       return;
     }
   }
@@ -77,7 +77,7 @@ static void printLocation(const llvm::Function *F) {
           }
           if (Scope.isSubprogram()) {
             DISubprogram SP(Scope.getNode());
-            errs() << Loc.getDirectory() << "/" << Loc.getFilename()
+            errs() << /*Loc.getDirectory() << "/" << */Loc.getFilename()
               << ": in function '"
               << SP.getDisplayName()
               << "': ";
@@ -97,7 +97,7 @@ static void printLocation(const llvm::Function *F) {
 void printLocation(const llvm::Instruction *I, bool fallback) {
   if (MDNode *N = I->getMetadata("dbg")) {
     DILocation Loc(N);
-    errs() << Loc.getDirectory() << "/" << Loc.getFilename()
+    errs() << /*Loc.getDirectory() << "/" <<*/ Loc.getFilename()
       << ":" << Loc.getLineNumber();
     if (unsigned Col = Loc.getColumnNumber()) {
       errs() << ":" << Col;
@@ -153,12 +153,12 @@ void printLocation(const llvm::Module *M, const llvm::Value *V) {
     printLocation(M);
     return;
   }
-  errs() << Dir << "/" << File << ":" << Line << ": ";
+  errs() << /*Dir << "/" <<*/ File << ":" << Line << ": ";
 }
 
 static void printMsg(const Twine &Msg, const llvm::Module *M,
                      const llvm::Function *F, const llvm::Instruction *I,
-                     const llvm::Value *V)
+                     const llvm::Value *V, bool internal)
 {
 #ifdef CLAMBC_COMPILER
   bool hasColors = true;
@@ -179,41 +179,49 @@ static void printMsg(const Twine &Msg, const llvm::Module *M,
 
   if (hasColors)
     errs().changeColor(raw_ostream::RED, true);
-  errs() << "ERROR: ";
-  if (hasColors)
+  if (internal)
+    errs() << "internal compiler error: ";
+  else
+    errs() << "error: ";
+  if (hasColors) {
     errs().resetColor();
+    errs().changeColor(raw_ostream::SAVEDCOLOR, true);
+  }
   if (V)
     printValue(V, false, false);
   errs() << Msg << "\n";
+  if (hasColors)
+    errs().resetColor();
   if (I) {
-    errs() << "\t at : " << *V;
+    errs() << "\t at : " << *I << "\n";
     DEBUG(I->getParent()->dump());
   }
 }
 
-void printDiagnostic(const Twine &Msg, const llvm::Module *M)
+void printDiagnostic(const Twine &Msg, const llvm::Module *M, bool internal)
 {
-  printMsg(Msg, M, 0, 0, 0);
+  printMsg(Msg, M, 0, 0, 0, internal);
 }
 
-void printDiagnostic(const Twine &Msg, const llvm::Function *F)
+void printDiagnostic(const Twine &Msg, const llvm::Function *F, bool internal)
 {
-  printMsg(Msg, F->getParent(), F, 0, 0);
+  printMsg(Msg, F->getParent(), F, 0, 0, internal);
 }
 
-void printDiagnostic(const Twine &Msg, const llvm::Instruction *I)
+void printDiagnostic(const Twine &Msg, const llvm::Instruction *I,
+                     bool internal)
 {
   const Function *F = I->getParent()->getParent();
-  printMsg(Msg, F->getParent(), F, I, 0);
+  printMsg(Msg, F->getParent(), F, I, 0, internal);
 }
 
 void printDiagnosticValue(const Twine &Msg, const llvm::Module *M,
-                          const llvm::Value *V)
+                          const llvm::Value *V, bool internal)
 {
   if (const Instruction *I = dyn_cast<Instruction>(V))
-    printMsg(Msg, M, I->getParent()->getParent(), I, V);
+    printMsg(Msg, M, I->getParent()->getParent(), I, V, internal);
   else if (const Argument *A = dyn_cast<Argument>(V))
-    printMsg(Msg, M, A->getParent(), 0, A);
+    printMsg(Msg, M, A->getParent(), 0, A, internal);
   else
-    printMsg(Msg, M, 0, 0, V);
+    printMsg(Msg, M, 0, 0, V, internal);
 }

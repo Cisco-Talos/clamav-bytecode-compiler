@@ -24,6 +24,7 @@
 #include "ClamBCModule.h"
 #include "llvm/System/DataTypes.h"
 #include "clambc.h"
+#include "ClamBCDiagnostics.h"
 #include "ClamBCModule.h"
 #include "ClamBCCommon.h"
 #include "llvm/ADT/FoldingSet.h"
@@ -63,7 +64,7 @@ public:
 private:
   std::string LogicalSignature;
   std::string virusnames;
-  void compileLogicalSignature(Function &F, unsigned target);
+  bool compileLogicalSignature(Function &F, unsigned target);
   void validateVirusName(const std::string& name, Function &F);
 };
 char ClamBCLogicalCompiler::ID = 0;
@@ -476,7 +477,7 @@ private:
     }
 
     if (others.empty())
-      return getFalse(V[0]->Set);
+      return getTrue(V[0]->Set);
     if (others.size() == 1) {
       return *others.begin();
     }
@@ -611,9 +612,11 @@ public:
   LogicalNode *compile(Function &F)
   {
     GV = F.getParent()->getGlobalVariable("__clambc_match_counts");
-    if (!GV)
-      ClamBCModule::stop("__clambc_match_counts is not declared for logical"
-                         "signature bytecode", &F);
+    if (!GV) {
+      printDiagnostic("__clambc_match_counts is not declared for logical"
+                      " signature bytecode", F.getParent(), true);
+      return 0;
+    }
     // Speculatively execute all instructions where it is safe to do so.
     // This simplifies the function, making it more suitable for
     // converting to a logical expression.
@@ -622,7 +625,11 @@ public:
       DEBUG(errs() << "Trigger function has more than 1 basic block:\n";
             F.dump());
 
-    processBB(&F.getEntryBlock());
+    bool valid = processBB(&F.getEntryBlock());
+    if (!valid) {
+      printDiagnostic("Unable to compile to logical signature", &F);
+      return 0;
+    }
     return LogicalNode::getAnd(LogicalNode::getOr(allNodes, exitNodesOr),
                                LogicalNode::getAnd(allNodes, exitNodesAnd));
   }
@@ -635,38 +642,46 @@ private:
   std::vector<LogicalNode*> exitNodesAnd;
   SmallPtrSet<BasicBlock*, 10> Visiting;
   GlobalVariable *GV;
-  void processLoad(LoadInst &LI)
+  bool processLoad(LoadInst &LI)
   {
     Value *V = LI.getOperand(0);
     ConstantExpr *CE = dyn_cast<ConstantExpr>(V);
     if (!CE || CE->getOpcode() != Instruction::GetElementPtr ||
         CE->getOperand(0) != GV || CE->getNumOperands() != 3 ||
         !cast<ConstantInt>(CE->getOperand(1))->isZero()) {
-      ClamBCModule::stop("Logical signature: unsupported load", &LI);
+      printDiagnostic("Logical signature: unsupported read", &LI);
+      return false;
     }
     ConstantInt *CI = cast<ConstantInt>(CE->getOperand(2));
     Map[&LI] = LogicalNode::getSubSig(allNodes, CI->getValue().getZExtValue());
+    return true;
   }
 
-  void processICmp(ICmpInst &IC)
+  bool processICmp(ICmpInst &IC)
   {
     Value *op0 = IC.getOperand(0);
     Value *op1 = IC.getOperand(1);
     if (isa<Constant>(op0))
       std::swap(op0, op1);
     ConstantInt *RHS = dyn_cast<ConstantInt>(op1);
-    if (!RHS)
-      ClamBCModule::stop("Logical signature: unsupported compare,"
-                         " must compare to a constant", &IC);
+    if (!RHS) {
+      printDiagnostic("Logical signature: unsupported compare,"
+                      " must compare to a constant", &IC);
+      return false;
+    }
     uint64_t v = RHS->getValue().getZExtValue();
     uint32_t rhs = (uint32_t)v;
-    if (v != rhs)
-      ClamBCModule::stop("Logical signature: constant needs more than 32-bits",
-                         &IC);
+    if (v != rhs) {
+      printDiagnostic("Logical signature: constant needs more than 32-bits",
+                      &IC);
+      return false;
+    }
     LogicalMap::iterator I = Map.find(op0);
-    if (I == Map.end())
-      ClamBCModule::stop("Logical signature: must compare match count against"
-                         "constant", &IC);
+    if (I == Map.end()) {
+      printDiagnostic("Logical signature: must compare match count against"
+                      " constant", &IC);
+      return false;
+    }
     LogicalNode *Node = 0;
     switch (IC.getPredicate()) {
     case CmpInst::ICMP_EQ:
@@ -680,35 +695,42 @@ private:
       Node = LogicalNode::getGT(I->second, rhs);
       break;
     case CmpInst::ICMP_UGE:
-      if (!rhs)
-        ClamBCModule::stop("Logical signature: count >= 0 is always true"
-                           ", probably a typo?", &IC);
+      if (!rhs) {
+        printDiagnostic("Logical signature: count >= 0 is always true"
+                        ", probably a typo?", &IC);
+        return false;
+      }
       Node = LogicalNode::getGT(I->second, rhs-1);
       break;
     case CmpInst::ICMP_ULT:
       Node = LogicalNode::getLT(I->second, rhs);
       break;
     case CmpInst::ICMP_ULE:
-      if (rhs == ~0u)
-        ClamBCModule::stop("Logical signature: count <= ~0u is always true"
-                           ", probably a type?", &IC);
+      if (rhs == ~0u) {
+        printDiagnostic("Logical signature: count <= ~0u is always true"
+                        ", probably a type?", &IC);
+        return false;
+      }
       Node = LogicalNode::getLT(I->second, rhs+1);
       break;
     case CmpInst::ICMP_SGT:
     case CmpInst::ICMP_SGE:
     case CmpInst::ICMP_SLE:
     case CmpInst::ICMP_SLT:
-      ClamBCModule::stop("Logical signature: signed compares not supported"
-                         ", please use unsigned compares!", &IC);
-      break;
+      printDiagnostic("Logical signature: signed compares not supported"
+                      ", please use unsigned compares!", &IC);
+      return false;
     default:
-      ClamBCModule::stop("Logical signature: unsupported compare operator", &IC);
+      printDiagnostic("Logical signature: unsupported compare operator", &IC);
+      return false;
     }
     Map[&IC] = Node;
+    return true;
   }
 
-  void processBB(BasicBlock *BB)
+  bool processBB(BasicBlock *BB)
   {
+    bool valid = true;
     Visiting.insert(BB);
     for (BasicBlock::iterator I=BB->begin(), E=BB->end(); I != E; ++I) {
       if (isa<DbgInfoIntrinsic>(I))
@@ -717,40 +739,46 @@ private:
         continue;
       switch (I->getOpcode()) {
       case Instruction::Load:
-        processLoad(*cast<LoadInst>(I));
+        valid &= processLoad(*cast<LoadInst>(I));
         break;
       case Instruction::ICmp:
-        processICmp(*cast<ICmpInst>(I));
+        valid &= processICmp(*cast<ICmpInst>(I));
         break;
       case Instruction::Br:
         {
           BranchInst *BI = cast<BranchInst>(I);
           if (BI->isUnconditional()) {
             if (Visiting.count(BB)) {
-              ClamBCModule::stop("Logical signature: loop/recursion"
-                                 " not supported", BI);
+              printDiagnostic("Logical signature: loop/recursion"
+                              " not supported", BI);
+              return false;
             }
-            processBB(BI->getSuccessor(0));
-            return;
+            return processBB(BI->getSuccessor(0));
           }
           Value *V = BI->getCondition();
           LogicalMap::iterator J = Map.find(V);
-          if (J == Map.end())
-            ClamBCModule::stop("Logical signature: Branch condition must be"
-                               " logical expression", BI);
+          if (J == Map.end()) {
+            printDiagnostic("Logical signature: Branch condition must be"
+                            " logical expression", BI);
+            return false;
+          }
           LogicalNode *Node = J->second;
           Stack.push_back(Node);
-          if (Visiting.count(BI->getSuccessor(0)))
-            ClamBCModule::stop("Logical signature: loop/recursion"
-                               " not supported", BI);
-          processBB(BI->getSuccessor(0));
+          if (Visiting.count(BI->getSuccessor(0))) {
+            printDiagnostic("Logical signature: loop/recursion"
+                            " not supported", BI);
+            return false;
+          }
+          valid &= processBB(BI->getSuccessor(0));
           Stack.pop_back();
           Node = LogicalNode::getNot(Node);
           Stack.push_back(Node);
-          if (Visiting.count(BI->getSuccessor(1)))
-            ClamBCModule::stop("Logical signature: loop/recursion"
-                               " not supported", BI);
-          processBB(BI->getSuccessor(1));
+          if (Visiting.count(BI->getSuccessor(1))) {
+            printDiagnostic("Logical signature: loop/recursion"
+                            " not supported", BI);
+            return false;
+          }
+          valid &= processBB(BI->getSuccessor(1));
           assert(Stack.back() == Node);
           Stack.pop_back();
           break;
@@ -767,9 +795,11 @@ private:
             break;
           }
           LogicalMap::iterator J = Map.find(V);
-          if (J == Map.end())
-            ClamBCModule::stop("Logical signature: return value must be logical"
-                               " expression", I);
+          if (J == Map.end()) {
+            printDiagnostic("Logical signature: return value must be logical"
+                            " expression", I);
+            return false;
+          }
           LogicalNode *Node = J->second;
           Stack.push_back(Node);
           exitNodesOr.push_back(LogicalNode::getAnd(allNodes, Stack));
@@ -779,25 +809,32 @@ private:
       case Instruction::Add:
         {
           LogicalMap::iterator J = Map.find(I->getOperand(0));
-          if (J == Map.end())
-            ClamBCModule::stop("Logical signature: add operands must be logical"
-                               " expressions", I);
+          if (J == Map.end()) {
+            printDiagnostic("Logical signature: add operands must be logical"
+                            " expressions", I);
+            return false;
+          }
           ConstantInt *CI = dyn_cast<ConstantInt>(I->getOperand(1));
           if (CI) {
             Map[I] = LogicalNode::getAdd(J->second, CI->getValue().getZExtValue());
           } else {
             LogicalMap::iterator J2 = Map.find(I->getOperand(1));
-            if (J2 == Map.end())
-              ClamBCModule::stop("Logical signature: add operands must be "
-                                 "logical expressions", I);
+            if (J2 == Map.end()) {
+              printDiagnostic("Logical signature: add operands must be "
+                              "logical expressions", I);
+              return false;
+            }
             LogicalNode *N = LogicalNode::getAdd(J->second, J2->second);
-            if (!N)
-              ClamBCModule::stop("Logical signature: add operands mismatch,"
-                                 "only of counts, uniqueness, and constants\n",
-                                 I);
+            if (!N) {
+              printDiagnostic("Logical signature: add operands mismatch,"
+                              "only of counts, uniqueness, and constants",
+                              I);
+              return false;
+            }
             if (!N->checkUniq()) {
-              ClamBCModule::stop("Logical signature: duplicate operands for add"
-                                 " not supported\n", I);
+              printDiagnostic("Logical signature: duplicate operands for add"
+                              " not supported", I);
+              return false;
             }
             Map[I] =N;
           }
@@ -807,9 +844,11 @@ private:
         {
           LogicalMap::iterator J1 = Map.find(I->getOperand(0));
           LogicalMap::iterator J2 = Map.find(I->getOperand(1));
-          if (J1 == Map.end() || J2 == Map.end())
-            ClamBCModule::stop("Logical signature: and operands must be logical"
-                               " expressions", I);
+          if (J1 == Map.end() || J2 == Map.end()) {
+            printDiagnostic("Logical signature: and operands must be logical"
+                            " expressions", I);
+            return false;
+          }
           Map[I] = LogicalNode::getAnd(J1->second, J2->second);
           break;
         }
@@ -817,48 +856,58 @@ private:
         {
           LogicalMap::iterator J1 = Map.find(I->getOperand(0));
           LogicalMap::iterator J2 = Map.find(I->getOperand(1));
-          if (J1 == Map.end() || J2 == Map.end())
-            ClamBCModule::stop("Logical signature: or operands must be logical"
-                               " expressions", I);
+          if (J1 == Map.end() || J2 == Map.end()) {
+            printDiagnostic("Logical signature: or operands must be logical"
+                            " expressions", I);
+            return false;
+          }
           Map[I] = LogicalNode::getOr(J1->second, J2->second);
           break;
         }
       case Instruction::Xor:
         {
           ConstantInt *CI = dyn_cast<ConstantInt>(I->getOperand(1));
-          if (!CI || !CI->isOne())
-            ClamBCModule::stop("Logical signature: xor only supported for"
-                               " negation", I);
+          if (!CI || !CI->isOne()) {
+            printDiagnostic("Logical signature: xor only supported for"
+                            " negation", I);
+            return false;
+          }
           LogicalMap::iterator J1 = Map.find(I->getOperand(0));
-          if (J1 == Map.end())
-            ClamBCModule::stop("Logical signature: xor operand must be logical"
-                               " expressions", I);
+          if (J1 == Map.end()) {
+            printDiagnostic("Logical signature: xor operand must be logical"
+                            " expressions", I);
+            return false;
+          }
           Map[I] = LogicalNode::getNot(J1->second);
           break;
         }
       case Instruction::ZExt:
         {
           LogicalMap::iterator J = Map.find(I->getOperand(0));
-          if (J == Map.end())
-            ClamBCModule::stop("Logical signature: zext operand must be logical"
-                               " expressions", I);
+          if (J == Map.end()) {
+            printDiagnostic("Logical signature: zext operand must be logical"
+                            " expressions", I);
+            return false;
+          }
           ZExtInst *ZI = cast<ZExtInst>(I);
           unsigned from = ZI->getSrcTy()->getPrimitiveSizeInBits();
           unsigned to = ZI->getDestTy()->getPrimitiveSizeInBits();
           if (from != 1 || to != 32) {
-            ClamBCModule::stop("Logical signature: only support zero extend"
-                               " from i1 to i32, but encountered "+Twine(from)+
-                               " to "+Twine(to), I);
+            printDiagnostic("Logical signature: only support zero extend"
+                            " from i1 to i32, but encountered "+Twine(from)+
+                            " to "+Twine(to), I);
+            return false;
           }
           Map[I] = LogicalNode::getUniqueSigs(J->second);
           break;
         }
       default:
-        ClamBCModule::stop("Logical signature: unsupported instruction", I);
-        break;
+        printDiagnostic("Logical signature: unsupported instruction", I);
+        return false;
       }
     }
     Visiting.erase(BB);
+    return valid;
   }
 };
 
@@ -913,28 +962,17 @@ static std::string node2String(LogicalNode *node, unsigned &groups)
   }
 }
 
-void ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target)
+bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target)
 {
   LogicalCompiler compiler;
-  LogicalNode *node = compiler.compile(F);
-  if (node->kind == LOG_TRUE)
-    ClamBCModule::stop("Logical signature: expression is always true", &F);
-  if (node->kind == LOG_FALSE)
-    ClamBCModule::stop("Logical signature: expression is always false", &F);
-  unsigned groups = 0;
-  LogicalSignature = (Twine(virusnames)+";Target:"+Twine(target)+";" + node2String(node, groups)).str();
-  if (groups > 64) {
-    ClamBCModule::stop(("Logical signature: a maximum of 64 subexpressions are "
-                       "supported, but logical signature has "+Twine(groups)+
-                       " groups").str(), &F);
-  }
+
   GlobalVariable *GV = F.getParent()->getGlobalVariable("Signatures");
   if (!GV->hasDefinitiveInitializer())
-    return;//TODO:diagnose error
+    return false;//TODO:diagnose error
   ConstantStruct *CS = cast<ConstantStruct>(GV->getInitializer());
   unsigned n = CS->getNumOperands();
   if (n&1)
-    return;//TODO:diagnose error
+    return false;//TODO:diagnose error
   // remove the pointer field from Signatures
   std::vector<const Type*> newStruct;
   std::vector<Constant*> newInits;
@@ -960,6 +998,7 @@ void ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
 
   std::vector<std::string> SubSignatures;
   SubSignatures.resize(n/2);
+  bool valid = true;
   for (unsigned i=0;i<n;i += 2) {
     Constant *C = CS->getOperand(i);
     unsigned id = 0;
@@ -967,11 +1006,11 @@ void ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
       ConstantStruct *SS = cast<ConstantStruct>(CS->getOperand(i+1));
       id = cast<ConstantInt>(SS->getOperand(0))->getValue().getZExtValue();
       if (id > n/2)
-        return;//TODO:diagnose error
+        return false;//TODO:diagnose error
     }
     std::string String;
     if (!GetConstantStringInfo(C, String))
-      return;//TODO:diagnose error
+      return false;//TODO:diagnose error
     const char *s2 = String.c_str();
     const char *s = strchr(s2, ':');
     if (!s) s = s2;
@@ -983,16 +1022,38 @@ void ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
       const char c = *s;
       if ((c >= '0' && c <= '9') || (c >= 'a' && c <='f'))
         continue;
-      ClamBCModule::stop((Twine("pattern is not hexadecimal: ")+s).str(), &F);
-      return;//TODO:diagnose error
+      printDiagnostic((Twine("pattern is not hexadecimal: ")+s).str(), &F);
+      valid = false;
     }
     SubSignatures[id] = String;
   }
+  LogicalNode *node = compiler.compile(F);
+  if (!node)
+    return false;
+  if (node->kind == LOG_TRUE) {
+    printDiagnostic("Logical signature: expression is always true", &F);
+    return false;
+  }
+  if (node->kind == LOG_FALSE) {
+    printDiagnostic("Logical signature: expression is always false", &F);
+    return false;
+  }
+  if (!valid)
+    return false;
+  unsigned groups = 0;
+  LogicalSignature = (Twine(virusnames)+";Target:"+Twine(target)+";" + node2String(node, groups)).str();
+  if (groups > 64) {
+    ClamBCModule::stop(("Logical signature: a maximum of 64 subexpressions are "
+                       "supported, but logical signature has "+Twine(groups)+
+                       " groups").str(), &F);
+  }
+
   for (std::vector<std::string>::iterator I=SubSignatures.begin(),E=SubSignatures.end();
        I != E; ++I) {
     LogicalSignature += ";"+*I;
   }
   F.setLinkage(GlobalValue::InternalLinkage);
+  return true;
 }
 
 void ClamBCLogicalCompiler::validateVirusName(const std::string& name,
@@ -1008,7 +1069,6 @@ void ClamBCLogicalCompiler::validateVirusName(const std::string& name,
 
 bool ClamBCLogicalCompiler::runOnModule(Module &M)
 {
-  NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");
   LogicalSignature = "";
   virusnames="";
   // Handle virusname
@@ -1076,13 +1136,17 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     unsigned target = cast<ConstantInt>(GV->getInitializer())->getValue().getZExtValue();
     GV->setLinkage(GlobalValue::InternalLinkage);
     //TODO: validate that target is a valid target
-    compileLogicalSignature(*F, target);
+    if (!compileLogicalSignature(*F, target)) {
+      ClamBCModule::stop("logical_trigger is not a valid logical expressions!",
+                         F);
+    }
+    NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");
+    Value *S = MDString::get(M.getContext(), LogicalSignature);
+    MDNode *N = MDNode::get(M.getContext(),  &S, 1);
+    Node->addOperand(N);
     if (F->use_empty())
       F->eraseFromParent();
   }
-  Value *S = MDString::get(M.getContext(), LogicalSignature);
-  MDNode *N = MDNode::get(M.getContext(),  &S, 1);
-  Node->addOperand(N);
   return true;
 }
 
