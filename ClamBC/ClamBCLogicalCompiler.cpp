@@ -65,7 +65,7 @@ private:
   std::string LogicalSignature;
   std::string virusnames;
   bool compileLogicalSignature(Function &F, unsigned target);
-  void validateVirusName(const std::string& name, Function &F);
+  bool validateVirusName(const std::string& name, Function &F);
 };
 char ClamBCLogicalCompiler::ID = 0;
 RegisterPass<ClamBCLogicalCompiler> X("clambc-lcompiler",
@@ -967,12 +967,18 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   LogicalCompiler compiler;
 
   GlobalVariable *GV = F.getParent()->getGlobalVariable("Signatures");
-  if (!GV->hasDefinitiveInitializer())
-    return false;//TODO:diagnose error
+  if (!GV->hasDefinitiveInitializer()) {
+    printDiagnosticValue("Signatures declared but not initialized",
+                         F.getParent(), GV);
+    return false;
+  }
   ConstantStruct *CS = cast<ConstantStruct>(GV->getInitializer());
   unsigned n = CS->getNumOperands();
-  if (n&1)
-    return false;//TODO:diagnose error
+  if (n&1) {
+    printDiagnosticValue("Signatures initializer contains odd # of fields",
+                         F.getParent(), GV, true);
+    return false;
+  }
   // remove the pointer field from Signatures
   std::vector<const Type*> newStruct;
   std::vector<Constant*> newInits;
@@ -1005,12 +1011,18 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
     if (!isa<ConstantAggregateZero>(CS->getOperand(i+1))) {
       ConstantStruct *SS = cast<ConstantStruct>(CS->getOperand(i+1));
       id = cast<ConstantInt>(SS->getOperand(0))->getValue().getZExtValue();
-      if (id > n/2)
-        return false;//TODO:diagnose error
+      if (id > n/2 ) {
+        printDiagnostic("Signature ID out of range ("+Twine(id)+" > "
+                        +Twine(n/2)+")", F.getParent());
+        return false;
+      }
     }
     std::string String;
-    if (!GetConstantStringInfo(C, String))
-      return false;//TODO:diagnose error
+    if (!GetConstantStringInfo(C, String)) {
+      printDiagnosticValue("Signature is not a static string",
+                           F.getParent(), C);
+      return false;
+    }
     const char *s2 = String.c_str();
     const char *s = strchr(s2, ':');
     if (!s) s = s2;
@@ -1043,9 +1055,10 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   unsigned groups = 0;
   LogicalSignature = (Twine(virusnames)+";Target:"+Twine(target)+";" + node2String(node, groups)).str();
   if (groups > 64) {
-    ClamBCModule::stop(("Logical signature: a maximum of 64 subexpressions are "
-                       "supported, but logical signature has "+Twine(groups)+
-                       " groups").str(), &F);
+    printDiagnostic(("Logical signature: a maximum of 64 subexpressions are "
+                     "supported, but logical signature has "+Twine(groups)+
+                     " groups").str(), &F);
+    return false;
   }
 
   for (std::vector<std::string>::iterator I=SubSignatures.begin(),E=SubSignatures.end();
@@ -1056,19 +1069,22 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   return true;
 }
 
-void ClamBCLogicalCompiler::validateVirusName(const std::string& name,
+bool ClamBCLogicalCompiler::validateVirusName(const std::string& name,
                                               Function &F)
 {
   for (unsigned i=0;i<name.length();i++) {
     unsigned char c = name[i];
     if (isalnum(c) || c == '_' || c == '-' || c == '.')
       continue;
-    ClamBCModule::stop("Invalid character in virusname: "+name.substr(i, 1), &F);
+    printDiagnostic("Invalid character in virusname: "+name.substr(i, 1), &F);
+    return false;
   }
+  return true;
 }
 
 bool ClamBCLogicalCompiler::runOnModule(Module &M)
 {
+  bool Valid = true;
   LogicalSignature = "";
   virusnames="";
   // Handle virusname
@@ -1089,13 +1105,22 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
   }
   GlobalVariable *VPFX = M.getGlobalVariable("__clambc_virusname_prefix");
   if (!VPFX || !VPFX->hasDefinitiveInitializer()) {
-    if (kind)
-      ClamBCModule::stop("Virusname must be declared for non-generic bytecodes",
-                         F);
-  } else {
-    if (!GetConstantStringInfo(VPFX, virusnames))
-      ClamBCModule::stop("Unable to determine virusname prefix string", F);
-    validateVirusName(virusnames, *F);
+    if (kind) {
+      printDiagnostic("Virusname must be declared for non-generic bytecodes",
+                      F);
+      Valid = false;
+    }
+  } else do {
+    if (GetConstantStringInfo(VPFX, virusnames)) {
+      if (!validateVirusName(virusnames, *F)) {
+        Valid = false;
+        break;
+      }
+    } else {
+      printDiagnostic("Unable to determine virusname prefix string", F);
+      Valid = false;
+      break;
+    }
     GlobalVariable *VNames = M.getGlobalVariable("__clambc_virusnames");
     if (VNames && VNames->hasDefinitiveInitializer()) {
       // The virusnames in {} are only informative in the header (so you can
@@ -1111,8 +1136,10 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       for (unsigned i=0;i<CA->getNumOperands();i++) {
         std::string virusnamepart;
         Constant *C = CA->getOperand(i);
-        if (!GetConstantStringInfo(C, virusnamepart))
-          ClamBCModule::stop("Unable to determine virusname part string", F);
+        if (!GetConstantStringInfo(C, virusnamepart)) {
+          printDiagnostic("Unable to determine virusname part string", F);
+          Valid = false;
+        }
         if (i)
           virusnames += ",";
         virusnames += virusnamepart;
@@ -1122,23 +1149,27 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     } else virusnames += "{}";
     VPFX->setLinkage(GlobalValue::InternalLinkage);
     if (!VPFX->use_empty()) {
-      ClamBCModule::stop("Virusname prefix must not be used in the bytecode,"
+      printDiagnostic("Virusname prefix must not be used in the bytecode,"
                          " because virusname prefix needs to be editable to"
                          " solve virusname clashes!", F);
+      Valid = false;
     }
     //TODO: check that foundVirus/setvirusname is called only with one of
     //these virusnames
-  }
+  } while(0);
   if (F) {
     GlobalVariable *GV = M.getGlobalVariable("__Target");
-    if (!GV || !GV->hasDefinitiveInitializer())
-      ClamBCModule::stop("__Target not defined", F);
-    unsigned target = cast<ConstantInt>(GV->getInitializer())->getValue().getZExtValue();
-    GV->setLinkage(GlobalValue::InternalLinkage);
+    unsigned target = ~0u;
+    if (!GV || !GV->hasDefinitiveInitializer()) {
+      Valid = false;
+      printDiagnostic("__Target not defined", &M, true);
+    } else {
+      target = cast<ConstantInt>(GV->getInitializer())->getValue().getZExtValue();
+      GV->setLinkage(GlobalValue::InternalLinkage);
+    }
     //TODO: validate that target is a valid target
     if (!compileLogicalSignature(*F, target)) {
-      ClamBCModule::stop("logical_trigger is not a valid logical expressions!",
-                         F);
+      Valid = false;
     }
     NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");
     Value *S = MDString::get(M.getContext(), LogicalSignature);
@@ -1146,6 +1177,10 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     Node->addOperand(N);
     if (F->use_empty())
       F->eraseFromParent();
+  }
+  if (!Valid) {
+    // diagnostic already printed
+    exit(42);
   }
   return true;
 }
