@@ -962,6 +962,101 @@ static std::string node2String(LogicalNode *node, unsigned &groups)
   }
 }
 
+bool validateNDB(const char *S, Module *M, Value *Signatures)
+{
+  StringRef Pattern(S);
+  bool valid = true;
+  size_t offsetp = Pattern.find(':');
+  if (offsetp == StringRef::npos)
+    offsetp = 0;
+  else {
+    // Attempt to fully validate the anchor/offset.
+    StringRef offset = Pattern.substr(0, offsetp);
+    size_t floating = offset.find(",");
+    if (floating != StringRef::npos) {
+      unsigned R;
+      StringRef floatO = offset.substr(floating+1);
+      if (floatO.getAsInteger(10, R)) {
+        printDiagnosticValue("Floating offset is not an integer in'"
+                             +Twine(offset)+"'", M, Signatures);
+        valid = false;
+      } else {
+        offset = offset.substr(0, floating);
+      }
+    }
+    if (offset.empty()) {
+      printDiagnosticValue("Offset is empty in pattern: '"+Twine(Pattern)+"'",
+                           M, Signatures);
+      valid = false;
+    } else if (S[0] == '*') {
+      if (S[1] != ':') {
+        printDiagnosticValue("Offset ANY ('*') followed by garbage: '"
+                             +Twine(offset)+"'", M, Signatures);
+        valid = false;
+      }
+    } else if (S[0] >= '0' && S[0] <= '9') {
+      unsigned R;
+      if (offset.getAsInteger(10, R)) {
+        printDiagnosticValue("Absolute offset is not an integer: '"
+                             +Twine(offset)+"'", M, Signatures);
+        valid = false;
+      }
+    } else {
+      size_t n1 = offset.find("+");
+      size_t n2 = offset.find("-");
+      if (n2 < n1)
+        n1 = n2;
+      if (n1 == StringRef::npos) {
+        printDiagnosticValue("Pattern: unrecognized offset format: '"+
+                             Twine(offset)+"'", M, Signatures);
+        valid = false;
+      } else if (!offset.equals("VI")) {
+        unsigned R;
+        StringRef anchor = offset.substr(0, n1);
+        StringRef delta = offset.substr(n1+1);
+        if (delta.getAsInteger(10, R)) {
+          printDiagnosticValue("Anchored offset is not an integer: '"+
+                             Twine(offset)+"'", M, Signatures);
+          valid = false;
+        }
+        if (!offset.startswith("EOF-") &&
+            !anchor.equals("EP") &&
+            !anchor.equals("SL")) {
+          if (anchor[0] == 'S') {
+            anchor = anchor.substr(1);
+            if (anchor.getAsInteger(10, R)) {
+              printDiagnosticValue("Section number in offset is not an integer:"
+                                   "'"+Twine(offset)+"'", M, Signatures);
+              valid = false;
+            }
+          } else {
+            printDiagnosticValue("Unknown anchor '"+Twine(anchor)+
+                                 "' in pattern '"+Twine(Pattern), M, Signatures);
+            valid = false;
+          }
+        }
+      }
+    }
+    Pattern = Pattern.substr(offsetp+1);
+  }
+  // This is not a comprehensive validation of the pattern, since
+  // that is too complicated and has to be kept in sync with what libclamav
+  // allows.
+  for (unsigned i=0;i<Pattern.size();i++) {
+    unsigned char c = Pattern[i];
+    if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+        c == '?' || c == '*' || c == '{' || c == '}' ||
+        c == '-' || c == '(' || c == ')' || c == '|' || c == '!' ||
+        c == '[' || c == ']' || c == 'B' || c == 'L')
+      continue;
+    printDiagnosticValue("Pattern contains forbidden character '"+Twine(c)+"': "
+                         +Twine(Pattern), M, Signatures);
+    valid = false;
+    break;
+  }
+  return valid;
+}
+
 bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target)
 {
   LogicalCompiler compiler;
@@ -1023,20 +1118,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
                            F.getParent(), C);
       return false;
     }
-    const char *s2 = String.c_str();
-    const char *s = strchr(s2, ':');
-    if (!s) s = s2;
-    else {
-      s++;
-      //TODO: validate anchor
-    }
-    for (; *s; s++) {
-      const char c = *s;
-      if ((c >= '0' && c <= '9') || (c >= 'a' && c <='f'))
-        continue;
-      printDiagnostic((Twine("pattern is not hexadecimal: ")+s).str(), &F);
-      valid = false;
-    }
+    valid = validateNDB(String.c_str(), F.getParent(), NewGV);
     SubSignatures[id] = String;
   }
   LogicalNode *node = compiler.compile(F);

@@ -136,7 +136,7 @@ void printValue(const llvm::Value *V, bool printLocation, bool fallback) {
       errs() << V->getName() << ": ";
     return;
   }
-  errs() << "'" << DisplayName << "'";
+  errs() << "'" << DisplayName << "' ";
   if (printLocation)
     errs() << " (" << File << ":" << Line << ")";
 }
