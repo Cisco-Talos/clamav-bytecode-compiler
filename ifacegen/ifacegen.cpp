@@ -213,7 +213,6 @@ private:
   std::set<std::string> functionNames;
   std::set<std::string> globalNames;
 
-
   typedef std::vector<std::pair<std::string, struct FunctionProto> > FunctionListTy;
   typedef StringMap<const Type*> GlobalMapTy;
   GlobalMapTy globals;
@@ -557,6 +556,139 @@ private:
     } while (1);
   }
 
+  void printType(const Type* Ty)
+  {
+    for (std::map<std::string, PATypeHolder>::iterator I = namedTypes.begin(),
+         E = namedTypes.end(); I != E; ++I) {
+      if (I->second == Ty) {
+        errs() << I->first;
+        return;
+      }
+    }
+    errs() << *Ty;
+  }
+
+  // returns size of type, and maximum alignment
+  unsigned checkTypeSize(const Type* Ty, unsigned &MaxAlign) {
+    // Accept just simple types: i8, i16, i32, i64,
+    // arrays and structs consisting of these.
+    if (Ty->isIntegerTy()) {
+      unsigned s = Ty->getPrimitiveSizeInBits();
+      if (s != 8 && s != 16 &&
+          s != 32 && s != 64) {
+        errs() << "Only 8,16,32, and 64-bit integers are supported in APIs: " << *Ty <<
+          "\n";
+        return 0;
+      }
+      MaxAlign = s/8;
+      return s/8;
+    }
+    if (isa<PointerType>(Ty)) {
+      errs() << "Pointers to pointers are not allowed at this time in APIs: ";
+      printType(Ty);
+      errs() << "\n";
+      return 0;
+    }
+    if (const ArrayType *ATy = dyn_cast<ArrayType>(Ty)) {
+      // maxalign of array == maxalign of its element
+      unsigned e = checkTypeSize(ATy->getElementType(), MaxAlign);
+      if (!e) {
+        errs() << "Element for array type ";
+        printType(ATy);
+        errs() << " is not allowed in APIs\n";
+        return 0;
+      }
+      return ATy->getNumElements() * e;
+    }
+    if (const StructType *STy = dyn_cast<StructType>(Ty)) {
+      // For non-packed structs check that all fields are aligned to the maximum
+      // alignment, and that the struct is padded according to maximum padding
+      // it could get.
+      // This ensures that the C type matches the LLVM type even with a
+      // different targetdata, basically its a check that a packed struct
+      // would have same layout as a non-packed one.
+      // This is a conservative check.
+      unsigned size = 0, fields=1;
+      bool valid = true;
+      MaxAlign = 1;
+      for (StructType::element_iterator I=STy->element_begin(), E=STy->element_end();
+             I != E; ++I) {
+        unsigned M;
+        unsigned s = checkTypeSize(*I, M);
+        if (!s)
+          valid = false;
+        if (!STy->isPacked()) {
+          // non-packed struct, need to consider alignment and padding
+          if (M > MaxAlign)
+            MaxAlign = M;
+          if (size & (M-1)) {
+            errs() << "Field " << fields << " in ";
+            printType(STy);
+            errs() << " needs to be aligned to " << M << " bytes.\n";
+            errs() << "\tsuggestion: insert " << (size&(M-1)) << " bytes of "
+              "padding via a dummy field\n";
+            size += (size&(M-1));
+            valid = false;
+          }
+        }
+        size += s;
+        fields++;
+      }
+      if (size & (MaxAlign - 1)) {
+        errs() << "Struct ";
+        printType(STy);
+        errs() << " needs " << MaxAlign << " bytes of "
+          "alignment,\n\tand needs " << (size & (MaxAlign-1)) << " bytes of "
+          "padding at the end\n";
+        valid = false;
+      }
+      if (!valid) {
+        errs() << "Struct type ";
+        printType(STy);
+        errs() << " is not accepted in API calls\n";
+        return 0;
+      }
+      return size;
+    }
+    errs() << "Unknown type ";
+    printType(Ty);
+    errs() << " is not accepted in API calls\n";
+    return 0;
+  }
+
+  bool checkParam(const std::string &Func, unsigned param, const Type *Ty)
+  {
+    if (Ty->isIntegerTy())
+      return true;
+    const PointerType* PTy = dyn_cast<PointerType>(Ty);
+    bool valid = true;
+    if (!PTy) {
+      errs() << "Non-pointer/non-integer type in function parameter\n";
+      valid = false;
+    } else {
+      unsigned A;
+      if (!checkTypeSize(PTy->getElementType(), A))
+        valid = false;
+    }
+    if (!valid) {
+      errs() << "Function " << Func << " parameter " << param <<
+        " has unaccepted type!\n";
+    }
+    return valid;
+  }
+
+  // check that we are only passing pointers to struct with fixed size and field
+  // offsets (i.e. padding/alignment is not platform dependent).
+  bool checkFuncParams(const std::string& Func, const FunctionType *Ty)
+  {
+    bool valid = true;
+    valid &= checkParam(Func, 0, Ty->getReturnType());
+    for (unsigned i=0;i<Ty->getNumParams();i++) {
+      valid &= checkParam(Func, i+1, Ty->getParamType(i));
+    }
+    return valid;
+  }
+
   bool ParseFunctionPrototype(const Type *&Ty, tok::kind token) {
     bool ok = true;
     TypeFlagsList.clear();
@@ -837,6 +969,11 @@ bool Parser::parse() {
             break;
           }
           globalNames.insert(Func);
+          unsigned A;
+          if (!checkTypeSize(Ty, A)) {
+            token = printError(MLastTokStart, "Global "+ CurString + " has "
+                               "unaccepted type in API");
+          }
           globals[Func] = Ty;
         } else {
           // This is a function prototype
@@ -852,9 +989,14 @@ bool Parser::parse() {
             token = printError(MLastTokStart, "Function name cannot begin with __clambc_");
             break;
           }
-          functionNames.insert(Func);
           SFunc.Ty = cast<FunctionType>(Ty);
           SFunc.TypeFlags = TypeFlagsList;
+          if (!checkFuncParams(Func, SFunc.Ty)) {
+            token = printError(MLastTokStart, "Function " + Func + " has "
+                               "unaccepted parameters!");
+            break;
+          }
+          functionNames.insert(Func);
           functions.push_back(std::pair<std::string, struct FunctionProto>(Func, SFunc));
         }
         break;
