@@ -589,6 +589,22 @@ static uint32_t getSectionVirtualSize(unsigned i)
   return section.vsz;
 }
 
+/** read the specified amount of bytes from the PE file, starting at the
+  address specified by RVA.
+  Returns true on success (full read), false on any failure */
+static force_inline bool readRVA(uint32_t rva, uint8_t* buf, size_t bufsize)
+{
+  uint32_t off = pe_rawaddr(rva);
+  if (off == PE_INVALID_RVA)
+    return false;
+  int32_t oldpos = seek(rva, SEEK_SET);
+  if (oldpos == -1)
+    return false;
+  if (read(buf, bufsize) != bufsize)
+    return false;
+  seek(oldpos, SEEK_SET);
+  return true;
+}
 
 #ifdef __cplusplus
 #define restrict
