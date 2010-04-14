@@ -114,9 +114,9 @@ int entrypoint()
 
   for (i=0;i<16;i++) {
     debug("ImageData VirtualAddress:");
-//    debug(getPEImageDataVA(i));
+    debug(getPEDataDirRVA(i));
     debug("ImageData Size:");
- //   debug(getPEImageDataSize(i));
+    debug(getPEDataDirSize(i));
   }
 
   debug("Number of sections:");

@@ -474,15 +474,23 @@ static force_inline uint16_t getPECharacteristics()
   return le16_to_host(__clambc_pedata.file_hdr.Characteristics);
 }
 
+/** Returns whether this is a DLL */
+static force_inline bool getPEisDLL()
+{
+  return getPECharacteristics() & 0x2000;
+}
+
 /** Gets the virtual address of specified image data directory.
   @param n image directory requested
   @return Virtual Address of requested image directory
 */
-static force_inline uint32_t getPEImageDataVA(unsigned n)
+static force_inline uint32_t getPEDataDirRVA(unsigned n)
 {
+  struct pe_image_data_dir *p = &__clambc_pedata.opt64.DataDirectory[n];
+  struct pe_image_data_dir *p2 = &__clambc_pedata.opt64.DataDirectory[n];
   return n < 16 ? le32_to_host(isPE64() ?
-                               __clambc_pedata.opt64.DataDirectory[n].VirtualAddress :
-                               __clambc_pedata.opt32.DataDirectory[n].VirtualAddress)
+                               p->VirtualAddress :
+                               p2->VirtualAddress)
     : 0;
 }
 
@@ -490,7 +498,7 @@ static force_inline uint32_t getPEImageDataVA(unsigned n)
   @param n image directory requested
   @return Size of requested image directory
 */
-static force_inline uint32_t getPEImageDataSize(unsigned n)
+static force_inline uint32_t getPEDataDirSize(unsigned n)
 {
   return n < 16 ? le32_to_host(isPE64() ?
                                __clambc_pedata.opt64.DataDirectory[n].Size :
