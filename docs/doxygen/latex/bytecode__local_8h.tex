@@ -127,9 +127,11 @@ static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a22825914a55dbe
 \item 
 static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}{getPECharacteristics} ()
 \item 
-static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a0f7d1ed436f3436fc83e546c330807df}{getPEImageDataVA} (unsigned n)
+static force\_\-inline bool \hyperlink{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}{getPEisDLL} ()
 \item 
-static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a8ac3b55238a160e3946a48888c3c75ac}{getPEImageDataSize} (unsigned n)
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}{getPEDataDirRVA} (unsigned n)
+\item 
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a19dd537d51a4bfe23f58a92b2332ed02}{getPEDataDirSize} (unsigned n)
 \item 
 static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{getNumberOfSections} (void)
 \item 
@@ -142,6 +144,8 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ad26217bb0fe3c4
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}{getExeOffset} (void)
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}{getImageBase} (void)
+\item 
+static force\_\-inline bool \hyperlink{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}{readRVA} (uint32\_\-t rva, void $\ast$buf, size\_\-t bufsize)
 \item 
 static void $\ast$ \hyperlink{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}{memchr} (const void $\ast$s, int c, size\_\-t n)
 \item 
@@ -370,7 +374,29 @@ Returns PE characteristics. \hypertarget{bytecode__local_8h_a07f9eaa84e03e09a833
 \index{getPECheckSum@{getPECheckSum}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPECheckSum}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPECheckSum (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}
-Return the PE CheckSum. \hypertarget{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}{
+Return the PE CheckSum. \hypertarget{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDataDirRVA@{getPEDataDirRVA}}
+\index{getPEDataDirRVA@{getPEDataDirRVA}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEDataDirRVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEDataDirRVA (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}
+Gets the virtual address of specified image data directory. 
+\begin{DoxyParams}{Parameters}
+\item[{\em n}]image directory requested \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Virtual Address of requested image directory 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a19dd537d51a4bfe23f58a92b2332ed02}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDataDirSize@{getPEDataDirSize}}
+\index{getPEDataDirSize@{getPEDataDirSize}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEDataDirSize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEDataDirSize (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a19dd537d51a4bfe23f58a92b2332ed02}
+Gets the size of the specified image data directory. 
+\begin{DoxyParams}{Parameters}
+\item[{\em n}]image directory requested \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Size of requested image directory 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDllCharacteristics@{getPEDllCharacteristics}}
 \index{getPEDllCharacteristics@{getPEDllCharacteristics}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPEDllCharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEDllCharacteristics (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
@@ -385,29 +411,12 @@ Return the PE FileAlignment. \hypertarget{bytecode__local_8h_a5be87a6ddd3f434c87
 \index{getPEImageBase@{getPEImageBase}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPEImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint64\_\-t getPEImageBase (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}
-Return the PE ImageBase as 64-\/bit integer. \hypertarget{bytecode__local_8h_a8ac3b55238a160e3946a48888c3c75ac}{
-\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEImageDataSize@{getPEImageDataSize}}
-\index{getPEImageDataSize@{getPEImageDataSize}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEImageDataSize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEImageDataSize (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
-\label{bytecode__local_8h_a8ac3b55238a160e3946a48888c3c75ac}
-Gets the size of the specified image data directory. 
-\begin{DoxyParams}{Parameters}
-\item[{\em n}]image directory requested \end{DoxyParams}
-\begin{DoxyReturn}{Returns}
-Size of requested image directory 
-\end{DoxyReturn}
-\hypertarget{bytecode__local_8h_a0f7d1ed436f3436fc83e546c330807df}{
-\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEImageDataVA@{getPEImageDataVA}}
-\index{getPEImageDataVA@{getPEImageDataVA}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEImageDataVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEImageDataVA (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
-\label{bytecode__local_8h_a0f7d1ed436f3436fc83e546c330807df}
-Gets the virtual address of specified image data directory. 
-\begin{DoxyParams}{Parameters}
-\item[{\em n}]image directory requested \end{DoxyParams}
-\begin{DoxyReturn}{Returns}
-Virtual Address of requested image directory 
-\end{DoxyReturn}
-\hypertarget{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}{
+Return the PE ImageBase as 64-\/bit integer. \hypertarget{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEisDLL@{getPEisDLL}}
+\index{getPEisDLL@{getPEisDLL}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getPEisDLL}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool getPEisDLL ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}
+Returns whether this is a DLL \hypertarget{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPELFANew@{getPELFANew}}
 \index{getPELFANew@{getPELFANew}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getPELFANew}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getPELFANew (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
@@ -668,3 +677,9 @@ Read name of requested PE section.
 \begin{DoxyReturn}{Returns}
 0 if successful, $<$0 otherwise 
 \end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!readRVA@{readRVA}}
+\index{readRVA@{readRVA}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{readRVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool readRVA (uint32\_\-t {\em rva}, \/  void $\ast$ {\em buf}, \/  size\_\-t {\em bufsize})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}
+read the specified amount of bytes from the PE file, starting at the address specified by RVA. Returns true on success (full read), false on any failure 
