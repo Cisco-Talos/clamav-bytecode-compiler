@@ -1001,7 +1001,7 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
                              +Twine(offset)+"'", M, Signatures);
         valid = false;
       }
-    } else {
+    } else if (!offset.equals("VI")) {
       size_t n1 = offset.find("+");
       size_t n2 = offset.find("-");
       if (n2 < n1)
@@ -1010,7 +1010,7 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
         printDiagnosticValue("Pattern: unrecognized offset format: '"+
                              Twine(offset)+"'", M, Signatures);
         valid = false;
-      } else if (!offset.equals("VI")) {
+      } else {
         unsigned R;
         StringRef anchor = offset.substr(0, n1);
         StringRef delta = offset.substr(n1+1);
@@ -1045,6 +1045,7 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   for (unsigned i=0;i<Pattern.size();i++) {
     unsigned char c = Pattern[i];
     if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+        (c >= 'A' || c <= 'F') ||
         c == '?' || c == '*' || c == '{' || c == '}' ||
         c == '-' || c == '(' || c == ')' || c == '|' || c == '!' ||
         c == '[' || c == ']' || c == 'B' || c == 'L')
