@@ -1045,7 +1045,6 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   for (unsigned i=0;i<Pattern.size();i++) {
     unsigned char c = Pattern[i];
     if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
-        (c >= 'A' || c <= 'F') ||
         c == '?' || c == '*' || c == '{' || c == '}' ||
         c == '-' || c == '(' || c == ')' || c == '|' || c == '!' ||
         c == '[' || c == ']' || c == 'B' || c == 'L')
