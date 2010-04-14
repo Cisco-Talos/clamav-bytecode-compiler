@@ -48,14 +48,14 @@
 \lstset{language=C}
 \lstset{escapeinside={(*@}{@*)}}
 \lstset{numbers=left, numberstyle=\tiny, stepnumber=2,numbersep=5pt, basicstyle=\footnotesize, breaklines = true, breakatwhitespace=true, showstringspaces=true}
-\newrefformat{cha}{Chapter~\vref{#1}}
-\newrefformat{sec}{Section~\vref{#1}}
-\newrefformat{sub}{Section~\vref{#1}}
-\newrefformat{tab}{Table~\vref{#1}}
-\newrefformat{fig}{Figure~\vref{#1}}
-\newrefformat{alg}{Algorithm~\vref{#1}}
-\newrefformat{prg}{Program~\vref{#1}}
-\newrefformat{apdx}{Appendix~\vref{#1}}
+\newrefformat{cha}{Chapter~\ref{#1}}
+\newrefformat{sec}{Section~\ref{#1}}
+\newrefformat{sub}{Section~\ref{#1}}
+\newrefformat{tab}{Table~\ref{#1}}
+\newrefformat{fig}{Figure~\ref{#1}}
+\newrefformat{alg}{Algorithm~\ref{#1}}
+\newrefformat{prg}{Program~\ref{#1}}
+\newrefformat{apdx}{Appendix~\ref{#1}}
 \ifpdf
 % pdfLaTeX setup
     \usepackage[pdftex]{graphicx}
