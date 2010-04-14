@@ -487,10 +487,10 @@ static force_inline bool getPEisDLL()
 static force_inline uint32_t getPEDataDirRVA(unsigned n)
 {
   struct pe_image_data_dir *p = &__clambc_pedata.opt64.DataDirectory[n];
-  struct pe_image_data_dir *p2 = &__clambc_pedata.opt64.DataDirectory[n];
+  struct pe_image_data_dir *p32 = &__clambc_pedata.opt32.DataDirectory[n];
   return n < 16 ? le32_to_host(isPE64() ?
                                p->VirtualAddress :
-                               p2->VirtualAddress)
+                               p32->VirtualAddress)
     : 0;
 }
 
