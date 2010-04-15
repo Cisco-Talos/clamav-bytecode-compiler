@@ -113,10 +113,18 @@ static force_inline uint32_t matches(__Signature sig)\
  * @param virusname the name of the virus, excluding the prefix, must be one of
  * the virusnames declared in \p VIRUSNAMES.
  * \sa VIRUSNAMES */
-static force_inline void foundVirus(const char *virusname)
+static force_inline void __attribute__((overloadable)) foundVirus(const char *virusname)
 {
     setvirusname((const uint8_t*)virusname, 0);
 }
+
+#if __has_feature(attribute_overloadable)
+/** Like foundVirus() but just use the prefix as virusname */
+static force_inline void __attribute__((overloadable)) foundVirus(void)
+{
+  foundVirus("");
+}
+#endif
 
 /** Returns the currently scanned file's size.
   * @return file size as 32-bit unsigned integer */

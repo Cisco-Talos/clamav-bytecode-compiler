@@ -29,6 +29,7 @@
 #include "ClamBCCommon.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/DebugInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -38,6 +39,7 @@
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
+#include "llvm/Support/CallSite.h"
 #include "llvm/Support/ConstantRange.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/InstIterator.h"
@@ -65,7 +67,8 @@ private:
   std::string LogicalSignature;
   std::string virusnames;
   bool compileLogicalSignature(Function &F, unsigned target);
-  bool validateVirusName(const std::string& name, Function &F);
+  bool validateVirusName(const std::string& name, Module &M);
+  bool compileVirusNames(Module &M, unsigned kind);
 };
 char ClamBCLogicalCompiler::ID = 0;
 RegisterPass<ClamBCLogicalCompiler> X("clambc-lcompiler",
@@ -1152,16 +1155,130 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
 }
 
 bool ClamBCLogicalCompiler::validateVirusName(const std::string& name,
-                                              Function &F)
+                                              Module &M)
 {
   for (unsigned i=0;i<name.length();i++) {
     unsigned char c = name[i];
     if (isalnum(c) || c == '_' || c == '-' || c == '.')
       continue;
-    printDiagnostic("Invalid character in virusname: "+name.substr(i, 1), &F);
+    printDiagnostic("Invalid character in virusname: "+name.substr(i, 1), &M);
     return false;
   }
   return true;
+}
+
+bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
+{
+  GlobalVariable *VPFX = M.getGlobalVariable("__clambc_virusname_prefix");
+  if (!VPFX || !VPFX->hasDefinitiveInitializer()) {
+    if (kind) {
+      printDiagnostic("Virusname must be declared for non-generic bytecodes",
+                      &M);
+      return false;
+    }
+  }
+  if (!GetConstantStringInfo(VPFX, virusnames)) {
+    printDiagnostic("Unable to determine virusname prefix string", &M);
+    return false;
+  }
+  if (!validateVirusName(virusnames, M))
+    return false;
+
+  GlobalVariable *VNames = M.getGlobalVariable("__clambc_virusnames");
+  StringSet<> virusNamesSet;
+  std::string virusNamePrefix = virusnames;
+  if (VNames && VNames->hasDefinitiveInitializer()) {
+    // The virusnames in {} are only informative in the header (so you can
+    // see what are the possible virusnames detected by a bytecode),
+    // but the  bytecode has the names embedded in itself too, so
+    // hand-editing the visible virusnames won't change anything.
+    // The prefix isn't editable either.
+    ConstantArray *CA = cast<ConstantArray>(VNames->getInitializer());
+    if (CA->getNumOperands())
+      virusnames += ".{";
+    else
+      virusnames += "{";
+    bool Valid = true;
+    for (unsigned i=0;i<CA->getNumOperands();i++) {
+      std::string virusnamepart;
+      Constant *C = CA->getOperand(i);
+      if (!GetConstantStringInfo(C, virusnamepart)) {
+        printDiagnostic("Unable to determine virusname part string", &M);
+        Valid = false;
+      }
+      if (i)
+        virusnames += ",";
+      if (virusnamepart.empty())
+        continue;
+      virusNamesSet.insert(virusnamepart);
+      virusnames += virusnamepart;
+    }
+    virusnames += "}";
+    VNames->setLinkage(GlobalValue::InternalLinkage);
+  }
+  VPFX->setLinkage(GlobalValue::InternalLinkage);
+  if (!VPFX->use_empty()) {
+    printDiagnostic("Virusname prefix should not be used in the bytecode!", &M);
+  } else {
+    VPFX->eraseFromParent();
+  }
+
+  // Check that the foundVirus() is only called with the declared virusnames.
+  // This can come in 3 variants:
+  // foundVirus("FULLPREFIX.FULLSUFFIX")
+  // foundVirus("FULLSUFFIX")
+  // foundVirus("")
+  // The former is deprecated, but the compiler should actually transform all
+  // calls to foundVirus to include the full virusname.
+  Function *F = M.getFunction("setvirusname");
+  if (!F || F->use_empty()) {
+    // of course we can't check if a foundVirus call is ever reachable,
+    // but no foundVirus calls is certainly a bad thing.
+    printDiagnostic("Virusnames declared, but foundVirus was not called!", &M);
+    return false;
+  }
+  bool Valid = true;
+  for (Value::use_iterator I=F->use_begin(),E=F->use_end();
+       I != E; ++I) {
+    CallSite CS = CallSite::get(*I);
+    if (!CS.getInstruction())
+      continue;
+    if (CS.getCalledFunction() != F) {
+      printDiagnostic("setvirusname can only be directly called",
+                      CS.getInstruction());
+      Valid = false;
+      continue;
+    }
+    assert(CS.arg_size() == 2 && "setvirusname has 2 args");
+    std::string param;
+    Value *V = CS.getArgument(0);
+    if (!GetConstantStringInfo(V, param)) {
+      printDiagnostic("Argument of foundVirus() must be a constant string",
+                      CS.getInstruction());
+      Valid = false;
+      continue;
+    }
+    StringRef p(param);
+    // Remove duplicate prefix
+    if (p.startswith(virusNamePrefix))
+      p = p.substr(virusNamePrefix.length());
+    if (!p.empty() && !virusNamesSet.count(p)) {
+      printDiagnostic(Twine("foundVirus called with an undeclared virusname: ",
+                            p), CS.getInstruction());
+      Valid = false;
+      continue;
+    }
+    // Add prefix
+    std::string fullname = p.empty() ? virusNamePrefix :
+      virusNamePrefix + "." + p.str();
+    IRBuilder<> builder(CS.getInstruction()->getParent());
+    Value *C = builder.CreateGlobalStringPtr(fullname.c_str());
+
+    const Type *I32Ty = Type::getInt32Ty(M.getContext());
+    CS.setArgument(0, C);
+    CS.setArgument(1, ConstantInt::get(I32Ty, fullname.size()));
+  }
+  return Valid;
 }
 
 bool ClamBCLogicalCompiler::runOnModule(Module &M)
@@ -1185,60 +1302,9 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
                                             kind));
     GVKind->setConstant(true);
   }
-  GlobalVariable *VPFX = M.getGlobalVariable("__clambc_virusname_prefix");
-  if (!VPFX || !VPFX->hasDefinitiveInitializer()) {
-    if (kind) {
-      printDiagnostic("Virusname must be declared for non-generic bytecodes",
-                      F);
-      Valid = false;
-    }
-  } else do {
-    if (GetConstantStringInfo(VPFX, virusnames)) {
-      if (!validateVirusName(virusnames, *F)) {
-        Valid = false;
-        break;
-      }
-    } else {
-      printDiagnostic("Unable to determine virusname prefix string", F);
-      Valid = false;
-      break;
-    }
-    GlobalVariable *VNames = M.getGlobalVariable("__clambc_virusnames");
-    if (VNames && VNames->hasDefinitiveInitializer()) {
-      // The virusnames in {} are only informative in the header (so you can
-      // see what are the possible virusnames detected by a bytecode),
-      // but the  bytecode has the names embedded in itself too, so
-      // hand-editing the visible virusnames won't change anything.
-      // Only the virusname prefix is hand/script-editable.
-      ConstantArray *CA = cast<ConstantArray>(VNames->getInitializer());
-      if (CA->getNumOperands())
-        virusnames += ".{";
-      else
-        virusnames += "{";
-      for (unsigned i=0;i<CA->getNumOperands();i++) {
-        std::string virusnamepart;
-        Constant *C = CA->getOperand(i);
-        if (!GetConstantStringInfo(C, virusnamepart)) {
-          printDiagnostic("Unable to determine virusname part string", F);
-          Valid = false;
-        }
-        if (i)
-          virusnames += ",";
-        virusnames += virusnamepart;
-      }
-      virusnames += "}";
-      VNames->setLinkage(GlobalValue::InternalLinkage);
-    } else virusnames += "{}";
-    VPFX->setLinkage(GlobalValue::InternalLinkage);
-    if (!VPFX->use_empty()) {
-      printDiagnostic("Virusname prefix must not be used in the bytecode,"
-                         " because virusname prefix needs to be editable to"
-                         " solve virusname clashes!", F);
-      Valid = false;
-    }
-    //TODO: check that foundVirus/setvirusname is called only with one of
-    //these virusnames
-  } while(0);
+  if (!compileVirusNames(M, kind)) {
+    Valid = false;
+  }
   if (F) {
     GlobalVariable *GV = M.getGlobalVariable("__Target");
     unsigned target = ~0u;

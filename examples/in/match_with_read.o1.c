@@ -1,5 +1,4 @@
-VIRUSNAME_PREFIX("")
-VIRUSNAMES("ClamAV-Test-File-detected-via-bytecode")
+VIRUSNAME_PREFIX("ClamAV-Test-File-detected-via-bytecode")
 TARGET(1)
 
 /* This is all dummy stuff */
@@ -14,8 +13,6 @@ DEFINE_SIGNATURE(MZfromBOF,       "0:4d5a50000200000004000f00ffff0000")
 DEFINE_SIGNATURE(MZfromEOF, "EOF-544:4d5a50000200000004000f00ffff0000")
 DEFINE_SIGNATURE(MZfromS0,     "S0+0:4d5a50000200000004000f00ffff0000")
 SIGNATURES_END
-
-PE_UNPACKER_DECLARE
 
 bool logical_trigger(void)
 {
@@ -92,7 +89,7 @@ int entrypoint() {
 	if(!memcmp(cyphertext, "HELLO WORM", 10)) {
 		cyphertext[10] = 0; // Add a string terminator
 		debug((char *)cyphertext); // Print it, just for fun
-		foundVirus("ClamAV-Test-File-detected-via-bytecode"); // Set the virus name!
+		foundVirus(); // Virus found!
 	}
 	return 0;
 }
