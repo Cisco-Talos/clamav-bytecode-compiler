@@ -794,7 +794,7 @@ void ClamBCModule::finished(Module &M)
         c = *start++;
         linelength++;
       }
-      if (linelength < 80) {
+      if (c && linelength < 80) {
         OutReal << "S";
       } else {
         OutReal << "\n";
