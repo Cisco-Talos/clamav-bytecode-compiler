@@ -189,6 +189,69 @@ Also notice that comments can be used freely: they are ignored by the compiler. 
 
 \subsection{W32.Polipos.A detector rewritten as bytecode}
 \subsection{Virut detector in bytecode}
+\section{Writing regular expressions in bytecode} 
+ClamAV only supports a limited set of regular expressions in \verb+.ndb format+ : wildcards.
+The bytecode compiler allows you to compile fully generic regular expressions to bytecode directly.
+When libclamav loads the bytecode, it will compile to native code (if using the JIT), so it should offer quite good performance.
+
+The compiler currently uses \verb+re2c+ to compile regular expressions to C code, and then compile that to bytecode.
+The internal workings are all transparent to the user: the compiler automatically uses \verb+re2c+ when needed, and \verb+re2c+
+is embedded in the compiler, so you don't need to install it.
+
+The syntax of regular expressions are similar to the one used by \verb+POSIX regular expressions+, except you have to quote
+literals, since unquoted they are interpreted as regular expression names.
+
+\subsection{A very simple regular expression}
+
+Lets start with a simple example, to match this POSIX regular expression:
+\verb+eval([a-zA-Z_][a-zA-Z0-9_]*\.unescape+.
+
+See \prettyref{prg:reg1} \footnote{This omits the virusname, and logical signature declarations}.
+\begin{program}
+\lstinputlisting{../../examples/in/reg1.o1.c}
+\caption{Simple regular expression example}
+ \label{prg:reg1}
+\end{program}
+
+There are several new features introduced here, here is a step by step breakdown:
+\begin{description}
+ \item \verb+REGEX_SCANNER+ this declares the data structures needed by the regular expression matcher
+ \item \verb+seek(0, SEEK_SET)+ this sets the current file offset to position \verb+0+, matching will start at this position.
+For offset 0 it is not strictly necessary to do this, but it serves as a reminder that you might want to start matching somewhere, that is not necessarily 0.
+ \item \verb+ for(;;) { REGEX_LOOP_BEGIN+ this creates the regular expression matcher main loop. It takes the current file byte-by-byte \footnote{it is not really
+reading byte-by-byte, it is using a buffer to speed things up} and tries to match one of the regular expressions.
+ \item \verb+/*!re2c+ This mark the beginning of the regular expression description. The entire regular expression block is a C comment, starting with \verb+!re2c+
+ \item \verb+ANY = [^];+ This declares a regular expression named \verb+ANY+ that matches any byte.
+ \item \verb+"eval("[a-zA-Z_][a-zA-Z_0-9]*".unescape" {+ This is the actual regular expression.
+\begin{description}
+ \item \verb+"eval("+ This matches the literal string \verb+eval(+. 
+Literals have to be placed in double quotes \verb+"+ here, unlike in POSIX regular expressions or PCRE.
+If you want case-insensitive matching, you can use \verb+'+.
+ \item \verb+[a-zA-Z_]+ This is a character class, it matches any lowercase, uppercase or \verb+_+ characters.
+ \item \verb+[a-zA-Z_0-9]*"+ Same as before, but with repetition. \verb+*+ means match zero or more times, \verb|+| means match one or more times, just like in POSIX
+regular expressions.
+ \item \verb+".unescape"+ A literal string again
+ \item \verb+{+ start of the \emph{action} block for this regular expression. Whenever the regular expression matches, the attached C code is executed.
+\end{description}
+ \item \verb+long pos = REGEX_POS;+ this determines the absolute file offset where the regular expression has matched. Note that because
+the regular expression matcher uses a buffer, using just \verb+seek(0, SEEK_CUR)+ would give the current position of the end of that buffer, and
+not the current position during regular expression matching. You have to use the \verb+REGEX_POS+ macro to get the correct position.
+ \item \verb+debug(...)+ Shows a debug message about what was found and where. This is extremely helpful when you start writing regular expressions, and
+nothing works: you can determine whether your regular expression matched at all, and if it matched where you thought it would.
+There is also a \verb+DEBUG_PRINT_MATCH+ that prints the entire matched string to the debug output. 
+Of course before publishing the bytecode you might want to turn off these debug messages.
+ \item \verb+}+ closes the \emph{action} block for this regular expression
+ \item \verb+ANY { continue; }+ If none of the regular expressions matched so far, just keep running the matcher, at the next byte
+ \item \verb+*/+ closes the regular expression description block
+ \item \verb+}+ closes the \verb+for()+ loop
+\end{description}
+
+You may have multiple regular expressions, or declare multiple regular expressions with a name, and use those
+names to build more complex regular expressions.
+
+\subsection{Named regular expressions}
+
+
 \section{Writing unpackers}
 \label{sec:unpacker}
 \subsection{Structure of a bytecode for unpacking (and other hooks)}
