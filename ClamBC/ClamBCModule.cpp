@@ -146,6 +146,14 @@ bool ClamBCModule::runOnModule(Module &M)
 
   unsigned tid, cid, fid;
   startTID = tid = clamav::initTypeIDs(typeIDs, M.getContext());
+  // arrays of [2 x i8] .. [7 x i8] used for struct padding
+  for (unsigned i=1;i<8;i++) {
+    const Type *Ty = llvm::ArrayType::get(llvm::Type::getInt8Ty(M.getContext()),
+                                          i);
+    typeIDs[Ty] = tid++;
+    extraTypes.push_back(Ty);
+  }
+
   std::vector<const Type*> types;
   cid=1;
   fid=1;

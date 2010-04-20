@@ -45,9 +45,6 @@ static unsigned ATTRIBUTE_USED initTypeIDs(llvm::DenseMap<const llvm::Type*, uns
   typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt16Ty(C))] = tid++;
   typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(C))] = tid++;
   typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt64Ty(C))] = tid++;
-  // arrays of [2 x i8] .. [7 x i8] used for struct padding
-  for (unsigned i=1;i<8;i++)
-    typeIDs[llvm::ArrayType::get(llvm::Type::getInt8Ty(C), i)] = tid++;
   return tid;
 }
 
