@@ -181,7 +181,8 @@ static void printFile(const sys::Path *err)
 extern int cc1_main(const char **ArgBegin, const char **ArgEnd,
                     const char *Argv0, void *MainAddr);
 
-static int compileInternal(const char *input, int optimize, const char *argv0,
+static int compileInternal(const char *input, int optimize, int optsize,
+                           const char *argv0,
                            raw_fd_ostream *fd, CompilerInstance &Clang)
 {
   std::string ErrMsg;
@@ -204,6 +205,7 @@ static int compileInternal(const char *input, int optimize, const char *argv0,
   //XXX  M->setTargetTriple("");
   //XXX  M->setDataLayout("");
 
+  // TODO: let clang handle these
   PassManager Passes;
   FunctionPassManager *FPasses = NULL;
   if (optimize) {
@@ -212,13 +214,16 @@ static int compileInternal(const char *input, int optimize, const char *argv0,
     createStandardFunctionPasses(FPasses, optimize);
   }
   Passes.add(new TargetData(M.get()));//XXX
+  unsigned threshold = optsize ? 75 : optimize > 2 ? 275 : 225;
   createStandardModulePasses(&Passes, optimize,
-                             false,
+                             optsize,
                              true,
-                             optimize > 1,
+                             optimize > 1 && !optsize,
                              false,
                              false,
-                             optimize > 1 ? createFunctionInliningPass() : 0);
+                             optimize > 1 ?
+                             createFunctionInliningPass() :
+                             createAlwaysInlinerPass());
   if (optimize) {
     FPasses->doInitialization();
     for (Module::iterator I = M.get()->begin(), E = M.get()->end();
@@ -507,7 +512,7 @@ static int CompileSubprocess(const char **argv, int argc,
   }
 
   ret = compileInternal(FrontendOpts.OutputFile.c_str(), Opts.OptimizationLevel,
-                        argv[0], fd, Clang);
+                        Opts.OptimizeSize, argv[0], fd, Clang);
   // Erase temp file, we need to do this here since OutputFile is a tempfile
   // only if action was EmitBC
   sys::Path(FrontendOpts.OutputFile).eraseFromDisk();

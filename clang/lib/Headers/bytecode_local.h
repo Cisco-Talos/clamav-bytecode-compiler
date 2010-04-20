@@ -166,7 +166,11 @@ bool __is_bigendian(void) __attribute__((const)) __attribute__((nothrow));
  * @return integer converted to host's endianess */
 static uint32_t force_inline le32_to_host(uint32_t v)
 {
-    return __is_bigendian() ? __builtin_bswap32(v) : v;
+  /* calculate bswap always, so compiler can use a select,
+     and doesn't need to create a branch.
+     This will get optimized away at bytecode load time anyway */
+  uint32_t swapped = __builtin_bswap32(v);
+  return __is_bigendian() ? swapped : v;
 }
 
 /** Converts the specified value if needed, knowing it is in little endian
@@ -175,7 +179,8 @@ static uint32_t force_inline le32_to_host(uint32_t v)
  * @return integer converted to host's endianess */
 static uint32_t force_inline le64_to_host(uint32_t v)
 {
-    return __is_bigendian() ? __builtin_bswap64(v) : v;
+  uint32_t swapped = __builtin_bswap64(v);
+  return __is_bigendian() ? swapped : v;
 }
 
 /** Converts the specified value if needed, knowing it is in little endian
@@ -184,7 +189,8 @@ static uint32_t force_inline le64_to_host(uint32_t v)
  * @return integer converted to host's endianess */
 static uint16_t force_inline le16_to_host(uint16_t v)
 {
-    return __is_bigendian() ? ((v & 0xff) << 8) | ((v >> 8) & 0xff) : v;
+  uint16_t swapped = ((v & 0xff) << 8) | ((v >> 8) & 0xff);
+  return __is_bigendian() ? swapped : v;
 }
 
 /** Reads from the specified buffer a 32-bit of little-endian integer.
