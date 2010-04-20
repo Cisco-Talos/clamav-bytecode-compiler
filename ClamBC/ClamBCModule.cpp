@@ -56,7 +56,7 @@ static cl::opt<bool>
 WriteDI("clambc-dbg", cl::Hidden, cl::init(false),
         cl::desc("Write debug information into output bytecode"));
 
-static cl::opt<std::string> 
+static cl::opt<std::string>
 SrcFile("clambc-src",cl::desc("Source file"),
         cl::value_desc("Source file coressponding"
                        "to this compiled file"),
@@ -131,7 +131,8 @@ bool ClamBCModule::runOnModule(Module &M)
   kind = 0;
   GlobalVariable *GVKind = M.getGlobalVariable("__clambc_kind");
   if (GVKind && GVKind->hasDefinitiveInitializer()) {
-    kind = cast<ConstantInt>(GVKind->getInitializer())->getValue().getZExtValue();
+    kind = cast<ConstantInt>(GVKind->getInitializer())->getValue().
+      getZExtValue();
     GVKind->setLinkage(GlobalValue::InternalLinkage);
     if (kind >= 65536)
       ClamBCModule::stop("Bytecode kind cannot be higher than 64k\n", &M);
@@ -343,16 +344,54 @@ void ClamBCModule::describeType(llvm::raw_ostream &Out, const Type *Ty, Module
   }
 
   if (const StructType *STy = dyn_cast<StructType>(Ty)) {
-    printFixedNumber(Out, STy->isPacked() ? 2 : 3, 1);
-    printNumber(Out, STy->getNumElements());
-    for (StructType::element_iterator I=STy->element_begin(), E=STy->element_end();
-         I != E; ++I) {
-      if (isa<PointerType>(I->get())) {
+    TargetData *TD = &getAnalysis<TargetData>();
+    // get field offsets and insert explicit padding
+    const StructLayout *SL = TD->getStructLayout(STy);
+    unsigned offset = 0;
+    std::vector<unsigned> elements;
+    const Type *I8Ty = Type::getInt8Ty(STy->getContext());
+    for (unsigned i=0;i<STy->getNumElements();i++) {
+      const Type *Ty = STy->getTypeAtIndex(i);
+      if (isa<PointerType>(Ty)) {
         WriteTypeSymbolic(errs(), STy, M);
         STy->dump();
         stop("Pointers inside structs are not supported\n", M);
       }
-      printNumber(Out, getTypeID(I->get()));
+      unsigned abiAlign = TD->getABITypeAlignment(Ty);
+      unsigned typeBits = TD->getTypeSizeInBits(Ty);
+      if (Ty->isIntegerTy() && 8*abiAlign < typeBits) {
+        Ty->dump();
+        errs() << 8*abiAlign << " < " << typeBits << "\n";
+        // we've set up a targetdata where alignof(32) == 32, alignof(64) == 64,
+        // so that each type is maximally aligned on all architectures.
+        stop("Internal error: ABI alignment less than typesize for integer!\n",
+             M);
+      }
+      elements.push_back(getTypeID(Ty));
+      offset += TD->getTypeAllocSize(Ty);
+      unsigned tdoffset = i+1 < STy->getNumElements() ?
+        SL->getElementOffset(i+1) : SL->getSizeInBytes();
+      while (tdoffset > offset) {
+        unsigned diff = tdoffset - offset;
+        if (diff >= 8) diff = 8;
+        elements.push_back(getTypeID(ArrayType::get(I8Ty, diff)));
+        offset += diff;
+      }
+      if (tdoffset < offset) {
+        STy->dump();
+        stop("Internal error: calculated offset in struct higher than in structlayout\n", M);
+      }
+    }
+    if (TD->RoundUpAlignment(offset, SL->getAlignment()) != offset) {
+      STy->dump();
+      stop("Internal error: struct not padded according to alignment\n", M);
+    }
+
+    printFixedNumber(Out, STy->isPacked() ? 2 : 3, 1);
+    printNumber(Out, elements.size());
+    for (std::vector<unsigned>::iterator I=elements.begin(), E=elements.end();
+         I != E; ++I) {
+      printNumber(Out, *I);
     }
     return;
   }
