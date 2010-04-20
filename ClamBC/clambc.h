@@ -128,4 +128,15 @@ enum bc_global {
 };
 
 #define BC_START_TID 69
+
+enum BytecodeKind {
+    /** generic bytecode, not tied a specific hook */
+    BC_GENERIC=0,
+    _BC_START_HOOKS=256,
+    /** triggered by a logical signature */
+    BC_LOGICAL=256,
+    /** a PE unpacker */
+    BC_PE_UNPACKER,
+    _BC_LAST_HOOK
+};
 #endif

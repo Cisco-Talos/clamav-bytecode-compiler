@@ -321,5 +321,5 @@ uint32_t entrypoint()
 	return -1;
     }
 
-    return yc_decrypt(fbuf, filesize, n, getLFANew(), ecx,offset);
+    return yc_decrypt(fbuf, filesize, n, getPELFANew(), ecx,offset);
 }

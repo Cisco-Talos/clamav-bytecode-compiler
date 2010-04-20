@@ -1167,18 +1167,23 @@ bool ClamBCLogicalCompiler::validateVirusName(const std::string& name,
   return true;
 }
 
+static bool isUnpacker(unsigned kind)
+{
+  return kind == BC_PE_UNPACKER;
+}
+
 bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
 {
   GlobalVariable *VPFX = M.getGlobalVariable("__clambc_virusname_prefix");
   if (!VPFX || !VPFX->hasDefinitiveInitializer()) {
-    if (kind) {
+    if (kind)
       printDiagnostic("Virusname must be declared for non-generic bytecodes",
                       &M);
-      return false;
-    }
+    return false;
   }
   if (!GetConstantStringInfo(VPFX, virusnames)) {
-    printDiagnostic("Unable to determine virusname prefix string", &M);
+    if (kind)
+      printDiagnostic("Unable to determine virusname prefix string", &M);
     return false;
   }
   if (!validateVirusName(virusnames, M))
@@ -1233,9 +1238,12 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
   Function *F = M.getFunction("setvirusname");
   if (!F || F->use_empty()) {
     // of course we can't check if a foundVirus call is ever reachable,
-    // but no foundVirus calls is certainly a bad thing.
-    printDiagnostic("Virusnames declared, but foundVirus was not called!", &M);
-    return false;
+    // but no foundVirus calls is certainly a bad thing for non-unpacker
+    // bytecodes.
+    if (!isUnpacker(kind))
+      printDiagnostic("Virusnames declared, but foundVirus was not called!", &M);
+    // non-fatal
+    return true;
   }
   bool Valid = true;
   for (Value::use_iterator I=F->use_begin(),E=F->use_end();
@@ -1303,6 +1311,8 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     GVKind->setConstant(true);
   }
   if (!compileVirusNames(M, kind)) {
+    if (!kind)
+      return true;
     Valid = false;
   }
   if (F) {
