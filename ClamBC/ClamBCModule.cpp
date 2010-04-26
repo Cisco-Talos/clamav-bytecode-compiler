@@ -467,7 +467,6 @@ void ClamBCModule::printModuleHeader(Module &M, unsigned startTID, unsigned
       getZExtValue();
   }
 
-
   OutReal << "ClamBC";
   // Print functionality level
   // 0.96 only knows to skip based on bytecode format level, and has no min/max
@@ -522,10 +521,6 @@ void ClamBCModule::printModuleHeader(Module &M, unsigned startTID, unsigned
   OutReal << ":" << maxLine << "\n";
   // first line must fit into 8k
   assert(OutReal.tell() < 8192);
-  if (!LogicalSignature.empty())
-    OutReal << LogicalSignature;
-  else
-    OutReal << virusnames;
 }
 
 void ClamBCModule::printConstant(Module &M, Constant *C)
@@ -592,6 +587,10 @@ void ClamBCModule::printConstant(Module &M, Constant *C)
 void ClamBCModule::printGlobals(Module &M, uint16_t stid)
 {
   // Describe types
+  if (!LogicalSignature.empty())
+    Out << LogicalSignature;
+  else
+    Out << virusnames;
   printEOL();
   Out << "T";
   printFixedNumber(Out, stid, 2);

@@ -14,6 +14,8 @@ DEFINE_SIGNATURE(MZfromEOF, "EOF-544:4d5a50000200000004000f00ffff0000")
 DEFINE_SIGNATURE(MZfromS0,     "S0+0:4d5a50000200000004000f00ffff0000")
 SIGNATURES_END
 
+PE_UNPACKER_DECLARE
+
 bool logical_trigger(void)
 {
   return matches(Signatures.MZfromBOF) && matches(Signatures.MZfromEOF) && matches(Signatures.MZfromS0);
