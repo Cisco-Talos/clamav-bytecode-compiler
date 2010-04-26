@@ -623,7 +623,7 @@ static force_inline bool readRVA(uint32_t rva, void *buf, size_t bufsize)
   uint32_t off = pe_rawaddr(rva);
   if (off == PE_INVALID_RVA)
     return false;
-  int32_t oldpos = seek(rva, SEEK_SET);
+  int32_t oldpos = seek(off, SEEK_SET);
   if (oldpos == -1)
     return false;
   if (read(buf, bufsize) != bufsize)
