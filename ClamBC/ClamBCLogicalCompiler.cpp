@@ -1061,6 +1061,29 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   return valid;
 }
 
+static bool checkMinimum(llvm::Module *M, std::string s, unsigned min)
+{
+  unsigned min_required = 0;
+  StringRef ref(s);
+  // Due to bb #1957 VI and $ sigs don't work properly in 0.96,
+  // so using these sigs requires minimum functionality level
+  if (ref.find('$') != StringRef::npos ||
+      ref.find("VI") != StringRef::npos)
+    min_required = FUNC_LEVEL_096_dev;
+
+  if (min_required && !min) {
+    printDiagnostic("Logical signature use of VI/macros requires minimum "
+                    "functionality level of 0.96_dev", M);
+    return false;
+  }
+  if (min_required && min < min_required) {
+    printDiagnostic("Logical signature use of VI/macros requires minimum "
+                    "functionality level of 0.96_dev", M);
+    return false;
+  }
+  return true;
+}
+
 bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target,
                                                     unsigned min, unsigned max)
 {
@@ -1141,15 +1164,17 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
     return false;
   unsigned groups = 0;
   Twine ltwine = Twine(virusnames)+";Target:"+Twine(target);
+  std::string ndbsigs = node2String(node, groups);
   if (min || max) {
     if (!max)
       max = 255;/* for now it should be enough, we can always increase it later
                    */
     if (!min)
       min = BC_FORMAT_096;/* 0.96 is first to have bytecode support */
-    LogicalSignature = (ltwine + ",Engine:"+Twine(min)+"-"+Twine(max)+";" + node2String(node, groups)).str();
+    LogicalSignature = (ltwine + ",Engine:"+Twine(min)+"-"+Twine(max)+";" +
+                        ndbsigs).str();
   } else
-    LogicalSignature = (ltwine + ";" + node2String(node, groups)).str();
+    LogicalSignature = (ltwine + ";" + ndbsigs).str();
   if (groups > 64) {
     printDiagnostic(("Logical signature: a maximum of 64 subexpressions are "
                      "supported, but logical signature has "+Twine(groups)+
@@ -1161,6 +1186,9 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
        I != E; ++I) {
     LogicalSignature += ";"+*I;
   }
+  if (!checkMinimum(F.getParent(), LogicalSignature, min))
+    return false;
+
   F.setLinkage(GlobalValue::InternalLinkage);
   return true;
 }
