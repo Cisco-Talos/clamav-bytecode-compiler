@@ -26,12 +26,14 @@ struct bytecode_metadata {
     char *compiler;
     char *sigmaker;
     uint64_t timestamp;
-    unsigned long maxStack, maxMem;
-    unsigned long maxTime;
+    unsigned formatlevel;
+    unsigned minfunc, maxfunc;
+    unsigned maxresource;/* reserved */
     unsigned targetExclude;
 };
 
-#define BC_FUNC_LEVEL 6
+#define BC_FORMAT_096 6
+#define BC_FORMAT_LEVEL 7
 #define BC_HEADER "ClamBC"
 
 enum bc_opcode {
@@ -128,9 +130,8 @@ enum bc_global {
 };
 
 #define BC_START_TID 69
-
 enum BytecodeKind {
-    /** generic bytecode, not tied a specific hook */
+  /** generic bytecode, not tied a specific hook */
     BC_GENERIC=0,
     _BC_START_HOOKS=256,
     /** triggered by a logical signature */
@@ -139,4 +140,10 @@ enum BytecodeKind {
     BC_PE_UNPACKER,
     _BC_LAST_HOOK
 };
+/** LibClamAV functionality level constants */
+enum FunctionalityLevels {
+    FUNC_LEVEL_096 = 51,
+    FUNC_LEVEL_096_dev
+};
+
 #endif

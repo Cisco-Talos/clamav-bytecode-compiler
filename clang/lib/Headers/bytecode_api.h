@@ -54,6 +54,12 @@ enum BytecodeKind {
 
 enum { PE_INVALID_RVA = 0xFFFFFFFF };
 
+/** LibClamAV functionality level constants */
+enum FunctionalityLevels {
+    FUNC_LEVEL_096 = 51,
+    FUNC_LEVEL_096_dev
+};
+
 #ifdef __CLAMBC__
 
 /** @brief Logical signature match counts

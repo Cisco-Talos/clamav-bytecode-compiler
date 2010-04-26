@@ -76,6 +76,18 @@ typedef struct signature {
  * @param tgt ClamAV signature type (0 - raw, 1 - PE, etc.) */
 #define TARGET(tgt) const unsigned short __Target = (tgt);
 
+/** Define the minimum engine functionality level required for this 
+ * bytecode/logical signature.
+ * Engines older than this will skip loading the bytecode.
+ * You can use the 'enum FunctionalityLevels' constants here. */
+#define FUNCTIONALITY_LEVEL_MIN(m) const unsigned short __FuncMin = (m);
+
+/** Define the maximum engine functionality level required for this 
+ * bytecode/logical signature.
+ * Engines newer than this will skip loading the bytecode.
+ * You can use the 'enum FunctionalityLevels' constants here. */
+#define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
+
 /** Marks the beginning of subsignature pattern definitions. 
  * \sa SIGNATURES_DECL_BEGIN */
 /* some other macro may use __COUNTER__, so we need to subtract its current\

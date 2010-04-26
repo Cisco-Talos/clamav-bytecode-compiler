@@ -439,12 +439,51 @@ void ClamBCModule::printString(raw_ostream &Out, const char *string,
   printConstData(Out, (const unsigned char*)cstr, strlen(cstr)+1);
 }
 
+
+// checks whether the queried functionality level is between min and max.
+// a min/max of 0 means no min/max.
+static bool checkFunctionalityLevel(unsigned query, unsigned min, unsigned max)
+{
+  if (min && query < min)
+    return false;
+  if (max && query > max)
+    return false;
+  return true;
+}
+
 void ClamBCModule::printModuleHeader(Module &M, unsigned startTID, unsigned
                                      maxLine)
 {
+  NamedMDNode *MinFunc = M.getNamedMetadata("clambc.funcmin");
+  NamedMDNode *MaxFunc = M.getNamedMetadata("clambc.funcmax");
+  unsigned minfunc = 0;
+  unsigned maxfunc = 0;
+  if (MinFunc) {
+    minfunc = cast<ConstantInt>(MinFunc->getOperand(0)->getOperand(0))->
+      getZExtValue();
+  }
+  if (MaxFunc) {
+    maxfunc = cast<ConstantInt>(MaxFunc->getOperand(0)->getOperand(0))->
+      getZExtValue();
+  }
+
+
   OutReal << "ClamBC";
   // Print functionality level
-  printNumber(OutReal, BC_FUNC_LEVEL);
+  // 0.96 only knows to skip based on bytecode format level, and has no min/max
+  // verification.
+  // So if this bytecode is supposed to load on 0.96 use 0.96's format,
+  // otherwise use post 0.96 format.
+  // In both cases we output the min/max functionality level fields (using 2
+  // unused fields from 0.96).
+  // 0.96 will ignore these and load it (but we already checked it should load
+  // at least on 0.96 via bytecode format). Post 0.96 will check the fields and
+  // load/skip based on that.
+  // For post 0.96 we use a higher format, so 0.96 will not load it.
+  if (checkFunctionalityLevel(FUNC_LEVEL_096, minfunc, maxfunc))
+    printNumber(OutReal, BC_FORMAT_096);
+  else
+    printNumber(OutReal, BC_FORMAT_LEVEL);
   // Bytecode compile timestamp
   printNumber(OutReal, sys::TimeValue::now().toEpochTime());
   const char *user = getenv("SIGNDUSER");
@@ -456,10 +495,11 @@ void ClamBCModule::printModuleHeader(Module &M, unsigned startTID, unsigned
   printNumber(OutReal, 0);
 
   printNumber(OutReal, kind);
-  //TODO: allow to override these from a global in Module.
-  // Maximum stack, memory, time. 0 means maximum allowed by runtime
-  printNumber(OutReal, 0);
-  printNumber(OutReal, 0);
+  // functionality level min, max, unusued in 0.96!
+  printNumber(OutReal, minfunc);
+  printNumber(OutReal, maxfunc);
+
+  // Some maximum (unused)
   printNumber(OutReal, 0);
 
   // Compiler version

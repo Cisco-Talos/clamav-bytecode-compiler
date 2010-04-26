@@ -66,7 +66,8 @@ public:
 private:
   std::string LogicalSignature;
   std::string virusnames;
-  bool compileLogicalSignature(Function &F, unsigned target);
+  bool compileLogicalSignature(Function &F, unsigned target, unsigned min,
+                               unsigned max);
   bool validateVirusName(const std::string& name, Module &M);
   bool compileVirusNames(Module &M, unsigned kind);
 };
@@ -1060,7 +1061,8 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   return valid;
 }
 
-bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target)
+bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target,
+                                                    unsigned min, unsigned max)
 {
   LogicalCompiler compiler;
 
@@ -1138,7 +1140,16 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   if (!valid)
     return false;
   unsigned groups = 0;
-  LogicalSignature = (Twine(virusnames)+";Target:"+Twine(target)+";" + node2String(node, groups)).str();
+  Twine ltwine = Twine(virusnames)+";Target:"+Twine(target);
+  if (min || max) {
+    if (!max)
+      max = 255;/* for now it should be enough, we can always increase it later
+                   */
+    if (!min)
+      min = BC_FORMAT_096;/* 0.96 is first to have bytecode support */
+    LogicalSignature = (ltwine + ",Engine:"+Twine(min)+"-"+Twine(max)+";" + node2String(node, groups)).str();
+  } else
+    LogicalSignature = (ltwine + ";" + node2String(node, groups)).str();
   if (groups > 64) {
     printDiagnostic(("Logical signature: a maximum of 64 subexpressions are "
                      "supported, but logical signature has "+Twine(groups)+
@@ -1315,8 +1326,42 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       return true;
     Valid = false;
   }
+  GlobalVariable *GV = M.getGlobalVariable("__FuncMin");
+  unsigned funcmin = 0, funcmax = 0;
+  if (GV && GV->hasDefinitiveInitializer()) {
+    NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.funcmin");
+    Value *C = GV->getInitializer();
+    MDNode *N = MDNode::get(M.getContext(), &C, 1);
+    Node->addOperand(N);
+    GV->setLinkage(GlobalValue::InternalLinkage);
+    funcmin = cast<ConstantInt>(C)->getZExtValue();
+    if (funcmin < FUNC_LEVEL_096) {
+      printDiagnostic("Minimum functionality level can't be set lower than "
+                      "0.96", &M, GV);
+      Valid = false;
+    }
+  }
+  GV = M.getGlobalVariable("__FuncMax");
+  if (GV && GV->hasDefinitiveInitializer()) {
+    NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.funcmax");
+    Value *C = GV->getInitializer();
+    MDNode *N = MDNode::get(M.getContext(), &C, 1);
+    Node->addOperand(N);
+    GV->setLinkage(GlobalValue::InternalLinkage);
+    funcmax = cast<ConstantInt>(C)->getZExtValue();
+    if (funcmax < FUNC_LEVEL_096) {
+      printDiagnostic("Maximum functionality level can't be set lower than "
+                      "0.96", &M, GV);
+      Valid = false;
+    }
+    if (funcmax < funcmin) {
+      printDiagnostic("Maximum functionality level can't be lower than "
+                      "minimum", &M, GV);
+      Valid = false;
+    }
+  }
   if (F) {
-    GlobalVariable *GV = M.getGlobalVariable("__Target");
+    GV = M.getGlobalVariable("__Target");
     unsigned target = ~0u;
     if (!GV || !GV->hasDefinitiveInitializer()) {
       Valid = false;
@@ -1326,7 +1371,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       GV->setLinkage(GlobalValue::InternalLinkage);
     }
     //TODO: validate that target is a valid target
-    if (!compileLogicalSignature(*F, target)) {
+    if (!compileLogicalSignature(*F, target, funcmin, funcmax)) {
       Valid = false;
     }
     NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");
