@@ -1170,7 +1170,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
       max = 255;/* for now it should be enough, we can always increase it later
                    */
     if (!min)
-      min = BC_FORMAT_096;/* 0.96 is first to have bytecode support */
+      min = FUNC_LEVEL_096;/* 0.96 is first to have bytecode support */
     LogicalSignature = (ltwine + ",Engine:"+Twine(min)+"-"+Twine(max)+";" +
                         ndbsigs).str();
   } else
