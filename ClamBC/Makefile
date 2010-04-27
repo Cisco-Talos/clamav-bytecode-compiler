@@ -17,6 +17,7 @@ GIT_VERSION := $(shell cd $(LLVM_SRC_ROOT); git describe --always)
 all:: version.h
 $(SOURCES): version.h
 version.c: version.h
+
 version.h: version.h.tmp
 		$(Verb) cp version.h.tmp $@
 
@@ -26,3 +27,4 @@ version.h.tmp:
 		$(Verb) echo -n "#define GIT_VERSION \"" >version.h.tmp
 		$(Verb) echo -n $(GIT_VERSION) >>version.h.tmp
 		$(Verb) echo "\"" >>version.h.tmp
+		$(Verb) rm $(ObjDir)/version.o
