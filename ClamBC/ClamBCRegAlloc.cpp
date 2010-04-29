@@ -127,6 +127,13 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
           DstTy = DPTy->getElementType();
         }
 
+        if (AllocaInst *AI = dyn_cast<AllocaInst>(BCI->getOperand(0))) {
+          if (!AI->isArrayAllocation()) {
+            // we need to use a GEP 0,0 for bitcast here
+            ValueMap[II] = id++;
+            continue;
+          }
+        }
         SkipMap.insert(II);
         ValueMap[II]=getValueID(II->getOperand(0));
         continue;

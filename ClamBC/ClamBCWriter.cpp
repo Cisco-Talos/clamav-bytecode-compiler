@@ -259,6 +259,17 @@ private :
 
   void visitCastInst (CastInst &I)
   {
+    if (BitCastInst *BCI = dyn_cast<BitCastInst>(&I)) {
+      if (BCI->isLosslessCast()) {
+        printFixedNumber(OP_BC_GEPZ, 2);
+        printType(BCI->getOperand(0)->getType(), 0, BCI);
+        printOperand(*BCI, BCI->getOperand(0));
+        printNumber(0, true);
+        printFixedNumber(4, 1);
+        return;
+      }
+    }
+
     assert (!I.isLosslessCast());
     LLVMContext &C = I.getContext();
     if (isa<PtrToIntInst>(I) && I.getType() == Type::getInt64Ty(C)) {

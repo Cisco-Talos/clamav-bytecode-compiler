@@ -65,6 +65,8 @@ public:
 private:
   bool final;
   void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
+  void fixupBitCasts(Function &F);
+  void fixupGEPs(Function &F);
 };
 char ClamBCLowering::ID=0;
 void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
@@ -143,6 +145,109 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
     }
 }
 
+// has non-noop bitcast use?
+static bool hasBitcastUse(Instruction *I)
+{
+  if (!I)
+    return false;
+  for (Value::use_iterator UI=I->use_begin(),UE=I->use_end();
+       UI != UE; ++UI) {
+    if (BitCastInst *BCI = dyn_cast<BitCastInst>(*UI)) {
+      if (BCI->getSrcTy() != BCI->getDestTy())
+        return true;
+    }
+  }
+  return false;
+}
+
+void ClamBCLowering::fixupBitCasts(Function &F)
+{
+  // bitcast of alloca doesn't work properly in libclamav,
+  // so change these allocas to be arrays of 1 element, and gep into it.
+  // that fixes the casts.
+  for (Function::iterator I=F.begin(),E=F.end();
+       I != E; ++I)
+  {
+    std::vector<AllocaInst*> allocas;
+    BasicBlock::iterator J = I->begin();
+    AllocaInst *AI;
+    do {
+      AI = dyn_cast<AllocaInst>(J);
+      if (hasBitcastUse(AI))
+        allocas.push_back(AI);
+      ++J;
+    } while (AI);
+    Instruction *InsertBefore = J;
+    for (std::vector<AllocaInst*>::iterator J=allocas.begin(),JE=allocas.end();
+         J != JE; ++J) {
+      AllocaInst *AI = *J;
+      const Type *Ty = ArrayType::get(AI->getAllocatedType(), 1);
+      AllocaInst *NewAI = new AllocaInst(Ty, "", InsertBefore);
+      Constant *Zero = ConstantInt::get(Type::getInt32Ty(Ty->getContext()), 0);
+      Value *V[] = {
+        Zero,
+        Zero
+      };
+      Value *GEP = GetElementPtrInst::CreateInBounds(NewAI, &V[0], &V[0]+2, "", InsertBefore);
+      AI->replaceAllUsesWith(GEP);
+      AI->eraseFromParent();
+    }
+  }
+}
+
+void ClamBCLowering::fixupGEPs(Function &F)
+{
+  // GEP of a global/constantexpr hits a libclamav interpreter bug,
+  // so instead create a constantexpression, store it and GEP that.
+  std::vector<GetElementPtrInst*> geps;
+  for (inst_iterator I=inst_begin(F),E=inst_end(F);
+       I != E; ++I) {
+    if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(&*I)) {
+      if (isa<GlobalVariable>(GEPI->getOperand(0)))
+        geps.push_back(GEPI);
+    }
+  }
+  BasicBlock *Entry = &F.getEntryBlock();
+  for (std::vector<GetElementPtrInst*>::iterator I=geps.begin(),E=geps.end();
+       I != E; ++I) {
+    GetElementPtrInst *GEPI = *I;
+    BasicBlock *BB = GEPI->getParent();
+    std::vector<Value*> indexes;
+    GetElementPtrInst::op_iterator J = GEPI->idx_begin(), JE = GEPI->idx_end();
+    for (;J != JE; ++J) {
+      // push all constants
+      if (Constant *C = dyn_cast<Constant>(*J)) {
+        indexes.push_back(C);
+        continue;
+      }
+      // and a 0 instead of the first variable gep index
+      indexes.push_back(ConstantInt::get(Type::getInt32Ty(GEPI->getContext()),
+                                         0));
+      break;
+    }
+    Constant *C = cast<Constant>(GEPI->getOperand(0));
+    Constant *GC = ConstantExpr::getInBoundsGetElementPtr(C,
+                                                          indexes.data(),
+                                                          indexes.size());
+    if (J != JE) {
+      indexes.clear();
+      for (;J != JE; ++J) {
+        indexes.push_back(*J);
+      }
+      AllocaInst *AI = new AllocaInst(GC->getType(), "", Entry->begin());
+      new StoreInst(GC, AI, GEPI);
+      Value *L = new LoadInst(AI, "", GEPI);
+      Value *V = GetElementPtrInst::CreateInBounds(L, indexes.begin(),
+                                                   indexes.end(), "",
+                                                   GEPI);
+      GEPI->replaceAllUsesWith(V);
+      GEPI->eraseFromParent();
+    } else {
+      GEPI->replaceAllUsesWith(GC);
+    }
+  }
+}
+
 bool ClamBCLowering::runOnModule(Module &M)
 {
 
@@ -151,7 +256,13 @@ bool ClamBCLowering::runOnModule(Module &M)
   //IL->AddPrototypes(M);
   for (Module::iterator I=M.begin(),E=M.end();
        I != E; ++I) {
+    if (I->isDeclaration())
+      continue;
     lowerIntrinsics(0, *I);
+    if (final) {
+      fixupBitCasts(*I);
+      fixupGEPs(*I);
+    }
   }
   //delete IL;
   return true;
