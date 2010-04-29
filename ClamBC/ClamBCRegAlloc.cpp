@@ -103,6 +103,7 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
       continue;
     if (II->getType()->getTypeID() == Type::VoidTyID) {
       ValueMap[II]=~0u;
+      continue;
     }
     if (II->use_empty() && !II->mayHaveSideEffects()) {
       SkipMap.insert(II);
@@ -142,7 +143,6 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
       // single-use store to alloca -> store directly to alloca
       if (StoreInst *SI = dyn_cast<StoreInst>(*II->use_begin())) {
         if (AllocaInst *AI = dyn_cast<AllocaInst>(SI->getPointerOperand())) {
-          SkipMap.insert(SI);
           if (!ValueMap.count(AI))
             ValueMap[AI] = id++;
           ValueMap[II] = getValueID(AI);
@@ -183,8 +183,10 @@ unsigned ClamBCRegAlloc::buildReverseMap(std::vector<const Value*> &reverseMap)
   unsigned max=0;
   bool hasAny = false;
   for (ValueIDMap::iterator I=ValueMap.begin(),E=ValueMap.end(); I != E; ++I) {
-    if (isa<BitCastInst>(I->first))
-      continue;
+    if (const Instruction *II = dyn_cast<Instruction>(I->first)) {
+      if (SkipMap.count(II))
+        continue;
+    }
     if (I->second == ~0u)
       continue;
     hasAny = true;
