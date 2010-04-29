@@ -57,12 +57,13 @@ namespace {
 class ClamBCLowering : public ModulePass {
 public:
   static char ID;
-  ClamBCLowering() : ModulePass((uintptr_t)&ID) {}
+  ClamBCLowering(bool final) : ModulePass((uintptr_t)&ID), final(final) {}
   virtual bool runOnModule(Module &M);
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 //    AU.addRequired<TargetData>();
   }
 private:
+  bool final;
   void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
 };
 char ClamBCLowering::ID=0;
@@ -157,8 +158,8 @@ bool ClamBCLowering::runOnModule(Module &M)
 }
 }
 
-llvm::ModulePass *createClamBCLowering() {
-  return new ClamBCLowering();
+llvm::ModulePass *createClamBCLowering(bool final) {
+  return new ClamBCLowering(final);
 }
 
 

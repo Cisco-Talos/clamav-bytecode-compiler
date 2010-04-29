@@ -206,7 +206,7 @@ llvm::FunctionPass *createClamBCWriter(ClamBCModule *module);
 llvm::Pass *createClamBCRTChecks();
 llvm::FunctionPass *createClamBCVerifier();
 llvm::ModulePass *createClamBCLogicalCompiler();
-llvm::ModulePass *createClamBCLowering();
+llvm::ModulePass *createClamBCLowering(bool final);
 llvm::ModulePass *createClamBCTrace();
 extern const llvm::PassInfo *const ClamBCRegAllocID;
 #endif
