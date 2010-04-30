@@ -1,20 +1,39 @@
 VIRUSNAME_PREFIX("BC.PDF.JSExtract")
+// Copyright (C) 2007-2008, 2010 Sourcefire, Inc.
+// Author: Török Edvin
+// Based on:
+//  libclamav/pdf.c Author: Nigel Horne
+//  snort-nrt/src/preprocessors/dispatchLib/pdfParse Author: Matt Olney 
+//  PDF 1.7 ISO 32000-1 specification
+
 VIRUSNAMES("")
 TARGET(0)
 
 SIGNATURES_DECL_BEGIN
-DECLARE_SIGNATURE(PDF_header)
+DECLARE_SIGNATURE(PDF_header_good)
+DECLARE_SIGNATURE(PDF_header_old)
+DECLARE_SIGNATURE(PDF_header_accepted)
+DECLARE_SIGNATURE(PDF_EOF)
+DECLARE_SIGNATURE(PDF_EOF_startxref)
 SIGNATURES_DECL_END
 
 SIGNATURES_DEF_BEGIN
-/* %PDF-, don't validate the version, since there are %PDF-1111 for example */
-DEFINE_SIGNATURE(PDF_header, "0:255044462d")
+/* The usual PDF header, according to spec */
+DEFINE_SIGNATURE(PDF_header_good, "0:255044462d312e")
+/* Older readers also accept %!PS-Adobe-N.n PDF-M.m */
+DEFINE_SIGNATURE(PDF_header_old, "0:252150532d41646f62652d??2e????5044462d")
+/* However PDF readers also accepts %PDF anywhere in first 1024 bytes,
+   don't validate the version here, since there are %PDF-1111, and %PDF-2.4 */
+DEFINE_SIGNATURE(PDF_header_accepted, "0,1024:255044462d")
+DEFINE_SIGNATURE(PDF_EOF,"EOF-1024,1019:2525454f46")
+DEFINE_SIGNATURE(PDF_EOF_startxref,"EOF-1280,1266:737461727478726566")
 SIGNATURES_END
 
 bool logical_trigger(void)
 {
-  return matches(Signatures.PDF_header);
-  //&& matches(Signatures.PDF_eof);
+  return matches(Signatures.PDF_header_good) ||
+    matches(Signatures.PDF_header_old) ||
+    matches(Signatures.PDF_header_accepted);
 }
 
 /*!max:re2c */
@@ -139,8 +158,164 @@ static void handle_pdfobj(unsigned jsobjs, unsigned extractobjs,
   seek(back, SEEK_SET);
 }
 
+enum Flags {
+  BAD_PDF_VERSION=1,
+  BAD_PDF_HEADERPOS,
+  PDF_TRAILING_GARBAGE,
+  PDF_MISSING_TRAILER,
+  PDF_BADXREF
+};
+
+// Note that the seek() API really just sets an offset in a structure, it
+// doesn't call fseek() or lseek() since we use fmap!
+// So calling seek() is fast here!
+// false when seek is out of bounds (and we had to seek to 0)
+bool seekFromEOF(int32_t delta)
+{
+  uint32_t size = getFilesize();
+  if (size > delta) {
+    seek(-delta, SEEK_END);
+    return true;
+  } else {
+    seek(0, SEEK_SET);
+    return false;
+  }
+}
+
+// Find last occurence of @data, starting from current file position
+static force_inline int32_t find_last(const uint8_t* data, uint32_t len, int32_t stop_pos)
+{
+  int32_t pos, lastpos = -1;
+  while ((pos = file_find(data, len)) != -1) {
+    if (pos > stop_pos)
+      break;
+    lastpos = pos;
+    if (seek(pos + len, SEEK_SET) == -1)
+      break;
+  }
+  return lastpos;
+}
+
+// look for %%EOF
+static force_inline int32_t find_xref(unsigned *flags)
+{
+  int32_t pos, delta, nread;
+  char buf[4096];
+  if (matches(Signatures.PDF_EOF)) {
+    // common case for well formed PDFs
+    // TODO: when we can query signature match positions, use that here
+    seekFromEOF(1024);
+    int32_t eofpos = find_last("%%EOF", 5, getFilesize());
+    seek(eofpos - 256, SEEK_SET);
+    if (matches(Signatures.PDF_EOF_startxref)) {
+      return find_last("startxref", 9, eofpos);
+    }
+  }
+  debug("PDF has trailing garbage");
+  *flags |= 1 << PDF_TRAILING_GARBAGE;
+  delta = 4096;
+  bool seekOK;
+  int32_t foundEOF = -1;
+  // find EOF scanning backward
+  do {
+    seekOK = seekFromEOF(delta);
+    int32_t pos = seek(0, SEEK_CUR);
+    nread = read(buf, 4096);
+    while (nread > 5) {
+      if (!memcmp(buf + nread - 3, "EOF", 3)) {
+        nread -= 3;
+        // Allow two %% optionally
+        if (buf[nread-1] == '%')
+          nread--;
+        if (buf[nread-1] == '%')
+          nread--;
+        foundEOF = delta - nread;
+        break;
+      }
+      nread -= 3;
+    }
+    delta += 4091;// overlapping reads of 5 bytes
+  } while (seekOK && foundEOF == -1);
+  if (foundEOF == -1) {
+    debug("EOF not found in PDF");
+    return -1;
+  }
+
+  // find startxref scanning backward
+  delta += 4096;
+  int32_t foundStartxref = -1;
+  do {
+    seekOK = seekFromEOF(delta);
+    int32_t pos = seek(0, SEEK_CUR);
+    nread = read(buf, 4096);
+    while (nread > 5) {
+      if (!memcmp(buf + nread - 3, "startxref", 9)) {
+        nread -= 9;
+        foundStartxref = pos + nread;
+        break;
+      }
+      nread -= 9;
+    }
+    delta += 4087;// overlapping reads of 9 bytes
+  } while (seekOK && foundStartxref == -1);
+  if (foundStartxref == -1) {
+    debug("startxref not found in PDF");
+    return -1;
+  }
+  return foundStartxref;
+}
+
+static force_inline bool seek_toxref(unsigned *flags)
+{
+  int32_t pos = find_xref(flags);
+  if (seek(pos+9, SEEK_SET) == -1)
+    return false;
+  debug(pos+9);
+  int32_t xref = read_number(10);
+  if (xref == -1 || seek(xref, SEEK_SET) == -1) {
+    *flags |= PDF_BADXREF;
+    debug("seek to xref failed (out of file)");
+    debug(xref);
+    return false;
+  }
+  return true;
+}
+
+// Check for PDF header and trailer, permissively
+static force_inline void formatCheck(unsigned* flags)
+{
+  char verbuf[4];
+  uint32_t pos = file_find("PDF-", 4);
+  seek(pos+4, SEEK_SET);
+  if (read(verbuf, 4) == 4) {
+    // Check for PDF-1.[0-9]. Although 1.7 is highest number now, lets allow
+    // till 1.9 for future versions.
+    if (verbuf[1] != '.' || verbuf[0] != '1' ||
+        verbuf[2] < '1' || verbuf[2] > '9') {
+      *flags |= 1 << BAD_PDF_VERSION;
+      debug("bad pdf version (not PDF-1.[0-9])");
+    }
+  }
+  if (matches(Signatures.PDF_header_accepted) &&
+      !matches(Signatures.PDF_header_good) &&
+      !matches(Signatures.PDF_header_old)) {
+    *flags |= 1 << BAD_PDF_HEADERPOS;
+    debug("file doesn't start with PDF header");
+  }
+
+  // Look for trailer
+  if (!seek_toxref(flags)) {
+    *flags |= 1 << PDF_MISSING_TRAILER;
+    debug("trailer not found in PDF");
+    return;
+  }
+}
+
 int entrypoint(void)
 {
+  unsigned detectionFlags = 0;
+  formatCheck(&detectionFlags);
+
   seek(7, SEEK_SET);
   REGEX_SCANNER;
   int32_t jsnorm_objs, extract_objs;
