@@ -227,7 +227,7 @@ void ClamBCLowering::fixupGEPs(Function &F)
     }
     Constant *C = cast<Constant>(GEPI->getOperand(0));
     Constant *GC = ConstantExpr::getInBoundsGetElementPtr(C,
-                                                          indexes.data(),
+                                                          &indexes[0],
                                                           indexes.size());
     if (J != JE) {
       indexes.clear();

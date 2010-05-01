@@ -190,7 +190,8 @@ bool ClamBCModule::runOnModule(Module &M)
         for (unsigned i=1;i<CE->getNumOperands();i++)
           indices.push_back(CE->getOperand(i));
         const Type *IP8Ty = PointerType::getUnqual(Type::getInt8Ty(CE->getContext()));
-        uint64_t idx = TD->getIndexedOffset(CE->getOperand(0)->getType(), indices.data(), indices.size());
+        uint64_t idx = TD->getIndexedOffset(CE->getOperand(0)->getType(),
+                                            &indices[0], indices.size());
         Value *Idxs[2];
         Idxs[0] = ConstantInt::get(Type::getInt64Ty(CE->getContext()), idx);
         Constant *C = ConstantExpr::getPointerCast(CE->getOperand(0), IP8Ty);
