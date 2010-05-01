@@ -211,7 +211,6 @@ void ClamBCLowering::fixupGEPs(Function &F)
   for (std::vector<GetElementPtrInst*>::iterator I=geps.begin(),E=geps.end();
        I != E; ++I) {
     GetElementPtrInst *GEPI = *I;
-    BasicBlock *BB = GEPI->getParent();
     std::vector<Value*> indexes;
     GetElementPtrInst::op_iterator J = GEPI->idx_begin(), JE = GEPI->idx_end();
     for (;J != JE; ++J) {

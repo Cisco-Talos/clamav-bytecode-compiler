@@ -161,9 +161,11 @@ char ClamBCTrace::ID;
             for (Function::arg_iterator AI=I->arg_begin(),AE=I->arg_end();
                  AI != AE; ++AI) {
               if (isa<IntegerType>(AI->getType())) {
+#if 0
                 Value *V = builder.CreateIntCast(AI, Type::getInt32Ty(M.getContext()), false);
                 Value *ValueName = builder.CreateGlobalStringPtr(AI->getName().data());
-//                builder.CreateCall2(trace_value, ValueName, V);
+                builder.CreateCall2(trace_value, ValueName, V);
+#endif
               } else if (isa<PointerType>(AI->getType())) {
                 Value *V = builder.CreatePointerCast(AI, 
                                                      PointerType::getUnqual(Type::getInt8Ty(M.getContext())));
@@ -180,11 +182,13 @@ char ClamBCTrace::ID;
           builder.CreateCall2(trace_op, Op,
                               ConstantInt::get(Type::getInt32Ty(M.getContext()),
                                                Loc.getColumnNumber()));
-          Value *ValueName = builder.CreateGlobalStringPtr(II->getName().data());
+          //Value *ValueName = builder.CreateGlobalStringPtr(II->getName().data());
           if (isa<IntegerType>(II->getType())) {
+#if 0
             builder.SetInsertPoint(&*J, BBIt);
             Value *V = builder.CreateIntCast(II, Type::getInt32Ty(M.getContext()), false);
-//            builder.CreateCall2(trace_value, ValueName, V);
+            builder.CreateCall2(trace_value, ValueName, V);
+#endif
           } else if (isa<PointerType>(II->getType())) {
             builder.SetInsertPoint(&*J, BBIt);
             Value *V = builder.CreatePointerCast(II, 

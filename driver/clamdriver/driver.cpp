@@ -222,7 +222,7 @@ static int compileInternal(const char *input, int optimize, int optsize,
                              false,
                              false,
                              optimize > 1 ?
-                             createFunctionInliningPass() :
+                             createFunctionInliningPass(threshold) :
                              createAlwaysInlinerPass());
   if (optimize) {
     FPasses->doInitialization();
