@@ -450,7 +450,7 @@ static int CompileSubprocess(const char **argv, int argc,
   }
 
   // Parse LLVM commandline args
-  cl::ParseCommandLineOptions(llvmArgs.size(), llvmArgs.data());
+  cl::ParseCommandLineOptions(llvmArgs.size(), &llvmArgs[0]);
 
 
   sys::Path TmpRe2C("clambc-compiler-re2c-out");
