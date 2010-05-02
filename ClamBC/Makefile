@@ -10,18 +10,10 @@
 LEVEL = ../../..
 LIBRARYNAME = LLVMClamBC
 DIRS = TargetInfo
-CXXFLAGS=-DCLAMBC_COMPILER
+CPPFLAGS += -DCLAMBC_COMPILER
 include $(LEVEL)/Makefile.common
 GIT_VERSION := $(shell cd $(LLVM_SRC_ROOT); git describe --always)
-.PHONY: $(PROJ_OBJ_DIR)/version.h
-version.c: version.h
-
-$(PROJ_OBJ_DIR)/version.h: version.h.tmp
-		$(Verb) cp version.h.tmp version.h
-
-version.h.tmp:
-		$(Echo) "Updating version.h"
-		$(Verb) touch version.h;
-		$(Verb) echo -n "#define GIT_VERSION \"" >version.h.tmp
-		$(Verb) echo -n $(GIT_VERSION) >>version.h.tmp
-		$(Verb) echo "\"" >>version.h.tmp
+.PHONY: $(ObjDir)/version.o
+$(ObjDir)/version.o: version.c
+	$(Echo) "Compiling $(<F) for $(BuildMode) build" $(PIC_FLAG)
+	$(Verb) $(Compile.C) -DGIT_VERSION=\"$(GIT_VERSION)\" $< -o $@
