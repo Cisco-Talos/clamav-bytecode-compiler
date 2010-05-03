@@ -787,6 +787,26 @@ private:
           Stack.pop_back();
           break;
         }
+      case Instruction::Select:
+        {
+          SelectInst *SI = cast<SelectInst>(I);
+          LogicalMap::iterator CondNode = Map.find(SI->getCondition());
+          LogicalMap::iterator TrueNode = Map.find(SI->getTrueValue());
+          LogicalMap::iterator FalseNode = Map.find(SI->getFalseValue());
+          if (CondNode == Map.end() || TrueNode == Map.end() || FalseNode ==
+              Map.end()) {
+            printDiagnostic("Logical signature: select operands must be logical"
+                            " expressions", I);
+            return false;
+          }
+          // select cond, trueval, falseval -> cond && trueval || !cond && falseval
+          LogicalNode *N = LogicalNode::getAnd(CondNode->second,
+                                               TrueNode->second);
+          LogicalNode *NotCond = LogicalNode::getNot(CondNode->second);
+          LogicalNode *N2 = LogicalNode::getAnd(NotCond, FalseNode->second);
+          Map[I] = LogicalNode::getOr(N, N2);
+          break;
+        }
       case Instruction::Ret:
         {
           Value *V = I->getOperand(0);
