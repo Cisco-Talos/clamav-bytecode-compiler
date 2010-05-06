@@ -42,18 +42,18 @@ bool logical_trigger(void)
 #endif
 
 struct javascript_data {
+  uint64_t probTable[256][2];
+  unsigned entropySize;
 };
 
-static void javascript_filter(struct javascript_data *js,
+static force_inline void javascript_filter(struct javascript_data *js,
                               const uint8_t* jsString, unsigned jsSize)
 {
-  uint64_t probTable[256][2];
   unsigned entropySize = 0;
   unsigned i;
   if (jsSize < 3)
     return;
   jsSize -= 3;
-  memset(&e, 0, sizeof(e));
   for (i=0; i<jsSize; i++)
   {
     if(memcmp(jsString+i, "var", 3) == 0)
@@ -61,45 +61,63 @@ static void javascript_filter(struct javascript_data *js,
       i=i+3; //Don't include "var" in entropy check
       while(i<jsSize && jsString[i] != '\x3d')
       {
-        if(jsString[i] == '\x20')
+        if(jsString[i] == '\x20') {
           i++;
-        else if (jsString[i] == '\x3d')
+        }
+        else if (jsString[i] == '\x3d') {
           i--;
-        else if(memcmp(jsString+i, "length", 6) == 0) //Common in randomized strings
+        }  else if (i+6 < jsSize && jsString[i] == 'l' && jsString[i+1] == 'e' &&
+                    jsString[i+2] == 'n' && jsString[i+3] == 'g' &&
+                    jsString[i+4] == 't' && jsString[i+4] == 'h') {
+          i += 6;
+        }
+        /*else if(memcmp(jsString+i, "length", 6) == 0) { //Common in randomized strings
+          debug(jsString+i);
+          debug(memcmp(jsString+i,"length",6));
+          debug(memcmp(jsString+i,"lenXth",6));
+          memcmp always returns 0 here with JIT... BUG!
           i = i+6;
+        }*/
         else {
           // add to entropy counter
-          probTable[jsString[i]][0]++;
-          entropySize++;
+          js->probTable[jsString[i]][0]++;
+          js->entropySize++;
           i++;
         }
       }
     }
   }
+}
+
+static force_inline void javascript_process(struct javascript_data *js)
+{
+  uint64_t entropy = 0;
+  unsigned i;
+  unsigned entropySize = js->entropySize;
   // Shannon entropy is equal to the sum of (prob * (log(prob) / log(2))) for each character.
   for (i=0; i<256; i++)
   {
-    if (probTable[i][0] != 0)
+    if (js->probTable[i][0] != 0)
     {
       // The probability that any one character is next in the string.
       // p = probTable[i][0] / (float)entropySize;
       // entropy = entropy + (-1 *(p * (log(p) / log(2))));
-      // Since we don't have floating point we use 16-bit integer approximations
-      // p = [0, 1];
-      // pint = N*p = [0, N]
-      // p*log2(p) = pint*log2(pint/N)/N = pint*(log2(pint) - log2(N))/N = 
-      // (pint*log2(pint) - pint*log2(N))/N
-
-      log(a) = a1
-      log(b) = b1
-      a < x  < b
-      log(a) + log(x/a) = log(x)
-      log(b) + log(x/b) = log(x)
+      uint32_t p = js->probTable[i][0];
+      uint64_t i_log = ilog2(p, entropySize);
+      entropy += p*i_log/entropySize;
     }
   }
+  debug("Entropy of X bytes is Y, y/(2^27)");
+  debug(entropySize);
+  debug(entropy >> 27);
+  debug(entropy - (entropy>>27));
+  if (entropy > 4*(1<<27)) {
+    debug("The variables in this JavaScript object have a high degree of entropy");
+  }
+  memset(js->probTable, 0, sizeof(js->probTable));
 }
 
-static void decode_js_text(struct javascript_data *js, unsigned pos)
+static force_inline void decode_js_text(struct javascript_data *js, unsigned pos)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
@@ -125,6 +143,7 @@ static void decode_js_text(struct javascript_data *js, unsigned pos)
     BUFFER_FILL(buf, 0, 1, filled);
   }
   seek(back, SEEK_SET);
+  javascript_process(js);
 }
 
 static void decode_js_hex(struct javascript_data *js, unsigned pos)
@@ -156,7 +175,7 @@ static void decode_js_indirect(struct javascript_data *js, unsigned pos, int32_t
   seek(back, SEEK_SET);
 }
 
-static void extract_obj(struct javascript_data *js, unsigned pos, unsigned jsnorm)
+static force_inline void extract_obj(struct javascript_data *js, unsigned pos, unsigned jsnorm)
 {
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
@@ -182,6 +201,8 @@ static void extract_obj(struct javascript_data *js, unsigned pos, unsigned jsnor
   debug("trying to inflate X bytes");
   debug(endpos - pos);
   int32_t in = buffer_pipe_new_fromfile(pos);
+  //TODO: buffers shouldn't depend on master seek pos!
+  seek(pos, SEEK_SET);
   int32_t out = buffer_pipe_new(4096);
   int32_t inf = inflate_init(in, out, 15);
   if (inf < 0)
@@ -198,9 +219,10 @@ static void extract_obj(struct javascript_data *js, unsigned pos, unsigned jsnor
     buffer_pipe_read_stopped(out, avail);
   } while (avail);
   seek(back, SEEK_SET);
+  javascript_process(js);
 }
 
-static void handle_pdfobj(struct javascript_data *js,
+static void force_inline handle_pdfobj(struct javascript_data *js,
                           unsigned jsobjs, unsigned extractobjs,
                           unsigned objpos, unsigned pos)
 {
@@ -385,6 +407,7 @@ int entrypoint(void)
   jsnorm_objs = hashset_new();
   extract_objs = hashset_new();
   struct javascript_data jsdata;
+  memset(&jsdata, 0, sizeof(jsdata));
 
   for (;;) {
     REGEX_LOOP_BEGIN

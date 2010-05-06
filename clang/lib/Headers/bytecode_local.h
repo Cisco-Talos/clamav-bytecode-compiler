@@ -850,20 +850,20 @@ do {\
   }\
 } while (0);
 
-static inline int32_t ilog(uint32_t a, uint32_t b)
+static inline int32_t ilog2(uint32_t a, uint32_t b)
 {
     uint32_t c = a > b ? a : b;
-    if (c < 65536) {
-	// scale up a,b to [0, 65536]
-	uint32_t scale = 65536/c;
+    if (c < 4096) {
+	// scale up a,b to [0, 4096]
+	uint32_t scale = 4096/c;
 	a *= scale;
 	b *= scale;
     } else {
-	// scale down a,b to [0, 65536]
-	uint32_t scale = c / 65536;
+	// scale down a,b to [0, 4096]
+	uint32_t scale = (c+4095) / 4096;
 	a /= scale;
 	b /= scale;
     }
     // log(a/b) = log(a*scale/(b*scale)) = log(a*scale) - log(b*scale)
-    return logtable[a] - logtable[b];
+    return ilog_table[a] - ilog_table[b];
 }
