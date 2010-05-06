@@ -100,7 +100,10 @@ public:
   unsigned getGlobalID(const llvm::ConstantExpr *CE)
   {
     CEMapTy::iterator I = CEMap.find(CE);
-    assert(I != CEMap.end() && "Requested ID for non-existent constant expr");
+    if (I == CEMap.end()) {
+      CE->dump();
+      assert(0 && "Requested ID for non-existent constant expr");
+    }
     return getGlobalID(I->second);
   }
   unsigned getGlobalID(const llvm::GlobalVariable *GV)

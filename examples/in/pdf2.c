@@ -1,4 +1,5 @@
-VIRUSNAME_PREFIX("BC.PDF.JSExtract")
+VIRUSNAME_PREFIX("BC.PDF")
+VIRUSNAMES("JS.HighEntropy")
 // Copyright (C) 2007-2008, 2010 Sourcefire, Inc.
 // Author: Török Edvin
 // Based on:
@@ -6,8 +7,10 @@ VIRUSNAME_PREFIX("BC.PDF.JSExtract")
 //  snort-nrt/src/preprocessors/dispatchLib/pdfParse Author: Matt Olney 
 //  PDF 1.7 ISO 32000-1 specification
 
-VIRUSNAMES("")
 TARGET(0)
+
+//experimental, test out on git version first
+FUNCTIONALITY_LEVEL_MIN(FUNC_LEVEL_096_dev)
 
 SIGNATURES_DECL_BEGIN
 DECLARE_SIGNATURE(PDF_header_good)
@@ -41,15 +44,10 @@ bool logical_trigger(void)
 #error RE2C_BSIZE must be greated than YYMAXFILL
 #endif
 
-struct javascript_data {
-  uint64_t probTable[256][2];
-  unsigned entropySize;
-};
-
-static force_inline void javascript_filter(struct javascript_data *js,
-                              const uint8_t* jsString, unsigned jsSize)
+static force_inline void javascript_filter(uint32_t *probTable,
+                                           unsigned  *entropySize,
+                                           const uint8_t* jsString, unsigned jsSize)
 {
-  unsigned entropySize = 0;
   unsigned i;
   if (jsSize < 3)
     return;
@@ -80,8 +78,8 @@ static force_inline void javascript_filter(struct javascript_data *js,
         }*/
         else {
           // add to entropy counter
-          js->probTable[jsString[i]][0]++;
-          js->entropySize++;
+          probTable[jsString[i]]++;
+          (*entropySize)++;
           i++;
         }
       }
@@ -89,35 +87,47 @@ static force_inline void javascript_filter(struct javascript_data *js,
   }
 }
 
-static force_inline void javascript_process(struct javascript_data *js)
+static force_inline void javascript_process(uint32_t *probTable, unsigned
+                                            *entropySize)
 {
   uint64_t entropy = 0;
   unsigned i;
-  unsigned entropySize = js->entropySize;
+  // entropy checks on short strings may be FP prone
+  if (*entropySize < 256) {
+    memset(probTable, 0, sizeof(*probTable));
+    *entropySize = 0;
+    return;
+  }
   // Shannon entropy is equal to the sum of (prob * (log(prob) / log(2))) for each character.
   for (i=0; i<256; i++)
   {
-    if (js->probTable[i][0] != 0)
+    if (probTable[i] != 0)
     {
       // The probability that any one character is next in the string.
       // p = probTable[i][0] / (float)entropySize;
       // entropy = entropy + (-1 *(p * (log(p) / log(2))));
-      uint32_t p = js->probTable[i][0];
-      uint64_t i_log = ilog2(p, entropySize);
-      entropy += p*i_log/entropySize;
+      uint32_t p = probTable[i];
+      //TODO: converting to 64-bit leads to bogus results
+      uint32_t i_log = ilog2(p, *entropySize);
+      entropy += p*i_log/ *entropySize;
     }
   }
   debug("Entropy of X bytes is Y, y/(2^27)");
-  debug(entropySize);
+  debug(*entropySize);
   debug(entropy >> 27);
   debug(entropy - (entropy>>27));
-  if (entropy > 4*(1<<27)) {
+  if ((*entropySize < 512 && entropy > 16*(1<<27)) ||
+      (*entropySize >= 512 && entropy > 8*(1<<27)) ||
+      (*entropySize >= 1024 && entropy > 4*(1<<27))) {
     debug("The variables in this JavaScript object have a high degree of entropy");
+    foundVirus("JS.HighEntropy");
   }
-  memset(js->probTable, 0, sizeof(js->probTable));
+  memset(probTable, 0, sizeof(*probTable));
+  *entropySize = 0;
 }
 
-static force_inline void decode_js_text(struct javascript_data *js, unsigned pos)
+static force_inline void decode_js_text(uint32_t *probTable,
+                                        unsigned *entropySize, unsigned pos)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
@@ -126,6 +136,7 @@ static force_inline void decode_js_text(struct javascript_data *js, unsigned pos
   unsigned i = 0;
   seek(pos, SEEK_SET);
   BUFFER_FILL(buf, 0, 1, filled);
+  debug("decodejstext");
   extract_new(pos);
   //TODO: decode PDFEncoding and UTF16
   while (filled > 0) {
@@ -136,26 +147,32 @@ static force_inline void decode_js_text(struct javascript_data *js, unsigned pos
           break;
       }
     }
-    javascript_filter(js, buf, i);
+    javascript_filter(probTable, entropySize, buf, i);
+    // write buf, 128 doesn't work -> bug
+    if (i == RE2C_BSIZE)
+      i--;
     write(buf, i);
     if (i < RE2C_BSIZE && buf[i] == ')' && !paranthesis)
       break;
     BUFFER_FILL(buf, 0, 1, filled);
   }
   seek(back, SEEK_SET);
-  javascript_process(js);
+  javascript_process(probTable, entropySize);
 }
 
-static void decode_js_hex(struct javascript_data *js, unsigned pos)
+static void decode_js_hex(uint32_t *probTable, unsigned *entropySize,
+                          unsigned pos)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
+  debug("decodejshex");
   extract_new(pos);
   seek(back, SEEK_SET);
 }
 
-static void decode_js_indirect(struct javascript_data *js, unsigned pos, int32_t jsobjs, int32_t extractobjs)
+static void decode_js_indirect(uint32_t *probTable, unsigned *entropySize,
+                               unsigned pos, int32_t jsobjs, int32_t extractobjs)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
@@ -175,14 +192,182 @@ static void decode_js_indirect(struct javascript_data *js, unsigned pos, int32_t
   seek(back, SEEK_SET);
 }
 
-static force_inline void extract_obj(struct javascript_data *js, unsigned pos, unsigned jsnorm)
+static const int hex_chars[256] = {
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+     0, 1, 2, 3,  4, 5, 6, 7,  8, 9,-1,-1, -1,-1,-1,-1,
+    -1,10,11,12, 13,14,15,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,10,11,12, 13,14,15,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+};
+
+static inline int cli_hex2int(const char c)
 {
+	return hex_chars[(const unsigned char)c];
+}
+
+// There is something wrong with memcmp (always returns 0 in some cases)
+// use this workaround for now
+static force_inline int memcomp(const uint8_t *a, const uint8_t *b, unsigned size)
+{
+  unsigned i;
+  for (i=0;i<size;i++) {
+    if (a[i] == b[i])
+      continue;
+    return a[i] - b[i];
+  }
+  return 0;
+}
+
+// This should be an API or at least use KMP (or be compiled using the regex
+// compiler)
+static force_inline bool cli_memstr(const char *haystack, unsigned int hs, const char *needle, unsigned int ns)
+{
+	unsigned int i, s1, s2;
+
+    if(!hs || !ns || hs < ns)
+	return false;
+
+    if(needle == haystack)
+	return true;
+
+    if(ns == 1)
+	return memchr(haystack, needle[0], hs);
+
+    if(needle[0] == needle[1]) {
+	s1 = 2;
+	s2 = 1;
+    } else {
+	s1 = 1;
+	s2 = 2;
+    }
+    for(i = 0; i <= hs - ns; ) {
+	if(needle[1] != haystack[i + 1]) {
+	    i += s1;
+	} else {
+	    if((needle[0] == haystack[i]) && !memcomp(needle + 2, haystack + i + 2, ns - 2))
+		return true;
+	    i += s2;
+	}
+    }
+
+    return false;
+}
+#define search(a,b,c) cli_memstr((a),(b),(c),sizeof((c))-1)
+static force_inline void parseFilters(uint8_t *filters, unsigned size,
+                                      bool *has_deflate, bool *has_asciihex,
+                                      bool *has_ascii85)
+{
+  unsigned i,j;
+  bool had_escapes_inpdfname = false;
+  for (i=0,j=0;i<size;i++) {
+    if (filters[i] == '/')
+      had_escapes_inpdfname = false;
+    if (filters[i] == '#' && i+1 < size) {
+      filters[j++] = (cli_hex2int(filters[i+1]) << 4) | cli_hex2int(filters[i+2]);
+      continue;
+    }
+    if (filters[i] == ' ' && had_escapes_inpdfname) {
+      // /#4aava -> /Java#
+      filters[j++] = '#';
+    }
+    if (j != i)
+      filters[j] = filters[i];
+    j++;
+  }
+  filters[j] = 0;
+  if (!search(filters, j, "/Filter"))
+    return;
+  if (search(filters, j, "/FlateDecode")) {
+    debug("found FlateDecode filter");
+    *has_deflate = 1;
+  }
+  if (search(filters, j, "/ASCIIHexDecode")) {
+    debug("found AsciiHexDecode filter");
+    *has_asciihex = 1;
+  }
+  if (search(filters, j, "/ASCII85Decode")) {
+    debug("found Ascii85Decode filter");
+    *has_ascii85 = 1;
+  }
+  if (!*has_deflate && !*has_asciihex && !*has_ascii85) {
+    debug("unhandled filter");
+    debug(filters);
+  }
+}
+
+static bool force_inline ascii85decode(int inbuf, int outbuf, unsigned avail)
+{
+  return false;
+}
+
+static bool force_inline asciihexdecode(int inbuf, int outbuf, unsigned avail)
+{
+  unsigned i,j;
+  const uint8_t *in = buffer_pipe_read_get(inbuf, avail);
+  if (!in)
+    return false;
+
+  unsigned outavail = buffer_pipe_write_avail(outbuf);
+  uint8_t *out = buffer_pipe_write_get(outbuf, outavail);
+  if (!out)
+    return false;
+
+  for (i=0,j=0;i<avail && j<outavail;i++) {
+    if (in[i] == ' ')
+      continue;
+    if (in[i] == '>')
+      break;
+    out[j++] = (cli_hex2int(in[i]) << 4) | cli_hex2int(in[i+1]);
+    i++;
+  }
+  if (!i)
+    return false;
+  buffer_pipe_read_stopped(inbuf, i);
+  seek(i, SEEK_CUR);
+  buffer_pipe_write_stopped(outbuf, j);
+  return true;
+}
+
+static force_inline void extract_obj(uint32_t *probTable, unsigned *entropySize, unsigned pos, unsigned jsnorm)
+{
+  char filters[1025];
+  unsigned filtern;
+  debug("extractobj");
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
-  extract_new(pos);
+  unsigned beginpos = pos;
   /* TODO: use state-machine here too,
      for now we just decode assuming deflate encoding!*/
   pos = file_find("stream", 6);
+  seek(beginpos, SEEK_SET);
+  if (beginpos + 1024 > pos) {
+  filtern = pos-beginpos;
+  } else {
+  filtern = 1024;
+  }
+  read(filters, filtern);
+  filters[filtern]=0;
+
+  bool has_deflate=false, has_asciihex=false, has_ascii85=false;
+  parseFilters(filters, filtern, &has_deflate, &has_asciihex,
+               &has_ascii85);
+  if (!has_deflate && !has_asciihex && !has_ascii85) {
+    debug("not decodable");
+    return;
+  }
+  debug("decoding");
+  extract_new(beginpos);
   seek(pos, SEEK_SET);
   unsigned char c = file_byteat(pos+6);
   if (c == '\r')
@@ -198,31 +383,66 @@ static force_inline void extract_obj(struct javascript_data *js, unsigned pos, u
     if (seek(endpos+9, SEEK_SET) == -1)
       break;
   } while (c != '\n' && c != '\r');
-  debug("trying to inflate X bytes");
-  debug(endpos - pos);
   int32_t in = buffer_pipe_new_fromfile(pos);
   //TODO: buffers shouldn't depend on master seek pos!
   seek(pos, SEEK_SET);
   int32_t out = buffer_pipe_new(4096);
-  int32_t inf = inflate_init(in, out, 15);
-  if (inf < 0)
-    return -1;
-  uint32_t avail;
+
+  int32_t asciiin = in;
+  if (has_ascii85 || has_asciihex) {
+    in = buffer_pipe_new(4096);
+  }
+
+  int32_t inf=0;
+  if (has_deflate) {
+    debug("trying to inflate X bytes");
+    debug(endpos - pos);
+    inf = inflate_init(in, out, 15);
+    if (inf < 0)
+      return -1;
+  }
   do {
-    inflate_process(inf);
-    avail = buffer_pipe_read_avail(out);
-    uint8_t *outdata = buffer_pipe_read_get(out, avail);
-    if (outdata) {
-      javascript_filter(js, outdata, avail);
-      write(outdata, avail);
+    uint32_t avail;
+    if (has_ascii85 || has_asciihex) {
+      avail = buffer_pipe_read_avail(asciiin);
+      if (!avail) {
+        has_ascii85 = has_asciihex = false;
+      } else {
+        if (has_ascii85)
+          has_ascii85 = ascii85decode(asciiin, in, avail);
+        else if (has_asciihex)
+          has_asciihex = asciihexdecode(asciiin, in, avail);
+      }
     }
-    buffer_pipe_read_stopped(out, avail);
-  } while (avail);
+    if (has_deflate) {
+      do {
+        inflate_process(inf);
+        avail = buffer_pipe_read_avail(out);
+        uint8_t *outdata = buffer_pipe_read_get(out, avail);
+        if (outdata) {
+          javascript_filter(probTable, entropySize, outdata, avail);
+          write(outdata, avail);
+        }
+        buffer_pipe_read_stopped(out, avail);
+      } while (avail);
+    } else {
+      avail = buffer_pipe_read_avail(in);
+      uint8_t *outdata = buffer_pipe_read_get(in, avail);
+      if (outdata) {
+        javascript_filter(probTable, entropySize, outdata, avail);
+        write(outdata, avail);
+      }
+      buffer_pipe_read_stopped(in, avail);
+    }
+  } while (has_ascii85 || has_asciihex);
+  debug("done");
   seek(back, SEEK_SET);
-  javascript_process(js);
+  javascript_process(probTable, entropySize);
+  debug("donejs");
 }
 
-static void force_inline handle_pdfobj(struct javascript_data *js,
+static void force_inline handle_pdfobj(uint32_t *probTable,
+                                       unsigned *entropySize,
                           unsigned jsobjs, unsigned extractobjs,
                           unsigned objpos, unsigned pos)
 {
@@ -234,11 +454,12 @@ static void force_inline handle_pdfobj(struct javascript_data *js,
   int32_t obj1 = read_number(10);
   /* TODO: this is not right, obj1 can be max 99999 */
   int32_t objid = (obj0 << 4) | (obj1&0xf);
-  if (hashset_contains(extractobjs, objid)) {
-    extract_obj(js, pos, hashset_contains(jsobjs, objid));
+//  if (hashset_contains(extractobjs, objid)) {
+// extract all objs for now
+    extract_obj(probTable, entropySize, pos, hashset_contains(jsobjs, objid));
     hashset_remove(extractobjs, objid);
     hashset_remove(jsobjs, objid);
-  }
+//  }
   seek(back, SEEK_SET);
 }
 
@@ -406,9 +627,10 @@ int entrypoint(void)
 
   jsnorm_objs = hashset_new();
   extract_objs = hashset_new();
-  struct javascript_data jsdata;
-  memset(&jsdata, 0, sizeof(jsdata));
-
+  unsigned i;
+  uint32_t probTable[256];
+  unsigned entropySize = 0;
+  memset(probTable, 0, sizeof(probTable));
   for (;;) {
     REGEX_LOOP_BEGIN
   /*!re2c
@@ -451,19 +673,19 @@ int entrypoint(void)
     INDIRECTJS = NAME_JS WHITESPACE? INDIRECTPDFOBJECT;
 
     PDFOBJECT {
-        handle_pdfobj(&jsdata, jsnorm_objs, extract_objs, re2c_stokstart, REGEX_POS); continue;
+        handle_pdfobj(probTable, &entropySize, jsnorm_objs, extract_objs, re2c_stokstart, REGEX_POS); continue;
     }
 
     DIRECTTEXTJS {
         debug("pdfjs text at:"); debug(REGEX_POS);
-        decode_js_text(&jsdata, REGEX_POS); continue;
+        decode_js_text(probTable, &entropySize, REGEX_POS); continue;
     }
     DIRECTHEXJS {
         debug("pdfjs hextext at:"); debug(REGEX_POS);
-        decode_js_hex(&jsdata, REGEX_POS); continue;
+        decode_js_hex(probTable, &entropySize, REGEX_POS); continue;
     }
     INDIRECTJSOBJECT {
-        decode_js_indirect(&jsdata, re2c_stokstart, jsnorm_objs, extract_objs); continue;
+        decode_js_indirect(probTable, &entropySize, re2c_stokstart, jsnorm_objs, extract_objs); continue;
     }
     ANY { continue; }
   */

@@ -200,8 +200,9 @@ bool ClamBCModule::runOnModule(Module &M)
                                                             Idxs, 1));
         NewCE = cast<ConstantExpr>(ConstantExpr::getPointerCast(NewCE,
                                                                 CE->getType()));
-        if (CE != NewCE)
+        if (CE != NewCE) {
           CE->replaceAllUsesWith(NewCE);
+        }
         CE = NewCE;
   //    }
       GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true, 
@@ -543,8 +544,8 @@ void ClamBCModule::printConstant(Module &M, Constant *C)
     if (VCE->getNumOperands() == 3 && GV) {
       ConstantInt *C0 = dyn_cast<ConstantInt>(VCE->getOperand(1));
       ConstantInt *C1 = dyn_cast<ConstantInt>(VCE->getOperand(2));
-      if (C0->isZero() && C1->isZero()) {
-        printNumber(Out, 0, true);
+      if (C0->isZero()) {
+        printNumber(Out, C1->getValue().getZExtValue(), true);
         printNumber(Out, getGlobalID(GV), true);
         return;
       }
@@ -699,6 +700,8 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
            I->getName(), &M);
     }
     Constant *C = I->getInitializer();
+    if (C->use_empty())
+      continue;
     globalInits.push_back(C);
     globals[I] = i++;
     if (i >= 32768) {
