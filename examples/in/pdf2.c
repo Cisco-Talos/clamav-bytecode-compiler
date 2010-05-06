@@ -41,7 +41,65 @@ bool logical_trigger(void)
 #error RE2C_BSIZE must be greated than YYMAXFILL
 #endif
 
-static void decode_js_text(unsigned pos)
+struct javascript_data {
+};
+
+static void javascript_filter(struct javascript_data *js,
+                              const uint8_t* jsString, unsigned jsSize)
+{
+  uint64_t probTable[256][2];
+  unsigned entropySize = 0;
+  unsigned i;
+  if (jsSize < 3)
+    return;
+  jsSize -= 3;
+  memset(&e, 0, sizeof(e));
+  for (i=0; i<jsSize; i++)
+  {
+    if(memcmp(jsString+i, "var", 3) == 0)
+    {
+      i=i+3; //Don't include "var" in entropy check
+      while(i<jsSize && jsString[i] != '\x3d')
+      {
+        if(jsString[i] == '\x20')
+          i++;
+        else if (jsString[i] == '\x3d')
+          i--;
+        else if(memcmp(jsString+i, "length", 6) == 0) //Common in randomized strings
+          i = i+6;
+        else {
+          // add to entropy counter
+          probTable[jsString[i]][0]++;
+          entropySize++;
+          i++;
+        }
+      }
+    }
+  }
+  // Shannon entropy is equal to the sum of (prob * (log(prob) / log(2))) for each character.
+  for (i=0; i<256; i++)
+  {
+    if (probTable[i][0] != 0)
+    {
+      // The probability that any one character is next in the string.
+      // p = probTable[i][0] / (float)entropySize;
+      // entropy = entropy + (-1 *(p * (log(p) / log(2))));
+      // Since we don't have floating point we use 16-bit integer approximations
+      // p = [0, 1];
+      // pint = N*p = [0, N]
+      // p*log2(p) = pint*log2(pint/N)/N = pint*(log2(pint) - log2(N))/N = 
+      // (pint*log2(pint) - pint*log2(N))/N
+
+      log(a) = a1
+      log(b) = b1
+      a < x  < b
+      log(a) + log(x/a) = log(x)
+      log(b) + log(x/b) = log(x)
+    }
+  }
+}
+
+static void decode_js_text(struct javascript_data *js, unsigned pos)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
@@ -60,6 +118,7 @@ static void decode_js_text(unsigned pos)
           break;
       }
     }
+    javascript_filter(js, buf, i);
     write(buf, i);
     if (i < RE2C_BSIZE && buf[i] == ')' && !paranthesis)
       break;
@@ -68,7 +127,7 @@ static void decode_js_text(unsigned pos)
   seek(back, SEEK_SET);
 }
 
-static void decode_js_hex(unsigned pos)
+static void decode_js_hex(struct javascript_data *js, unsigned pos)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
@@ -77,7 +136,7 @@ static void decode_js_hex(unsigned pos)
   seek(back, SEEK_SET);
 }
 
-static void decode_js_indirect(unsigned pos, int32_t jsobjs, int32_t extractobjs)
+static void decode_js_indirect(struct javascript_data *js, unsigned pos, int32_t jsobjs, int32_t extractobjs)
 {
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
@@ -97,7 +156,7 @@ static void decode_js_indirect(unsigned pos, int32_t jsobjs, int32_t extractobjs
   seek(back, SEEK_SET);
 }
 
-static void extract_obj(unsigned pos, unsigned jsnorm)
+static void extract_obj(struct javascript_data *js, unsigned pos, unsigned jsnorm)
 {
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
@@ -132,14 +191,17 @@ static void extract_obj(unsigned pos, unsigned jsnorm)
     inflate_process(inf);
     avail = buffer_pipe_read_avail(out);
     uint8_t *outdata = buffer_pipe_read_get(out, avail);
-    if (outdata)
+    if (outdata) {
+      javascript_filter(js, outdata, avail);
       write(outdata, avail);
+    }
     buffer_pipe_read_stopped(out, avail);
   } while (avail);
   seek(back, SEEK_SET);
 }
 
-static void handle_pdfobj(unsigned jsobjs, unsigned extractobjs,
+static void handle_pdfobj(struct javascript_data *js,
+                          unsigned jsobjs, unsigned extractobjs,
                           unsigned objpos, unsigned pos)
 {
   unsigned char buf[128];
@@ -151,7 +213,7 @@ static void handle_pdfobj(unsigned jsobjs, unsigned extractobjs,
   /* TODO: this is not right, obj1 can be max 99999 */
   int32_t objid = (obj0 << 4) | (obj1&0xf);
   if (hashset_contains(extractobjs, objid)) {
-    extract_obj(pos, hashset_contains(jsobjs, objid));
+    extract_obj(js, pos, hashset_contains(jsobjs, objid));
     hashset_remove(extractobjs, objid);
     hashset_remove(jsobjs, objid);
   }
@@ -322,6 +384,7 @@ int entrypoint(void)
 
   jsnorm_objs = hashset_new();
   extract_objs = hashset_new();
+  struct javascript_data jsdata;
 
   for (;;) {
     REGEX_LOOP_BEGIN
@@ -365,19 +428,19 @@ int entrypoint(void)
     INDIRECTJS = NAME_JS WHITESPACE? INDIRECTPDFOBJECT;
 
     PDFOBJECT {
-        handle_pdfobj(jsnorm_objs, extract_objs, re2c_stokstart, REGEX_POS); continue;
+        handle_pdfobj(&jsdata, jsnorm_objs, extract_objs, re2c_stokstart, REGEX_POS); continue;
     }
 
     DIRECTTEXTJS {
         debug("pdfjs text at:"); debug(REGEX_POS);
-        decode_js_text(REGEX_POS); continue;
+        decode_js_text(&jsdata, REGEX_POS); continue;
     }
     DIRECTHEXJS {
         debug("pdfjs hextext at:"); debug(REGEX_POS);
-        decode_js_hex(REGEX_POS); continue;
+        decode_js_hex(&jsdata, REGEX_POS); continue;
     }
     INDIRECTJSOBJECT {
-        decode_js_indirect(re2c_stokstart, jsnorm_objs, extract_objs); continue;
+        decode_js_indirect(&jsdata, re2c_stokstart, jsnorm_objs, extract_objs); continue;
     }
     ANY { continue; }
   */

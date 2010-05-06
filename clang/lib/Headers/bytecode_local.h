@@ -849,3 +849,21 @@ do {\
     re2c_sres = limit;\
   }\
 } while (0);
+
+static inline int32_t ilog(uint32_t a, uint32_t b)
+{
+    uint32_t c = a > b ? a : b;
+    if (c < 65536) {
+	// scale up a,b to [0, 65536]
+	uint32_t scale = 65536/c;
+	a *= scale;
+	b *= scale;
+    } else {
+	// scale down a,b to [0, 65536]
+	uint32_t scale = c / 65536;
+	a /= scale;
+	b /= scale;
+    }
+    // log(a/b) = log(a*scale/(b*scale)) = log(a*scale) - log(b*scale)
+    return logtable[a] - logtable[b];
+}

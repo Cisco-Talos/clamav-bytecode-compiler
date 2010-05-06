@@ -38,4 +38,5 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include "bytecode_ilog.h"
 #include "bytecode_local.h"
