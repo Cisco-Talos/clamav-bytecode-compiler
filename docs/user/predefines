@@ -103,6 +103,8 @@
 #define DECLARE_SIGNATURE(name) const char *name##_sig; __Signature name;
 #define SIGNATURES_DECL_END };
 #define TARGET(tgt) const unsigned short __Target = (tgt);
+#define FUNCTIONALITY_LEVEL_MIN(m) const unsigned short __FuncMin = (m);
+#define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
 #define SIGNATURES_DEF_BEGIN static const unsigned __signature_bias = __COUNTER__+1;const struct __Signatures Signatures = {
 #define DEFINE_SIGNATURE(name,hex) .name##_sig = (hex), .name = {__COUNTER__ - __signature_bias},
 #define SIGNATURES_END };

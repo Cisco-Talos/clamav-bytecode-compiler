@@ -77,6 +77,7 @@ ClamBCModule::ClamBCModule(llvm::formatted_raw_ostream &o,
   globalsMap["__clambc_virusnames"] = GLOBAL_VIRUSNAMES;
   globalsMap["__clambc_pedata"] = GLOBAL_PEDATA;
   globalsMap["__clambc_filesize"] = GLOBAL_FILESIZE;
+  globalsMap["__clambc_match_offsets"] = GLOBAL_MATCH_OFFSETS;
 }
 
 void ClamBCModule::dumpTypes(llvm::raw_ostream &OS)

@@ -68,6 +68,13 @@ enum FunctionalityLevels {
  *  access it.
  * */
 extern const uint32_t __clambc_match_counts[64];
+
+/** @brief Logical signature match offsets
+  * This is a low-level variable, use the Macros in bytecode_local.h instead to
+  * access it.
+  */
+extern const uint32_t __clambc_match_offsets[64];
+
 /** PE data, if this is a PE hook */
 extern const struct cli_pe_hook_data __clambc_pedata;
 /** File size (max 4G) */

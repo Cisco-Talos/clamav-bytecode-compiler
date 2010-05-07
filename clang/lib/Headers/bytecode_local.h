@@ -121,6 +121,11 @@ static force_inline uint32_t count_match(__Signature sig)\
 static force_inline uint32_t matches(__Signature sig)\
 { return __clambc_match_counts[sig.id]  != 0; }\
 
+static force_inline uint32_t match_location(__Signature sig)
+{
+  return __clambc_match_offsets[sig.id];
+}
+
 /** Sets the specified virusname as the virus detected by this bytecode.
  * @param virusname the name of the virus, excluding the prefix, must be one of
  * the virusnames declared in \p VIRUSNAMES.

@@ -67,6 +67,8 @@ cp -v clang/lib/Headers/bytecode_api.h $CLAMAV_PATH/libclamav/bytecode_api.h
 cp -v bytecode_api_impl.h $CLAMAV_PATH/libclamav/bytecode_api_impl.h
 cp -v bytecode_hooks.h $CLAMAV_PATH/libclamav/bytecode_hooks.h
 cp -v ClamBC/clambc.h $CLAMAV_PATH/libclamav/clambc.h
+sed -nri '1h;1!H;${;g;s/enum BytecodeKind.+\};//;p;}' $CLAMAV_PATH/libclamav/clambc.h
+
 cp -v examples/out/apicalls2.o1.c.cbc $CLAMAV_TEST/apicalls2.cbc
 cp -v examples/out/apicalls.o1.c.cbc $CLAMAV_TEST/apicalls.cbc
 cp -v examples/out/arithmetic.o1.c.cbc $CLAMAV_TEST/arith.cbc
