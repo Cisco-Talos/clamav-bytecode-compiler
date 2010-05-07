@@ -64,6 +64,7 @@ make -C obj/tools/clang/lib/Headers
 # Sync compiler -> libclamav
 cp -v clang/lib/Headers/bytecode_api_decl.c.h $CLAMAV_PATH/libclamav/bytecode_api_decl.c
 cp -v clang/lib/Headers/bytecode_api.h $CLAMAV_PATH/libclamav/bytecode_api.h
+sed -ri 's/enum \{ /static const unsigned/g' $CLAMAV_PATH/libclamav/bytecode_api.h
 cp -v bytecode_api_impl.h $CLAMAV_PATH/libclamav/bytecode_api_impl.h
 cp -v bytecode_hooks.h $CLAMAV_PATH/libclamav/bytecode_hooks.h
 cp -v ClamBC/clambc.h $CLAMAV_PATH/libclamav/clambc.h
