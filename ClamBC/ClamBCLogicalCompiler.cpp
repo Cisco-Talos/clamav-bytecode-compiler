@@ -1183,18 +1183,20 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   if (!valid)
     return false;
   unsigned groups = 0;
-  Twine ltwine = Twine(virusnames)+";Target:"+Twine(target);
-  std::string ndbsigs = node2String(node, groups);
+  LogicalSignature = virusnames;
   if (min || max) {
     if (!max)
       max = 255;/* for now it should be enough, we can always increase it later
                    */
     if (!min)
       min = FUNC_LEVEL_096;/* 0.96 is first to have bytecode support */
-    LogicalSignature = (ltwine + ",Engine:"+Twine(min)+"-"+Twine(max)+";" +
-                        ndbsigs).str();
+    LogicalSignature = LogicalSignature +
+      (";Engine:"+Twine(min)+"-"+Twine(max)+",").str();
   } else
-    LogicalSignature = (ltwine + ";" + ndbsigs).str();
+    LogicalSignature = LogicalSignature + ";";
+  std::string ndbsigs = node2String(node, groups);
+  LogicalSignature = LogicalSignature +
+    ("Target:"+Twine(target)+";"+ndbsigs).str();
   if (groups > 64) {
     printDiagnostic(("Logical signature: a maximum of 64 subexpressions are "
                      "supported, but logical signature has "+Twine(groups)+
