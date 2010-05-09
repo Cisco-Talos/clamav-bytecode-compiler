@@ -10,6 +10,8 @@ enum \hyperlink{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91}{BytecodeKind
 \hyperlink{bytecode__api_8h_a108e33201873c25ef45b59b519f1ff91ae6b6910f9706526e49807a022b7125f1}{BC\_\-PE\_\-UNPACKER}
  \}
 \item 
+enum \hyperlink{bytecode__api_8h_ac2cd51dc61c1ddf642d596c7f73a6999}{FunctionalityLevels} 
+\item 
 enum \{ \hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05}{SEEK\_\-SET} = 0, 
 \hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c}{SEEK\_\-CUR}, 
 \hyperlink{bytecode__api_8h_adf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63}{SEEK\_\-END}
@@ -101,6 +103,11 @@ int32\_\-t \hyperlink{bytecode__api_8h_a7445bceea42b0a4d1d841b2c8826db4a}{jsnorm
 \item 
 const uint32\_\-t \hyperlink{bytecode__api_8h_a35a0a4f1219a792c77b7207924c3c4ec}{\_\-\_\-clambc\_\-match\_\-counts} \mbox{[}64\mbox{]}
 \begin{DoxyCompactList}\small\item\em Logical signature match counts. \item\end{DoxyCompactList}\item 
+\hypertarget{bytecode__api_8h_ae39872934c5879706b3cedaef090d227}{
+const uint32\_\-t \hyperlink{bytecode__api_8h_ae39872934c5879706b3cedaef090d227}{\_\-\_\-clambc\_\-match\_\-offsets} \mbox{[}64\mbox{]}}
+\label{bytecode__api_8h_ae39872934c5879706b3cedaef090d227}
+
+\begin{DoxyCompactList}\small\item\em Logical signature match offsets This is a low-\/level variable, use the Macros in \hyperlink{bytecode__local_8h}{bytecode\_\-local.h} instead to access it. \item\end{DoxyCompactList}\item 
 struct \hyperlink{structcli__pe__hook__data}{cli\_\-pe\_\-hook\_\-data} \hyperlink{bytecode__api_8h_a3d386181912bdbc2b90ee559b0cccde3}{\_\-\_\-clambc\_\-pedata}
 \item 
 const uint32\_\-t \hyperlink{bytecode__api_8h_ab8d6c50474be3ba69906161a3e520ce7}{\_\-\_\-clambc\_\-filesize} \mbox{[}1\mbox{]}
@@ -157,7 +164,12 @@ BC\_\-PE\_\-UNPACKER}
 }]a PE unpacker \end{description}
 \end{Desc}
 
-
+\hypertarget{bytecode__api_8h_ac2cd51dc61c1ddf642d596c7f73a6999}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!FunctionalityLevels@{FunctionalityLevels}}
+\index{FunctionalityLevels@{FunctionalityLevels}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{FunctionalityLevels}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf FunctionalityLevels}}\hfill}
+\label{bytecode__api_8h_ac2cd51dc61c1ddf642d596c7f73a6999}
+LibClamAV functionality level constants 
 
 \subsubsection{Function Documentation}
 \hypertarget{bytecode__api_8h_a984890c1d3b68b99e68c2e6b1a7704d0}{

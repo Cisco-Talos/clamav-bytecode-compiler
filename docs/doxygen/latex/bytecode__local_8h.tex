@@ -26,6 +26,10 @@ struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed}
 \item 
 \#define \hyperlink{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{TARGET}(tgt)~const unsigned short \_\-\_\-Target = (tgt);
 \item 
+\#define \hyperlink{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}{FUNCTIONALITY\_\-LEVEL\_\-MIN}(m)~const unsigned short \_\-\_\-FuncMin = (m);
+\item 
+\#define \hyperlink{bytecode__local_8h_afc471efa427277a2b96a2a06ba647aa9}{FUNCTIONALITY\_\-LEVEL\_\-MAX}(m)~const unsigned short \_\-\_\-FuncMax = (m);
+\item 
 \#define \hyperlink{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}{SIGNATURES\_\-DEF\_\-BEGIN}
 \item 
 \#define \hyperlink{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}{DEFINE\_\-SIGNATURE}(name, hex)
@@ -39,7 +43,7 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3bee86d89c2e0d
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}{matches} (\_\-\_\-Signature sig)
 \item 
-static force\_\-inline void \hyperlink{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}{foundVirus} (const char $\ast$virusname)
+static force\_\-inline void \hyperlink{bytecode__local_8h_ab0d5e3e0d9afd1a655e1eb3cd25fa00d}{\_\-\_\-attribute\_\-\_\-} ((overloadable)) foundVirus(const char $\ast$virusname)
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{getFilesize} (void)
 \item 
@@ -191,7 +195,17 @@ Defines the pattern for a previously declared subsignature. \begin{DoxySeeAlso}{
 
 \begin{DoxyParams}{Parameters}
 \item[{\em name}]the name of a previously declared subsignature \item[{\em hex}]the pattern for this subsignature \end{DoxyParams}
-\hypertarget{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{
+\hypertarget{bytecode__local_8h_afc471efa427277a2b96a2a06ba647aa9}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!FUNCTIONALITY\_\-LEVEL\_\-MAX@{FUNCTIONALITY\_\-LEVEL\_\-MAX}}
+\index{FUNCTIONALITY\_\-LEVEL\_\-MAX@{FUNCTIONALITY\_\-LEVEL\_\-MAX}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{FUNCTIONALITY\_\-LEVEL\_\-MAX}]{\setlength{\rightskip}{0pt plus 5cm}\#define FUNCTIONALITY\_\-LEVEL\_\-MAX(m)~const unsigned short \_\-\_\-FuncMax = (m);}\hfill}
+\label{bytecode__local_8h_afc471efa427277a2b96a2a06ba647aa9}
+Define the maximum engine functionality level required for this bytecode/logical signature. Engines newer than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \hypertarget{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!FUNCTIONALITY\_\-LEVEL\_\-MIN@{FUNCTIONALITY\_\-LEVEL\_\-MIN}}
+\index{FUNCTIONALITY\_\-LEVEL\_\-MIN@{FUNCTIONALITY\_\-LEVEL\_\-MIN}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{FUNCTIONALITY\_\-LEVEL\_\-MIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define FUNCTIONALITY\_\-LEVEL\_\-MIN(m)~const unsigned short \_\-\_\-FuncMin = (m);}\hfill}
+\label{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}
+Define the minimum engine functionality level required for this bytecode/logical signature. Engines older than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \hypertarget{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}}
 \index{SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{SIGNATURES\_\-DECL\_\-BEGIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-BEGIN~struct \_\-\_\-Signatures \{}\hfill}
@@ -246,6 +260,17 @@ Declares all the virusnames that this bytecode can report.
 
 
 \subsubsection{Function Documentation}
+\hypertarget{bytecode__local_8h_ab0d5e3e0d9afd1a655e1eb3cd25fa00d}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!\_\-\_\-attribute\_\-\_\-@{\_\-\_\-attribute\_\-\_\-}}
+\index{\_\-\_\-attribute\_\-\_\-@{\_\-\_\-attribute\_\-\_\-}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{\_\-\_\-attribute\_\-\_\-}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void \_\-\_\-attribute\_\-\_\- ((overloadable)) const\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ab0d5e3e0d9afd1a655e1eb3cd25fa00d}
+Sets the specified virusname as the virus detected by this bytecode. 
+\begin{DoxyParams}{Parameters}
+\item[{\em virusname}]the name of the virus, excluding the prefix, must be one of the virusnames declared in {\ttfamily VIRUSNAMES}. \end{DoxyParams}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES} 
+\end{DoxySeeAlso}
 \hypertarget{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!\_\-\_\-is\_\-bigendian@{\_\-\_\-is\_\-bigendian}}
 \index{\_\-\_\-is\_\-bigendian@{\_\-\_\-is\_\-bigendian}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -306,17 +331,6 @@ Disassembles one X86 instruction starting at the specified offset.
 \begin{DoxyReturn}{Returns}
 offset where disassembly ended 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}{
-\index{bytecode\_\-local.h@{bytecode\_\-local.h}!foundVirus@{foundVirus}}
-\index{foundVirus@{foundVirus}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{foundVirus}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void foundVirus (const char $\ast$ {\em virusname})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
-\label{bytecode__local_8h_ab7428636abed051c6f12f477fd2d7970}
-Sets the specified virusname as the virus detected by this bytecode. 
-\begin{DoxyParams}{Parameters}
-\item[{\em virusname}]the name of the virus, excluding the prefix, must be one of the virusnames declared in {\ttfamily VIRUSNAMES}. \end{DoxyParams}
-\begin{DoxySeeAlso}{See also}
-\hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES} 
-\end{DoxySeeAlso}
 \hypertarget{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getEntryPoint@{getEntryPoint}}
 \index{getEntryPoint@{getEntryPoint}!bytecode_local.h@{bytecode\_\-local.h}}
