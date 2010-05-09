@@ -46,7 +46,7 @@
 \usepackage{url}
 \usepackage{doxygen}
 \usepackage{makeidx}
-\makeindex
+%\makeindex
 \lstset{language=C}
 \lstset{escapeinside={(*@}{@*)}}
 \lstset{numbers=left, numberstyle=\tiny, stepnumber=2,numbersep=5pt, basicstyle=\footnotesize, breaklines = true, breakatwhitespace=true, showstringspaces=true}
@@ -63,6 +63,8 @@
     \usepackage[pdftex]{graphicx}
     \DeclareGraphicsExtensions{.pdf, .eps}   %%% standard extension for included graphics
     \pdfcompresslevel=9
+%    \pdfobjcompresslevel=1
+%    \pdfminorversion=5
     \usepackage[pdftex,                %%% hyper-references for pdflatex
     bookmarks=true,%                   %%% generate bookmarks ...
     bookmarksnumbered=true,%           %%% ... with numbers
@@ -71,7 +73,7 @@
     citecolor=red,
     anchorcolor=green,
     colorlinks=true,
-    hyperindex=true,
+%    hyperindex=true,
     hyperfigures,
     linkcolor=blue,
     linktocpage,
@@ -102,7 +104,7 @@
                  linktocpage,
                  pagebackref,
                  colorlinks = false,
-                 hyperindex = true,
+%                 hyperindex = true,
                  hyperfigures
                  ]{hyperref}
 
