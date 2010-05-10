@@ -858,14 +858,14 @@ do {\
 static inline int32_t ilog2(uint32_t a, uint32_t b)
 {
     uint32_t c = a > b ? a : b;
-    if (c < 4096) {
+    if (c < 2048) {
 	// scale up a,b to [0, 4096]
-	uint32_t scale = 4096/c;
+	uint32_t scale = 2048/c;
 	a *= scale;
 	b *= scale;
     } else {
 	// scale down a,b to [0, 4096]
-	uint32_t scale = (c+4095) / 4096;
+	uint32_t scale = (c+2047) / 2048;
 	a /= scale;
 	b /= scale;
     }
