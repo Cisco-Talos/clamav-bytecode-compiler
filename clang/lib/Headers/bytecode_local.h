@@ -855,7 +855,7 @@ do {\
   }\
 } while (0);
 
-static inline int32_t ilog2(uint32_t a, uint32_t b)
+static inline int32_t ilog2_compat(uint32_t a, uint32_t b)
 {
     uint32_t c = a > b ? a : b;
     if (c < 2048) {
