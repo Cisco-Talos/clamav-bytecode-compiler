@@ -97,6 +97,58 @@ int32\_\-t \hyperlink{bytecode__api_8h_afb97628e1638c524b0cf45190403553d}{jsnorm
 int32\_\-t \hyperlink{bytecode__api_8h_a5c0da722aa4ccb9618052c5a2361ed8e}{jsnorm\_\-process} (int32\_\-t id)
 \item 
 int32\_\-t \hyperlink{bytecode__api_8h_a7445bceea42b0a4d1d841b2c8826db4a}{jsnorm\_\-done} (int32\_\-t id)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a59893a4520a13171c94d6ce63fce6c4b}{ilog2} (uint32\_\-t a, uint32\_\-t b)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_abd69b1aa30157a6d87658db53ece8f5a}{ipow} (int32\_\-t a, int32\_\-t b, int32\_\-t c)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_abf9b679512a0b9b290f3a40ce1a45df4}{iexp} (int32\_\-t a, int32\_\-t b, int32\_\-t c)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_acca08245d3d1a190375a92d5c51b2a90}{isin} (int32\_\-t a, int32\_\-t b, int32\_\-t c)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a6aeece8bfb39a8499b44d67c8bebb716}{icos} (int32\_\-t a, int32\_\-t b, int32\_\-t c)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a5d46e3fbbec8277f894d998a9b0dfdbc}{memstr} (const uint8\_\-t $\ast$haystack, int32\_\-t haysize, const uint8\_\-t $\ast$needle, int32\_\-t needlesize)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a231265b2ef73573c38d51a385697ae57}{hex2ui} (uint32\_\-t hex1, uint32\_\-t hex2)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_aa07799442f1560666449446eac438ee4}{atoi} (const uint8\_\-t $\ast$str, int32\_\-t size)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a43707290a22915315c960422a88ba4d4}{debug\_\-print\_\-str\_\-start} (const uint8\_\-t $\ast$str, uint32\_\-t len)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a02f173e084fc9a4b9eaf3017aa4243ba}{debug\_\-print\_\-str\_\-nonl} (const uint8\_\-t $\ast$str, uint32\_\-t len)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a2df1f1f4823085b4956f1bce3f5b059c}{entropy\_\-buffer} (uint8\_\-t $\ast$buffer, int32\_\-t size)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a8350ff5a10c6d2b8aa5c9b20bd0b032f}{map\_\-new} (int32\_\-t keysize, int32\_\-t valuesize)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a962d8bc4658ba7dd411c75d7561c2fee}{map\_\-addkey} (const uint8\_\-t $\ast$key, int32\_\-t ksize, int32\_\-t id)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_afdae99c4fa909e017962e8b869950005}{map\_\-setvalue} (const uint8\_\-t $\ast$value, int32\_\-t vsize, int32\_\-t id)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_aeadbaac505160a820fe766cdaf95aba6}{map\_\-remove} (const uint8\_\-t $\ast$key, int32\_\-t ksize, int32\_\-t id)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_ac45a2c7ac861578b8001b2116eee10aa}{map\_\-find} (const uint8\_\-t $\ast$key, int32\_\-t ksize, int32\_\-t id)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_aac4176bebb0d4896ad64452bec023012}{map\_\-getvaluesize} (int32\_\-t id)
+\item 
+uint8\_\-t $\ast$ \hyperlink{bytecode__api_8h_a6a8bbb58c0ccad537eec575949e5f9f7}{map\_\-getvalue} (int32\_\-t id, int32\_\-t size)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a2603885df2096dc840d887461c3b1aac}{map\_\-done} (int32\_\-t id)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_ad7479f2fd346e59217f50726be9502a3}{file\_\-find\_\-limit} (const uint8\_\-t $\ast$data, uint32\_\-t len, int32\_\-t maxpos)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_addc54afadb3d660c92e4e350548086d8}{engine\_\-functionality\_\-level} (void)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a4fa59c900fefd4a4441fcc4b3e44830d}{engine\_\-dconf\_\-level} (void)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_a0cd507ebdbadaa5899ca032cb5f69e3c}{engine\_\-scan\_\-options} (void)
+\item 
+uint32\_\-t \hyperlink{bytecode__api_8h_afc1eab4e86797378b5c1e7186894c1a7}{engine\_\-db\_\-options} (void)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a0f6e898d3a55355835fccb1f6d15abc1}{extract\_\-set\_\-container} (uint32\_\-t container)
+\item 
+int32\_\-t \hyperlink{bytecode__api_8h_a86179c9beb10be3f66cb5cae9902fec3}{input\_\-switch} (int32\_\-t extracted\_\-file)
 \end{DoxyCompactItemize}
 \subsubsection*{Variables}
 \begin{DoxyCompactItemize}
@@ -172,6 +224,17 @@ BC\_\-PE\_\-UNPACKER}
 LibClamAV functionality level constants 
 
 \subsubsection{Function Documentation}
+\hypertarget{bytecode__api_8h_aa07799442f1560666449446eac438ee4}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!atoi@{atoi}}
+\index{atoi@{atoi}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{atoi}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t atoi (const uint8\_\-t $\ast$ {\em str}, \/  int32\_\-t {\em size})}\hfill}
+\label{bytecode__api_8h_aa07799442f1560666449446eac438ee4}
+Converts string to positive number. 
+\begin{DoxyParams}{Parameters}
+\item[{\em str}]buffer \item[{\em size}]size of {\ttfamily str} \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+$>$0 string converted to number if possible, -\/1 on error 
+\end{DoxyReturn}
 \hypertarget{bytecode__api_8h_a984890c1d3b68b99e68c2e6b1a7704d0}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!buffer\_\-pipe\_\-done@{buffer\_\-pipe\_\-done}}
 \index{buffer\_\-pipe\_\-done@{buffer\_\-pipe\_\-done}!bytecode_api.h@{bytecode\_\-api.h}}
@@ -295,6 +358,28 @@ Prints a debug message.
 \begin{DoxyReturn}{Returns}
 0 
 \end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a02f173e084fc9a4b9eaf3017aa4243ba}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!debug\_\-print\_\-str\_\-nonl@{debug\_\-print\_\-str\_\-nonl}}
+\index{debug\_\-print\_\-str\_\-nonl@{debug\_\-print\_\-str\_\-nonl}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{debug\_\-print\_\-str\_\-nonl}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t debug\_\-print\_\-str\_\-nonl (const uint8\_\-t $\ast$ {\em str}, \/  uint32\_\-t {\em len})}\hfill}
+\label{bytecode__api_8h_a02f173e084fc9a4b9eaf3017aa4243ba}
+Prints a debug message with a trailing newline, and not preceded by 'LibClamAV debug'. 
+\begin{DoxyParams}{Parameters}
+\item[{\em str}]the string \item[{\em len}]length of {\ttfamily str} \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a43707290a22915315c960422a88ba4d4}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!debug\_\-print\_\-str\_\-start@{debug\_\-print\_\-str\_\-start}}
+\index{debug\_\-print\_\-str\_\-start@{debug\_\-print\_\-str\_\-start}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{debug\_\-print\_\-str\_\-start}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t debug\_\-print\_\-str\_\-start (const uint8\_\-t $\ast$ {\em str}, \/  uint32\_\-t {\em len})}\hfill}
+\label{bytecode__api_8h_a43707290a22915315c960422a88ba4d4}
+Prints a debug message with a trailing newline, but preceded by 'LibClamAV debug'. 
+\begin{DoxyParams}{Parameters}
+\item[{\em str}]the string \item[{\em len}]length of {\ttfamily str} \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 
+\end{DoxyReturn}
 \hypertarget{bytecode__api_8h_a6e0cdd4d4c76ed46a8627bee56eee1c1}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!debug\_\-print\_\-uint@{debug\_\-print\_\-uint}}
 \index{debug\_\-print\_\-uint@{debug\_\-print\_\-uint}!bytecode_api.h@{bytecode\_\-api.h}}
@@ -322,6 +407,37 @@ Disassembles starting from current file position, the specified amount of bytes.
 You can use lseek to disassemble starting from a different location. This is a low-\/level API, the result is in ClamAV type-\/8 signature format (64 bytes/instruction). \begin{DoxySeeAlso}{See also}
 \hyperlink{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{DisassembleAt} 
 \end{DoxySeeAlso}
+\hypertarget{bytecode__api_8h_afc1eab4e86797378b5c1e7186894c1a7}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!engine\_\-db\_\-options@{engine\_\-db\_\-options}}
+\index{engine\_\-db\_\-options@{engine\_\-db\_\-options}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{engine\_\-db\_\-options}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t engine\_\-db\_\-options (void)}\hfill}
+\label{bytecode__api_8h_afc1eab4e86797378b5c1e7186894c1a7}
+Returns the current engine's db options. \hypertarget{bytecode__api_8h_a4fa59c900fefd4a4441fcc4b3e44830d}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!engine\_\-dconf\_\-level@{engine\_\-dconf\_\-level}}
+\index{engine\_\-dconf\_\-level@{engine\_\-dconf\_\-level}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{engine\_\-dconf\_\-level}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t engine\_\-dconf\_\-level (void)}\hfill}
+\label{bytecode__api_8h_a4fa59c900fefd4a4441fcc4b3e44830d}
+Returns the current engine (dconf) functionality level. \hypertarget{bytecode__api_8h_addc54afadb3d660c92e4e350548086d8}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!engine\_\-functionality\_\-level@{engine\_\-functionality\_\-level}}
+\index{engine\_\-functionality\_\-level@{engine\_\-functionality\_\-level}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{engine\_\-functionality\_\-level}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t engine\_\-functionality\_\-level (void)}\hfill}
+\label{bytecode__api_8h_addc54afadb3d660c92e4e350548086d8}
+-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ engine query -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ Returns the current engine (feature) functionality level. \hypertarget{bytecode__api_8h_a0cd507ebdbadaa5899ca032cb5f69e3c}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!engine\_\-scan\_\-options@{engine\_\-scan\_\-options}}
+\index{engine\_\-scan\_\-options@{engine\_\-scan\_\-options}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{engine\_\-scan\_\-options}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t engine\_\-scan\_\-options (void)}\hfill}
+\label{bytecode__api_8h_a0cd507ebdbadaa5899ca032cb5f69e3c}
+Returns the current engine's scan options. \hypertarget{bytecode__api_8h_a2df1f1f4823085b4956f1bce3f5b059c}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!entropy\_\-buffer@{entropy\_\-buffer}}
+\index{entropy\_\-buffer@{entropy\_\-buffer}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{entropy\_\-buffer}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t entropy\_\-buffer (uint8\_\-t $\ast$ {\em buffer}, \/  int32\_\-t {\em size})}\hfill}
+\label{bytecode__api_8h_a2df1f1f4823085b4956f1bce3f5b059c}
+Returns an approximation for the entropy of {\ttfamily buffer}. 
+\begin{DoxyParams}{Parameters}
+\item[{\em buffer}]input buffer \item[{\em size}]size of buffer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+entropy estimation $\ast$ 2$^\wedge$26 
+\end{DoxyReturn}
 \hypertarget{bytecode__api_8h_aed98502eb13f9e2209d9c6b1620eb17a}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!extract\_\-new@{extract\_\-new}}
 \index{extract\_\-new@{extract\_\-new}!bytecode_api.h@{bytecode\_\-api.h}}
@@ -332,6 +448,17 @@ Prepares for extracting a new file, if we've already extracted one it scans it.
 \item[\mbox{$\leftarrow$} {\em id}]an id for the new file (for example position in container) \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 1 if previous extracted file was infected 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a0f6e898d3a55355835fccb1f6d15abc1}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!extract\_\-set\_\-container@{extract\_\-set\_\-container}}
+\index{extract\_\-set\_\-container@{extract\_\-set\_\-container}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{extract\_\-set\_\-container}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t extract\_\-set\_\-container (uint32\_\-t {\em container})}\hfill}
+\label{bytecode__api_8h_a0f6e898d3a55355835fccb1f6d15abc1}
+Sets the container type for the currently extracted file. 
+\begin{DoxyParams}{Parameters}
+\item[{\em container}]container type (CL\_\-TYPE\_\-$\ast$) \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+current setting for container (CL\_\-TYPE\_\-ANY default) 
 \end{DoxyReturn}
 \hypertarget{bytecode__api_8h_a1e192cd4fe94e68dbac5023a1e2481c9}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!file\_\-byteat@{file\_\-byteat}}
@@ -350,6 +477,17 @@ byte at offset {\ttfamily off} in the current file, or -\/1 if offset is invalid
 \paragraph[{file\_\-find}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t file\_\-find (const uint8\_\-t $\ast$ {\em data}, \/  uint32\_\-t {\em len})}\hfill}
 \label{bytecode__api_8h_a56355a07d9fb739dd483dd756f7fe821}
 Looks for the specified sequence of bytes in the current file. 
+\begin{DoxyParams}{Parameters}
+\item[\mbox{$\leftarrow$} {\em data}]the sequence of bytes to look for \item[{\em len}]length of {\ttfamily data}, cannot be more than 1024 \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+offset in the current file if match is found, -\/1 otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_ad7479f2fd346e59217f50726be9502a3}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!file\_\-find\_\-limit@{file\_\-find\_\-limit}}
+\index{file\_\-find\_\-limit@{file\_\-find\_\-limit}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{file\_\-find\_\-limit}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t file\_\-find\_\-limit (const uint8\_\-t $\ast$ {\em data}, \/  uint32\_\-t {\em len}, \/  int32\_\-t {\em maxpos})}\hfill}
+\label{bytecode__api_8h_ad7479f2fd346e59217f50726be9502a3}
+-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ file operations -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ Looks for the specified sequence of bytes in the current file, up to the specified position. 
 \begin{DoxyParams}{Parameters}
 \item[\mbox{$\leftarrow$} {\em data}]the sequence of bytes to look for \item[{\em len}]length of {\ttfamily data}, cannot be more than 1024 \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
@@ -437,6 +575,50 @@ Remove a 32-\/bit key from the hashset.
 \begin{DoxyReturn}{Returns}
 0 on success 
 \end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a231265b2ef73573c38d51a385697ae57}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!hex2ui@{hex2ui}}
+\index{hex2ui@{hex2ui}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{hex2ui}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t hex2ui (uint32\_\-t {\em hex1}, \/  uint32\_\-t {\em hex2})}\hfill}
+\label{bytecode__api_8h_a231265b2ef73573c38d51a385697ae57}
+Returns hexadecimal characters {\ttfamily hex1} and {\ttfamily hex2} converted to 8-\/bit number. 
+\begin{DoxyParams}{Parameters}
+\item[{\em hex1}]hexadecimal character \item[{\em hex2}]hexadecimal character \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+hex1 hex2 converted to 8-\/bit integer, -\/1 on error 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a6aeece8bfb39a8499b44d67c8bebb716}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!icos@{icos}}
+\index{icos@{icos}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{icos}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t icos (int32\_\-t {\em a}, \/  int32\_\-t {\em b}, \/  int32\_\-t {\em c})}\hfill}
+\label{bytecode__api_8h_a6aeece8bfb39a8499b44d67c8bebb716}
+Returns c$\ast$cos(a/b). 
+\begin{DoxyParams}{Parameters}
+\item[{\em a}]integer \item[{\em b}]integer \item[{\em c}]integer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+c$\ast$sin(a/b) 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_abf9b679512a0b9b290f3a40ce1a45df4}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!iexp@{iexp}}
+\index{iexp@{iexp}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{iexp}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t iexp (int32\_\-t {\em a}, \/  int32\_\-t {\em b}, \/  int32\_\-t {\em c})}\hfill}
+\label{bytecode__api_8h_abf9b679512a0b9b290f3a40ce1a45df4}
+Returns exp(a/b)$\ast$c 
+\begin{DoxyParams}{Parameters}
+\item[{\em a}]integer \item[{\em b}]integer \item[{\em c}]integer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+c$\ast$exp(a/b) 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a59893a4520a13171c94d6ce63fce6c4b}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!ilog2@{ilog2}}
+\index{ilog2@{ilog2}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{ilog2}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t ilog2 (uint32\_\-t {\em a}, \/  uint32\_\-t {\em b})}\hfill}
+\label{bytecode__api_8h_a59893a4520a13171c94d6ce63fce6c4b}
+-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ math -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ Returns 2$^\wedge$26$\ast$log2(a/b) 
+\begin{DoxyParams}{Parameters}
+\item[{\em a}]input \item[{\em b}]input \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+2$^\wedge$26$\ast$log2(a/b) 
+\end{DoxyReturn}
 \hypertarget{bytecode__api_8h_a123c12ca76a5b736217b68fdb126066e}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!inflate\_\-done@{inflate\_\-done}}
 \index{inflate\_\-done@{inflate\_\-done}!bytecode_api.h@{bytecode\_\-api.h}}
@@ -469,6 +651,39 @@ Inflate all available data in the input buffer, and write to output buffer. Stop
 \item[{\em id}]ID of inflate data structure \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 0 on success, zlib error code otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a86179c9beb10be3f66cb5cae9902fec3}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!input\_\-switch@{input\_\-switch}}
+\index{input\_\-switch@{input\_\-switch}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{input\_\-switch}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t input\_\-switch (int32\_\-t {\em extracted\_\-file})}\hfill}
+\label{bytecode__api_8h_a86179c9beb10be3f66cb5cae9902fec3}
+Toggles the read/seek API to read from the currently extracted file, and back. 
+\begin{DoxyParams}{Parameters}
+\item[{\em extracted\_\-file}]1 -\/ switch to reading from extracted file, 0 -\/ switch back to original input \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+-\/1 on error (if no extracted file exists) 0 on success 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_abd69b1aa30157a6d87658db53ece8f5a}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!ipow@{ipow}}
+\index{ipow@{ipow}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{ipow}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t ipow (int32\_\-t {\em a}, \/  int32\_\-t {\em b}, \/  int32\_\-t {\em c})}\hfill}
+\label{bytecode__api_8h_abd69b1aa30157a6d87658db53ece8f5a}
+Returns c$\ast$a$^\wedge$b. 
+\begin{DoxyParams}{Parameters}
+\item[{\em a}]integer \item[{\em b}]integer \item[{\em c}]integer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+c$\ast$pow(a,b) 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_acca08245d3d1a190375a92d5c51b2a90}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!isin@{isin}}
+\index{isin@{isin}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{isin}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t isin (int32\_\-t {\em a}, \/  int32\_\-t {\em b}, \/  int32\_\-t {\em c})}\hfill}
+\label{bytecode__api_8h_acca08245d3d1a190375a92d5c51b2a90}
+Returns c$\ast$sin(a/b). 
+\begin{DoxyParams}{Parameters}
+\item[{\em a}]integer \item[{\em b}]integer \item[{\em c}]integer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+c$\ast$sin(a/b) 
 \end{DoxyReturn}
 \hypertarget{bytecode__api_8h_a7445bceea42b0a4d1d841b2c8826db4a}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!jsnorm\_\-done@{jsnorm\_\-done}}
@@ -510,6 +725,101 @@ Allocates memory. Currently this memory is freed automatically on exit from the 
 \item[{\em size}]amount of memory to allocate in bytes \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 pointer to allocated memory 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a962d8bc4658ba7dd411c75d7561c2fee}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-addkey@{map\_\-addkey}}
+\index{map\_\-addkey@{map\_\-addkey}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-addkey}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-addkey (const uint8\_\-t $\ast$ {\em key}, \/  int32\_\-t {\em ksize}, \/  int32\_\-t {\em id})}\hfill}
+\label{bytecode__api_8h_a962d8bc4658ba7dd411c75d7561c2fee}
+Inserts the specified key/value pair into the map. 
+\begin{DoxyParams}{Parameters}
+\item[{\em id}]id of table \item[{\em key}]key \item[{\em ksize}]size of {\ttfamily key} \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 -\/ if key didn't exist before 1 -\/ if key existed -\/1 -\/ if ksize doesn't match keysize specified at table creation 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a2603885df2096dc840d887461c3b1aac}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-done@{map\_\-done}}
+\index{map\_\-done@{map\_\-done}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-done}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-done (int32\_\-t {\em id})}\hfill}
+\label{bytecode__api_8h_a2603885df2096dc840d887461c3b1aac}
+Deallocates the memory used by the specified map. Trying to use the map after this will result in an error. All maps are automatically deallocated when the bytecode finishes execution. \hypertarget{bytecode__api_8h_ac45a2c7ac861578b8001b2116eee10aa}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-find@{map\_\-find}}
+\index{map\_\-find@{map\_\-find}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-find}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-find (const uint8\_\-t $\ast$ {\em key}, \/  int32\_\-t {\em ksize}, \/  int32\_\-t {\em id})}\hfill}
+\label{bytecode__api_8h_ac45a2c7ac861578b8001b2116eee10aa}
+Looks up key in map. The map remember the last looked up key (so you can retrieve the value).
+
+
+\begin{DoxyParams}{Parameters}
+\item[{\em id}]id of map \item[{\em key}]key \item[{\em ksize}]size of key \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 -\/ if not found 1 -\/ if found -\/1 -\/ if ksize doesn't match the size specified at table creation 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a6a8bbb58c0ccad537eec575949e5f9f7}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-getvalue@{map\_\-getvalue}}
+\index{map\_\-getvalue@{map\_\-getvalue}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-getvalue}]{\setlength{\rightskip}{0pt plus 5cm}uint8\_\-t$\ast$ map\_\-getvalue (int32\_\-t {\em id}, \/  int32\_\-t {\em size})}\hfill}
+\label{bytecode__api_8h_a6a8bbb58c0ccad537eec575949e5f9f7}
+Returns the value obtained during last map\_\-find. 
+\begin{DoxyParams}{Parameters}
+\item[{\em id}]id of map. \item[{\em size}]size of value (obtained from map\_\-getvaluesize) \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+value 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_aac4176bebb0d4896ad64452bec023012}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-getvaluesize@{map\_\-getvaluesize}}
+\index{map\_\-getvaluesize@{map\_\-getvaluesize}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-getvaluesize}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-getvaluesize (int32\_\-t {\em id})}\hfill}
+\label{bytecode__api_8h_aac4176bebb0d4896ad64452bec023012}
+Returns the size of value obtained during last map\_\-find. 
+\begin{DoxyParams}{Parameters}
+\item[{\em id}]id of map. \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+size of value 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a8350ff5a10c6d2b8aa5c9b20bd0b032f}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-new@{map\_\-new}}
+\index{map\_\-new@{map\_\-new}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-new}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-new (int32\_\-t {\em keysize}, \/  int32\_\-t {\em valuesize})}\hfill}
+\label{bytecode__api_8h_a8350ff5a10c6d2b8aa5c9b20bd0b032f}
+Creates a new map and returns its id. 
+\begin{DoxyParams}{Parameters}
+\item[{\em keysize}]size of key \item[{\em valuesize}]size of value, if 0 then value is allocated separately \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ID of new map 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_aeadbaac505160a820fe766cdaf95aba6}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-remove@{map\_\-remove}}
+\index{map\_\-remove@{map\_\-remove}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-remove}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-remove (const uint8\_\-t $\ast$ {\em key}, \/  int32\_\-t {\em ksize}, \/  int32\_\-t {\em id})}\hfill}
+\label{bytecode__api_8h_aeadbaac505160a820fe766cdaf95aba6}
+Remove an element from the map. 
+\begin{DoxyParams}{Parameters}
+\item[{\em id}]id of map \item[{\em key}]key \item[{\em ksize}]size of key \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 on success, key was present 1 if key was not present -\/1 if ksize doesn't match keysize specified at table creation 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_afdae99c4fa909e017962e8b869950005}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!map\_\-setvalue@{map\_\-setvalue}}
+\index{map\_\-setvalue@{map\_\-setvalue}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{map\_\-setvalue}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t map\_\-setvalue (const uint8\_\-t $\ast$ {\em value}, \/  int32\_\-t {\em vsize}, \/  int32\_\-t {\em id})}\hfill}
+\label{bytecode__api_8h_afdae99c4fa909e017962e8b869950005}
+Sets the value for the last inserted key with map\_\-addkey. 
+\begin{DoxyParams}{Parameters}
+\item[{\em id}]id of table \item[{\em value}]value \item[{\em vsize}]size of {\ttfamily value} \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 -\/ if update was successful -\/1 -\/ if there is no last key 
+\end{DoxyReturn}
+\hypertarget{bytecode__api_8h_a5d46e3fbbec8277f894d998a9b0dfdbc}{
+\index{bytecode\_\-api.h@{bytecode\_\-api.h}!memstr@{memstr}}
+\index{memstr@{memstr}!bytecode_api.h@{bytecode\_\-api.h}}
+\paragraph[{memstr}]{\setlength{\rightskip}{0pt plus 5cm}int32\_\-t memstr (const uint8\_\-t $\ast$ {\em haystack}, \/  int32\_\-t {\em haysize}, \/  const uint8\_\-t $\ast$ {\em needle}, \/  int32\_\-t {\em needlesize})}\hfill}
+\label{bytecode__api_8h_a5d46e3fbbec8277f894d998a9b0dfdbc}
+-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ string operations -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/ Return position of match, -\/1 otherwise. 
+\begin{DoxyParams}{Parameters}
+\item[{\em haystack}]buffer to search \item[{\em haysize}]size of {\ttfamily haystack} \item[{\em needle}]substring to search \item[{\em needlesize}]size of needle \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+location of match, -\/1 otherwise 
 \end{DoxyReturn}
 \hypertarget{bytecode__api_8h_a0d081f8f58263eb99d68690f1f9b2a81}{
 \index{bytecode\_\-api.h@{bytecode\_\-api.h}!pe\_\-rawaddr@{pe\_\-rawaddr}}
