@@ -184,6 +184,19 @@ public:
       params.push_back(Type::getInt32Ty(C));
       Api7Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
 
+      params.clear();
+      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
+      params.push_back(Type::getInt32Ty(C));
+      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
+      params.push_back(Type::getInt32Ty(C));
+      Api8Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
+
+      params.clear();
+      params.push_back(PointerType::getUnqual(Type::getInt8Ty(C)));
+      params.push_back(Type::getInt32Ty(C));
+      params.push_back(Type::getInt32Ty(C));
+      Api9Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
+
       BufferID = 0;
     }
 
@@ -225,6 +238,8 @@ private:
   const FunctionType *Api5Ty;
   const FunctionType *Api6Ty;
   const FunctionType *Api7Ty;
+  const FunctionType *Api8Ty;
+  const FunctionType *Api9Ty;
 
   void outputTypename(raw_ostream &Out, const Type *Ty,
                       unsigned TypeFlag, bool after=false);
@@ -1147,7 +1162,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
     typeNames[I->second] = I->first;
   }
 
-  FunctionListTy apicalls[8];
+  FunctionListTy apicalls[10];
   for (FunctionListTy::iterator I=functions.begin(), E=functions.end();
        I != E; ++I) {
 
@@ -1189,6 +1204,16 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
 
     if (FTy == Api7Ty) {
       apicalls[7].push_back(*I);
+      continue;
+    }
+
+    if (FTy == Api8Ty) {
+      apicalls[8].push_back(*I);
+      continue;
+    }
+
+    if (FTy == Api9Ty) {
+      apicalls[9].push_back(*I);
       continue;
     }
 
@@ -1337,7 +1362,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
 
   Out << "const struct cli_apicall cli_apicalls[]={\n";
   Out << clamav::apicall_begin << "\n";
-  uint16_t api0=0,api1=0,api2=0,api3=0,api4=0,api5=0,api6=0,api7=0;
+  uint16_t api0=0,api1=0,api2=0,api3=0,api4=0,api5=0,api6=0,api7=0,api8=0,api9=0;
   for (FunctionListTy::iterator I=functions.begin(), E=functions.end();
        I != E;) {
 
@@ -1360,6 +1385,10 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
       Out << api6++ << ", 6";
     } else if (FTy == Api7Ty) {
       Out << api7++ << ", 7";
+    } else if (FTy == Api8Ty) {
+      Out << api8++ << ", 8";
+    } else if (FTy == Api9Ty) {
+      Out << api9++ << ", 9";
     } else if (FTy == Api1Ty ||
             (FTy->getNumParams() == 2 &&
               FTy->getReturnType() == Type::getInt32Ty(C) &&
@@ -1367,7 +1396,19 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
              FTy->getParamType(1) == Type::getInt32Ty(C))) {
       Out << api1++ << ", 1";
     } else {
-      errs() << "Unknown prototype: " << *FTy << "\n";
+      errs() << "Unknown prototype: " << *FTy <<
+        " for function " << I->first << "\n"
+        << "known prototypes: "
+        << *Api0Ty << "\n"
+        << *Api1Ty << "\n"
+        << *Api2Ty << "\n"
+        << *Api3Ty << "\n"
+        << *Api4Ty << "\n"
+        << *Api5Ty << "\n"
+        << *Api6Ty << "\n"
+        << *Api7Ty << "\n"
+        << *Api8Ty << "\n"
+        << *Api9Ty << "\n";
       return false;
     }
     Out << "}";
@@ -1385,6 +1426,8 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
   printApiCalls(Out, "cli_apicall_allocobj", apicalls[5], 5);
   printApiCalls(Out, "cli_apicall_bufget", apicalls[6], 6);
   printApiCalls(Out, "cli_apicall_int3", apicalls[7], 7);
+  printApiCalls(Out, "cli_apicall_2bufs", apicalls[8], 8);
+  printApiCalls(Out, "cli_apicall_ptrbufid", apicalls[9], 9);
   Out << "const unsigned cli_apicall_maxapi = sizeof(cli_apicalls)/sizeof(cli_apicalls[0]);\n";
   return true;
 }
