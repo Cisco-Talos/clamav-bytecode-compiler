@@ -152,6 +152,7 @@ uint32_t debug_print_str(const uint8_t *str, uint32_t len);
 
 /**
  * Prints a number as a debug message.
+ * This is like \p debug_print_str_nonl!
  *
  * @param[in] a number to print
  * @return 0
