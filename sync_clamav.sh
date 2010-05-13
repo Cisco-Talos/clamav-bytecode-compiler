@@ -70,13 +70,16 @@ cp -v bytecode_hooks.h $CLAMAV_PATH/libclamav/bytecode_hooks.h
 cp -v ClamBC/clambc.h $CLAMAV_PATH/libclamav/clambc.h
 sed -nri '1h;1!H;${;g;s/enum BytecodeKind.+\};//;p;}' $CLAMAV_PATH/libclamav/clambc.h
 
-cp -v examples/out/apicalls2.o1.c.cbc $CLAMAV_TEST/apicalls2.cbc
-cp -v examples/out/apicalls.o1.c.cbc $CLAMAV_TEST/apicalls.cbc
-cp -v examples/out/arithmetic.o1.c.cbc $CLAMAV_TEST/arith.cbc
-cp -v examples/out/div0.o1.c.cbc $CLAMAV_TEST/div0.cbc
-cp -v examples/out/retmagic.o1.c.cbc $CLAMAV_TEST/retmagic.cbc
-cp -v examples/out/lsig.o1.c.cbc $CLAMAV_TEST/lsig.cbc
-cp -v examples/out/inf.o1.c.cbc $CLAMAV_TEST/inf.cbc
+cp -v examples/out/apicalls2.o1.c.cbc $CLAMAV_TEST/apicalls2_7.cbc
+cp -v examples/out/apicalls.o1.c.cbc $CLAMAV_TEST/apicalls_7.cbc
+cp -v examples/out/arithmetic.o1.c.cbc $CLAMAV_TEST/arith_7.cbc
+cp -v examples/out/retmagic.o1.c.cbc $CLAMAV_TEST/retmagic_7.cbc
+cp -v examples/out/lsig.o1.c.cbc $CLAMAV_TEST/lsig_7.cbc
+cp -v examples/out/inf.o1.c.cbc $CLAMAV_TEST/inf_7.cbc
+cp -v examples/out/api_files.o1.c.cbc $CLAMAV_TEST/api_files_7.cbc
+cp -v examples/out/api_extract.o1.c.cbc $CLAMAV_TEST/api_extract_7.cbc
+cp -v examples/out/debug.o1.c.cbc $CLAMAV_TEST/debug_7.cbc
+cp -v examples/out/testadt.o1.c.cbc $CLAMAV_TEST/testadt_7.cbc
 
 ./compile.sh -x c /dev/null -E -dD | grep ^\#define >docs/internals/predefines
 ./compile.sh -x c /dev/null -E -dD | grep ^typedef >docs/internals/typedefs

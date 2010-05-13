@@ -534,9 +534,9 @@ int32_t map_new(int32_t keysize, int32_t valuesize);
   * @param id id of table
   * @param key key
   * @param ksize size of \p key
-  * @return 0 - if key didn't exist before
-            1 - if key existed
-            -1 - if ksize doesn't match keysize specified at table creation
+  * @return 0 - if key existed before
+            1 - if key didn't exist before
+           <0 - if ksize doesn't match keysize specified at table creation
   */
 int32_t map_addkey(const uint8_t *key, int32_t ksize, int32_t id);
 
@@ -546,7 +546,7 @@ int32_t map_addkey(const uint8_t *key, int32_t ksize, int32_t id);
   * @param value value
   * @param vsize size of \p value
   * @return 0 - if update was successful
-           -1 - if there is no last key
+           <0 - if there is no last key
   */
 int32_t map_setvalue(const uint8_t *value, int32_t vsize, int32_t id);
 
@@ -557,7 +557,7 @@ int32_t map_setvalue(const uint8_t *value, int32_t vsize, int32_t id);
   * @param ksize size of key
   * @return 0 on success, key was present
             1 if key was not present
-           -1 if ksize doesn't match keysize specified at table creation
+           <0 if ksize doesn't match keysize specified at table creation
   */
 int32_t map_remove(const uint8_t* key, int32_t ksize, int32_t id);
 
@@ -571,7 +571,7 @@ int32_t map_remove(const uint8_t* key, int32_t ksize, int32_t id);
   * @param ksize size of key
   * @return 0 - if not found
             1 - if found
-           -1 - if ksize doesn't match the size specified at table creation
+           <0 - if ksize doesn't match the size specified at table creation
   */
 int32_t map_find(const uint8_t* key, int32_t ksize, int32_t id);
 

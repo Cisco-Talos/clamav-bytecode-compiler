@@ -12,6 +12,6 @@ int entrypoint(void)
   debug_print_str_nonl(", db options: ", 13);
   debug_print_uint(engine_db_options());
   debug_print_str_nonl("\n", 1);
-  return 0;
+  return 0xf00d;
 }
 

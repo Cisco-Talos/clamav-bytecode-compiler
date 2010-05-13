@@ -111,11 +111,11 @@ int entrypoint(void)
   if (file_find_limit("QR", 2, 17) != -1)
     return 0xbad37;
   if (file_find_limit("QR", 2, 18) != 16)
-    return 0xbad37;
-  if (seek(0, SEEK_SET) != 0)
     return 0xbad38;
-  if (file_find_limit("UVW", 3, 20) != -1)
+  if (seek(0, SEEK_SET) != 0)
     return 0xbad39;
+  if (file_find_limit("UVW", 3, 20) != -1)
+    return 0xbad40;
   return 0xf00d;
 }
 
