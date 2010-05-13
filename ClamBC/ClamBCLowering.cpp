@@ -173,6 +173,8 @@ void ClamBCLowering::fixupBitCasts(Function &F)
     AllocaInst *AI;
     do {
       AI = dyn_cast<AllocaInst>(J);
+      if (!AI)
+        break;
       if (hasBitcastUse(AI))
         allocas.push_back(AI);
       ++J;
