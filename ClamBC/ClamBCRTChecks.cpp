@@ -426,22 +426,28 @@ namespace {
       BasicBlock::iterator It = I;
       BasicBlock *newBB = SplitBlock(BB, &*It, this);
       PHINode *PN;
+      unsigned MDDbgKind = I->getContext().getMDKindID("dbg");
       //verifyFunction(*BB->getParent());
       if (!AbrtBB) {
         std::vector<const Type*>args;
         FunctionType* abrtTy = FunctionType::get(
           Type::getVoidTy(BB->getContext()),args,false);
         args.push_back(Type::getInt32Ty(BB->getContext()));
-//        FunctionType* rterrTy = FunctionType::get(
-//          Type::getInt32Ty(BB->getContext()),args,false);
+        FunctionType* rterrTy = FunctionType::get(
+          Type::getInt32Ty(BB->getContext()),args,false);
         Constant *func_abort =
           BB->getParent()->getParent()->getOrInsertFunction("abort", abrtTy);
-//        Constant *func_rterr =
-//          BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
+        Constant *func_rterr =
+          BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
         AbrtBB = BasicBlock::Create(BB->getContext(), "", BB->getParent());
         PN = PHINode::Create(Type::getInt32Ty(BB->getContext()),"",
                                       AbrtBB);
-//        CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", AbrtBB);
+        if (MDDbgKind) {
+          CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", AbrtBB);
+          RtErrCall->setCallingConv(CallingConv::C);
+          RtErrCall->setTailCall(true);
+          RtErrCall->setDoesNotThrow(true);
+        }
         CallInst* AbrtC = CallInst::Create(func_abort, "", AbrtBB);
         AbrtC->setCallingConv(CallingConv::C);
         AbrtC->setTailCall(true);
@@ -453,7 +459,6 @@ namespace {
       } else {
         PN = cast<PHINode>(AbrtBB->begin());
       }
-      unsigned MDDbgKind = I->getContext().getMDKindID("dbg");
       unsigned locationid = 0;
       if (MDNode *Dbg = I->getMetadata(MDDbgKind)) {
         DILocation Loc(Dbg);
