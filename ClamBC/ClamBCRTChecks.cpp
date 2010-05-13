@@ -408,6 +408,32 @@ namespace {
       return BoundsMap[Base] = V;
     }
 
+    MDNode *getLocation(Instruction *I, bool &Approximate, unsigned MDDbgKind)
+    {
+      Approximate = false;
+      if (MDNode *Dbg = I->getMetadata(MDDbgKind))
+        return Dbg;
+      if (!MDDbgKind)
+        return 0;
+      Approximate = true;
+      BasicBlock::iterator It = I;
+      while (It != I->getParent()->begin()) {
+        --It;
+        if (MDNode *Dbg = It->getMetadata(MDDbgKind))
+          return Dbg;
+      }
+      BasicBlock *BB = I->getParent();
+      while ((BB = BB->getUniquePredecessor())) {
+        It = BB->end();
+        while (It != BB->begin()) {
+          --It;
+          if (MDNode *Dbg = It->getMetadata(MDDbgKind))
+            return Dbg;
+        }
+      }
+      return 0;
+    }
+
     bool insertCheck(const SCEV *Idx, const SCEV *Limit, Instruction *I,
                      bool strict)
     {
@@ -461,14 +487,23 @@ namespace {
         PN = cast<PHINode>(AbrtBB->begin());
       }
       unsigned locationid = 0;
-      if (MDNode *Dbg = I->getMetadata(MDDbgKind)) {
+      bool Approximate;
+      if (MDNode *Dbg = getLocation(I, Approximate, MDDbgKind)) {
         DILocation Loc(Dbg);
         locationid = Loc.getLineNumber() << 8;
         unsigned col = Loc.getColumnNumber();
-        if (col > 255)
+        if (col > 254)
+          col = 254;
+        if (Approximate)
           col = 255;
         locationid |= col;
 //      Loc.getFilename();
+      } else {
+        static int wcounters = 100000;
+        locationid = (wcounters++)<<8;
+        /*errs() << "fake location: " << (locationid>>8) << "\n";
+        I->dump();
+        I->getParent()->dump();*/
       }
       PN->addIncoming(ConstantInt::get(Type::getInt32Ty(BB->getContext()),
                                        locationid), BB);
