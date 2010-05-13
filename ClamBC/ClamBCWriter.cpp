@@ -747,7 +747,11 @@ void ClamBCWriter::printBasicBlock(BasicBlock *BB) {
     if (RA->skipInstruction(&*II))
       continue;
     const Type *Ty = II->getType();
-    printType(Ty);
+    if (StoreInst *SI = dyn_cast<StoreInst>(II)) {
+      printType(SI->getOperand(0)->getType());
+    } else {
+      printType(Ty);
+    }
     if (Ty->getTypeID() != Type::VoidTyID)
       printNumber(RA->getValueID(&*II));
     else
