@@ -393,6 +393,8 @@ private :
           // a Constant of bitwidth 0 is a global variable
           printFixedNumber(0, 1);
         } else if (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
+          if (CE->getOpcode() == Instruction::IntToPtr)
+            stop("Cast of integer to pointer not supported", &I);
           printNumber(OModule->getGlobalID(CE), true);
           // a Constant of bitwidth 0 is a global variable
           printFixedNumber(0, 1);
