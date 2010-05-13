@@ -4,10 +4,6 @@ int entrypoint(void)
   unsigned char buf[4] = {1, 2, 3, 4};
   uint32_t x, i;
   uint64_t y;
-  buf[0] = 1;
-  buf[1] = 2;
-  buf[2] = 3;
-  buf[3] = 4;
   for (i=0;i<3;i++) {
     extract_new(i);
     if (write(buf, sizeof(buf)) != sizeof(buf))
@@ -20,13 +16,8 @@ int entrypoint(void)
     if (seek(0, SEEK_SET) != 0)
       return 0xbad4;
     x = 0x5a5a5a5a;
-    debug(buf[0]);
-    debug(buf[1]);
-    debug(buf[2]);
-    debug(buf[3]);
     if (read(&x, sizeof(x)) != sizeof(x))
       return 0xbad5;
-    debug(cli_readint32(&x));
     if (cli_readint32(&x) != 0x04030201)
       return 0xbad6;
     /* switch back to normal file */
@@ -52,7 +43,7 @@ int entrypoint(void)
     if (read(&y, sizeof(y)) != sizeof(y))
       return 0xbad15;
     y = le64_to_host(y);
-    if (y != 0x484746454443424140UL)
+    if (y != 0x0403020104030201UL)
       return 0xbad16;
     if (input_switch(0) != 0)
       return 0xbad17;
