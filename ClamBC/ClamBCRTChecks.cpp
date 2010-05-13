@@ -408,7 +408,8 @@ namespace {
       return BoundsMap[Base] = V;
     }
 
-    bool insertCheck(const SCEV *Idx, const SCEV *Limit, Instruction *I)
+    bool insertCheck(const SCEV *Idx, const SCEV *Limit, Instruction *I,
+                     bool strict)
     {
       if (isa<SCEVCouldNotCompute>(Idx) && isa<SCEVCouldNotCompute>(Limit)) {
         errs() << "Could not compute the index and the limit!: \n" << *I << "\n";
@@ -481,7 +482,9 @@ namespace {
       //verifyFunction(*BB->getParent());
       Value *LimitV = expander.expandCodeFor(Limit, Limit->getType(), TI);
       //verifyFunction(*BB->getParent());
-      Value *Cond = new ICmpInst(TI, ICmpInst::ICMP_ULT, IdxV, LimitV);
+      Value *Cond = new ICmpInst(TI, strict ?
+                                 ICmpInst::ICMP_ULT :
+                                 ICmpInst::ICMP_ULE, IdxV, LimitV);
       //verifyFunction(*BB->getParent());
       BranchInst::Create(newBB, AbrtBB, Cond, TI);
       TI->eraseFromParent();
@@ -584,8 +587,16 @@ namespace {
 
         DEBUG(dbgs() << "Checking access to " << *Pointer << " of length " <<
               *Length << "\n");
-        if (OffsetP == Limit)
-          return true;
+        if (OffsetP == Limit) {
+          printLocation(I, true);
+          errs() << "OffsetP == Limit: " << *OffsetP << "\n";
+          errs() << " while checking access to ";
+          printValue(Pointer);
+          errs() << " of length ";
+          printValue(Length);
+          errs() << "\n";
+          return false;
+        }
 
         if (SLen == Limit) {
           if (const SCEVConstant *SC = dyn_cast<SCEVConstant>(OffsetP)) {
@@ -595,22 +606,29 @@ namespace {
           errs() << "SLen == Limit: " << *SLen << "\n";
           errs() << " while checking access to " << *Pointer << " of length "
             << *Length << " at " << *I << "\n";
-          return false;//TODO: insert abort
+          return false;
         }
 
+        bool valid = true;
+        SLen = SE->getAddExpr(OffsetP, SLen);
+        // check that offset + slen <= limit; 
+        // umax(offset+slen, limit) == limit is a sufficient (but not necessary
+        // condition)
         const SCEV *MaxL = SE->getUMaxExpr(SLen, Limit);
         if (MaxL != Limit) {
           DEBUG(dbgs() << "MaxL != Limit: " << *MaxL << ", " << *Limit << "\n");
-          return insertCheck(SLen, Limit, I);
+          valid &= insertCheck(SLen, Limit, I, false);
         }
 
         //TODO: nullpointer check
         const SCEV *Max = SE->getUMaxExpr(OffsetP, Limit);
         if (Max == Limit)
-          return true;
+          return valid;
         DEBUG(dbgs() << "Max != Limit: " << *Max << ", " << *Limit << "\n");
 
-        return insertCheck(OffsetP, Limit, I);
+        // check that offset < limit
+        valid &= insertCheck(OffsetP, Limit, I, true);
+        return valid;
     }
 
     bool validateAccess(Value *Pointer, unsigned size, Instruction *I)
