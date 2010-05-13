@@ -602,6 +602,9 @@ int32_t map_done(int32_t id);
  * specified position.
  * @param[in] data the sequence of bytes to look for
  * @param len length of \p data, cannot be more than 1024
+ * @param maxpos maximum position to look for a match, 
+ * note that this is 1 byte after the end of last possible match:
+ * match_pos + \p len < \p maxpos
  * @return offset in the current file if match is found, -1 otherwise */
 int32_t file_find_limit(const uint8_t *data, uint32_t len, int32_t maxpos);
 
@@ -637,6 +640,8 @@ int32_t extract_set_container(uint32_t container);
 /**
   * Toggles the read/seek API to read from the currently extracted file, and
   * back.
+  * You must call seek after switching inputs to position the cursor to a valid
+  * position.
   * @param extracted_file 1 - switch to reading from extracted file, 
                           0 - switch back to original input
   * @return -1 on error (if no extracted file exists)

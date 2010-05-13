@@ -194,9 +194,9 @@ static uint32_t force_inline le32_to_host(uint32_t v)
  * order.
  * @param[in] v 64-bit integer as read from a file
  * @return integer converted to host's endianess */
-static uint32_t force_inline le64_to_host(uint32_t v)
+static uint64_t force_inline le64_to_host(uint64_t v)
 {
-  uint32_t swapped = __builtin_bswap64(v);
+  uint64_t swapped = __builtin_bswap64(v);
   return __is_bigendian() ? swapped : v;
 }
 
