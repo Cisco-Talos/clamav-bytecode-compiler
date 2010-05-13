@@ -95,25 +95,40 @@ static void printLocation(const llvm::Function *F) {
 // Print instruction location, falls back to printing function location,
 // (and LLVM instruction if specified).
 void printLocation(const llvm::Instruction *I, bool fallback) {
-  if (MDNode *N = I->getMetadata("dbg")) {
-    DILocation Loc(N);
-    errs() << /*Loc.getDirectory() << "/" <<*/ Loc.getFilename()
-      << ":" << Loc.getLineNumber();
-    if (unsigned Col = Loc.getColumnNumber()) {
-      errs() << ":" << Col;
+  const BasicBlock *BB = I->getParent();
+  bool approx = false;
+  BasicBlock::const_iterator It = I;
+  do {
+    BasicBlock::const_iterator ItB = BB->begin();
+    while (It != ItB) {
+      if (MDNode *N = It->getMetadata("dbg")) {
+        DILocation Loc(N);
+        errs() << /*Loc.getDirectory() << "/" <<*/ Loc.getFilename()
+          << ":" << Loc.getLineNumber();
+        if (unsigned Col = Loc.getColumnNumber()) {
+          errs() << ":" << Col;
+        }
+        if (approx)
+          errs() << "(?)";
+        errs() << ": ";
+        DIScope Scope = Loc.getScope();
+        while (Scope.isLexicalBlock()) {
+          DILexicalBlock LB(Scope.getNode());
+          Scope = LB.getContext();
+        }
+        if (Scope.isSubprogram()) {
+          DISubprogram SP(Scope.getNode());
+          errs() << "in function '" << SP.getDisplayName() << "': ";
+        }
+        return;
+      }
+      approx = true;
+      --It;
     }
-    errs() << ": ";
-    DIScope Scope = Loc.getScope();
-    while (Scope.isLexicalBlock()) {
-      DILexicalBlock LB(Scope.getNode());
-      Scope = LB.getContext();
-    }
-    if (Scope.isSubprogram()) {
-      DISubprogram SP(Scope.getNode());
-      errs() << "in function '" << SP.getDisplayName() << "': ";
-    }
-    return;
-  }
+    BB = BB->getUniquePredecessor();
+    if (BB)
+      It = BB->end();
+  } while (BB);
   printLocation(I->getParent()->getParent());
   if (fallback)
     errs() << *I << ":\n";
