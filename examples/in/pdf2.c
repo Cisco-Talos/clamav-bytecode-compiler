@@ -328,6 +328,8 @@ static bool force_inline asciihexdecode(int inbuf, int outbuf, unsigned avail)
       continue;
     if (in[i] == '>')
       break;
+    if (i+1 >= avail)
+      break;
     out[j++] = (cli_hex2int(in[i]) << 4) | cli_hex2int(in[i+1]);
     i++;
   }
@@ -553,8 +555,8 @@ static force_inline int32_t find_xref(unsigned *flags)
     seekOK = seekFromEOF(delta);
     int32_t pos = seek(0, SEEK_CUR);
     nread = read(buf, 4096);
-    while (nread > 5) {
-      if (!memcmp(buf + nread - 3, "startxref", 9)) {
+    while (nread > 9) {
+      if (!memcmp(buf + nread - 9, "startxref", 9)) {
         nread -= 9;
         foundStartxref = pos + nread;
         break;
