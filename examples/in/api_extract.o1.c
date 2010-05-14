@@ -1,9 +1,11 @@
 /* test file extract API */
 int entrypoint(void)
 {
-  unsigned char buf[4] = {1, 2, 3, 4};
+  unsigned char buf[4];
+  /* fixme:compiler assumes LE here = {1, 2, 3, 4}; */
   uint32_t x, i;
   uint64_t y;
+  *(uint32_t*)buf = le32_to_host(0x04030201);
   for (i=0;i<3;i++) {
     extract_new(i);
     if (write(buf, sizeof(buf)) != sizeof(buf))
