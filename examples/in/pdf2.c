@@ -32,6 +32,9 @@ DEFINE_SIGNATURE(PDF_EOF,"EOF-1024,1019:2525454f46")
 DEFINE_SIGNATURE(PDF_EOF_startxref,"EOF-1280,1266:737461727478726566")
 SIGNATURES_END
 
+/* only test code don't extract or detect anything */
+#define TEST_ONLY 1
+
 bool logical_trigger(void)
 {
   return matches(Signatures.PDF_header_good) ||
@@ -69,13 +72,9 @@ static force_inline void javascript_filter(uint32_t *probTable,
                     jsString[i+4] == 't' && jsString[i+4] == 'h') {
           i += 6;
         }
-        /*else if(memcmp(jsString+i, "length", 6) == 0) { //Common in randomized strings
-          debug(jsString+i);
-          debug(memcmp(jsString+i,"length",6));
-          debug(memcmp(jsString+i,"lenXth",6));
-          memcmp always returns 0 here with JIT... BUG!
+        else if(i+6<jsSize && memcmp(jsString+i, "length", 6) == 0) { //Common in randomized strings
           i = i+6;
-        }*/
+        }
         else {
           // add to entropy counter
           probTable[jsString[i]]++;
@@ -120,7 +119,9 @@ static force_inline void javascript_process(uint32_t *probTable, unsigned
       (*entropySize >= 512 && entropy > 8*(1<<27)) ||
       (*entropySize >= 1024 && entropy > 4*(1<<27))) {
     debug("The variables in this JavaScript object have a high degree of entropy");
+#ifndef TEST_ONLY
     foundVirus("JS.HighEntropy");
+#endif
   }
   memset(probTable, 0, sizeof(*probTable));
   *entropySize = 0;
@@ -137,7 +138,10 @@ static force_inline void decode_js_text(uint32_t *probTable,
   seek(pos, SEEK_SET);
   BUFFER_FILL(buf, 0, 1, filled);
   debug("decodejstext");
+#ifndef TEST_ONLY
   extract_new(pos);
+#endif
+
   //TODO: decode PDFEncoding and UTF16
   while (filled > 0) {
     for (i=0;i<filled;i++) {
@@ -148,10 +152,9 @@ static force_inline void decode_js_text(uint32_t *probTable,
       }
     }
     javascript_filter(probTable, entropySize, buf, i);
-    // write buf, 128 doesn't work -> bug
-    if (i == RE2C_BSIZE)
-      i--;
+#ifndef TEST_ONLY
     write(buf, i);
+#endif
     if (i < RE2C_BSIZE && buf[i] == ')' && !paranthesis)
       break;
     BUFFER_FILL(buf, 0, 1, filled);
@@ -167,7 +170,10 @@ static void decode_js_hex(uint32_t *probTable, unsigned *entropySize,
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
   debug("decodejshex");
+
+#ifndef TEST_ONLY
   extract_new(pos);
+#endif
   seek(back, SEEK_SET);
 }
 
@@ -216,54 +222,7 @@ static inline int cli_hex2int(const char c)
 	return hex_chars[(const unsigned char)c];
 }
 
-// There is something wrong with memcmp (always returns 0 in some cases)
-// use this workaround for now
-static force_inline int memcomp(const uint8_t *a, const uint8_t *b, unsigned size)
-{
-  unsigned i;
-  for (i=0;i<size;i++) {
-    if (a[i] == b[i])
-      continue;
-    return a[i] - b[i];
-  }
-  return 0;
-}
-
-// This should be an API or at least use KMP (or be compiled using the regex
-// compiler)
-static force_inline bool cli_memstr(const char *haystack, unsigned int hs, const char *needle, unsigned int ns)
-{
-	unsigned int i, s1, s2;
-
-    if(!hs || !ns || hs < ns)
-	return false;
-
-    if(needle == haystack)
-	return true;
-
-    if(ns == 1)
-	return memchr(haystack, needle[0], hs);
-
-    if(needle[0] == needle[1]) {
-	s1 = 2;
-	s2 = 1;
-    } else {
-	s1 = 1;
-	s2 = 2;
-    }
-    for(i = 0; i <= hs - ns; ) {
-	if(needle[1] != haystack[i + 1]) {
-	    i += s1;
-	} else {
-	    if((needle[0] == haystack[i]) && !memcomp(needle + 2, haystack + i + 2, ns - 2))
-		return true;
-	    i += s2;
-	}
-    }
-
-    return false;
-}
-#define search(a,b,c) cli_memstr((a),(b),(c),sizeof((c))-1)
+#define search(a,b,c) (memstr((a),(b),(c),sizeof((c))-1) != -1)
 static force_inline void parseFilters(uint8_t *filters, unsigned size,
                                       bool *has_deflate, bool *has_asciihex,
                                       bool *has_ascii85)
@@ -302,7 +261,6 @@ static force_inline void parseFilters(uint8_t *filters, unsigned size,
   }
   if (!*has_deflate && !*has_asciihex && !*has_ascii85) {
     debug("unhandled filter");
-    debug(filters);
   }
 }
 
@@ -352,6 +310,8 @@ static force_inline void extract_obj(uint32_t *probTable, unsigned *entropySize,
   /* TODO: use state-machine here too,
      for now we just decode assuming deflate encoding!*/
   pos = file_find("stream", 6);
+  if (pos == -1)
+    return;
   seek(beginpos, SEEK_SET);
   if (beginpos + 1024 > pos) {
   filtern = pos-beginpos;
@@ -369,7 +329,9 @@ static force_inline void extract_obj(uint32_t *probTable, unsigned *entropySize,
     return;
   }
   debug("decoding");
+#ifndef TEST_ONLY
   extract_new(beginpos);
+#endif
   seek(pos, SEEK_SET);
   unsigned char c = file_byteat(pos+6);
   if (c == '\r')
@@ -386,7 +348,6 @@ static force_inline void extract_obj(uint32_t *probTable, unsigned *entropySize,
       break;
   } while (c != '\n' && c != '\r');
   int32_t in = buffer_pipe_new_fromfile(pos);
-  //TODO: buffers shouldn't depend on master seek pos!
   seek(pos, SEEK_SET);
   int32_t out = buffer_pipe_new(4096);
 
@@ -423,7 +384,9 @@ static force_inline void extract_obj(uint32_t *probTable, unsigned *entropySize,
         uint8_t *outdata = buffer_pipe_read_get(out, avail);
         if (outdata) {
           javascript_filter(probTable, entropySize, outdata, avail);
+#ifndef TEST_ONLY
           write(outdata, avail);
+#endif
         }
         buffer_pipe_read_stopped(out, avail);
       } while (avail);
@@ -432,7 +395,9 @@ static force_inline void extract_obj(uint32_t *probTable, unsigned *entropySize,
       uint8_t *outdata = buffer_pipe_read_get(in, avail);
       if (outdata) {
         javascript_filter(probTable, entropySize, outdata, avail);
+#ifndef TEST_ONLY
         write(outdata, avail);
+#endif
       }
       buffer_pipe_read_stopped(in, avail);
     }
@@ -509,13 +474,11 @@ static force_inline int32_t find_xref(unsigned *flags)
   int32_t pos, delta, nread;
   char buf[4096];
   if (matches(Signatures.PDF_EOF)) {
-    // common case for well formed PDFs
-    // TODO: when we can query signature match positions, use that here
-    seekFromEOF(1024);
-    int32_t eofpos = find_last("%%EOF", 5, getFilesize());
-    seek(eofpos - 256, SEEK_SET);
+    int32_t eofpos = match_location(Signatures.PDF_EOF);
     if (matches(Signatures.PDF_EOF_startxref)) {
-      return find_last("startxref", 9, eofpos);
+      int32_t xrefpos = match_location(Signatures.PDF_EOF_startxref);
+      if (xrefpos < eofpos)
+        return xrefpos;
     }
   }
   debug("PDF has trailing garbage");
@@ -618,9 +581,17 @@ static force_inline void formatCheck(unsigned* flags)
   }
 }
 
+/* TODO: should be in API headers */
+#define CL_SCAN_PDF			0x4000
 int entrypoint(void)
 {
   unsigned detectionFlags = 0;
+  // use 0.96.1 API
+/*  if (engine_functionality_level() < FUNC_LEVEL_096_dev)
+    return 0;
+  if (!(engine_scan_options() & CL_SCAN_PDF))
+    return 0;*/
+
   formatCheck(&detectionFlags);
 
   seek(7, SEEK_SET);
