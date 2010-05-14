@@ -16,11 +16,89 @@ int test_zext(void);
 int test_trunc(void);
 int test_icmp(void);
 int test_select(void);
+int test_bswap(void);
+int test_ifp(void);
 int entrypoint(void)
 {
-   return test_add() + test_sub() + test_mul() + test_udiv() + test_sdiv()+
-	test_rem() + test_shl() + test_lshr()+test_ashr()+test_and()+test_or()+
-	test_xor()+test_sext()+test_zext()+test_trunc()+test_icmp()+test_select();
+   return test_add() + test_sub() + test_bswap() + test_ifp() + test_mul() +
+     test_udiv() + test_sdiv()+ test_rem() + test_shl() + test_lshr()+
+     test_ashr()+test_and()+test_or()+test_xor()+test_sext()+test_zext()+
+     test_trunc()+test_icmp()+test_select();
+}
+
+#define fail(x) fail_real(x, __LINE__)
+int fail_real(int x, int line)
+{
+   debug_print_str_start("failed arith test at line ",26);
+   debug(line);
+   debug_print_str_nonl("\n", 1);
+   return 1/x;
+}
+
+uint32_t bs32(int32_t a)
+{
+  return __builtin_bswap32(a);
+}
+
+uint64_t bs64(int64_t a)
+{
+  return __builtin_bswap64(a);
+}
+
+int test_bswap(void)
+{
+  if (bs32(0xaa) != 0xaa000000)
+    return fail(0);
+  if (bs32(0x1234) != 0x34120000)
+    return fail(0);
+  if (bs64(0xaa) != 0xaa00000000000000UL)
+    return fail(0);
+  if (bs64(0x1234567890abcdefUL) != 0xefcdab9078563412UL)
+    return fail(0);
+  return 0x8;
+}
+
+int test_ifp(void)
+{
+  if (ilog2(1, 0) != 0x7fffffff)
+    return fail(0);
+  if (ilog2(1, 1) != 0)
+    return fail(0);
+  if (ilog2(2, 2) != 0)
+    return fail(0);
+  if (ilog2(2, 1) != 0x4000000)
+    return fail(0);
+  if (ilog2(1, 2) != -0x4000000)
+    return fail(0);
+  if (ilog2(4, 1) != 0x8000000)
+    return fail(0);
+  if (ilog2(8, 1) != 3*0x4000000)
+    return fail(0);
+  if (ilog2(3, 2) != 39256169)
+    return fail(0);
+  if (ilog2(5, 2) != 88713093)
+    return fail(0);
+  if (ilog2(1<<31,3) != 1974009751)
+    return fail(0);
+  if (ipow(0, 4, 1) != 0)
+    return fail(0);
+  if (ipow(1, 1, 1) != 1)
+    return fail(0);
+  if (ipow(2,10, 3) != 3*1024)
+    return fail(0);
+  if (iexp(0, 1, 1) != 1)
+    return fail(0);
+  if (iexp(1<<5, 3, 1<<16) != 2811605630)
+    return fail(0);
+  if (isin(1, 1, 1<<26) != 56470162)
+    return fail(0);
+  if (isin(1, 2, 1<<26) != 32173703)
+    return fail(0);
+  if (icos(1, 1, 1<<26) != 36259074)
+    return fail(0);
+  if (icos(1, 2, 1<<26) !=  58893569)
+    return fail(0);
+  return 0x80;
 }
 
 int8_t add_i8(int8_t a, int8_t b)
@@ -40,10 +118,6 @@ int64_t add_i64(int64_t a, int64_t b)
   return a + b;
 }
 
-int fail(int x)
-{
-   return 1/x;
-}
 int test_add(void)
 {
     if (add_i8(1, 1) != 2)

@@ -88,6 +88,11 @@ int entrypoint(void)
     return 0xbad26;
   if (read(&c, sizeof(c)) != sizeof(c))
     return 0xbad27;
+  debug("c0: ");
+  debug(c);
+  debug_print_str_nonl("\n",1);
+  debug(c>>32);
+  debug_print_str_nonl("\n",1);
   c = le64_to_host(c);
   if (c != 0x4e4d4c4b4a494847UL)
     return 0xbad28;
