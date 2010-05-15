@@ -28,11 +28,12 @@
 \usepackage{ifthen}
 \usepackage{ifpdf}
 \usepackage{titlesec}
+\usepackage{microtype}
 \usepackage[footnotesize,bf,justification=centering]{caption}
+\usepackage[usenames, dvipsnames]{color}
 %%% general setup
 \usepackage[english]{babel}
 \usepackage[utf8x]{inputenc}
-\usepackage[usenames, dvipsnames]{color}
 \usepackage[perpage]{footmisc}
 \usepackage{nomencl}
 \usepackage{boxedminipage}
@@ -42,14 +43,20 @@
 \usepackage{moreverb}
 \usepackage{listings}
 \usepackage{prettyref}
-\usepackage{varioref}
 \usepackage{url}
 \usepackage{doxygen}
 \usepackage{makeidx}
+\usepackage{xcolor}
 %\makeindex
-\lstset{language=C}
+\lstset{language=[GNU]C++}
 \lstset{escapeinside={(*@}{@*)}}
-\lstset{numbers=left, numberstyle=\tiny, stepnumber=2,numbersep=5pt, basicstyle=\footnotesize, breaklines = true, breakatwhitespace=true, showstringspaces=true}
+\lstset{numbers=left, numberstyle=\tiny, stepnumber=2,numbersep=5pt,
+  extendedchars=true,keywordstyle=\color{blue},
+  stringstyle=\color{green!30!black}\ttfamily,
+  commentstyle=\rmfamily,
+  showspaces=false,showtabs=false,
+  basicstyle=\footnotesize\ttfamily, breaklines = true, breakatwhitespace=true,
+  showstringspaces=false}
 \newrefformat{cha}{Chapter~\ref{#1}}
 \newrefformat{sec}{Section~\ref{#1}}
 \newrefformat{sub}{Section~\ref{#1}}
@@ -65,11 +72,10 @@
     \pdfcompresslevel=9
     \pdfobjcompresslevel=1
     \pdfminorversion=5
-    \usepackage[pdftex,                %%% hyper-references for pdflatex
+    \usepackage[                %%% hyper-references for pdflatex
     bookmarks=true,%                   %%% generate bookmarks ...
     bookmarksnumbered=true,%           %%% ... with numbers
     bookmarksopen = true,
-    breaklinks=true,%                  %%% break links if exceeding a single line
     citecolor=red,
     anchorcolor=green,
     colorlinks=true,
@@ -110,9 +116,6 @@
 
 \fi
 %\usepackage{fancyvrb}
-\usepackage{tikz}
-\usepackage{pgfplots}
-\usepackage{framed}
 %TODO: remove draft!
 %\usepackage{draftwatermark}
 
