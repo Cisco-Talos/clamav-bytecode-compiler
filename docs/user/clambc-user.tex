@@ -202,6 +202,11 @@
 
 \advance\headheight by 5.3mm
 \advance\headsep by -3mm
+
+% workaround \hyperlink bug (see Debian #580912)
+\renewcommand{\hyperlink}[2]{%
+    \hyperref[#1]{#2}%
+}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % BEGIN DOCUMENT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
