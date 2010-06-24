@@ -82,6 +82,7 @@ class ClamBCModule : public llvm::ModulePass {
   unsigned MDDbgKind;
   DbgMapTy dbgMap;
   bool anyDbgIds;
+  bool minimize;
   unsigned startTID;
 public:
   static char ID;

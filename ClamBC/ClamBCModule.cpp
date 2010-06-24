@@ -140,6 +140,8 @@ bool ClamBCModule::runOnModule(Module &M)
   }
   DEBUG(errs() << "Bytecode kind is " << kind << "\n");
 
+  minimize = !!M.getGlobalVariable("__Minimize");
+
   // Logical signature created by ClamBCLogicalCompiler.
   NamedMDNode *Node = M.getNamedMetadata("clambc.logicalsignature");
   LogicalSignature = Node ?
@@ -863,9 +865,11 @@ void ClamBCModule::finished(Module &M)
   //maxline+1, 1 more for \0
   printModuleHeader(M, startTID, maxLineLength+1);
   OutReal << Out.str();
-  OutReal << "S";
-  std::string ErrStr;
+  if (minimize)
+    return;
   if (!SrcFile.empty()) {
+    OutReal << "S";
+    std::string ErrStr;
     MemoryBuffer *MB = MemoryBuffer::getFile(SrcFile, &ErrStr);
     if (!MB) {
       stop("Unable to (re)open input file: "+SrcFile, &M);
