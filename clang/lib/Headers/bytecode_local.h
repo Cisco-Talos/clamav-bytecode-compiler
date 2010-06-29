@@ -76,7 +76,7 @@ typedef struct signature {
  * @param tgt ClamAV signature type (0 - raw, 1 - PE, etc.) */
 #define TARGET(tgt) const unsigned short __Target = (tgt);
 
-#define MINIMIZEME const unsigned short __Minimize = 1;
+#define COPYRIGHT(c) const char *const __Copyright = (c);
 
 /** Define the minimum engine functionality level required for this 
  * bytecode/logical signature.

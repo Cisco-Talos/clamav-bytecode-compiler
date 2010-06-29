@@ -140,7 +140,16 @@ bool ClamBCModule::runOnModule(Module &M)
   }
   DEBUG(errs() << "Bytecode kind is " << kind << "\n");
 
-  minimize = !!M.getGlobalVariable("__Minimize");
+  GlobalVariable *G = M.getGlobalVariable("__Copyright");
+  if (G && G->hasDefinitiveInitializer()) {
+    Constant *C = G->getInitializer();
+    std::string c;
+    if (!GetConstantStringInfo(C, c))
+      ClamBCModule::stop("Failed to extract copyright string\n", &M);
+    copyright = strdup(c.c_str());
+    G->setLinkage(GlobalValue::InternalLinkage);
+  } else
+    copyright = NULL;
 
   // Logical signature created by ClamBCLogicalCompiler.
   NamedMDNode *Node = M.getNamedMetadata("clambc.logicalsignature");
@@ -865,39 +874,51 @@ void ClamBCModule::finished(Module &M)
   //maxline+1, 1 more for \0
   printModuleHeader(M, startTID, maxLineLength+1);
   OutReal << Out.str();
-  if (minimize)
-    return;
-  if (!SrcFile.empty()) {
-    OutReal << "S";
-    std::string ErrStr;
-    MemoryBuffer *MB = MemoryBuffer::getFile(SrcFile, &ErrStr);
-    if (!MB) {
-      stop("Unable to (re)open input file: "+SrcFile, &M);
+  MemoryBuffer *MB = 0;
+  const char *start = NULL;
+  if (copyright) {
+    start = copyright;
+  } else {
+    if (!SrcFile.empty()) {
+      std::string ErrStr;
+      MemoryBuffer *MB = MemoryBuffer::getFile(SrcFile, &ErrStr);
+      if (!MB) {
+        stop("Unable to (re)open input file: "+SrcFile, &M);
+      }
+      // mapped file is \0 terminated by getFile()
+      start = MB->getBufferStart();
     }
-    // mapped file is \0 terminated by getFile()
-    const char *start = MB->getBufferStart();
-    char c;
-    unsigned linelength = 0;
-    do {
-      // skip whitespace at BOL
-      do {
-        c = *start++;
-      } while (c == ' ' || c == '\t');
-      while (c != '\n' && c) {
-        char b[3] = {0x60 | (c&0xf), 0x60 | ((c>>4)&0xf), '\0'};
-        OutReal << b;
-        c = *start++;
-        linelength++;
-      }
-      if (c && linelength < 80) {
-        OutReal << "S";
-      } else {
-        OutReal << "\n";
-        linelength = 0;
-      }
-    } while (c);
-    delete MB;
   }
+  if (!start) {
+    ClamBCModule::stop("Bytecode should either have source code or include copyright statement\n", &M);
+  }
+  OutReal << "S";
+  char c;
+  unsigned linelength = 0;
+  do {
+    // skip whitespace at BOL
+    do {
+      c = *start++;
+    } while (c == ' ' || c == '\t');
+    while (c != '\n' && c) {
+      char b[3] = {0x60 | (c&0xf), 0x60 | ((c>>4)&0xf), '\0'};
+      OutReal << b;
+      c = *start++;
+      linelength++;
+    }
+    if (c && linelength < 80) {
+      OutReal << "S";
+    } else {
+      OutReal << "\n";
+      linelength = 0;
+    }
+  } while (c);
+  if (copyright) {
+    free(copyright);
+    copyright = 0;
+  }
+  if (MB)
+    delete MB;
 }
 
 void ClamBCModule::printFixedNumber(raw_ostream &Out, unsigned n,
