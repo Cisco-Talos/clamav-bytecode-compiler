@@ -33,6 +33,7 @@ extern "C" {
 #include <caml/memory.h>
 #include <caml/alloc.h>
 #include <caml/custom.h>
+#include <caml/fail.h>
 }
 
 using namespace re2;
@@ -115,6 +116,15 @@ static struct custom_operations state_ops = {
     custom_deserialize_default
 };
 
+#define TRYCATCH(x) \
+  try { x }\
+  catch (std::exception& e) {\
+    caml_failwith(e.what());\
+  }\
+  catch (...) {\
+    caml_failwith("Unknown C++ exception thrown\n");\
+  }
+
 // Caml interface
 extern "C" CAMLprim value re2i_parse(value options, value pattern)
 {
@@ -123,17 +133,17 @@ extern "C" CAMLprim value re2i_parse(value options, value pattern)
 
     assert(Is_list(options));
     assert(Is_string(pattern));
-
+    Regexp *re;
     //TODO: convert 'options' to these flags
-    //XXX: try-catch
+    TRYCATCH(
     int flags = Regexp::Latin1 | Regexp::LikePerl;
     RegexpStatus status;
-    Regexp *re = Regexp::Parse(String_val(pattern),
+    re = Regexp::Parse(String_val(pattern),
 			       static_cast<Regexp::ParseFlags>(flags), &status);
-    if (!re) {
-	///XXX:error handling
-    }
+    if (!re)
+         caml_invalid_argument("Invalid regular expression");
     re = re->Simplify();
+    )
 
     //XXX: use a walker to determine how big the regex is, for now just GC every
     //100 regexps
@@ -151,24 +161,24 @@ extern "C" CAMLprim value re2i_compile_regex(value anchored, value forward,
     assert(Is_long(forward));
     assert(Is_custom(regex));
     Regexp* re = regexp_val(regex);
-    if (!re) {
-	//XXX: error handling
-    }
+    if (!re)
+      caml_invalid_argument("Compiled regular expression expected");
     Prog* prog;
+    TRYCATCH(
     if (Bool_val(forward)) {
 	//XXX: allow setting maxmem
 	prog = re->CompileToProg(RE2::Options::kDefaultMaxMem*2/3);
     } else {
 	prog = re->CompileToReverseProg(RE2::Options::kDefaultMaxMem/3);
     }
-    if (!prog) {
-	//XXX: error handling
-    }
+    if (!prog)
+       caml_failwith("Unable to compile regex");
+//    std::cerr << "prog: " << prog->Dump() << "\n";
+    )
 
     //XXX: use constant for max progs
     result = alloc_custom(&prog_ops, sizeof(Prog*), prog->size(), 10000);
     prog_val(result) = prog;
-    std::cerr << "prog: " << prog->Dump() << "\n";
     CAMLreturn(result);
 }
 
@@ -179,10 +189,12 @@ extern "C" CAMLprim value re2i_prog_startstate(value longestmatch, value progval
     assert(Is_long(longestmatch) && Is_custom(progval));
 
     Prog *prog = prog_val(progval);
-    if (!prog) {
-	//XXX: error handling
-    }
-    DFAState *s = prog->GetStartState(Bool_val(longestmatch) ? Prog::kLongestMatch : Prog::kFirstMatch, false);
+    if (!prog)
+      caml_invalid_argument("Compiled regex program expected");
+    DFAState *s;
+    TRYCATCH(
+    s = prog->GetStartState(Bool_val(longestmatch) ? Prog::kLongestMatch : Prog::kFirstMatch, false);
+    )
     //XXX: use some other measure for state size
     result = alloc_custom(&state_ops, sizeof(DFAState*), 1, 10000);
     state_val(result) = s;
@@ -205,17 +217,26 @@ extern "C" CAMLprim value re2i_classify_state(value state)
     int result;
     assert(Is_custom(state));
     DFAState *s = state_val(state);
-    if (!s) {
-	//XXX: error handling
-    }
+    if (!s)
+      caml_invalid_argument("Regex DFA state expected");
     if (s == DeadState)
 	result = Dead;
     else if (s == FullMatchState)
 	result = FullMatch;
     else
 	result = Generic;
-    std::cerr << Prog::DumpState(s) << "\n";
     CAMLreturn(Val_int(result));
+}
+
+extern "C" CAMLprim void re2i_dump_state(value state)
+{
+    CAMLparam1(state);
+    assert(Is_custom(state));
+    DFAState *s = state_val(state);
+    if (!s)
+      caml_invalid_argument("Regex DFA state expected");
+    std::cerr << Prog::DumpState(s) << "\n";
+    CAMLreturn0;
 }
 
 static value convertState(char const* param)
@@ -223,9 +244,8 @@ static value convertState(char const* param)
     CAMLparam0 ();
     CAMLlocal1(result);
     DFAState *s = const_cast<DFAState*>(reinterpret_cast<DFAState const*>(param));
-    if (!s) {
-	//XXX: error handling
-    }
+    if (!s)
+      caml_invalid_argument("Regex DFA state expected");
     result = alloc_custom(&state_ops, sizeof(DFAState*), 1, 10000);
     state_val(result) = s;
     CAMLreturn(result);
@@ -236,6 +256,7 @@ extern "C" CAMLprim value re2i_explore_state(value longestmatch, value prog, val
     CAMLparam3(longestmatch, prog, state);
     CAMLlocal1(result);
 
+    TRYCATCH (
     if (Long_val(re2i_classify_state(state)) == Generic) {
 	assert(Is_long(longestmatch));
 	assert(Is_custom(prog));
@@ -245,12 +266,13 @@ extern "C" CAMLprim value re2i_explore_state(value longestmatch, value prog, val
 
 	DFAState *transitions[258];
 	if (!p->ExploreState(Bool_val(longestmatch) ? Prog::kLongestMatch : Prog::kFirstMatch, s, transitions)) {
-	    ///XXX: handle error
+            caml_failwith("Unable to explore DFA state");
 	}
 	transitions[257] = 0;
 	result = caml_alloc_array(convertState, reinterpret_cast<const char**>(const_cast<DFAState const**>(transitions)));
     } else {
 	result = Atom(0);
     }
+    )
     CAMLreturn(result);
 }

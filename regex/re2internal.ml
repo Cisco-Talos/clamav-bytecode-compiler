@@ -90,6 +90,7 @@ external explore_raw_state :
 
 type state_class = Generic | Dead | FullMatch;;
 external classify_raw_state : raw_state -> state_class = "re2i_classify_state";;
+external dump_state : raw_state -> unit = "re2i_dump_state";;
 
 let analyze_transitions trans =
     if Array.length trans == 0 then
