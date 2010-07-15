@@ -24,9 +24,53 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *)
-(* TODO: copyright header *)
 open Re2internal;;
 (* TODO: use records here? *)
+
+
+(* Initial idea:
+ * Find fragments of the DFA that are of the following form:
+ *
+ *         /--\   /---> FAIL
+ *         v  |   |
+ *         ---------      ---------      -------------
+ * ->-----| State_k |--->| Fragment|--->| Rest_of_DFA |
+ *         ---------      ---------      -------------
+ *          | |    ^      |
+ *  <-------/ |    \______/
+ *            |
+ *            \-----> MATCH
+ *
+ * i.e. a state with:
+ *  - an optional loop back to fragment beginning
+ *  - an optional self-loop
+ *  - an optional match transition
+ *  - an optional fail transition
+ *  - an optional transition to another fragment,
+ *    that can optionally loop back  to this state
+ *  - the EOF transition must be a FAIL transition
+ *
+ * This can easily be converted to efficient C code:
+ *  - self-loop with single exit -> memchr
+ *  - self-loop with multiple exit -> memchr; check_which_exit;
+ *  - match/fail transitions: return match/fail;
+ *  - transition to next fragment: execute next instruction: State_k; Fragment;
+ *  - fragment loop: while (...) { State_k; Fragment;} loop
+ *  - loop back to beginning: close loop
+ *
+ * Loops can be nested, but you can only loop back to *beginning* of a loop,
+ * not middle of it. I.e. following is not valid for this transform:
+ *
+ *         /----------\
+ *         v          |
+ *  S1 -> S2 -> S3 -> S_k
+ *  ^           |
+ *  \__________/
+ *
+ * If State_k is not of this form, then the generic DFA2C code can try to handle
+ * it, if that fails too (due to exponential blowup) then it falls back to
+ * parallel NFA simulation.
+ *)
 
 type graph_prog_inst = (* graph explicit transitions *)
     [ `Memchr of (char * graph_prog_inst Lazy.t * graph_prog_inst Lazy.t)
