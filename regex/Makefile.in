@@ -1,0 +1,21 @@
+OCAMLBUILD=OCAMLFIND=@OCAMLFIND@  @OCAMLBUILD@ -ocamlc @OCAMLC@ -ocamlopt @OCAMLOPT@ -ocamldep @OCAMLDEP@ -ocamlmktop @OCAMLMKTOP@
+OCAMLBUILD_JOBS=4
+OCAMLFLAGS=-j $(OCAMLBUILD_JOBS)
+
+all: all-ocaml
+clean: clean-ocaml
+	$(MAKE) -C re2 $@
+
+re2/obj/libre2.a:
+	$(MAKE) -C re2 obj/libre2.a
+
+all-ocaml: re2/obj/libre2.a
+	$(OCAMLBUILD) all.otarget $(OCAMLFLAGS)
+
+clean-ocaml:
+	$(OCAMLBUILD) -clean
+
+distclean: clean
+	rm -f config.status Makefile
+
+.PHONY: ocamlbuild

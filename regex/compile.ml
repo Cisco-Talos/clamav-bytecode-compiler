@@ -24,7 +24,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *)
-open Re2internal;;
+open ExtLib;;
+open Re2transform;;
 (* TODO: use records here? *)
 
 

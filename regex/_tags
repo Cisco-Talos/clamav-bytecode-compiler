@@ -1,0 +1,6 @@
+true: use_re2
+"libre2internal.a": use_re2
+<re2internal.cm{x,}a>: use_re2, use_libre2internal
+<*.{byte,native,top}>: use_re2internal, use_extLib
+<**/*.ml>: use_extLib
+<re2/*>: not_hygienic

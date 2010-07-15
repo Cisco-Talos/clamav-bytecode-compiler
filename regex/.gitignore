@@ -1,0 +1,8 @@
+autom4te.cache/*
+config.status
+Makefile
+_build
+*.sw*
+*~
+aclocal.m4
+config.log
