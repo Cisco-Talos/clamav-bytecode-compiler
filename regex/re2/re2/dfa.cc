@@ -80,6 +80,9 @@ class DFA {
   // Returns number of states.
   int BuildAllStates();
 
+  DFAState* GetStartState(bool anchored);
+  bool ExploreState(DFAState *s, DFAState **transitions);
+
   // Computes min and max for matching strings.  Won't return strings
   // bigger than maxlen.
   bool PossibleMatchRange(string* min, string* max, int maxlen);
@@ -145,6 +148,9 @@ class DFA {
 
   typedef hash_set<State*, StateHash, StateEqual> StateSet;
 
+
+  // For debugging, returns a text representation of State.
+  static string DumpState(State* state);
 
  private:
   // Special "firstbyte" values for a state.  (Values >= 0 denote actual bytes.)
@@ -212,9 +218,6 @@ class DFA {
   // L >= mutex_
   void AddToQueue(Workq* q, int id, uint flag);
 
-  // For debugging, returns a text representation of State.
-  static string DumpState(State* state);
-
   // For debugging, returns a text representation of a Workq.
   static string DumpWorkq(Workq* q);
 
@@ -262,6 +265,7 @@ class DFA {
   // cache_mutex_.r <= L < mutex_
   bool AnalyzeSearch(SearchParams* params);
   bool AnalyzeSearchHelper(SearchParams* params, StartInfo* info, uint flags);
+  bool AnalyzeStateTransitions(State *s, struct StateSimpleInfo *info);
 
   // The generic search loop, inlined to create specialized versions.
   // cache_mutex_.r <= L < mutex_
@@ -463,10 +467,10 @@ DFA::~DFA() {
 // a different special value to signal that s->next[c] is a
 // state that can never lead to a match (and thus the search
 // can be called off).  Hence DeadState.
-#define DeadState reinterpret_cast<State*>(1)
+#define DeadState reinterpret_cast<DFA::State*>(1)
 
 // Signals that the rest of the string matches no matter what it is.
-#define FullMatchState reinterpret_cast<State*>(2)
+#define FullMatchState reinterpret_cast<DFA::State*>(2)
 
 #define SpecialStateMax FullMatchState
 
@@ -1642,7 +1646,7 @@ bool DFA::AnalyzeSearchHelper(SearchParams* params, StartInfo* info,
 
   // Compute info->firstbyte by running state on all
   // possible byte values, looking for a single one that
-  // leads to a different state.
+  // leads to a different state that is not the starting state.
   int firstbyte = kFbNone;
   for (int i = 0; i < 256; i++) {
     State* s = RunStateOnByte(info->start, i);
@@ -1876,6 +1880,638 @@ int DFA::BuildAllStates() {
   }
 
   return q.size();
+}
+
+/*
+ * Find fragments of the DFA that are of the following form:
+ *
+ *         /--\   /---> FAIL
+ *         v  |   |
+ *         ---------      ---------      -------------
+ * ->-----| State_k |--->| Fragment|--->| Rest_of_DFA |
+ *         ---------      ---------      -------------
+ *          | |    ^      |
+ *  <-------/ |    \______/
+ *            |
+ *            \-----> MATCH
+ *
+ * i.e. a state with:
+ *  - an optional loop back to fragment beginning
+ *  - an optional self-loop
+ *  - an optional match transition
+ *  - an optional fail transition
+ *  - an optional transition to another fragment,
+ *    that can optionally loop back  to this state
+ *  - the EOF transition must be a FAIL transition
+ *
+ * This can easily be converted to efficient C code:
+ *  - self-loop with single exit -> memchr
+ *  - self-loop with multiple exit -> memchr; check_which_exit;
+ *  - match/fail transitions: return match/fail;
+ *  - transition to next fragment: execute next instruction: State_k; Fragment;
+ *  - fragment loop: while (...) { State_k; Fragment;} loop
+ *  - loop back to beginning: close loop
+ *
+ * Loops can be nested, but you can only loop back to *beginning* of a loop,
+ * not middle of it. I.e. following is not valid for this transform:
+ *
+ *         /----------\
+ *         v          |
+ *  S1 -> S2 -> S3 -> S_k
+ *  ^           |
+ *  \__________/
+ *
+ * If State_k is not of this form, then the generic DFA2C code can try to handle
+ * it, if that fails too (due to exponential blowup) then it falls back to
+ * parallel NFA simulation.
+ */
+
+struct StateSimpleInfo {
+    Bitmap<256> selfLoop;
+    Bitmap<256> matchTrans;
+    Bitmap<256> failTrans;
+    Bitmap<256> other1Trans;
+    Bitmap<256> other2Trans;
+    DFA::State *other1;
+    DFA::State *other2;
+    unsigned has_other1;
+    unsigned has_other2;
+    unsigned has_selfloop;
+    unsigned has_match;
+    unsigned has_fail;
+};
+
+static unsigned bitmapCount(const Bitmap<256> &map)
+{
+    unsigned s = 0;
+    for (unsigned i=0;i<256;i++) {
+	if (map.Get(i))
+	    s++;
+    }
+    return s;
+}
+
+static int bitmapGetUnique(const Bitmap<256> &map)
+{
+    int unique = -1;
+    for (int i=0;i<256;i++) {
+	if (!map.Get(i))
+	    continue;
+	assert(unique == -1);
+	unique = i;
+    }
+    return unique;
+}
+
+// Helper to analyze fragments: a state with at most 5 outgoing edges
+// A byte will only be part of one of the 5 bitmaps!
+bool DFA::AnalyzeStateTransitions(State *s, struct StateSimpleInfo *info)
+{
+    memset(info, 0, sizeof(*info));
+    State *ns = RunStateOnByte(s, kByteEndText);
+    if (ns != DeadState)
+	return false;
+    for (int i=0;i<256;i++) {
+	ns = RunStateOnByte(s, i);
+	if (!ns)
+	    return false;
+	if (ns == DeadState) {
+	    info->failTrans.Set(i);
+	} else if (ns == FullMatchState) {
+	    info->matchTrans.Set(i);
+	} else if (ns == s) {
+	    info->selfLoop.Set(i);
+	} else {
+	    if (!info->other1 || info->other1 == ns) {
+		info->other1 = ns;
+		info->other1Trans.Set(i);
+	    } else if (!info->other2 || info->other2 == ns) {
+		info->other2 = ns;
+		info->other2Trans.Set(i);
+	    } else {
+		std::cerr << "other1:" <<
+		DumpState(info->other1) << "\nother2:"
+		<< DumpState(info->other2) << "\nns:" <<
+		DumpState(ns) << "\n";
+		struct StateSimpleInfo i;
+		AnalyzeStateTransitions(info->other2,&i);
+		// Transitions to too many states
+		return false;
+	    }
+	}
+    }
+    info->has_selfloop = bitmapCount(info->selfLoop);
+    info->has_match = bitmapCount(info->matchTrans);
+    info->has_fail = bitmapCount(info->failTrans);
+    info->has_other1 = bitmapCount(info->other1Trans);
+    info->has_other2 = bitmapCount(info->other2Trans);
+    return true;
+}
+
+enum cProgOperation {
+    cMemchr,
+    cMemcmp,
+    cIf,
+    cSwitch,
+    cSequence,
+};
+
+enum cProgAction {
+    cJump, /* will be replaced by loops */
+    cInstLoopStart,/* do { */
+    cInstLoopEnd,/* } while (1) */
+    cInstLoopBreak,/* break; */
+    cInstLoopContinue,/* continue; */
+    cMatch, /* return true; */
+    cFail, /* return false; */
+};
+
+#define MatchInst reinterpret_cast<ProgInst*>(1)
+#define FailInst reinterpret_cast<ProgInst*>(2)
+#define SpecialInstMax FailInst
+
+class ProgInst {
+public:
+    static ProgInst* createMemchr(uint8_t c, ProgInst* onTrue, ProgInst *onFalse)
+    {
+	ProgInst *p = new ProgInst(cMemchr, cJump, onTrue, cJump, onFalse);
+	p->c = c;
+	return p;
+    }
+
+    static ProgInst* createMemcmp(const char* data, unsigned length,
+			   ProgInst *onTrue, ProgInst *onFalse)
+    {
+	ProgInst *p = new ProgInst(cMemcmp, cJump, onTrue, cJump, onFalse);
+	p->data = new char[length];
+	memcpy(p->data, data, length);
+	p->length = length;
+	return p;
+    }
+
+    static ProgInst* createSequence()
+    {
+	return new ProgInst(cSequence, cJump, 0, cJump, 0);
+    }
+
+    static ProgInst* createIf(const Bitmap<256>& trueCond, ProgInst *onTrue, ProgInst *onFalse)
+    {
+	ProgInst *p;
+	if (bitmapCount(trueCond) == 1) {
+	    uint8_t c = bitmapGetUnique(trueCond);
+	    p = new ProgInst(cIf, cJump, onTrue, cJump, onFalse);
+	    p->c = c;
+	    return p;
+	}
+	p = new ProgInst(cSwitch, cJump, onTrue, cJump, onFalse);
+	p->bitmap = new Bitmap<256>();
+	memcpy(p->bitmap, &trueCond, sizeof(trueCond));
+	return p;
+    }
+
+    void setNext(ProgInst *next)
+    {
+	CHECK(inst == cSequence);
+	onTrue = next;
+	onFalse = 0;
+    }
+
+    enum cProgOperation getInst() const {
+	return inst;
+    }
+    struct ProgInst* getTarget(bool cond) const
+    {
+	return cond ? onTrue : onFalse;
+    }
+    struct ProgInst* getNext() const {
+	DCHECK(inst == cSequence);
+	return onTrue;
+    }
+    void setTarget(bool cond, ProgInst *p) {
+	if (cond)
+	    onTrue = p;
+	else
+	    onFalse = p;
+    }
+    enum cProgAction getAction(bool cond) const
+    {
+	return cond ? onTrueAction : onFalseAction;
+    }
+    const char* getData(unsigned *len) const {
+	CHECK(inst == cMemcmp);
+	*len = length;
+	return data;
+    }
+    uint8_t getChar() const {
+	CHECK(inst == cMemchr || inst == cIf);
+	return c;
+    }
+    const Bitmap<256>* getBitmap() const {
+	CHECK(inst == cSwitch);
+	return bitmap;
+    }
+
+    /* delete i and all its children */
+    static void deleteAll(ProgInst* i)
+    {
+	if (!i)
+	    return;
+	std::set<ProgInst*> instSet;
+	std::vector<ProgInst*> insts;
+	insts.push_back(i);
+	while (!insts.empty()) {
+	    i = insts.back();
+	    insts.pop_back();
+	    if (i == FailInst || i == MatchInst)
+		continue;
+	    if (i->onTrue > SpecialInstMax && !instSet.count(i->onTrue)) {
+		insts.push_back(i->onTrue);
+		instSet.insert(i->onTrue);
+	    }
+	    if (i->onFalse > SpecialInstMax && !instSet.count(i->onFalse)) {
+		insts.push_back(i->onFalse);
+		instSet.insert(i->onFalse);
+	    }
+	}
+	for (std::set<ProgInst*>::iterator I=instSet.begin(),
+	     E=instSet.end(); I != E; ++I) {
+	    delete *I;
+	}
+    }
+
+    ~ProgInst() {
+	if (bitmap)
+	    delete bitmap;
+	if (data)
+	    delete data;
+    }
+private:
+    ProgInst(enum cProgOperation i, enum cProgAction onTrueAct, ProgInst *onTrue,
+	     enum cProgAction onFalseAct, ProgInst *onFalse)
+	: inst(i),
+	onTrueAction(onTrueAct),
+	onTrue(onTrue),
+	onFalseAction(onFalseAct),
+	onFalse(onFalse),
+	bitmap(0),
+	data(0),
+	length(0),
+	c(0) {}
+    enum cProgOperation inst;
+    enum cProgAction onTrueAction;
+    ProgInst *onTrue;
+    enum cProgAction onFalseAction;
+    ProgInst *onFalse;
+    Bitmap<256>* bitmap;
+    char *data;
+    unsigned length;
+    uint8_t c;
+};
+
+static bool CheckMemchr(struct StateSimpleInfo *info, int *c)
+{
+    unsigned nonself_transitions =
+	info->has_match + info->has_fail + info->has_other1 + info->has_other2;
+    if (info->has_selfloop &&
+	nonself_transitions == 1) {
+	if (info->has_match) {
+	    *c = bitmapGetUnique(info->matchTrans);
+	} else if (info->has_fail) {
+	    *c = bitmapGetUnique(info->matchTrans);
+	} else {
+	    assert(info->has_other1);
+	    *c = bitmapGetUnique(info->other1Trans);
+	}
+	return true;
+    }
+    return false;
+}
+
+static bool CheckBytecmp(struct StateSimpleInfo *info, int *c1, int *c2)
+{
+    if (info->has_selfloop)
+	return false;
+    /* these can be supported too */
+    if (info->has_match || info->has_fail)
+	return false;
+}
+
+typedef std::map<DFA::State*, ProgInst*> StateMapTy;
+static ProgInst *getStateInst(StateMapTy &map, DFA::State *s)
+{
+    if (s <= SpecialStateMax)
+	return 0;
+    if (map.count(s))
+	return map[s];
+    ProgInst* p = ProgInst::createSequence();
+    map[s] = p;
+    return p;
+}
+
+static bool knownState(StateMapTy &map, DFA::State *s)
+{
+    return s <= SpecialStateMax || map.count(s);
+}
+
+static void dumpFullProgram(ProgInst *prog)
+{
+    unsigned id = 1;
+    std::map<ProgInst*, unsigned> processed;
+    std::vector<ProgInst*> insts;
+    insts.push_back(prog);
+    processed[prog] = id++;
+    while (!insts.empty()) {
+	prog = insts.back();
+	std::cerr << "#" << processed[prog] << ":";
+	insts.pop_back();
+	ProgInst *p1 = prog->getTarget(true);
+	if (p1 > SpecialInstMax && !processed.count(p1)) {
+	    processed[p1] = id++;
+	    insts.push_back(p1);
+	}
+	ProgInst *p0 = prog->getTarget(false);
+	if (p0 > SpecialInstMax && !processed.count(p0)) {
+	    processed[p0] = id++;
+	    insts.push_back(p0);
+	}
+	switch (prog->getInst()) {
+	    case cMemchr:
+		std::cerr << "Memchr " << std::hex << (unsigned)prog->getChar() << "\n";
+		break;
+	    case cMemcmp:
+		unsigned l;
+		std::cerr << "Memcmp " << std::hex << prog->getData(&l) << "\n";
+		break;
+	    case cIf:
+		std::cerr << "If " << std::hex << (unsigned)prog->getChar() << "\n";
+		break;
+	    case cSwitch:
+		{
+		std::cerr << "Switch ";//XXX:print bitmap
+		const Bitmap<256>* bitmap = prog->getBitmap();
+		bool invert = bitmapCount(*bitmap) <= 128;
+		std::cerr << "(" << bitmapCount(*bitmap) << ")";
+		for (unsigned i=0;i<256;i++) {
+		    if (bitmap->Get(i) ^ invert)
+			continue;
+		    std::cerr << std::hex << i << " ";
+		}
+		std::cerr << "\n";
+		break;
+		}
+	    case cSequence:
+		std::cerr << "sequnce\n";
+		break;
+	}
+	std::cerr << "\ttrue -> #" << processed[p1] << "\n"
+	    << "\tfalse -> #" << processed[p0] << "\n";
+    }
+}
+
+static void optimizeProgram(ProgInst *&prog)
+{
+    ProgInst *old;
+
+    std::set<ProgInst*> todelete;
+    // Eliminate sequence instructions
+    while (prog->getInst() == cSequence) {
+	todelete.insert(prog);
+	prog = prog->getNext();
+    }
+    std::set<ProgInst*> processed;
+    std::vector<ProgInst*> insts;
+    insts.push_back(prog);
+    while (!insts.empty()) {
+	ProgInst *inst = insts.back();
+	insts.pop_back();
+	processed.insert(inst);
+
+	ProgInst *p = inst->getTarget(true);
+	while (p > SpecialInstMax && p->getInst() == cSequence) {
+	    todelete.insert(p);
+	    p = p->getNext();
+	}
+	inst->setTarget(true, p);
+	if (p > SpecialInstMax && !processed.count(p))
+	    insts.push_back(p);
+
+	p = inst->getTarget(false);
+	while (p > SpecialInstMax && p->getInst() == cSequence) {
+	    todelete.insert(p);
+	    p = p->getNext();
+	}
+	inst->setTarget(false, p);
+	if (p > SpecialInstMax && !processed.count(p))
+	    insts.push_back(p);
+    }
+    //XXX: delete all from todelete, only once
+
+    //Insert loops
+    dumpFullProgram(prog);
+}
+
+/*bool DFA::CompileToC()
+{
+    if (!ok())
+	return false;
+    RWLocker l(&cache_mutex_);
+    SearchParams params(NULL, NULL, &l);
+    params.anchored = false;
+    if (!AnalyzeSearch(&params) || params.start <= SpecialStateMax)
+	return false;
+    MutexLock l2(&mutex_);
+    ProgInst *prog = ProgInst::createSequence();
+    ProgInst *last = prog;
+    StateMapTy stateMap;
+    // memchr CHAR
+    // accept CHARS (else go back to memchr)
+    // accept CHAR-RANGE (else go back to memchr)
+    // accept_optional CHARS (else keep going)
+    // accept_optional CHAR-RANGE (else keep going)
+    // match
+    State *s = params.start;
+    stateMap[s] = last;
+    ProgInst *next;
+    if (params.firstbyte >= 0) {
+	s = RunStateOnByte(s, params.firstbyte);
+	next = getStateInst(stateMap, s);
+	CHECK(next->getInst() == cSequence);
+	last->setNext(ProgInst::createMemchr(params.firstbyte, next, FailInst));
+	last = next;
+    }
+
+    while (last && last != FailInst && last != MatchInst &&
+	   last->getInst() == cSequence) {
+	struct StateSimpleInfo state_info;
+	if (!AnalyzeStateTransitions(s, &state_info))
+	    break;
+	unsigned nonself_transitions =
+	    state_info.has_match + state_info.has_other1 + state_info.has_other2;
+	if (state_info.has_selfloop && nonself_transitions == 1 && state_info.has_fail <= 1) {
+	    uint8_t c;
+	    if (state_info.has_match) {
+		c = bitmapGetUnique(state_info.matchTrans);
+		s = FullMatchState;
+	    } else if (state_info.has_fail) {
+		c = bitmapGetUnique(state_info.failTrans);
+		s = DeadState;
+	    } else {
+		CHECK(state_info.has_other1);
+		c = bitmapGetUnique(state_info.other1Trans);
+		s = state_info.other1;
+	    }
+	    next = getStateInst(stateMap, s);
+	    last->setNext(ProgInst::createMemchr(c, next, FailInst));
+	    last = next;
+	    continue;
+	}
+	if (state_info.has_selfloop) {
+	    next = ProgInst::createSequence();
+	    last->setNext(ProgInst::createIf(state_info.selfLoop, last, next));
+	    last = next;
+	    state_info.has_selfloop = false;
+	}
+	if (state_info.has_match) {
+	    // match, other1, other2, fail transitions
+	    if (state_info.has_other1 || state_info.has_other2)
+		next = ProgInst::createSequence();
+	    else
+		next = FailInst;// match, fail transitions only
+	    last->setNext(ProgInst::createIf(state_info.matchTrans, MatchInst, next));
+	    last = next;
+	    nonself_transitions -= state_info.has_match;
+	}
+
+	//XXX: need other3 for %P; % -> ; !% ->; D ->
+	if (state_info.has_other1) {
+	    ProgInst *falseTarget = FailInst;
+	    Bitmap<256>* other1Trans = &state_info.other1Trans;
+	    Bitmap<256>* other2Trans = &state_info.other2Trans;
+	    if (state_info.has_other2) {
+		if (knownState(stateMap, state_info.other1) && !knownState(stateMap, state_info.other2)) {
+		    std::swap(state_info.other1, state_info.other2);
+		    std::swap(other1Trans, other2Trans);
+		}
+		if (knownState(stateMap, state_info.other2)) {
+		    falseTarget = getStateInst(stateMap, state_info.other2);
+		}
+		else
+		    break;//XXX
+	    }
+	    next = getStateInst(stateMap, state_info.other1);
+	    last->setNext(ProgInst::createIf(*other1Trans, next, falseTarget));
+	    last = next;
+	    s = state_info.other1;
+	    continue;
+	}
+	//XXX:abort();
+	break;
+    }
+    optimizeProgram(prog);
+#if 0
+	string memcmp_string;
+	int single_byte;
+	do {
+	    single_byte = -1;
+	    // find the single byte that leads to different state (if exists).
+	    for (int i=0;i < 256; i++) {
+		State *ns = RunStateOnByte(s, i);
+		if (!ns)
+		    return false;
+		if (ns == params.start || ns == start) {
+		    // these transitions go back searching for firstbyte
+		    continue;
+		}
+		// Goes to new state
+		if (single_byte != -1) {
+		    // there was another byte that leads to different state
+		    // already
+		    single_byte = -1;
+		    break;
+		}
+		single_byte = i;
+	    }
+	    if (single_byte >= 0) {
+		State *ns = RunStateOnByte(s, kByteEndText);
+		// EOF must also lead to fail (otherwise this might be an optional
+		// char).
+		if (ns != DeadState)
+		    break;
+		// We have a single byte that leads to a different state, add to
+		// memcmp string.
+		memcmp_string += single_byte;
+		s = RunStateOnByte(s, single_byte);
+	    }
+	} while (single_byte != -1);
+	if (!memcmp_string.empty())
+	    std::cout << "memcmp " << std::hex << memcmp_string << ", " <<
+		std::dec << memcmp_string.length() << "\n";
+    }
+#endif
+    ProgInst::deleteAll(prog);
+    return true;
+}
+
+bool Prog::CompileToC(MatchKind kind)
+{
+    return GetDFA(kind)->CompileToC();
+}*/
+
+DFAState* cvt(DFA::State* s)
+{
+    return reinterpret_cast<DFAState*>(s);
+}
+
+DFA::State* cvt(DFAState *s)
+{
+    return reinterpret_cast<DFA::State*>(s);
+}
+
+DFAState* Prog::GetStartState(MatchKind kind, bool anchored)
+{
+    return GetDFA(kind)->GetStartState(anchored);
+}
+
+string Prog::DumpState(DFAState *s)
+{
+    DFA::State *s2 = cvt(s);
+    return DFA::DumpState(s2);
+}
+
+bool DFA::ExploreState(DFAState *s, DFAState** transitions)
+{
+    State *state = cvt(s);
+    State *ns;
+    for (int i=0;i<256;i++) {
+	ns = RunStateOnByte(state, i);
+	if (!ns)
+	    return false;
+	if (ns > SpecialStateMax &&
+	    ns->IsMatch())
+	    transitions[i] = cvt(FullMatchState);
+	else
+	    transitions[i] = cvt(ns);
+    }
+    ns = RunStateOnByte(state, kByteEndText);
+    if (!ns)
+	return false;
+    transitions[256] = cvt(ns);
+    return true;
+}
+
+bool Prog::ExploreState(MatchKind kind, DFAState *s, DFAState **transitions)
+{
+    return GetDFA(kind)->ExploreState(s, transitions);
+}
+
+DFAState* DFA::GetStartState(bool anchored)
+{
+    RWLocker l(&cache_mutex_);
+    SearchParams params(NULL, NULL, &l);
+    params.anchored = false;
+    if (!AnalyzeSearch(&params) || params.start <= SpecialStateMax)
+	return false;
+    return cvt(params.start);
 }
 
 // Build out all states in DFA for kind.  Returns number of states.

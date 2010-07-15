@@ -132,7 +132,7 @@ obj/%.o: %.cc $(HFILES)
 
 obj/dbg/%.o: %.cc $(HFILES)
 	@mkdir -p $$(dirname $@)
-	$(CC) -o $@ -fPIC $(CXXFLAGS) $(RE2_CXXFLAGS) $*.cc
+	$(CC) -o $@ -fPIC $(CXXFLAGS) -O0 $(RE2_CXXFLAGS) $*.cc
 
 obj/so/%.o: %.cc $(HFILES)
 	@mkdir -p $$(dirname $@)
@@ -144,7 +144,7 @@ obj/%.o: %.c $(HFILES)
 
 obj/dbg/%.o: %.c $(HFILES)
 	@mkdir -p $$(dirname $@)
-	$(CC) -o $@ $(CXXFLAGS) $(RE2_CXXFLAGS) $*.c
+	$(CC) -o $@ $(CXXFLAGS) -O0 $(RE2_CXXFLAGS) $*.c
 
 obj/so/%.o: %.c $(HFILES)
 	@mkdir -p $$(dirname $@)

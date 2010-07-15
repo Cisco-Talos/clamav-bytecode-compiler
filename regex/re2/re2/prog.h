@@ -71,6 +71,7 @@ enum EmptyOp {
 class Regexp;
 
 class DFA;
+class DFAState;
 class OneState;
 
 // Compiled form of regexp program.
@@ -270,6 +271,9 @@ class Prog {
   // avoids lots of unnecessary work.  This function is useful only
   // for testing purposes.  Returns number of states.
   int BuildEntireDFA(MatchKind kind);
+  DFAState* GetStartState(MatchKind kind, bool anchored);
+  bool ExploreState(MatchKind kind, DFAState *s, DFAState ** transitions);
+  static std::string DumpState(DFAState *s);
 
   // Compute byte map.
   void ComputeByteMap();
