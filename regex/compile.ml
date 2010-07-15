@@ -134,7 +134,7 @@ let rec compile_transitions trans on_false=
     | _ -> `Switch (List.map map_state trans)
 and track (chars : char array) f =
     print_string "invoking with: ";
-    print chars;
+    Std.print chars;
     f
 and cached_compile_state cache next =
     match Hashtbl.find_all cache next with
@@ -165,7 +165,7 @@ and compile_state cache (s : state) : graph_prog_inst  =
         (* single char transitions to another state -> memchr *)
             `Memchr (c, lazy (cached_compile_state cache next), lazy `Fail)
     | `SelfLoopState transitions ->
-            print transitions;
+            Std.print transitions;
             (* emit code for the selfloop, and handle the rest as generic *)
             (let selfloop_trans = get_selftransitions transitions in
             let next = `GenericState transitions in
@@ -223,7 +223,7 @@ let rec transform_prog_fsm fsm_cache (prog: graph_prog_inst) : tree_prog_inst =
                 (c, x) in
             let n = List.fold_left (+) 0 (List.map (fun x -> Array.length (fst
             x)) l) in
-            print n;
+            Std.print n;
             `Switch (List.map map_state l))
         | `Match -> `Match
         | `Fail -> `Fail
@@ -286,4 +286,4 @@ let testme () =
 let _ =
     Printexc.record_backtrace true;
     let x = testme () in
-    print x;;
+    Std.print x;;

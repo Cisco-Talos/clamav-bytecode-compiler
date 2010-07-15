@@ -8,5 +8,5 @@ ocamlc -g -verbose -a -custom -o re2internal.cma re2internal.mli re2internal.ml 
 ocamlc -g re2internal.cma test.ml -o foo &&
 ocamlopt -g -verbose -a -o re2internal.cmxa re2internal.mli re2internal.ml re2internal_stubs.o -cclib -Lre2/obj -cclib -lre2 -cclib -lstdc++ -cclib -pthread &&
 ocamlopt -g re2internal.cmxa test.ml -o foo2
-ocamlmktop re2internal.cma -o footop
-ocamlc -custom -g re2internal.cma compile.ml -o foo
+ocamlfind ocamlmktop -package extlib re2internal.cma -o footop -linkpkg
+ocamlfind ocamlc -package extlib -custom -g re2internal.cma compile.ml -o foo -linkpkg
