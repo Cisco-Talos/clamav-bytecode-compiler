@@ -22,7 +22,7 @@ let ocamlfind_path =
     input_line ic);;
 
 let version =
-  Ocamlbuild_pack.My_unix.run_and_open "git describe --always --dirty" (fun ic ->
+  Ocamlbuild_pack.My_unix.run_and_open "git describe --always --dirty || echo 'exported'" (fun ic ->
     input_line ic);;
 
 let time =
