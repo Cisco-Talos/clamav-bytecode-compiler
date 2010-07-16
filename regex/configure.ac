@@ -22,8 +22,9 @@ fi
 
 AC_CHECK_OCAML_PKG([extlib])
 if test "$OCAML_PKG_extlib" = "no"; then
-  AC_MSG_ERROR([Please install OCaml findlib module 'extlib':
-Install the 'libextlib-ocaml-dev' or 'ocaml-extlib' package])
+  AC_SUBST([BUILD_EXTLIB_FALSE], ["#"])
+else
+  AC_SUBST([BUILD_EXTLIB_TRUE], ["#"])
 fi
 
 if test "$OCAMLBEST" = "opt"; then

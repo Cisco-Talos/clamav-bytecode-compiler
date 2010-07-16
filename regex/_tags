@@ -4,3 +4,4 @@ true: use_re2
 <*.{byte,native,top}>: use_re2internal, use_extLib
 <**/*.ml>: use_extLib
 <re2/*>: not_hygienic
+<localpkgs/*>: not_hygienic
