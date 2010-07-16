@@ -1,5 +1,6 @@
 open Ocamlbuild_plugin;;
 open Command;;
+open Unix;;
 
 let static = true
 let re2_lib = "../re2/obj/libre2.a"
@@ -19,6 +20,24 @@ let ocamlfind_path =
   let cmd = "ocamlfind printconf stdlib" in
   Ocamlbuild_pack.My_unix.run_and_open cmd (fun ic ->
     input_line ic);;
+
+let version =
+  Ocamlbuild_pack.My_unix.run_and_open "git describe --always --dirty" (fun ic ->
+    input_line ic);;
+
+let time =
+  let tm = Unix.gmtime (Unix.time ()) in
+  Printf.sprintf "%04d/%02d/%02d %02dh UTC"
+    (tm.tm_year + 1900) (tm.tm_mon + 1) tm.tm_mday
+    tm.tm_hour
+
+let make_version _ _ =
+  let cmd =
+    Printf.sprintf "let version = %S
+let compile_time = %S"
+      version time
+  in
+  Cmd (S [ A "echo"; Quote (Sh cmd); Sh ">"; P "version.ml" ]);;
 
 dispatch begin function
  | After_rules ->
@@ -61,6 +80,7 @@ dispatch begin function
      flag ["link"; "ocaml"; "use_re2internal"]
      (S[A"-I";A"."]);
 
+     rule "version.ml" ~prod: "version.ml" make_version
  | _ -> ()
  end
 

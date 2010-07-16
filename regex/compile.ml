@@ -286,5 +286,6 @@ let testme () =
 
 let _ =
     Printexc.record_backtrace true;
+    print_string (Version.version ^ " " ^ Version.compile_time ^ "\n");
     let x = testme () in
     Std.print x;;
