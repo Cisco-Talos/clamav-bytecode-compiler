@@ -615,6 +615,8 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+BUILD_EXTLIB_TRUE
+BUILD_EXTLIB_FALSE
 OCAML_PKG_extlib
 OCAMLFIND
 OCAMLBUILD
@@ -2858,8 +2860,11 @@ $as_echo "not found" >&6; }
 
 
 if test "$OCAML_PKG_extlib" = "no"; then
-  as_fn_error "Please install OCaml findlib module 'extlib':
-Install the 'libextlib-ocaml-dev' or 'ocaml-extlib' package" "$LINENO" 5
+  BUILD_EXTLIB_FALSE="#"
+
+else
+  BUILD_EXTLIB_TRUE="#"
+
 fi
 
 if test "$OCAMLBEST" = "opt"; then
