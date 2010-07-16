@@ -15,6 +15,11 @@ let ocamlfind_query pkg =
   Ocamlbuild_pack.My_unix.run_and_open cmd (fun ic ->
     input_line ic);;
 
+let ocamlfind_path =
+  let cmd = "ocamlfind printconf stdlib" in
+  Ocamlbuild_pack.My_unix.run_and_open cmd (fun ic ->
+    input_line ic);;
+
 dispatch begin function
  | After_rules ->
      ocaml_lib ~extern:true ~dir:(ocamlfind_query "extlib") "extLib";
@@ -24,7 +29,7 @@ dispatch begin function
      ~dep:"%.cc"
      begin fun env _ ->
        let c = env "%.cc" in
-       Cmd(S[cc; P c;A"-c";A re2_include])
+       Cmd(S[cc; P c;A"-I";A ocamlfind_path;A"-c";A re2_include])
      end;
 
      (* When one make a C library that use the re2 with ocamlmklib,
