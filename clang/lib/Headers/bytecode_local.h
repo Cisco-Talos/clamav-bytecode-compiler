@@ -78,6 +78,9 @@ typedef struct signature {
 
 #define COPYRIGHT(c) const char *const __Copyright = (c);
 
+#define ICONGROUP1(group) const char *const __IconGroup1 = (group);
+#define ICONGROUP2(group) const char *const __IconGroup2 = (group);
+
 /** Define the minimum engine functionality level required for this 
  * bytecode/logical signature.
  * Engines older than this will skip loading the bytecode.

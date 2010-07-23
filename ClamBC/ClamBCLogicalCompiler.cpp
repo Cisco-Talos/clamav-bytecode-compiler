@@ -67,7 +67,8 @@ private:
   std::string LogicalSignature;
   std::string virusnames;
   bool compileLogicalSignature(Function &F, unsigned target, unsigned min,
-                               unsigned max);
+                               unsigned max, const std::string& icon1,
+                               const std::string &icon2);
   bool validateVirusName(const std::string& name, Module &M);
   bool compileVirusNames(Module &M, unsigned kind);
 };
@@ -1105,7 +1106,9 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min)
 }
 
 bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target,
-                                                    unsigned min, unsigned max)
+                                                    unsigned min, unsigned max,
+                                                    const std::string& icon1,
+                                                    const std::string& icon2)
 {
   LogicalCompiler compiler;
 
@@ -1184,7 +1187,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
     return false;
   unsigned groups = 0;
   LogicalSignature = virusnames;
-  if (min || max) {
+  if (min || max || !icon1.empty() || !icon2.empty()) {
     if (!max)
       max = 255;/* for now it should be enough, we can always increase it later
                    */
@@ -1195,6 +1198,12 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   } else
     LogicalSignature = LogicalSignature + ";";
   std::string ndbsigs = node2String(node, groups);
+  if (!icon1.empty())
+    LogicalSignature = LogicalSignature+
+      ("IconGroup1:"+Twine(icon1)+",").str();
+  if (!icon2.empty())
+    LogicalSignature = LogicalSignature+
+      ("IconGroup2:"+Twine(icon2)+",").str();
   LogicalSignature = LogicalSignature +
     ("Target:"+Twine(target)+";"+ndbsigs).str();
   if (groups > 64) {
@@ -1420,8 +1429,25 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       target = cast<ConstantInt>(GV->getInitializer())->getValue().getZExtValue();
       GV->setLinkage(GlobalValue::InternalLinkage);
     }
+
+    std::string icon1, icon2;
+    GV = M.getGlobalVariable("__IconGroup1");
+    if (GV && GV->hasDefinitiveInitializer() &&
+        GetConstantStringInfo(GV->getInitializer(), icon1)) {
+      if (!validateVirusName(icon1, M))
+        Valid = false;
+      GV->setLinkage(GlobalValue::InternalLinkage);
+    }
+    GV = M.getGlobalVariable("__IconGroup2");
+    if (GV && GV->hasDefinitiveInitializer() &&
+        GetConstantStringInfo(GV->getInitializer(), icon2)) {
+      if (!validateVirusName(icon2, M))
+        Valid = false;
+      GV->setLinkage(GlobalValue::InternalLinkage);
+    }
+    errs() << "icon1:"<<icon1<<" icon2:"<<icon2 <<"\n";
     //TODO: validate that target is a valid target
-    if (!compileLogicalSignature(*F, target, funcmin, funcmax)) {
+    if (!compileLogicalSignature(*F, target, funcmin, funcmax, icon1, icon2)) {
       Valid = false;
     }
     NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");
