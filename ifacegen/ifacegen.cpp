@@ -1269,6 +1269,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
   outputHeader(OutHooks, "bytecode_hooks");
 
   OutImpl << "struct cli_bc_bctx;\n";
+  OutImpl << "struct cli_environment;\n";
   // output API calls
   outputAPIcalls(Out);
   outputAPIcalls(OutImpl);

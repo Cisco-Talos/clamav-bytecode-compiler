@@ -134,6 +134,7 @@ enum bc_global {
 enum BytecodeKind {
   /** generic bytecode, not tied a specific hook */
     BC_GENERIC=0,
+    BC_STARTUP=1,/* special bytecode run on startup. there can only be one */
     _BC_START_HOOKS=256,
     /** triggered by a logical signature */
     BC_LOGICAL=256,
@@ -144,7 +145,9 @@ enum BytecodeKind {
 /** LibClamAV functionality level constants */
 enum FunctionalityLevels {
     FUNC_LEVEL_096 = 51,
-    FUNC_LEVEL_096_dev
+    FUNC_LEVEL_096_dev,
+    FUNC_LEVEL_096_1,
+    FUNC_LEVEL_096_1_dev
 };
 
 #endif

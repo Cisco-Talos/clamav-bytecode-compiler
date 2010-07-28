@@ -1246,7 +1246,7 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
 {
   GlobalVariable *VPFX = M.getGlobalVariable("__clambc_virusname_prefix");
   if (!VPFX || !VPFX->hasDefinitiveInitializer()) {
-    if (kind)
+    if (kind && kind != BC_STARTUP)
       printDiagnostic("Virusname must be declared for non-generic bytecodes",
                       &M);
     return false;
@@ -1381,7 +1381,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     GVKind->setConstant(true);
   }
   if (!compileVirusNames(M, kind)) {
-    if (!kind)
+    if (!kind || kind == BC_STARTUP)
       return true;
     Valid = false;
   }
@@ -1458,6 +1458,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       F->eraseFromParent();
   }
   if (!Valid) {
+    errs() << "lsig not valid!\n";
     // diagnostic already printed
     exit(42);
   }

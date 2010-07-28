@@ -90,6 +90,7 @@
 #define EBOUNDS(x) 
 #define __PE_H 
 #define DISASM_BC_H 
+#define BYTECODE_DETECT_H 
 #define __STDBOOL_H 
 #define bool _Bool
 #define true 1
@@ -103,6 +104,9 @@
 #define DECLARE_SIGNATURE(name) const char *name##_sig; __Signature name;
 #define SIGNATURES_DECL_END };
 #define TARGET(tgt) const unsigned short __Target = (tgt);
+#define COPYRIGHT(c) const char *const __Copyright = (c);
+#define ICONGROUP1(group) const char *const __IconGroup1 = (group);
+#define ICONGROUP2(group) const char *const __IconGroup2 = (group);
 #define FUNCTIONALITY_LEVEL_MIN(m) const unsigned short __FuncMin = (m);
 #define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
 #define SIGNATURES_DEF_BEGIN static const unsigned __signature_bias = __COUNTER__+1;const struct __Signatures Signatures = {

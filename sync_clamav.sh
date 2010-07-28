@@ -8,10 +8,12 @@ cp -v $CLAMAV_PATH/libclamav/bcfeatures.h clang/lib/Headers/bcfeatures.h
 cp -v $CLAMAV_PATH/libclamav/execs.h clang/lib/Headers/bytecode_execs.h.tmp
 cp -v $CLAMAV_PATH/libclamav/pe.h clang/lib/Headers/bytecode_pe.h.tmp
 cp -v $CLAMAV_PATH/libclamav/disasm-common.h clang/lib/Headers/bytecode_disasm.h.tmp
+cp -v $CLAMAV_PATH/libclamav/bytecode_detect.h clang/lib/Headers/bytecode_detect.h
 sed -i 's/#include "cltypes.h"//' clang/lib/Headers/bytecode_execs.h.tmp
 sed -i 's/#include "hashtab.h"//' clang/lib/Headers/bytecode_execs.h.tmp
 sed -i '/^#include .*/d' clang/lib/Headers/bytecode_pe.h.tmp
 sed -i '/^.*int.* cli_.*/d' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i '/^.*void.* cli_.*/d' clang/lib/Headers/bytecode_detect.h
 sed -i 's/#include <sys\/types.h>//' clang/lib/Headers/bytecode_execs.h.tmp
 for i in clang/lib/Headers/bytecode_{pe,execs,disasm}.h.tmp; do
     sed -r -i '/^[/ ][*][ /]/d' $i
