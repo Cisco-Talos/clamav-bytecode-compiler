@@ -207,6 +207,7 @@ private :
       }
       // fall through
     default:
+        stop("GEPN", &GEP);
       printFixedNumber(OP_BC_GEPN, 2);
       // If needed we could use DecomposeGEPExpression here.
       if (ops >= 16)

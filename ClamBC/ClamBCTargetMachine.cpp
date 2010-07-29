@@ -148,6 +148,7 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   if (DumpIR)
     PM.add(createBitcodeWriterPass(outs()));
   PM.add(createStripDebugDeclarePass());
+  PM.add(createGEPSplitterPass());
   PM.add(module);
   PM.add(createVerifierPass());
   PM.add(createClamBCWriter(module));

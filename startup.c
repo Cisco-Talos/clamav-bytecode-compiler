@@ -1,16 +1,11 @@
 const uint16_t __clambc_kind = BC_STARTUP;
 int entrypoint()
 {
-//  disable_bytecode_if("^Foo",0,
-  //                    check_platform(0x0a213535, 0x08040404, 0x01040404));
-
   // Whole platform specific bugs can be disabled with check_platform,
-  // see clamscan --debug for meaning of bits
-  disable_jit_if("Pax mprotect on, and no RWX", 0,
-                 check_platform(0x0affffff, 0xffffffff, 0x18));
-  disable_jit_if("Pax mprotect on, with RWX", 0,
-                 check_platform(0x0affffff, 0xffffffff, 0x19));
-  //disable_bytecode_if("Bug #XYZ",0,check_platform(0x0a213535, 0x00000000, 0x08040404));
+  // see clamscan --debug for meaning of bits.
+  // For example:
+  //disable_jit_if("Pax mprotect on, with RWX", 0,
+  //              check_platform(0x0affffff, 0xffffffff, 0x19));
 
   struct cli_environment env;
   get_environment(&env, sizeof(env));
