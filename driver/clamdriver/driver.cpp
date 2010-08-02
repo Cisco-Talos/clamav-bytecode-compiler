@@ -210,10 +210,10 @@ static int compileInternal(const char *input, int optimize, int optsize,
   FunctionPassManager *FPasses = NULL;
   if (optimize) {
     FPasses = new FunctionPassManager(M.get());
-    FPasses->add(new TargetData(M.get()));//XXX
+//    FPasses->add(new TargetData(M.get()));//XXX
     createStandardFunctionPasses(FPasses, optimize);
   }
-  Passes.add(new TargetData(M.get()));//XXX
+//  Passes.add(new TargetData(M.get()));//XXX
   unsigned threshold = optsize ? 75 : optimize > 2 ? 275 : 225;
   createStandardModulePasses(&Passes, optimize,
                              optsize,
