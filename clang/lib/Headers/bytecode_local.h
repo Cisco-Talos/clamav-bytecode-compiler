@@ -62,6 +62,7 @@ typedef struct signature {
 } __Signature;
 
 #define PE_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_PE_UNPACKER;
+#define PDF_HOOK_DECLARE const uint16_t __clambc_kind = BC_PDF;
 /** Marks the beginning of the subsignature name declaration section */
 #define SIGNATURES_DECL_BEGIN \
     struct __Signatures {

@@ -826,7 +826,7 @@ int32_t pdf_get_offset(int32_t objidx);
   * Identifies at which phase this bytecode was called */
 int32_t pdf_get_phase(void);
 
-/** Return the currently dumped obj id.
+/** Return the currently dumped obj idx.
   Valid only in PDF_PHASE_POSTDUMP */
 int32_t pdf_get_dumpedobjid(void);
 
