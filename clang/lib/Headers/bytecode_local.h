@@ -127,9 +127,57 @@ static force_inline uint32_t count_match(__Signature sig)\
 static force_inline uint32_t matches(__Signature sig)\
 { return __clambc_match_counts[sig.id]  != 0; }\
 
-static force_inline uint32_t match_location(__Signature sig)
+
+/** Returns the offset of the match.
+  * @param sig - Signature
+  * @param goback - max length of signature
+  * @return offset of match
+  */
+static force_inline uint32_t match_location(__Signature sig, uint32_t goback)
 {
-  return __clambc_match_offsets[sig.id];
+  int32_t pos = __clambc_match_offsets[sig.id];
+  if (engine_functionality_level() <= FUNC_LEVEL_096_1) {
+    /* bug, it returns offset of last subsig, not offset of first */
+    pos -= goback;
+    if (pos <= 0) pos = 0;
+  }
+  return pos;
+}
+
+/** Like match_location(), but also checks that the match starts with
+  the specified hex string.
+  It is recommended to use this for safety and compatibility with 0.96.1
+  @param sig - signature
+  @param goback - maximum length of signature (till start of last subsig)
+  @param static_start - static string that sig must begin with
+  @param static_len - static string that sig must begin with - length
+  @return >=0 - offset of match
+           -1 - no match
+  */
+static force_inline int32_t match_location_check(__Signature sig,
+                                                  uint32_t goback,
+                                                  const char *static_start,
+                                                  uint32_t static_len)
+{
+  int32_t pos = match_location(sig, goback);
+  if (seek(pos, SEEK_SET) != pos)
+    return -1;
+  int32_t cpos = file_find_limit(static_start, static_len, pos + goback);
+  if (cpos == -1) {
+    debug("Engine reported match, but we couldn't find it! Engine reported (after fixup):");
+    debug(pos);
+    return -1;
+  }
+  if (seek(cpos, SEEK_SET) != cpos)
+    return -1;
+  if (cpos != pos && engine_functionality_level() >= FUNC_LEVEL_096_1_dev) {
+    debug("wrong match pos reported by engine, real match pos:");
+    debug(cpos);
+    debug("reported by engine:");
+    debug(pos);
+    debug("but goback fixed it up!");
+  }
+  return cpos;
 }
 
 /** Sets the specified virusname as the virus detected by this bytecode.
