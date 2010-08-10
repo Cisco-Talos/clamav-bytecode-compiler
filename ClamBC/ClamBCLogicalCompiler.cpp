@@ -69,7 +69,7 @@ private:
   bool compileLogicalSignature(Function &F, unsigned target, unsigned min,
                                unsigned max, const std::string& icon1,
                                const std::string &icon2);
-  bool validateVirusName(const std::string& name, Module &M);
+  bool validateVirusName(const std::string& name, Module &M, bool suffix=false);
   bool compileVirusNames(Module &M, unsigned kind);
 };
 char ClamBCLogicalCompiler::ID = 0;
@@ -1225,13 +1225,18 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
 }
 
 bool ClamBCLogicalCompiler::validateVirusName(const std::string& name,
-                                              Module &M)
+                                              Module &M, bool Suffix)
 {
   for (unsigned i=0;i<name.length();i++) {
     unsigned char c = name[i];
+    if (Suffix && c == '.') {
+      printDiagnostic("Character '.' is not allowed in virusname suffix: '"+
+                      name.substr(0,i+1)+"'. Use - or _: "+name.substr(0, i+1), &M);
+      return false;
+    }
     if (isalnum(c) || c == '_' || c == '-' || c == '.')
       continue;
-    printDiagnostic("Invalid character in virusname: "+name.substr(i, 1), &M);
+    printDiagnostic("Invalid character in virusname: "+name.substr(0, i+1), &M);
     return false;
   }
   return true;
@@ -1285,9 +1290,13 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
         virusnames += ",";
       if (virusnamepart.empty())
         continue;
+      if (!validateVirusName(virusnamepart, M, true))
+        Valid = false;
       virusNamesSet.insert(virusnamepart);
       virusnames += virusnamepart;
     }
+    if (!Valid)
+      return false;
     virusnames += "}";
     VNames->setLinkage(GlobalValue::InternalLinkage);
   }
@@ -1445,7 +1454,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
         Valid = false;
       GV->setLinkage(GlobalValue::InternalLinkage);
     }
-    errs() << "icon1:"<<icon1<<" icon2:"<<icon2 <<"\n";
+    //errs() << "icon1:"<<icon1<<" icon2:"<<icon2 <<"\n";
     //TODO: validate that target is a valid target
     if (!compileLogicalSignature(*F, target, funcmin, funcmax, icon1, icon2)) {
       Valid = false;
