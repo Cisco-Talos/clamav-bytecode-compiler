@@ -24,7 +24,7 @@ int entrypoint()
     /* RWX checks */
     if (!(env.os_features & (1 << feature_map_rwx))) {
       disable_jit_if("RWX mapping denied.", 0, 1);
-      if (env.os == os_linux) {
+      if (env.os_category == os_linux) {
         if (env.os_features & (1 << feature_selinux))
           /* all SELinux versions deny RWX mapping when policy says so */
           disable_jit_if("^SELinux is preventing 'execmem' access.\n"
@@ -39,7 +39,7 @@ int entrypoint()
             "Please report to http://bugs.clamav.net\n", 0, 1);
       }
     } else {
-      if ((env.os == os_linux || env.os_category == llvm_os_Linux) &&
+      if ((env.os_category == os_linux || env.os == llvm_os_Linux) &&
           (env.os_features & (1 << feature_pax_mprotect))) {
         /* older versions of PaX allow RWX mapping but silently degrade it to RW
          * mapping and kill the program if it tries to execute. */
