@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  */
 
-/** @file */
+/** @file bytecode_api.h */
 #ifndef BYTECODE_API_H
 #define BYTECODE_API_H
 
@@ -56,7 +56,10 @@ enum BytecodeKind {
     _BC_LAST_HOOK
 };
 
-enum { PE_INVALID_RVA = 0xFFFFFFFF };
+enum {
+  /** Invalid RVA specified */
+  PE_INVALID_RVA = 0xFFFFFFFF
+};
 
 /** LibClamAV functionality level constants */
 enum FunctionalityLevels {
@@ -67,6 +70,7 @@ enum FunctionalityLevels {
     FUNC_LEVEL_096_2
 };
 
+/** Phase of PDF parsing */
 enum pdf_phase {
     PDF_PHASE_NONE /* not a PDF */,
     PDF_PHASE_PARSED, /* after parsing a PDF, object flags can be set etc. */
@@ -74,6 +78,7 @@ enum pdf_phase {
     PDF_PHASE_END /* after the pdf scan finished */
 };
 
+/** PDF flags */
 enum pdf_flag {
     BAD_PDF_VERSION=0,
     BAD_PDF_HEADERPOS,
@@ -96,6 +101,7 @@ enum pdf_flag {
     LINEARIZED_PDF /* not bad, just as flag */
 };
 
+/** PDF obj flags */
 enum pdf_objflags {
     OBJ_STREAM=0,
     OBJ_DICT,
@@ -275,7 +281,9 @@ uint32_t test2(uint32_t a);
 
 /** Gets information about the specified PE section.
  * @param[out] section PE section information will be stored here
- * @param[in] num PE section number */
+ * @param[in] num PE section number
+ * @return  0 - success
+           -1 - failure */
 int32_t get_pe_section(struct cli_exe_section *section, uint32_t num);
 
 /** Fills the specified buffer with at least \p fill bytes.
@@ -473,13 +481,15 @@ int32_t jsnorm_process(int32_t id);
 
 /**
   * Flushes JS normalizer.
-  * @param id ID of js normalizer to flush */
+  * @param id ID of js normalizer to flush
+  * @return 0 - success
+           -1 - failure */
 int32_t jsnorm_done(int32_t id);
 
 /* ---------------- END 0.96 APIs (don't touch) --------------------------- */
 /* ---------------- BEGIN 0.96.1 APIs ------------------------------------- */
 
-/** --------------- math -----------------*/
+/* ---------------- Math -------------------------------------------------- */
 
 /**
   *  Returns 2^26*log2(a/b)
@@ -525,7 +535,7 @@ int32_t isin(int32_t a, int32_t b, int32_t c);
   */
 int32_t icos(int32_t a, int32_t b, int32_t c);
 
-/** --------------- string operations -----------------*/
+/* ---------------- String operations --------------------------------------- */
 /**
   * Return position of match, -1 otherwise.
   * @param haystack buffer to search
@@ -580,7 +590,7 @@ uint32_t debug_print_str_nonl(const uint8_t *str, uint32_t len);
   */
 uint32_t entropy_buffer(uint8_t* buffer, int32_t size);
 
-/* ------------------ data structures -------------------- */
+/* ------------------ Data Structures --------------------------------------- */
 /**
   * Creates a new map and returns its id.
   * @param keysize size of key
@@ -654,10 +664,13 @@ uint8_t* map_getvalue(int32_t id, int32_t size);
   * Trying to use the map after this will result in an error.
   * All maps are automatically deallocated when the bytecode finishes
   * execution.
+  * @param id id of map
+  * @return 0 - success
+           -1 - invalid map
   */
 int32_t map_done(int32_t id);
 
-/** -------------- file operations --------------------- */
+/* -------------- File Operations ------------------------------------------- */
 /** Looks for the specified sequence of bytes in the current file, up to the
  * specified position.
  * @param[in] data the sequence of bytes to look for
@@ -668,28 +681,35 @@ int32_t map_done(int32_t id);
  * @return offset in the current file if match is found, -1 otherwise */
 int32_t file_find_limit(const uint8_t *data, uint32_t len, int32_t maxpos);
 
-/** ------------- engine query ------------------------ */
+/* ------------- Engine Query ----------------------------------------------- */
 /**
   * Returns the current engine (feature) functionality level.
+  * To map these to ClamAV releases, compare it with #FunctionalityLevels.
+  * @return an integer representing current engine functionality level.
   */
 uint32_t engine_functionality_level(void);
 
 /**
   * Returns the current engine (dconf) functionality level.
+  * Usually identical to engine_functionality_level(), unless distro backported
+  * patches. Compare with #FunctionalityLevels.
+  * @return an integer representing the DCONF (security fixes) level.
   */
 uint32_t engine_dconf_level(void);
 
 /**
   * Returns the current engine's scan options.
+  * @return CL_SCAN* flags 
   */
 uint32_t engine_scan_options(void);
 
 /**
   * Returns the current engine's db options.
+  * @return CL_DB_* flags
   */
 uint32_t engine_db_options(void);
 
-/* ---------------- scan control --------------------------- */
+/* ---------------- Scan Control -------------------------------------------- */
 /**
   * Sets the container type for the currently extracted file.
   * @param container container type (CL_TYPE_*)
@@ -768,7 +788,9 @@ int32_t pdf_get_flags(void);
 
 /** Sets the flags for the entire PDF.
   * It is recommended that you retrieve old flags, and just add new ones.
-  * @param flags - flags to set */
+  * @param flags - flags to set.
+  * @return 0 - success
+           -1 - invalid phase */
 int32_t pdf_set_flags(int32_t flags);
 
 /** Lookup pdf object with specified id.
@@ -779,7 +801,7 @@ int32_t pdf_set_flags(int32_t flags);
 int32_t pdf_lookupobj(uint32_t id);
 
 /** Return the size of the specified PDF obj.
-  * @param objnum - object index (from 0), not object id!
+  * @param objidx - object index (from 0), not object id!
   * @return 0 - if not called from PDF hook, or invalid objnum
           >=0 - size of object */
 uint32_t pdf_getobjsize(int32_t objidx);
@@ -823,11 +845,16 @@ int32_t pdf_setobjflags(int32_t objidx, int32_t flags);
 int32_t pdf_get_offset(int32_t objidx);
 
 /** Return an 'enum pdf_phase'.
-  * Identifies at which phase this bytecode was called */
+  * Identifies at which phase this bytecode was called.
+  * @return the current #pdf_phase
+  */
 int32_t pdf_get_phase(void);
 
-/** Return the currently dumped obj idx.
-  Valid only in PDF_PHASE_POSTDUMP */
+/** Return the currently dumped obj index.
+ * Valid only in PDF_PHASE_POSTDUMP.
+ * @return >=0 - object index
+            -1 - invalid phase
+ */
 int32_t pdf_get_dumpedobjid(void);
 
 /** Attempts to match current executable's icon against the specified icon

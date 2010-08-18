@@ -49,7 +49,7 @@ struct cli_exe_section {
 struct cli_exe_info {
     /** Information about all the sections of this file. 
      * This array has \p nsection elements */
-    struct cli_exe_section *section EBOUNDS(nsections);
+    struct cli_exe_section *section;
     /** Offset where this executable start in file (nonzero if embedded) */
     uint32_t offset;
     /** Entrypoint of executable */
