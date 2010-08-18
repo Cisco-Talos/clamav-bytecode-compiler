@@ -18,6 +18,10 @@ struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed}
 \item 
 \#define \hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES}(...)~const char $\ast$const \_\-\_\-clambc\_\-virusnames\mbox{[}$\,$\mbox{]} = \{\_\-\_\-VA\_\-ARGS\_\-\_\-\};
 \item 
+\#define \hyperlink{bytecode__local_8h_adab197e0485a688211ac7f6add222691}{PE\_\-UNPACKER\_\-DECLARE}~const uint16\_\-t \hyperlink{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}{\_\-\_\-clambc\_\-kind} = BC\_\-PE\_\-UNPACKER;
+\item 
+\#define \hyperlink{bytecode__local_8h_a96c0aeeec87fbf8c08a2dd17c86f4cb0}{PDF\_\-HOOK\_\-DECLARE}~const uint16\_\-t \hyperlink{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}{\_\-\_\-clambc\_\-kind} = BC\_\-PDF;
+\item 
 \#define \hyperlink{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{SIGNATURES\_\-DECL\_\-BEGIN}~struct \_\-\_\-Signatures \{
 \item 
 \#define \hyperlink{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{DECLARE\_\-SIGNATURE}(name)
@@ -25,6 +29,12 @@ struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed}
 \#define \hyperlink{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}{SIGNATURES\_\-DECL\_\-END}~\};
 \item 
 \#define \hyperlink{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{TARGET}(tgt)~const unsigned short \_\-\_\-Target = (tgt);
+\item 
+\#define \hyperlink{bytecode__local_8h_a07318d0dd98e1eea463bb91dcbca277c}{COPYRIGHT}(c)~const char $\ast$const \_\-\_\-Copyright = (c);
+\item 
+\#define \hyperlink{bytecode__local_8h_a543de9b69d68ba528f60634777f72a5d}{ICONGROUP1}(group)~const char $\ast$const \_\-\_\-IconGroup1 = (group);
+\item 
+\#define \hyperlink{bytecode__local_8h_a655d7e9c6fcfec9b860d0acc56066326}{ICONGROUP2}(group)~const char $\ast$const \_\-\_\-IconGroup2 = (group);
 \item 
 \#define \hyperlink{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}{FUNCTIONALITY\_\-LEVEL\_\-MIN}(m)~const unsigned short \_\-\_\-FuncMin = (m);
 \item 
@@ -43,15 +53,19 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3bee86d89c2e0d
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}{matches} (\_\-\_\-Signature sig)
 \item 
-static force\_\-inline void \hyperlink{bytecode__local_8h_ab0d5e3e0d9afd1a655e1eb3cd25fa00d}{\_\-\_\-attribute\_\-\_\-} ((overloadable)) foundVirus(const char $\ast$virusname)
+static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a0731ae7f531521a4c8609d75a21d3edd}{match\_\-location} (\_\-\_\-Signature sig, uint32\_\-t goback)
+\item 
+static force\_\-inline int32\_\-t \hyperlink{bytecode__local_8h_ae815c917305f5ce574b0e759f605819b}{match\_\-location\_\-check} (\_\-\_\-Signature sig, uint32\_\-t goback, const char $\ast$static\_\-start, uint32\_\-t static\_\-len)
+\item 
+static force\_\-inline overloadable void \hyperlink{bytecode__local_8h_aa8b96f836da05f48d8f2bb58e1d9b4ca}{foundVirus} (const char $\ast$virusname)
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{getFilesize} (void)
 \item 
-bool \hyperlink{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{\_\-\_\-is\_\-bigendian} (void) \_\-\_\-attribute\_\-\_\-((const )) \_\-\_\-attribute\_\-\_\-((nothrow))
+bool \hyperlink{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{\_\-\_\-is\_\-bigendian} (void) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((const )) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((nothrow))
 \item 
 static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}{le32\_\-to\_\-host} (uint32\_\-t v)
 \item 
-static uint32\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a4f0da4f8a39ff1f89028829a20390945}{le64\_\-to\_\-host} (uint32\_\-t v)
+static uint64\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a574fdd0c27b3c4d8289f346edb2ffc2e}{le64\_\-to\_\-host} (uint64\_\-t v)
 \item 
 static uint16\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}{le16\_\-to\_\-host} (uint16\_\-t v)
 \item 
@@ -108,7 +122,7 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a07f9eaa84e03e0
 static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}{getPESubsystem} (void)
 \item 
 static force\_\-inline uint16\_\-t \hyperlink{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}{getPEDllCharacteristics} (void)
-\item 
+\begin{DoxyCompactList}\small\item\em Return the PE DllCharacteristics. \item\end{DoxyCompactList}\item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}{getPESizeOfStackReserve} (void)
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}{getPESizeOfStackCommit} (void)
@@ -149,19 +163,32 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_ae06107422b3a2b
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}{getImageBase} (void)
 \item 
+static uint32\_\-t \hyperlink{bytecode__local_8h_a488ebd9cda9e8ba46ba5daae94ddb453}{getVirtualEntryPoint} (void)
+\item 
+static uint32\_\-t \hyperlink{bytecode__local_8h_aedc2fa35d4664099b528c68653f593f2}{getSectionRVA} (unsigned i)
+\item 
+static uint32\_\-t \hyperlink{bytecode__local_8h_ad81443723d60b2eaf56aa13718a0bf47}{getSectionVirtualSize} (unsigned i)
+\item 
 static force\_\-inline bool \hyperlink{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}{readRVA} (uint32\_\-t rva, void $\ast$buf, size\_\-t bufsize)
 \item 
 static void $\ast$ \hyperlink{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}{memchr} (const void $\ast$s, int c, size\_\-t n)
 \item 
-void $\ast$ \hyperlink{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}{memset} (void $\ast$src, int c, uintptr\_\-t n) \_\-\_\-attribute\_\-\_\-((nothrow)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-((1))))
+void $\ast$ \hyperlink{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}{memset} (void $\ast$src, int c, uintptr\_\-t n) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((nothrow)) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nonnull\_\-\_\-((1))))
 \item 
-void $\ast$ \hyperlink{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}{memmove} (void $\ast$dst, const void $\ast$src, uintptr\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+void $\ast$ \hyperlink{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}{memmove} (void $\ast$dst, const void $\ast$src, uintptr\_\-t n) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nothrow\_\-\_\-)) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nonnull\_\-\_\-(1
 \item 
-void $\ast$void $\ast$ \hyperlink{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}{memcpy} (void $\ast$restrict dst, const void $\ast$restrict src, uintptr\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+void $\ast$void $\ast$ \hyperlink{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}{memcpy} (void $\ast$restrict dst, const void $\ast$restrict src, uintptr\_\-t n) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nothrow\_\-\_\-)) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nonnull\_\-\_\-(1
 \item 
-void $\ast$void $\ast$int \hyperlink{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}{memcmp} (const void $\ast$s1, const void $\ast$s2, uint32\_\-t n) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nothrow\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-pure\_\-\_\-)) \_\-\_\-attribute\_\-\_\-((\_\-\_\-nonnull\_\-\_\-(1
+void $\ast$void $\ast$int \hyperlink{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}{memcmp} (const void $\ast$s1, const void $\ast$s2, uint32\_\-t n) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nothrow\_\-\_\-)) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-pure\_\-\_\-)) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((\_\-\_\-nonnull\_\-\_\-(1
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{DisassembleAt} (struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed} $\ast$result, uint32\_\-t offset, uint32\_\-t len)
+\item 
+static int32\_\-t \hyperlink{bytecode__local_8h_a3c9b722b5ff4d35cfcd8de8a5c48a0ed}{ilog2\_\-compat} (uint32\_\-t a, uint32\_\-t b)
+\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+void $\ast$void $\ast$int struct \hyperlink{struct_d_i_s__mem__arg}{DIS\_\-mem\_\-arg} \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}
 \end{DoxyCompactItemize}
 
 
@@ -169,20 +196,42 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a1a801c0806f1cb
 
 
 \subsubsection{Define Documentation}
+\hypertarget{bytecode__local_8h_a07318d0dd98e1eea463bb91dcbca277c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!COPYRIGHT@{COPYRIGHT}}
+\index{COPYRIGHT@{COPYRIGHT}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{COPYRIGHT}]{\setlength{\rightskip}{0pt plus 5cm}\#define COPYRIGHT(
+\begin{DoxyParamCaption}
+\item[{}]{c}
+\end{DoxyParamCaption}
+)~const char $\ast$const \_\-\_\-Copyright = (c);}\hfill}
+\label{bytecode__local_8h_a07318d0dd98e1eea463bb91dcbca277c}
+Defines an alternative copyright for this bytecode. \begin{Desc}
+\item[\hyperlink{config__config000009}{config}]This will also prevent the sourcecode from being embedded into the bytecode \end{Desc}
 \hypertarget{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!DECLARE\_\-SIGNATURE@{DECLARE\_\-SIGNATURE}}
 \index{DECLARE\_\-SIGNATURE@{DECLARE\_\-SIGNATURE}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{DECLARE\_\-SIGNATURE}]{\setlength{\rightskip}{0pt plus 5cm}\#define DECLARE\_\-SIGNATURE(name)}\hfill}
+\paragraph[{DECLARE\_\-SIGNATURE}]{\setlength{\rightskip}{0pt plus 5cm}\#define DECLARE\_\-SIGNATURE(
+\begin{DoxyParamCaption}
+\item[{}]{name}
+\end{DoxyParamCaption}
+)}\hfill}
 \label{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}
 {\bfseries Value:}
 \begin{DoxyCode}
 const char *name##_sig;\
     __Signature name;
 \end{DoxyCode}
-Declares a name for a subsignature \hypertarget{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}{
+Declares a name for a subsignature. \begin{Desc}
+\item[\hyperlink{config__config000006}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!DEFINE\_\-SIGNATURE@{DEFINE\_\-SIGNATURE}}
 \index{DEFINE\_\-SIGNATURE@{DEFINE\_\-SIGNATURE}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{DEFINE\_\-SIGNATURE}]{\setlength{\rightskip}{0pt plus 5cm}\#define DEFINE\_\-SIGNATURE(name, \/  hex)}\hfill}
+\paragraph[{DEFINE\_\-SIGNATURE}]{\setlength{\rightskip}{0pt plus 5cm}\#define DEFINE\_\-SIGNATURE(
+\begin{DoxyParamCaption}
+\item[{}]{name, }
+\item[{}]{hex}
+\end{DoxyParamCaption}
+)}\hfill}
 \label{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}
 {\bfseries Value:}
 \begin{DoxyCode}
@@ -192,30 +241,86 @@ Declares a name for a subsignature \hypertarget{bytecode__local_8h_af17ef9c55c87
 Defines the pattern for a previously declared subsignature. \begin{DoxySeeAlso}{See also}
 \hyperlink{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{DECLARE\_\-SIGNATURE} 
 \end{DoxySeeAlso}
+\begin{Desc}
+\item[\hyperlink{config__config000015}{config}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em name}]the name of a previously declared subsignature \item[{\em hex}]the pattern for this subsignature \end{DoxyParams}
 \hypertarget{bytecode__local_8h_afc471efa427277a2b96a2a06ba647aa9}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!FUNCTIONALITY\_\-LEVEL\_\-MAX@{FUNCTIONALITY\_\-LEVEL\_\-MAX}}
 \index{FUNCTIONALITY\_\-LEVEL\_\-MAX@{FUNCTIONALITY\_\-LEVEL\_\-MAX}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{FUNCTIONALITY\_\-LEVEL\_\-MAX}]{\setlength{\rightskip}{0pt plus 5cm}\#define FUNCTIONALITY\_\-LEVEL\_\-MAX(m)~const unsigned short \_\-\_\-FuncMax = (m);}\hfill}
+\paragraph[{FUNCTIONALITY\_\-LEVEL\_\-MAX}]{\setlength{\rightskip}{0pt plus 5cm}\#define FUNCTIONALITY\_\-LEVEL\_\-MAX(
+\begin{DoxyParamCaption}
+\item[{}]{m}
+\end{DoxyParamCaption}
+)~const unsigned short \_\-\_\-FuncMax = (m);}\hfill}
 \label{bytecode__local_8h_afc471efa427277a2b96a2a06ba647aa9}
-Define the maximum engine functionality level required for this bytecode/logical signature. Engines newer than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \hypertarget{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}{
+Define the maximum engine functionality level required for this bytecode/logical signature. Engines newer than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \begin{Desc}
+\item[\hyperlink{config__config000013}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!FUNCTIONALITY\_\-LEVEL\_\-MIN@{FUNCTIONALITY\_\-LEVEL\_\-MIN}}
 \index{FUNCTIONALITY\_\-LEVEL\_\-MIN@{FUNCTIONALITY\_\-LEVEL\_\-MIN}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{FUNCTIONALITY\_\-LEVEL\_\-MIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define FUNCTIONALITY\_\-LEVEL\_\-MIN(m)~const unsigned short \_\-\_\-FuncMin = (m);}\hfill}
+\paragraph[{FUNCTIONALITY\_\-LEVEL\_\-MIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define FUNCTIONALITY\_\-LEVEL\_\-MIN(
+\begin{DoxyParamCaption}
+\item[{}]{m}
+\end{DoxyParamCaption}
+)~const unsigned short \_\-\_\-FuncMin = (m);}\hfill}
 \label{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}
-Define the minimum engine functionality level required for this bytecode/logical signature. Engines older than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \hypertarget{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{
+Define the minimum engine functionality level required for this bytecode/logical signature. Engines older than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \begin{Desc}
+\item[\hyperlink{config__config000012}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a543de9b69d68ba528f60634777f72a5d}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!ICONGROUP1@{ICONGROUP1}}
+\index{ICONGROUP1@{ICONGROUP1}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{ICONGROUP1}]{\setlength{\rightskip}{0pt plus 5cm}\#define ICONGROUP1(
+\begin{DoxyParamCaption}
+\item[{}]{group}
+\end{DoxyParamCaption}
+)~const char $\ast$const \_\-\_\-IconGroup1 = (group);}\hfill}
+\label{bytecode__local_8h_a543de9b69d68ba528f60634777f72a5d}
+Define IconGroup1 for logical signature.
+
+See logical signature documentation for what it is \begin{Desc}
+\item[\hyperlink{config__config000010}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a655d7e9c6fcfec9b860d0acc56066326}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!ICONGROUP2@{ICONGROUP2}}
+\index{ICONGROUP2@{ICONGROUP2}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{ICONGROUP2}]{\setlength{\rightskip}{0pt plus 5cm}\#define ICONGROUP2(
+\begin{DoxyParamCaption}
+\item[{}]{group}
+\end{DoxyParamCaption}
+)~const char $\ast$const \_\-\_\-IconGroup2 = (group);}\hfill}
+\label{bytecode__local_8h_a655d7e9c6fcfec9b860d0acc56066326}
+Define IconGroup2 for logical signature. See logical signature documentation for what it is. \begin{Desc}
+\item[\hyperlink{config__config000011}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a96c0aeeec87fbf8c08a2dd17c86f4cb0}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!PDF\_\-HOOK\_\-DECLARE@{PDF\_\-HOOK\_\-DECLARE}}
+\index{PDF\_\-HOOK\_\-DECLARE@{PDF\_\-HOOK\_\-DECLARE}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{PDF\_\-HOOK\_\-DECLARE}]{\setlength{\rightskip}{0pt plus 5cm}\#define PDF\_\-HOOK\_\-DECLARE~const uint16\_\-t {\bf \_\-\_\-clambc\_\-kind} = BC\_\-PDF;}\hfill}
+\label{bytecode__local_8h_a96c0aeeec87fbf8c08a2dd17c86f4cb0}
+Make the current bytecode a PDF hook. Having a logical signature doesn't make sense here, since logical signature is evaluated AFTER these hooks run. \begin{Desc}
+\item[\hyperlink{config__config000004}{config}]This hook is called several times, use \hyperlink{bytecode__api_8h_af7eb372ae4bc42a552e543ea2a306f5e}{pdf\_\-get\_\-phase()} to find out in which phase you got called. \end{Desc}
+\hypertarget{bytecode__local_8h_adab197e0485a688211ac7f6add222691}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!PE\_\-UNPACKER\_\-DECLARE@{PE\_\-UNPACKER\_\-DECLARE}}
+\index{PE\_\-UNPACKER\_\-DECLARE@{PE\_\-UNPACKER\_\-DECLARE}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{PE\_\-UNPACKER\_\-DECLARE}]{\setlength{\rightskip}{0pt plus 5cm}\#define PE\_\-UNPACKER\_\-DECLARE~const uint16\_\-t {\bf \_\-\_\-clambc\_\-kind} = BC\_\-PE\_\-UNPACKER;}\hfill}
+\label{bytecode__local_8h_adab197e0485a688211ac7f6add222691}
+Make the current bytecode a PE hook, i.e. it will be called once the logical signature trigger matches (or always if there is none), and you have access to all the PE information. By default you only have access to execs.h information, and not to PE field information (even for PE files). \begin{Desc}
+\item[\hyperlink{config__config000003}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}}
 \index{SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{SIGNATURES\_\-DECL\_\-BEGIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-BEGIN~struct \_\-\_\-Signatures \{}\hfill}
 \label{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}
-Marks the beginning of the subsignature name declaration section \hypertarget{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}{
+Marks the beginning of the subsignature name declaration section. \begin{Desc}
+\item[\hyperlink{config__config000005}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-END@{SIGNATURES\_\-DECL\_\-END}}
 \index{SIGNATURES\_\-DECL\_\-END@{SIGNATURES\_\-DECL\_\-END}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{SIGNATURES\_\-DECL\_\-END}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-END~\};}\hfill}
 \label{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}
-Marks the end of the subsignature name declaration section \hypertarget{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}{
+Marks the end of the subsignature name declaration section. \begin{Desc}
+\item[\hyperlink{config__config000007}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DEF\_\-BEGIN@{SIGNATURES\_\-DEF\_\-BEGIN}}
 \index{SIGNATURES\_\-DEF\_\-BEGIN@{SIGNATURES\_\-DEF\_\-BEGIN}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{SIGNATURES\_\-DEF\_\-BEGIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DEF\_\-BEGIN}\hfill}
@@ -225,7 +330,9 @@ Marks the end of the subsignature name declaration section \hypertarget{bytecode
 static const unsigned __signature_bias = __COUNTER__+1;\
 const struct __Signatures Signatures = {\
 \end{DoxyCode}
-Marks the beginning of subsignature pattern definitions. \begin{DoxySeeAlso}{See also}
+Marks the beginning of subsignature pattern definitions. \begin{Desc}
+\item[\hyperlink{config__config000014}{config}]\end{Desc}
+\begin{DoxySeeAlso}{See also}
 \hyperlink{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{SIGNATURES\_\-DECL\_\-BEGIN} 
 \end{DoxySeeAlso}
 \hypertarget{bytecode__local_8h_ac9b976f78a0dac8a6996cbb31571044f}{
@@ -233,167 +340,311 @@ Marks the beginning of subsignature pattern definitions. \begin{DoxySeeAlso}{See
 \index{SIGNATURES\_\-END@{SIGNATURES\_\-END}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{SIGNATURES\_\-END}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-END~\};$\backslash$}\hfill}
 \label{bytecode__local_8h_ac9b976f78a0dac8a6996cbb31571044f}
-Marks the end of the subsignature pattern definitions. \hypertarget{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{
+Marks the end of the subsignature pattern definitions. \begin{Desc}
+\item[\hyperlink{config__config000016}{config}]\end{Desc}
+\hypertarget{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!TARGET@{TARGET}}
 \index{TARGET@{TARGET}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{TARGET}]{\setlength{\rightskip}{0pt plus 5cm}\#define TARGET(tgt)~const unsigned short \_\-\_\-Target = (tgt);}\hfill}
+\paragraph[{TARGET}]{\setlength{\rightskip}{0pt plus 5cm}\#define TARGET(
+\begin{DoxyParamCaption}
+\item[{}]{tgt}
+\end{DoxyParamCaption}
+)~const unsigned short \_\-\_\-Target = (tgt);}\hfill}
 \label{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}
-Defines the ClamAV file target. 
+Defines the ClamAV file target. \begin{Desc}
+\item[\hyperlink{config__config000008}{config}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
 \item[{\em tgt}]ClamAV signature type (0 -\/ raw, 1 -\/ PE, etc.) \end{DoxyParams}
 \hypertarget{bytecode__local_8h_af46256c8838bde91b834ae7323f325c9}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!VIRUSNAME\_\-PREFIX@{VIRUSNAME\_\-PREFIX}}
 \index{VIRUSNAME\_\-PREFIX@{VIRUSNAME\_\-PREFIX}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{VIRUSNAME\_\-PREFIX}]{\setlength{\rightskip}{0pt plus 5cm}\#define VIRUSNAME\_\-PREFIX(name)~const char \_\-\_\-clambc\_\-virusname\_\-prefix\mbox{[}$\,$\mbox{]} = name;}\hfill}
+\paragraph[{VIRUSNAME\_\-PREFIX}]{\setlength{\rightskip}{0pt plus 5cm}\#define VIRUSNAME\_\-PREFIX(
+\begin{DoxyParamCaption}
+\item[{}]{name}
+\end{DoxyParamCaption}
+)~const char \_\-\_\-clambc\_\-virusname\_\-prefix\mbox{[}$\,$\mbox{]} = name;}\hfill}
 \label{bytecode__local_8h_af46256c8838bde91b834ae7323f325c9}
-Declares the virusname prefix. 
+Declares the virusname prefix. \begin{Desc}
+\item[\hyperlink{config__config000001}{config}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
 \item[{\em name}]the prefix common to all viruses reported by this bytecode \end{DoxyParams}
 \hypertarget{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!VIRUSNAMES@{VIRUSNAMES}}
 \index{VIRUSNAMES@{VIRUSNAMES}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{VIRUSNAMES}]{\setlength{\rightskip}{0pt plus 5cm}\#define VIRUSNAMES( {\em ...})~const char $\ast$const \_\-\_\-clambc\_\-virusnames\mbox{[}$\,$\mbox{]} = \{\_\-\_\-VA\_\-ARGS\_\-\_\-\};}\hfill}
+\paragraph[{VIRUSNAMES}]{\setlength{\rightskip}{0pt plus 5cm}\#define VIRUSNAMES(
+\begin{DoxyParamCaption}
+\item[{}]{ ...}
+\end{DoxyParamCaption}
+)~const char $\ast$const \_\-\_\-clambc\_\-virusnames\mbox{[}$\,$\mbox{]} = \{\_\-\_\-VA\_\-ARGS\_\-\_\-\};}\hfill}
 \label{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}
-Declares all the virusnames that this bytecode can report. 
+Declares all the virusnames that this bytecode can report. \begin{Desc}
+\item[\hyperlink{config__config000002}{config}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
 \item[{\em ...}]a comma-\/separated list of strings interpreted as virusnames \end{DoxyParams}
 
 
 \subsubsection{Function Documentation}
-\hypertarget{bytecode__local_8h_ab0d5e3e0d9afd1a655e1eb3cd25fa00d}{
-\index{bytecode\_\-local.h@{bytecode\_\-local.h}!\_\-\_\-attribute\_\-\_\-@{\_\-\_\-attribute\_\-\_\-}}
-\index{\_\-\_\-attribute\_\-\_\-@{\_\-\_\-attribute\_\-\_\-}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{\_\-\_\-attribute\_\-\_\-}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void \_\-\_\-attribute\_\-\_\- ((overloadable)) const\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
-\label{bytecode__local_8h_ab0d5e3e0d9afd1a655e1eb3cd25fa00d}
-Sets the specified virusname as the virus detected by this bytecode. 
-\begin{DoxyParams}{Parameters}
-\item[{\em virusname}]the name of the virus, excluding the prefix, must be one of the virusnames declared in {\ttfamily VIRUSNAMES}. \end{DoxyParams}
-\begin{DoxySeeAlso}{See also}
-\hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES} 
-\end{DoxySeeAlso}
 \hypertarget{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!\_\-\_\-is\_\-bigendian@{\_\-\_\-is\_\-bigendian}}
 \index{\_\-\_\-is\_\-bigendian@{\_\-\_\-is\_\-bigendian}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{\_\-\_\-is\_\-bigendian}]{\setlength{\rightskip}{0pt plus 5cm}bool \_\-\_\-is\_\-bigendian (void) const}\hfill}
+\paragraph[{\_\-\_\-is\_\-bigendian}]{\setlength{\rightskip}{0pt plus 5cm}bool \_\-\_\-is\_\-bigendian (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+) const}\hfill}
 \label{bytecode__local_8h_af3a7e5cbd0c798faf98a03ee7c72e661}
 Returns true if the bytecode is executing on a big-\/endian CPU. \begin{DoxyReturn}{Returns}
-true if executing on bigendian CPU, false otherwise
+true if executing on bigendian CPU, false otherwise 
 \end{DoxyReturn}
+\begin{Desc}
+\item[\hyperlink{envdet__envdet000006}{Environment}]\end{Desc}
+
+
 This will be optimized away in libclamav, but it must be used when dealing with endianess for portability reasons. For example whenever you read a 32-\/bit integer from a file, it can be written in little-\/endian convention (x86 CPU for example), or big-\/endian convention (PowerPC CPU for example). If the file always contains little-\/endian integers, then conversion might be needed. ClamAV bytecodes by their nature must only handle known-\/endian integers, if endianness can change, then both situations must be taken into account (based on a 1-\/byte field for example). \hypertarget{bytecode__local_8h_a50ecabc9fb33d2194b257d68fc136eed}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!cli\_\-readint16@{cli\_\-readint16}}
 \index{cli\_\-readint16@{cli\_\-readint16}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{cli\_\-readint16}]{\setlength{\rightskip}{0pt plus 5cm}static uint16\_\-t force\_\-inline cli\_\-readint16 (const void $\ast$ {\em buff})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{cli\_\-readint16}]{\setlength{\rightskip}{0pt plus 5cm}static uint16\_\-t force\_\-inline cli\_\-readint16 (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{ buff}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a50ecabc9fb33d2194b257d68fc136eed}
-Reads from the specified buffer a 16-\/bit of little-\/endian integer. 
+Reads from the specified buffer a 16-\/bit of little-\/endian integer. \begin{Desc}
+\item[\hyperlink{adt__adt000032}{Data structure}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em buff}]pointer to buffer \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em buff}]pointer to buffer \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 16-\/bit little-\/endian integer converted to host endianness 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a3d6a38ce39dd509a2526a67f8f00f845}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!cli\_\-readint32@{cli\_\-readint32}}
 \index{cli\_\-readint32@{cli\_\-readint32}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{cli\_\-readint32}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline cli\_\-readint32 (const void $\ast$ {\em buff})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{cli\_\-readint32}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline cli\_\-readint32 (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{ buff}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3d6a38ce39dd509a2526a67f8f00f845}
-Reads from the specified buffer a 32-\/bit of little-\/endian integer. 
+Reads from the specified buffer a 32-\/bit of little-\/endian integer. \begin{Desc}
+\item[\hyperlink{adt__adt000031}{Data structure}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em buff}]pointer to buffer \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em buff}]pointer to buffer \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 32-\/bit little-\/endian integer converted to host endianness 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!cli\_\-writeint32@{cli\_\-writeint32}}
 \index{cli\_\-writeint32@{cli\_\-writeint32}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{cli\_\-writeint32}]{\setlength{\rightskip}{0pt plus 5cm}static void force\_\-inline cli\_\-writeint32 (void $\ast$ {\em offset}, \/  uint32\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{cli\_\-writeint32}]{\setlength{\rightskip}{0pt plus 5cm}static void force\_\-inline cli\_\-writeint32 (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ offset, }
+\item[{uint32\_\-t}]{ v}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}
-Writes the specified value into the specified buffer in little-\/endian order 
+Writes the specified value into the specified buffer in little-\/endian order \begin{Desc}
+\item[\hyperlink{adt__adt000033}{Data structure}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\rightarrow$} {\em offset}]pointer to buffer to write to \item[\mbox{$\leftarrow$} {\em v}]value to write \end{DoxyParams}
+\item[\mbox{\tt[out]} {\em offset}]pointer to buffer to write to \item[\mbox{\tt[in]} {\em v}]value to write \end{DoxyParams}
 \hypertarget{bytecode__local_8h_a3bee86d89c2e0d16b706f62ec0c2d716}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!count\_\-match@{count\_\-match}}
 \index{count\_\-match@{count\_\-match}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{count\_\-match}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t count\_\-match (\_\-\_\-Signature {\em sig})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{count\_\-match}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t count\_\-match (
+\begin{DoxyParamCaption}
+\item[{\_\-\_\-Signature}]{ sig}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3bee86d89c2e0d16b706f62ec0c2d716}
 Returns how many times the specified signature matched. 
 \begin{DoxyParams}{Parameters}
 \item[{\em sig}]name of subsignature queried \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
-number of times this subsignature matched in the entire file
+number of times this subsignature matched in the entire file 
 \end{DoxyReturn}
+\begin{Desc}
+\item[\hyperlink{engineq__engineq000005}{Engine query}]\end{Desc}
+
+
 This is a constant-\/time operation, the counts for all subsignatures are already computed. \hypertarget{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!DisassembleAt@{DisassembleAt}}
 \index{DisassembleAt@{DisassembleAt}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{DisassembleAt}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t DisassembleAt (struct {\bf DIS\_\-fixed} $\ast$ {\em result}, \/  uint32\_\-t {\em offset}, \/  uint32\_\-t {\em len})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{DisassembleAt}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t DisassembleAt (
+\begin{DoxyParamCaption}
+\item[{struct {\bf DIS\_\-fixed} $\ast$}]{ result, }
+\item[{uint32\_\-t}]{ offset, }
+\item[{uint32\_\-t}]{ len}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}
-Disassembles one X86 instruction starting at the specified offset. 
+Disassembles one X86 instruction starting at the specified offset. \begin{Desc}
+\item[\hyperlink{disasm__disasm000005}{Disassemble}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\rightarrow$} {\em result}]disassembly result \item[\mbox{$\leftarrow$} {\em offset}]start disassembling from this offset, in the current file \item[\mbox{$\leftarrow$} {\em len}]max amount of bytes to disassemble \end{DoxyParams}
+\item[\mbox{\tt[out]} {\em result}]disassembly result \item[\mbox{\tt[in]} {\em offset}]start disassembling from this offset, in the current file \item[\mbox{\tt[in]} {\em len}]max amount of bytes to disassemble \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 offset where disassembly ended 
 \end{DoxyReturn}
+\hypertarget{bytecode__local_8h_aa8b96f836da05f48d8f2bb58e1d9b4ca}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!foundVirus@{foundVirus}}
+\index{foundVirus@{foundVirus}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{foundVirus}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline overloadable void foundVirus (
+\begin{DoxyParamCaption}
+\item[{const char $\ast$}]{ virusname}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_aa8b96f836da05f48d8f2bb58e1d9b4ca}
+Sets the specified virusname as the virus detected by this bytecode. \begin{Desc}
+\item[\hyperlink{scanc__scanc000006}{Scan}]\end{Desc}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em virusname}]the name of the virus, excluding the prefix, must be one of the virusnames declared in {\ttfamily VIRUSNAMES}. \end{DoxyParams}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES} 
+\end{DoxySeeAlso}
 \hypertarget{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getEntryPoint@{getEntryPoint}}
 \index{getEntryPoint@{getEntryPoint}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getEntryPoint}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getEntryPoint (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getEntryPoint}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getEntryPoint (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}
-Returns the offset of the EntryPoint in the executable file. \begin{DoxyReturn}{Returns}
+Returns the offset of the EntryPoint in the executable file. \begin{Desc}
+\item[\hyperlink{pe__pe000046}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
 offset of EP as 32-\/bit unsigned integer 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getExeOffset@{getExeOffset}}
 \index{getExeOffset@{getExeOffset}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getExeOffset}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getExeOffset (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getExeOffset}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getExeOffset (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}
-Returns the offset of the executable in the file. \begin{DoxyReturn}{Returns}
+Returns the offset of the executable in the file. \begin{Desc}
+\item[\hyperlink{pe__pe000047}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
 offset of embedded executable inside file. 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getFilesize@{getFilesize}}
 \index{getFilesize@{getFilesize}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getFilesize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getFilesize (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getFilesize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getFilesize (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}
-Returns the currently scanned file's size. \begin{DoxyReturn}{Returns}
+Returns the currently scanned file's size. \begin{Desc}
+\item[\hyperlink{fileops__fileops000010}{File operation}]\end{Desc}
+\begin{DoxyReturn}{Returns}
 file size as 32-\/bit unsigned integer 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getImageBase@{getImageBase}}
 \index{getImageBase@{getImageBase}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getImageBase (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getImageBase (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}
-Returns the ImageBase with the correct endian conversion \hypertarget{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{
+Returns the ImageBase with the correct endian conversion. Only works if the bytecode is a PE hook (i.e. you invoked PE\_\-UNPACKER\_\-DECLARE) \begin{Desc}
+\item[\hyperlink{pe__pe000048}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+ImageBase of PE file, 0 -\/ for non-\/PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_acc59dfc3eb084259883225674083e553}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getNumberOfSections@{getNumberOfSections}}
 \index{getNumberOfSections@{getNumberOfSections}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getNumberOfSections}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getNumberOfSections (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getNumberOfSections}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getNumberOfSections (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_acc59dfc3eb084259883225674083e553}
-Returns the number of sections in this executable file. \begin{DoxyReturn}{Returns}
+Returns the number of sections in this executable file. \begin{Desc}
+\item[\hyperlink{pe__pe000043}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
 number of sections as 16-\/bit unsigned integer 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a4856f8c8b2250e9ff7a15bfc651e9dc5}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEBaseOfCode@{getPEBaseOfCode}}
 \index{getPEBaseOfCode@{getPEBaseOfCode}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEBaseOfCode}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEBaseOfCode (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEBaseOfCode}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEBaseOfCode (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a4856f8c8b2250e9ff7a15bfc651e9dc5}
-Return the PE BaseOfCode. \hypertarget{bytecode__local_8h_a906067648342e627e35608446ae28faf}{
+Return the PE BaseOfCode. \begin{Desc}
+\item[\hyperlink{pe__pe000012}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE BaseOfCode, or 0 if not in PE hook. 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a906067648342e627e35608446ae28faf}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEBaseOfData@{getPEBaseOfData}}
 \index{getPEBaseOfData@{getPEBaseOfData}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEBaseOfData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEBaseOfData (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEBaseOfData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEBaseOfData (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a906067648342e627e35608446ae28faf}
-Return the PE BaseOfData. \hypertarget{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}{
+Return the PE BaseOfData. \begin{Desc}
+\item[\hyperlink{pe__pe000013}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE BaseOfData, or 0 if not in PE hook. 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPECharacteristics@{getPECharacteristics}}
 \index{getPECharacteristics@{getPECharacteristics}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPECharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPECharacteristics ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPECharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPECharacteristics (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}
-Returns PE characteristics. \hypertarget{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}{
+Returns PE characteristics. For example you can use this to check whether it is a DLL (0x2000). \begin{Desc}
+\item[\hyperlink{pe__pe000039}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+characteristic of PE file, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPECheckSum@{getPECheckSum}}
 \index{getPECheckSum@{getPECheckSum}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPECheckSum}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPECheckSum (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPECheckSum}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPECheckSum (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}
-Return the PE CheckSum. \hypertarget{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}{
+Return the PE CheckSum. \begin{Desc}
+\item[\hyperlink{pe__pe000026}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE CheckSum, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDataDirRVA@{getPEDataDirRVA}}
 \index{getPEDataDirRVA@{getPEDataDirRVA}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEDataDirRVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEDataDirRVA (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEDataDirRVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEDataDirRVA (
+\begin{DoxyParamCaption}
+\item[{unsigned}]{ n}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}
-Gets the virtual address of specified image data directory. 
+Gets the virtual address of specified image data directory. \begin{Desc}
+\item[\hyperlink{pe__pe000041}{PE}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
 \item[{\em n}]image directory requested \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
@@ -402,9 +653,15 @@ Virtual Address of requested image directory
 \hypertarget{bytecode__local_8h_a19dd537d51a4bfe23f58a92b2332ed02}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDataDirSize@{getPEDataDirSize}}
 \index{getPEDataDirSize@{getPEDataDirSize}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEDataDirSize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEDataDirSize (unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEDataDirSize}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEDataDirSize (
+\begin{DoxyParamCaption}
+\item[{unsigned}]{ n}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a19dd537d51a4bfe23f58a92b2332ed02}
-Gets the size of the specified image data directory. 
+Gets the size of the specified image data directory. \begin{Desc}
+\item[\hyperlink{pe__pe000042}{PE}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
 \item[{\em n}]image directory requested \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
@@ -413,213 +670,628 @@ Size of requested image directory
 \hypertarget{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEDllCharacteristics@{getPEDllCharacteristics}}
 \index{getPEDllCharacteristics@{getPEDllCharacteristics}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEDllCharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEDllCharacteristics (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEDllCharacteristics}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEDllCharacteristics (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a307bc20f197de9d15bb6e08e9d8f3785}
-Return the PE DllCharacteristics. \hypertarget{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}{
+
+
+Return the PE DllCharacteristics. 
+
+\begin{Desc}
+\item[\hyperlink{pe__pe000028}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE DllCharacteristics, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEFileAlignment@{getPEFileAlignment}}
 \index{getPEFileAlignment@{getPEFileAlignment}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEFileAlignment}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEFileAlignment (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEFileAlignment}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEFileAlignment (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}
-Return the PE FileAlignment. \hypertarget{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}{
+Return the PE FileAlignment. \begin{Desc}
+\item[\hyperlink{pe__pe000016}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE FileAlignment, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEImageBase@{getPEImageBase}}
 \index{getPEImageBase@{getPEImageBase}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint64\_\-t getPEImageBase (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEImageBase}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint64\_\-t getPEImageBase (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}
-Return the PE ImageBase as 64-\/bit integer. \hypertarget{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}{
+Return the PE ImageBase as 64-\/bit integer. \begin{Desc}
+\item[\hyperlink{pe__pe000014}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE ImageBase as 64-\/bit int, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEisDLL@{getPEisDLL}}
 \index{getPEisDLL@{getPEisDLL}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEisDLL}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool getPEisDLL ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEisDLL}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool getPEisDLL (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}
-Returns whether this is a DLL \hypertarget{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}{
+Returns whether this is a DLL. Use this only in a PE hook! \begin{Desc}
+\item[\hyperlink{pe__pe000040}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+true -\/ the file is a DLL false -\/ file is not a DLL 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPELFANew@{getPELFANew}}
 \index{getPELFANew@{getPELFANew}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPELFANew}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getPELFANew (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPELFANew}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getPELFANew (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}
-Gets the offset to the PE header. \hypertarget{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}{
+Gets the offset to the PE header. \begin{Desc}
+\item[\hyperlink{pe__pe000044}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+offset to the PE header, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPELoaderFlags@{getPELoaderFlags}}
 \index{getPELoaderFlags@{getPELoaderFlags}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPELoaderFlags}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPELoaderFlags (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPELoaderFlags}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPELoaderFlags (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}
-Return the PE LoaderFlags. \hypertarget{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}{
+Return the PE LoaderFlags. \begin{Desc}
+\item[\hyperlink{pe__pe000033}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE LoaderFlags or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMachine@{getPEMachine}}
 \index{getPEMachine@{getPEMachine}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMachine}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMachine ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMachine}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMachine (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}
-Returns the CPU this executable runs on, see libclamav/pe.c for possible values \hypertarget{bytecode__local_8h_aea163191c14a5af87883231d7358070f}{
+Returns the CPU this executable runs on, see libclamav/pe.c for possible values. \begin{Desc}
+\item[\hyperlink{pe__pe000034}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE Machine or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_aea163191c14a5af87883231d7358070f}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorImageVersion@{getPEMajorImageVersion}}
 \index{getPEMajorImageVersion@{getPEMajorImageVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMajorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorImageVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMajorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorImageVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_aea163191c14a5af87883231d7358070f}
-Return the PE MajorImageVersion \hypertarget{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}{
+Return the PE MajorImageVersion. \begin{Desc}
+\item[\hyperlink{pe__pe000019}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MajorImageVersion, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorLinkerVersion@{getPEMajorLinkerVersion}}
 \index{getPEMajorLinkerVersion@{getPEMajorLinkerVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMajorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static static force\_\-inline force\_\-inline uint8\_\-t getPEMajorLinkerVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMajorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static static force\_\-inline force\_\-inline uint8\_\-t getPEMajorLinkerVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}
-Returns MajorLinkerVersion for this PE file. \hypertarget{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}{
+Returns MajorLinkerVersion for this PE file. \begin{Desc}
+\item[\hyperlink{pe__pe000007}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MajorLinkerVersion or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorOperatingSystemVersion@{getPEMajorOperatingSystemVersion}}
 \index{getPEMajorOperatingSystemVersion@{getPEMajorOperatingSystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMajorOperatingSystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorOperatingSystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMajorOperatingSystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorOperatingSystemVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}
-Return the PE MajorOperatingSystemVersion. \hypertarget{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}{
+Return the PE MajorOperatingSystemVersion. \begin{Desc}
+\item[\hyperlink{pe__pe000017}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MajorOperatingSystemVersion, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMajorSubsystemVersion@{getPEMajorSubsystemVersion}}
 \index{getPEMajorSubsystemVersion@{getPEMajorSubsystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMajorSubsystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorSubsystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMajorSubsystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMajorSubsystemVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}
-Return the PE MajorSubsystemVersion \hypertarget{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}{
+Return the PE MajorSubsystemVersion. \begin{Desc}
+\item[\hyperlink{pe__pe000021}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MajorSubsystemVersion or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorImageVersion@{getPEMinorImageVersion}}
 \index{getPEMinorImageVersion@{getPEMinorImageVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMinorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorImageVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMinorImageVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorImageVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}
-Return the PE MinorImageVersion \hypertarget{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}{
+Return the PE MinorImageVersion. \begin{Desc}
+\item[\hyperlink{pe__pe000020}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MinorrImageVersion, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorLinkerVersion@{getPEMinorLinkerVersion}}
 \index{getPEMinorLinkerVersion@{getPEMinorLinkerVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMinorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint8\_\-t getPEMinorLinkerVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMinorLinkerVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint8\_\-t getPEMinorLinkerVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}
-Returns MinorLinkerVersion for this PE file. \hypertarget{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}{
+Returns MinorLinkerVersion for this PE file. \begin{Desc}
+\item[\hyperlink{pe__pe000008}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MinorLinkerVersion or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorOperatingSystemVersion@{getPEMinorOperatingSystemVersion}}
 \index{getPEMinorOperatingSystemVersion@{getPEMinorOperatingSystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMinorOperatingSystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorOperatingSystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMinorOperatingSystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorOperatingSystemVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}
-Return the PE MinorOperatingSystemVersion. \hypertarget{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}{
+Return the PE MinorOperatingSystemVersion. \begin{Desc}
+\item[\hyperlink{pe__pe000018}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MinorOperatingSystemVersion, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEMinorSubsystemVersion@{getPEMinorSubsystemVersion}}
 \index{getPEMinorSubsystemVersion@{getPEMinorSubsystemVersion}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEMinorSubsystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorSubsystemVersion (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEMinorSubsystemVersion}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPEMinorSubsystemVersion (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}
-Return the PE MinorSubsystemVersion \hypertarget{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}{
+Return the PE MinorSubsystemVersion. \begin{Desc}
+\item[\hyperlink{pe__pe000022}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE MinorSubsystemVersion, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPENumberOfSymbols@{getPENumberOfSymbols}}
 \index{getPENumberOfSymbols@{getPENumberOfSymbols}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPENumberOfSymbols}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPENumberOfSymbols ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPENumberOfSymbols}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPENumberOfSymbols (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}
-Returns the PE number of debug symbols \hypertarget{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}{
+Returns the PE number of debug symbols \begin{Desc}
+\item[\hyperlink{pe__pe000037}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE NumberOfSymbols or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEPointerToSymbolTable@{getPEPointerToSymbolTable}}
 \index{getPEPointerToSymbolTable@{getPEPointerToSymbolTable}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEPointerToSymbolTable}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEPointerToSymbolTable ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEPointerToSymbolTable}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEPointerToSymbolTable (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}
-Returns pointer to the PE debug symbol table \hypertarget{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}{
+Returns pointer to the PE debug symbol table \begin{Desc}
+\item[\hyperlink{pe__pe000036}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE PointerToSymbolTable or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESectionAlignment@{getPESectionAlignment}}
 \index{getPESectionAlignment@{getPESectionAlignment}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESectionAlignment}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESectionAlignment (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESectionAlignment}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESectionAlignment (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}
-Return the PE SectionAlignment. \hypertarget{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}{
+Return the PE SectionAlignment. \begin{Desc}
+\item[\hyperlink{pe__pe000015}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SectionAlignment, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfCode@{getPESizeOfCode}}
 \index{getPESizeOfCode@{getPESizeOfCode}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfCode}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfCode (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfCode}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfCode (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}
-Return the PE SizeOfCode. \hypertarget{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}{
+Return the PE SizeOfCode. \begin{Desc}
+\item[\hyperlink{pe__pe000009}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfCode or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfHeaders@{getPESizeOfHeaders}}
 \index{getPESizeOfHeaders@{getPESizeOfHeaders}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfHeaders}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeaders (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfHeaders}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeaders (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}
-Return the PE SizeOfHeaders. \hypertarget{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}{
+Return the PE SizeOfHeaders. \begin{Desc}
+\item[\hyperlink{pe__pe000025}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfHeaders, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfHeapCommit@{getPESizeOfHeapCommit}}
 \index{getPESizeOfHeapCommit@{getPESizeOfHeapCommit}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfHeapCommit}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeapCommit (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfHeapCommit}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeapCommit (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}
-Return the PE SizeOfHeapCommit. \hypertarget{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}{
+Return the PE SizeOfHeapCommit. \begin{Desc}
+\item[\hyperlink{pe__pe000032}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfHeapCommit, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfHeapReserve@{getPESizeOfHeapReserve}}
 \index{getPESizeOfHeapReserve@{getPESizeOfHeapReserve}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfHeapReserve}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeapReserve (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfHeapReserve}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfHeapReserve (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}
-Return the PE SizeOfHeapReserve. \hypertarget{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}{
+Return the PE SizeOfHeapReserve. \begin{Desc}
+\item[\hyperlink{pe__pe000031}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfHeapReserve, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfImage@{getPESizeOfImage}}
 \index{getPESizeOfImage@{getPESizeOfImage}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfImage}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfImage (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfImage}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfImage (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}
-Return the PE SizeOfImage. \hypertarget{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}{
+Return the PE SizeOfImage. \begin{Desc}
+\item[\hyperlink{pe__pe000024}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfImage, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfInitializedData@{getPESizeOfInitializedData}}
 \index{getPESizeOfInitializedData@{getPESizeOfInitializedData}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfInitializedData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfInitializedData (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfInitializedData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfInitializedData (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}
-Return the PE SizeofInitializedData. \hypertarget{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}{
+Return the PE SizeofInitializedData. \begin{Desc}
+\item[\hyperlink{pe__pe000010}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfInitializeData or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfOptionalHeader@{getPESizeOfOptionalHeader}}
 \index{getPESizeOfOptionalHeader@{getPESizeOfOptionalHeader}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfOptionalHeader}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESizeOfOptionalHeader ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfOptionalHeader}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESizeOfOptionalHeader (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}
-Returns the size of PE optional header. \hypertarget{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}{
+Returns the size of PE optional header. \begin{Desc}
+\item[\hyperlink{pe__pe000038}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+size of PE optional header, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfStackCommit@{getPESizeOfStackCommit}}
 \index{getPESizeOfStackCommit@{getPESizeOfStackCommit}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfStackCommit}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfStackCommit (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfStackCommit}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfStackCommit (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}
-Return the PE SizeOfStackCommit. \hypertarget{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}{
+Return the PE SizeOfStackCommit. \begin{Desc}
+\item[\hyperlink{pe__pe000030}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfStackCommit, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfStackReserve@{getPESizeOfStackReserve}}
 \index{getPESizeOfStackReserve@{getPESizeOfStackReserve}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfStackReserve}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfStackReserve (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfStackReserve}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfStackReserve (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}
-Return the PE SizeOfStackReserve. \hypertarget{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}{
+Return the PE SizeOfStackReserve. \begin{Desc}
+\item[\hyperlink{pe__pe000029}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeOfStackReserver, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESizeOfUninitializedData@{getPESizeOfUninitializedData}}
 \index{getPESizeOfUninitializedData@{getPESizeOfUninitializedData}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESizeOfUninitializedData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfUninitializedData (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESizeOfUninitializedData}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPESizeOfUninitializedData (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}
-Return the PE SizeofUninitializedData. \hypertarget{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}{
+Return the PE SizeofUninitializedData. \begin{Desc}
+\item[\hyperlink{pe__pe000011}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE SizeofUninitializedData or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPESubsystem@{getPESubsystem}}
 \index{getPESubsystem@{getPESubsystem}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPESubsystem}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESubsystem (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPESubsystem}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint16\_\-t getPESubsystem (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}
-Return the PE Subsystem. \hypertarget{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}{
+Return the PE Subsystem. \begin{Desc}
+\item[\hyperlink{pe__pe000027}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE subsystem, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPETimeDateStamp@{getPETimeDateStamp}}
 \index{getPETimeDateStamp@{getPETimeDateStamp}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPETimeDateStamp}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPETimeDateStamp ()\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPETimeDateStamp}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPETimeDateStamp (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}
-Returns the PE TimeDateStamp from headers \hypertarget{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}{
+Returns the PE TimeDateStamp from headers \begin{Desc}
+\item[\hyperlink{pe__pe000035}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE TimeDateStamp or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getPEWin32VersionValue@{getPEWin32VersionValue}}
 \index{getPEWin32VersionValue@{getPEWin32VersionValue}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{getPEWin32VersionValue}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEWin32VersionValue (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{getPEWin32VersionValue}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getPEWin32VersionValue (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}
-Return the PE Win32VersionValue. \hypertarget{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{
+Return the PE Win32VersionValue. \begin{Desc}
+\item[\hyperlink{pe__pe000023}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+PE Win32VersionValue, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_aedc2fa35d4664099b528c68653f593f2}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getSectionRVA@{getSectionRVA}}
+\index{getSectionRVA@{getSectionRVA}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getSectionRVA}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getSectionRVA (
+\begin{DoxyParamCaption}
+\item[{unsigned}]{ i}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_aedc2fa35d4664099b528c68653f593f2}
+Return the RVA of the specified section \begin{Desc}
+\item[\hyperlink{pe__pe000050}{PE}]\end{Desc}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em i}]section index (from 0) \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+RVA of section, or -\/1 if invalid 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ad81443723d60b2eaf56aa13718a0bf47}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getSectionVirtualSize@{getSectionVirtualSize}}
+\index{getSectionVirtualSize@{getSectionVirtualSize}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getSectionVirtualSize}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getSectionVirtualSize (
+\begin{DoxyParamCaption}
+\item[{unsigned}]{ i}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ad81443723d60b2eaf56aa13718a0bf47}
+Return the virtual size of the specified section. \begin{Desc}
+\item[\hyperlink{pe__pe000051}{PE}]\end{Desc}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em i}]section index (from 0) \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+VSZ of section, or -\/1 if invalid 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a488ebd9cda9e8ba46ba5daae94ddb453}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!getVirtualEntryPoint@{getVirtualEntryPoint}}
+\index{getVirtualEntryPoint@{getVirtualEntryPoint}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{getVirtualEntryPoint}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t getVirtualEntryPoint (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a488ebd9cda9e8ba46ba5daae94ddb453}
+The address of the EntryPoint. Use this for matching EP against sections. \begin{Desc}
+\item[\hyperlink{pe__pe000049}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+virtual address of EntryPoint, or 0 if not in PE hook 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!hasExeInfo@{hasExeInfo}}
 \index{hasExeInfo@{hasExeInfo}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{hasExeInfo}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool hasExeInfo (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{hasExeInfo}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool hasExeInfo (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a6241ff42b1300527c64034931f027738}
-Returns whether the current file has executable information. \begin{DoxyReturn}{Returns}
+Returns whether the current file has executable information. \begin{Desc}
+\item[\hyperlink{pe__pe000005}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
 true if the file has exe info, false otherwise 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}{
+\hypertarget{bytecode__local_8h_a3c9b722b5ff4d35cfcd8de8a5c48a0ed}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!ilog2\_\-compat@{ilog2\_\-compat}}
+\index{ilog2\_\-compat@{ilog2\_\-compat}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{ilog2\_\-compat}]{\setlength{\rightskip}{0pt plus 5cm}static int32\_\-t ilog2\_\-compat (
+\begin{DoxyParamCaption}
+\item[{uint32\_\-t}]{ a, }
+\item[{uint32\_\-t}]{ b}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a3c9b722b5ff4d35cfcd8de8a5c48a0ed}
+ilog2\_\-compat for 0.96 compatibility, you should use \hyperlink{bytecode__api_8h_a59893a4520a13171c94d6ce63fce6c4b}{ilog2()} 0.96.1 API instead of this one! \hypertarget{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!isPE64@{isPE64}}
 \index{isPE64@{isPE64}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{isPE64}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool isPE64 (void)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{isPE64}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool isPE64 (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}
-Returns whether this is a PE32+ executable. \begin{DoxyReturn}{Returns}
+Returns whether this is a PE32+ executable. \begin{Desc}
+\item[\hyperlink{pe__pe000006}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
 true if this is a PE32+ executable 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!le16\_\-to\_\-host@{le16\_\-to\_\-host}}
 \index{le16\_\-to\_\-host@{le16\_\-to\_\-host}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{le16\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint16\_\-t force\_\-inline le16\_\-to\_\-host (uint16\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{le16\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint16\_\-t force\_\-inline le16\_\-to\_\-host (
+\begin{DoxyParamCaption}
+\item[{uint16\_\-t}]{ v}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a9e0a2862823999029c872ee352df036d}
-Converts the specified value if needed, knowing it is in little endian order. 
+Converts the specified value if needed, knowing it is in little endian order. \begin{Desc}
+\item[\hyperlink{adt__adt000030}{Data structure}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em v}]16-\/bit integer as read from a file \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em v}]16-\/bit integer as read from a file \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 integer converted to host's endianess 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!le32\_\-to\_\-host@{le32\_\-to\_\-host}}
 \index{le32\_\-to\_\-host@{le32\_\-to\_\-host}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{le32\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline le32\_\-to\_\-host (uint32\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{le32\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline le32\_\-to\_\-host (
+\begin{DoxyParamCaption}
+\item[{uint32\_\-t}]{ v}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a9d6c63ead621ba606fe4d01b4558a9dc}
-Converts the specified value if needed, knowing it is in little endian order. 
+Converts the specified value if needed, knowing it is in little endian order. \begin{Desc}
+\item[\hyperlink{adt__adt000028}{Data structure}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em v}]32-\/bit integer as read from a file \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em v}]32-\/bit integer as read from a file \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 integer converted to host's endianess 
 \end{DoxyReturn}
-\hypertarget{bytecode__local_8h_a4f0da4f8a39ff1f89028829a20390945}{
+\hypertarget{bytecode__local_8h_a574fdd0c27b3c4d8289f346edb2ffc2e}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!le64\_\-to\_\-host@{le64\_\-to\_\-host}}
 \index{le64\_\-to\_\-host@{le64\_\-to\_\-host}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{le64\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint32\_\-t force\_\-inline le64\_\-to\_\-host (uint32\_\-t {\em v})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
-\label{bytecode__local_8h_a4f0da4f8a39ff1f89028829a20390945}
-Converts the specified value if needed, knowing it is in little endian order. 
+\paragraph[{le64\_\-to\_\-host}]{\setlength{\rightskip}{0pt plus 5cm}static uint64\_\-t force\_\-inline le64\_\-to\_\-host (
+\begin{DoxyParamCaption}
+\item[{uint64\_\-t}]{ v}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a574fdd0c27b3c4d8289f346edb2ffc2e}
+Converts the specified value if needed, knowing it is in little endian order. \begin{Desc}
+\item[\hyperlink{adt__adt000029}{Data structure}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em v}]64-\/bit integer as read from a file \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em v}]64-\/bit integer as read from a file \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 integer converted to host's endianess 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_a0731ae7f531521a4c8609d75a21d3edd}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!match\_\-location@{match\_\-location}}
+\index{match\_\-location@{match\_\-location}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{match\_\-location}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t match\_\-location (
+\begin{DoxyParamCaption}
+\item[{\_\-\_\-Signature}]{ sig, }
+\item[{uint32\_\-t}]{ goback}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a0731ae7f531521a4c8609d75a21d3edd}
+Returns the offset of the match. \begin{Desc}
+\item[\hyperlink{engineq__engineq000007}{Engine query}]\end{Desc}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em sig}]-\/ Signature \item[{\em goback}]-\/ max length of signature \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+offset of match 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_ae815c917305f5ce574b0e759f605819b}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!match\_\-location\_\-check@{match\_\-location\_\-check}}
+\index{match\_\-location\_\-check@{match\_\-location\_\-check}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{match\_\-location\_\-check}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline int32\_\-t match\_\-location\_\-check (
+\begin{DoxyParamCaption}
+\item[{\_\-\_\-Signature}]{ sig, }
+\item[{uint32\_\-t}]{ goback, }
+\item[{const char $\ast$}]{ static\_\-start, }
+\item[{uint32\_\-t}]{ static\_\-len}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ae815c917305f5ce574b0e759f605819b}
+Like \hyperlink{bytecode__local_8h_a0731ae7f531521a4c8609d75a21d3edd}{match\_\-location()}, but also checks that the match starts with the specified hex string. \begin{Desc}
+\item[\hyperlink{engineq__engineq000008}{Engine query}]It is recommended to use this for safety and compatibility with 0.96.1 \end{Desc}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em sig}]-\/ signature \item[{\em goback}]-\/ maximum length of signature (till start of last subsig) \item[{\em static\_\-start}]-\/ static string that sig must begin with \item[{\em static\_\-len}]-\/ static string that sig must begin with -\/ length \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+$>$=0 -\/ offset of match -\/1 -\/ no match 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!matches@{matches}}
 \index{matches@{matches}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{matches}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t matches (\_\-\_\-Signature {\em sig})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{matches}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t matches (
+\begin{DoxyParamCaption}
+\item[{\_\-\_\-Signature}]{ sig}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}
-Returns whether the specified subsignature has matched at least once. 
+Returns whether the specified subsignature has matched at least once. \begin{Desc}
+\item[\hyperlink{engineq__engineq000006}{Engine query}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
 \item[{\em sig}]name of subsignature queried \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
@@ -628,72 +1300,142 @@ Returns whether the specified subsignature has matched at least once.
 \hypertarget{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memchr@{memchr}}
 \index{memchr@{memchr}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memchr}]{\setlength{\rightskip}{0pt plus 5cm}static void$\ast$ memchr (const void $\ast$ {\em s}, \/  int {\em c}, \/  size\_\-t {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{memchr}]{\setlength{\rightskip}{0pt plus 5cm}static void$\ast$ memchr (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{ s, }
+\item[{int}]{ c, }
+\item[{size\_\-t}]{ n}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a2a215ee7d930373a5df739a91ffdc10f}
-Scan the first {\ttfamily n} bytes of the buffer {\ttfamily s}, for the character {\ttfamily c}. 
+Scan the first {\ttfamily n} bytes of the buffer {\ttfamily s}, for the character {\ttfamily c}. \begin{Desc}
+\item[\hyperlink{stringops__stringops000009}{String operation}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em s}]buffer to scan \item[{\em c}]character to look for \item[{\em n}]size of buffer \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em s}]buffer to scan \item[{\em c}]character to look for \item[{\em n}]size of buffer \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 a pointer to the first byte to match, or NULL if not found. 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memcmp@{memcmp}}
 \index{memcmp@{memcmp}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memcmp}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ int memcmp (const void $\ast$ {\em s1}, \/  const void $\ast$ {\em s2}, \/  uint32\_\-t {\em n})}\hfill}
+\paragraph[{memcmp}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ int memcmp (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{ s1, }
+\item[{const void $\ast$}]{ s2, }
+\item[{uint32\_\-t}]{ n}
+\end{DoxyParamCaption}
+)}\hfill}
 \label{bytecode__local_8h_a72fefb7bb02c85b874ffc26bb0ef4422}
-Compares two memory buffers. 
+Compares two memory buffers. \begin{Desc}
+\item[\hyperlink{stringops__stringops000013}{String operation}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\leftarrow$} {\em s1}]buffer one \item[\mbox{$\leftarrow$} {\em s2}]buffer two \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
+\item[\mbox{\tt[in]} {\em s1}]buffer one \item[\mbox{\tt[in]} {\em s2}]buffer two \item[\mbox{\tt[in]} {\em n}]amount of bytes to copy \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 an integer less than, equal to, or greater than zero if the first {\ttfamily n} bytes of {\ttfamily s1} are found, respectively, to be less than, to match, or be greater than the first {\ttfamily n} bytes of {\ttfamily s2}. 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memcpy@{memcpy}}
 \index{memcpy@{memcpy}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memcpy}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ memcpy (void $\ast$restrict {\em dst}, \/  const void $\ast$restrict {\em src}, \/  uintptr\_\-t {\em n})}\hfill}
+\paragraph[{memcpy}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ void$\ast$ memcpy (
+\begin{DoxyParamCaption}
+\item[{void $\ast$restrict}]{ dst, }
+\item[{const void $\ast$restrict}]{ src, }
+\item[{uintptr\_\-t}]{ n}
+\end{DoxyParamCaption}
+)}\hfill}
 \label{bytecode__local_8h_ab96fb30ccd6ce080c861aed508a9910e}
-Copies data between two non-\/overlapping buffers. 
+Copies data between two non-\/overlapping buffers. \begin{Desc}
+\item[\hyperlink{stringops__stringops000012}{String operation}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\rightarrow$} {\em dst}]destination buffer \item[\mbox{$\leftarrow$} {\em src}]source buffer \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
+\item[\mbox{\tt[out]} {\em dst}]destination buffer \item[\mbox{\tt[in]} {\em src}]source buffer \item[\mbox{\tt[in]} {\em n}]amount of bytes to copy \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 dst 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memmove@{memmove}}
 \index{memmove@{memmove}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memmove}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memmove (void $\ast$ {\em dst}, \/  const void $\ast$ {\em src}, \/  uintptr\_\-t {\em n})}\hfill}
+\paragraph[{memmove}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memmove (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ dst, }
+\item[{const void $\ast$}]{ src, }
+\item[{uintptr\_\-t}]{ n}
+\end{DoxyParamCaption}
+)}\hfill}
 \label{bytecode__local_8h_a39f394f696d30ad1fe11cf7855d33427}
-Copies data between two possibly overlapping buffers. 
+Copies data between two possibly overlapping buffers. \begin{Desc}
+\item[\hyperlink{stringops__stringops000011}{String operation}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\rightarrow$} {\em dst}]destination buffer \item[\mbox{$\leftarrow$} {\em src}]source buffer \item[\mbox{$\leftarrow$} {\em n}]amount of bytes to copy \end{DoxyParams}
+\item[\mbox{\tt[out]} {\em dst}]destination buffer \item[\mbox{\tt[in]} {\em src}]source buffer \item[\mbox{\tt[in]} {\em n}]amount of bytes to copy \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 dst 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!memset@{memset}}
 \index{memset@{memset}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{memset}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memset (void $\ast$ {\em src}, \/  int {\em c}, \/  uintptr\_\-t {\em n})}\hfill}
+\paragraph[{memset}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ memset (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ src, }
+\item[{int}]{ c, }
+\item[{uintptr\_\-t}]{ n}
+\end{DoxyParamCaption}
+)}\hfill}
 \label{bytecode__local_8h_a9877bb88a253a26e4dbbeeff654475a7}
-Fills the specified buffer to the specified value. 
+Fills the specified buffer to the specified value. \begin{Desc}
+\item[\hyperlink{stringops__stringops000010}{String operation}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\rightarrow$} {\em src}]pointer to buffer \item[\mbox{$\leftarrow$} {\em c}]character to fill buffer with \item[\mbox{$\leftarrow$} {\em n}]length of buffer \end{DoxyParams}
+\item[\mbox{\tt[out]} {\em src}]pointer to buffer \item[\mbox{\tt[in]} {\em c}]character to fill buffer with \item[\mbox{\tt[in]} {\em n}]length of buffer \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 {\ttfamily src} 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a783b0c34b69dfcdcc3c00e0172e53938}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!readPESectionName@{readPESectionName}}
 \index{readPESectionName@{readPESectionName}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{readPESectionName}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline int readPESectionName (unsigned char {\em name}\mbox{[}8\mbox{]}, \/  unsigned {\em n})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{readPESectionName}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline int readPESectionName (
+\begin{DoxyParamCaption}
+\item[{unsigned char}]{ name\mbox{[}8\mbox{]}, }
+\item[{unsigned}]{ n}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a783b0c34b69dfcdcc3c00e0172e53938}
-Read name of requested PE section. 
+Read name of requested PE section. \begin{Desc}
+\item[\hyperlink{pe__pe000045}{PE}]\end{Desc}
+
 \begin{DoxyParams}{Parameters}
-\item[\mbox{$\rightarrow$} {\em name}]name of PE section \item[\mbox{$\leftarrow$} {\em n}]PE section requested \end{DoxyParams}
+\item[\mbox{\tt[out]} {\em name}]name of PE section \item[\mbox{\tt[in]} {\em n}]PE section requested \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 0 if successful, $<$0 otherwise 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!readRVA@{readRVA}}
 \index{readRVA@{readRVA}!bytecode_local.h@{bytecode\_\-local.h}}
-\paragraph[{readRVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool readRVA (uint32\_\-t {\em rva}, \/  void $\ast$ {\em buf}, \/  size\_\-t {\em bufsize})\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\paragraph[{readRVA}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool readRVA (
+\begin{DoxyParamCaption}
+\item[{uint32\_\-t}]{ rva, }
+\item[{void $\ast$}]{ buf, }
+\item[{size\_\-t}]{ bufsize}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}
-read the specified amount of bytes from the PE file, starting at the address specified by RVA. Returns true on success (full read), false on any failure 
+read the specified amount of bytes from the PE file, starting at the address specified by RVA. \begin{Desc}
+\item[\hyperlink{pe__pe000052}{PE}]\end{Desc}
+
+\begin{DoxyParams}{Parameters}
+\item[{\em rva}]the Relative Virtual Address you want to read from (will be converted to file offset) \item[\mbox{\tt[out]} {\em buf}]destination buffer \item[{\em bufsize}]size of buffer \end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true on success (full read), false on any failure 
+\end{DoxyReturn}
+
+
+\subsubsection{Variable Documentation}
+\hypertarget{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!\_\-\_\-attribute\_\-\_\-@{\_\-\_\-attribute\_\-\_\-}}
+\index{\_\-\_\-attribute\_\-\_\-@{\_\-\_\-attribute\_\-\_\-}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{\_\-\_\-attribute\_\-\_\-}]{\setlength{\rightskip}{0pt plus 5cm}union unaligned\_\-16 {\bf \_\-\_\-attribute\_\-\_\-}}\hfill}
+\label{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}
+disassembled memory operand: scale\_\-reg$\ast$scale + add\_\-reg + displacement \begin{Desc}
+\item[\hyperlink{disasm__disasm000002}{Disassemble}]\end{Desc}

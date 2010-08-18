@@ -2,13 +2,10 @@
 \subsection{cli\_\-exe\_\-info Struct Reference}
 \label{structcli__exe__info}\index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}}
 }
-\subsubsection*{Public Member Functions}
-\begin{DoxyCompactItemize}
-\item 
-struct \hyperlink{structcli__exe__section}{cli\_\-exe\_\-section} $\ast$section \hyperlink{structcli__exe__info_ad8c6e482c77eb51ce3d1294621ca31aa}{EBOUNDS} (\hyperlink{structcli__exe__info_aa4af5e526457df524fc9a4ba46803a70}{nsections})
-\end{DoxyCompactItemize}
 \subsubsection*{Data Fields}
 \begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structcli__exe__section}{cli\_\-exe\_\-section} $\ast$ \hyperlink{structcli__exe__info_a1c449c2a02971006b72d8ab755684716}{section}
 \item 
 uint32\_\-t \hyperlink{structcli__exe__info_a894bdfa2d603d8343f8ef01dda6fcd23}{offset}
 \item 
@@ -17,19 +14,17 @@ uint32\_\-t \hyperlink{structcli__exe__info_afaed4671662028c061ab84eefcce0546}{e
 uint16\_\-t \hyperlink{structcli__exe__info_aa4af5e526457df524fc9a4ba46803a70}{nsections}
 \item 
 struct cli\_\-hashset $\ast$ \hyperlink{structcli__exe__info_a45edc7cf7855a99b33ce31a17c6bdfc6}{vinfo}
+\item 
+uint32\_\-t \hyperlink{structcli__exe__info_ac0f1b36bb8a1eeb981958dc4643f67dd}{res\_\-addr}
+\item 
+uint32\_\-t \hyperlink{structcli__exe__info_af2492dd421362ffced98eb583964b310}{hdr\_\-size}
 \end{DoxyCompactItemize}
 
 
 \subsubsection{Detailed Description}
-Executable file information 
+Executable file information \begin{Desc}
+\item[\hyperlink{pe__pe000004}{PE}]\end{Desc}
 
-\subsubsection{Member Function Documentation}
-\hypertarget{structcli__exe__info_ad8c6e482c77eb51ce3d1294621ca31aa}{
-\index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}!EBOUNDS@{EBOUNDS}}
-\index{EBOUNDS@{EBOUNDS}!cli_exe_info@{cli\_\-exe\_\-info}}
-\paragraph[{EBOUNDS}]{\setlength{\rightskip}{0pt plus 5cm}struct {\bf cli\_\-exe\_\-section}$\ast$ section EBOUNDS ({\bf nsections})\hspace{0.3cm}{\ttfamily  \mbox{[}read\mbox{]}}}\hfill}
-\label{structcli__exe__info_ad8c6e482c77eb51ce3d1294621ca31aa}
-Information about all the sections of this file. This array has {\ttfamily nsection} elements 
 
 \subsubsection{Field Documentation}
 \hypertarget{structcli__exe__info_afaed4671662028c061ab84eefcce0546}{
@@ -37,7 +32,12 @@ Information about all the sections of this file. This array has {\ttfamily nsect
 \index{ep@{ep}!cli_exe_info@{cli\_\-exe\_\-info}}
 \paragraph[{ep}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf ep}}\hfill}
 \label{structcli__exe__info_afaed4671662028c061ab84eefcce0546}
-Entrypoint of executable \hypertarget{structcli__exe__info_aa4af5e526457df524fc9a4ba46803a70}{
+Entrypoint of executable \hypertarget{structcli__exe__info_af2492dd421362ffced98eb583964b310}{
+\index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}!hdr\_\-size@{hdr\_\-size}}
+\index{hdr\_\-size@{hdr\_\-size}!cli_exe_info@{cli\_\-exe\_\-info}}
+\paragraph[{hdr\_\-size}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf hdr\_\-size}}\hfill}
+\label{structcli__exe__info_af2492dd421362ffced98eb583964b310}
+Address size -\/ PE ONLY \hypertarget{structcli__exe__info_aa4af5e526457df524fc9a4ba46803a70}{
 \index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}!nsections@{nsections}}
 \index{nsections@{nsections}!cli_exe_info@{cli\_\-exe\_\-info}}
 \paragraph[{nsections}]{\setlength{\rightskip}{0pt plus 5cm}uint16\_\-t {\bf nsections}}\hfill}
@@ -47,7 +47,17 @@ Number of sections \hypertarget{structcli__exe__info_a894bdfa2d603d8343f8ef01dda
 \index{offset@{offset}!cli_exe_info@{cli\_\-exe\_\-info}}
 \paragraph[{offset}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf offset}}\hfill}
 \label{structcli__exe__info_a894bdfa2d603d8343f8ef01dda6fcd23}
-Offset where this executable start in file (nonzero if embedded) \hypertarget{structcli__exe__info_a45edc7cf7855a99b33ce31a17c6bdfc6}{
+Offset where this executable start in file (nonzero if embedded) \hypertarget{structcli__exe__info_ac0f1b36bb8a1eeb981958dc4643f67dd}{
+\index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}!res\_\-addr@{res\_\-addr}}
+\index{res\_\-addr@{res\_\-addr}!cli_exe_info@{cli\_\-exe\_\-info}}
+\paragraph[{res\_\-addr}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf res\_\-addr}}\hfill}
+\label{structcli__exe__info_ac0f1b36bb8a1eeb981958dc4643f67dd}
+Resrources RVA -\/ PE ONLY \hypertarget{structcli__exe__info_a1c449c2a02971006b72d8ab755684716}{
+\index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}!section@{section}}
+\index{section@{section}!cli_exe_info@{cli\_\-exe\_\-info}}
+\paragraph[{section}]{\setlength{\rightskip}{0pt plus 5cm}struct {\bf cli\_\-exe\_\-section}$\ast$ {\bf section}}\hfill}
+\label{structcli__exe__info_a1c449c2a02971006b72d8ab755684716}
+Information about all the sections of this file. This array has {\ttfamily nsection} elements \hypertarget{structcli__exe__info_a45edc7cf7855a99b33ce31a17c6bdfc6}{
 \index{cli\_\-exe\_\-info@{cli\_\-exe\_\-info}!vinfo@{vinfo}}
 \index{vinfo@{vinfo}!cli_exe_info@{cli\_\-exe\_\-info}}
 \paragraph[{vinfo}]{\setlength{\rightskip}{0pt plus 5cm}struct cli\_\-hashset$\ast$ {\bf vinfo}}\hfill}
