@@ -1,4 +1,4 @@
-% Modified doxygen 1.6.1 style to save space
+% Modified doxygen.sty to save space
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{doxygen}
 
@@ -25,9 +25,9 @@
   \fancyplain{}{\bfseries\thepage}%
 }
 \rfoot[\fancyplain{}{\bfseries\scriptsize%
-  Generated on Mon Nov 23 17:50:24 2009 for ClamAV Bytecode compiler User Manual by Doxygen }]{}
+  Generated on Wed Aug 18 2010 12:43:55 by Doxygen }]{}
 \lfoot[]{\fancyplain{}{\bfseries\scriptsize%
-  Generated on Mon Nov 23 17:50:24 2009 for ClamAV Bytecode compiler User Manual by Doxygen }}
+  Generated on Wed Aug 18 2010 12:43:55 by Doxygen }}
 \cfoot{}
 
 %---------- Internal commands used in this style file ----------------
@@ -44,7 +44,7 @@
     \setlength{\itemsep}{-4pt}%
     \renewcommand{\makelabel}{\entrylabel}%
   }%
-  \item[#1:]%
+  \item[#1]%
 }{%
   \end{list}%
 }
@@ -222,9 +222,8 @@
 
 % Used by @internal
 \newenvironment{DoxyInternal}[1]{%
-  \begin{DoxyDesc}{#1}%
+  \paragraph*{#1}%
 }{%
-  \end{DoxyDesc}%
 }
 
 % Used by @par and @paragraph
@@ -249,6 +248,12 @@
 }{%
     \end{description}%
   \end{DoxyDesc}%
+}
+
+% is used for parameters within a detailed function description
+\newenvironment{DoxyParamCaption}{%
+  \renewcommand{\item}[2][]{##1 {\em ##2}}%
+  }{%
 }
 
 % Used by return value lists
@@ -329,11 +334,10 @@
 \sloppy
 \usepackage[T1]{fontenc}
 \makeatletter
-%disable to save space
-%\renewcommand{\paragraph}{\@startsection{paragraph}{4}{0ex}%
-%   {-3.25ex plus -1ex minus -0.2ex}%
-%   {1.5ex plus 0.2ex}%
-%   {\normalfont\normalsize\bfseries}}
+\renewcommand{\paragraph}{\@startsection{paragraph}{4}{0ex}%
+   {-3.25ex plus -1ex minus -0.2ex}%
+   {1.5ex plus 0.2ex}%
+   {\normalfont\normalsize\bfseries}}
 \makeatother
 \stepcounter{secnumdepth}
 \stepcounter{tocdepth}

@@ -24,9 +24,9 @@
   \fancyplain{}{\bfseries\thepage}%
 }
 \rfoot[\fancyplain{}{\bfseries\scriptsize%
-  Generated on Wed May 12 23:12:54 2010 by Doxygen }]{}
+  Generated on Wed Aug 18 2010 12:25:01 by Doxygen }]{}
 \lfoot[]{\fancyplain{}{\bfseries\scriptsize%
-  Generated on Wed May 12 23:12:54 2010 by Doxygen }}
+  Generated on Wed Aug 18 2010 12:25:01 by Doxygen }}
 \cfoot{}
 
 %---------- Internal commands used in this style file ----------------
@@ -247,6 +247,12 @@
 }{%
     \end{description}%
   \end{DoxyDesc}%
+}
+
+% is used for parameters within a detailed function description
+\newenvironment{DoxyParamCaption}{%
+  \renewcommand{\item}[2][]{##1 {\em ##2}}%
+  }{%
 }
 
 % Used by return value lists
