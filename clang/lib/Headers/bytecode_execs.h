@@ -32,7 +32,9 @@
 #include "bcfeatures.h"
 
 /** @file */
-/** Section of executable file */
+/** Section of executable file.
+  \group_pe
+*/
 struct cli_exe_section {
     uint32_t rva;/**< Relative VirtualAddress */
     uint32_t vsz;/**< VirtualSize */
@@ -45,7 +47,9 @@ struct cli_exe_section {
     uint32_t ursz; /**< PE - unaligned SizeOfRawData */
 };
 
-/** Executable file information */
+/** Executable file information
+  \group_pe
+*/
 struct cli_exe_info {
     /** Information about all the sections of this file. 
      * This array has \p nsection elements */

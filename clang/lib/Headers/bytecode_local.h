@@ -49,10 +49,12 @@ void debug(...) __attribute__((overloadable, unavailable));
 /* Virusname definition handling */
 /**
  * Declares the virusname prefix.
+ \group_config
  * @param name the prefix common to all viruses reported by this bytecode
  * */
 #define VIRUSNAME_PREFIX(name) const char __clambc_virusname_prefix[] = name;
 /** Declares all the virusnames that this bytecode can report.
+ \group_config
  * @param ... a comma-separated list of strings interpreted as virusnames  */
 #define VIRUSNAMES(...) const char *const __clambc_virusnames[] = {__VA_ARGS__};
 
@@ -65,55 +67,72 @@ typedef struct signature {
 /** Make the current bytecode a PE hook, i.e. it will be called once
   the logical signature trigger matches (or always if there is none), and you
   have access to all the PE information. By default you only have access to
-  execs.h information, and not to PE field information (even for PE files) */
+  execs.h information, and not to PE field information (even for PE files).
+ \group_config */
 #define PE_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_PE_UNPACKER;
 
 /** Make the current bytecode a PDF hook. Having a logical signature doesn't
  * make sense here, since logical signature is evaluated AFTER these hooks
  * run.
+ \group_config
  * This hook is called several times, use pdf_get_phase() to find out in which
  * phase you got called. */
 #define PDF_HOOK_DECLARE const uint16_t __clambc_kind = BC_PDF;
 
-/** Marks the beginning of the subsignature name declaration section */
+/** Marks the beginning of the subsignature name declaration section.
+ \group_config */
 #define SIGNATURES_DECL_BEGIN \
     struct __Signatures {
-/** Declares a name for a subsignature */
+/** Declares a name for a subsignature.
+ \group_config */
 #define DECLARE_SIGNATURE(name) \
     const char *name##_sig;\
     __Signature name;
-/** Marks the end of the subsignature name declaration section */
+/** Marks the end of the subsignature name declaration section.
+ \group_config */
 #define SIGNATURES_DECL_END };
 
 /** Defines the ClamAV file target.
+ \group_config
  * @param tgt ClamAV signature type (0 - raw, 1 - PE, etc.) */
 #define TARGET(tgt) const unsigned short __Target = (tgt);
 
 /** Defines an alternative copyright for this bytecode.
+ \group_config
   This will also prevent the sourcecode from being embedded into the bytecode */
 #define COPYRIGHT(c) const char *const __Copyright = (c);
 
-/** Define IconGroup1 for logical signature. See logical signature documentation
- * for what it is */
+/** Define IconGroup1 for logical signature. 
+  
+  See logical signature documentation
+ * for what it is
+ \group_config
+ */
 #define ICONGROUP1(group) const char *const __IconGroup1 = (group);
 
 /** Define IconGroup2 for logical signature. See logical signature documentation
- * for what it is */
+ * for what it is.
+ \group_config
+ */
 #define ICONGROUP2(group) const char *const __IconGroup2 = (group);
 
 /** Define the minimum engine functionality level required for this 
  * bytecode/logical signature.
  * Engines older than this will skip loading the bytecode.
- * You can use the 'enum FunctionalityLevels' constants here. */
+ * You can use the 'enum FunctionalityLevels' constants here.
+ \group_config
+ */
 #define FUNCTIONALITY_LEVEL_MIN(m) const unsigned short __FuncMin = (m);
 
 /** Define the maximum engine functionality level required for this 
  * bytecode/logical signature.
  * Engines newer than this will skip loading the bytecode.
- * You can use the 'enum FunctionalityLevels' constants here. */
+ * You can use the 'enum FunctionalityLevels' constants here.
+ \group_config */
 #define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
 
 /** Marks the beginning of subsignature pattern definitions. 
+ \group_config
  * \sa SIGNATURES_DECL_BEGIN */
 /* some other macro may use __COUNTER__, so we need to subtract its current\
  * value to obtain zero-based indices */
@@ -122,18 +141,21 @@ typedef struct signature {
 const struct __Signatures Signatures = {\
 /** Defines the pattern for a previously declared subsignature.
  * \sa DECLARE_SIGNATURE
+ \group_config
  * @param name the name of a previously declared subsignature
  * @param hex the pattern for this subsignature
  * */
 #define DEFINE_SIGNATURE(name, hex) \
     .name##_sig = (hex),\
     .name = {__COUNTER__ - __signature_bias},
-/** Marks the end of the subsignature pattern definitions.*/
+/** Marks the end of the subsignature pattern definitions.
+ \group_config */
 #define SIGNATURES_END };\
 
 /** Returns how many times the specified signature matched.
  * @param sig name of subsignature queried
  * @return number of times this subsignature matched in the entire file
+ \group_engine
  *
  * This is a constant-time operation, the counts for all subsignatures are
  * already computed.*/
@@ -141,6 +163,7 @@ static force_inline uint32_t count_match(__Signature sig)\
 { return __clambc_match_counts[sig.id]; }\
 
 /** Returns whether the specified subsignature has matched at least once.
+ \group_engine
  * @param sig name of subsignature queried
  * @return 1 if subsignature one or more times, 0 otherwise */
 static force_inline uint32_t matches(__Signature sig)\
@@ -148,6 +171,7 @@ static force_inline uint32_t matches(__Signature sig)\
 
 
 /** Returns the offset of the match.
+ \group_engine
   * @param sig - Signature
   * @param goback - max length of signature
   * @return offset of match
@@ -165,6 +189,7 @@ static force_inline uint32_t match_location(__Signature sig, uint32_t goback)
 
 /** Like match_location(), but also checks that the match starts with
   the specified hex string.
+ \group_engine
   It is recommended to use this for safety and compatibility with 0.96.1
   @param sig - signature
   @param goback - maximum length of signature (till start of last subsig)
@@ -200,6 +225,7 @@ static force_inline int32_t match_location_check(__Signature sig,
 }
 
 /** Sets the specified virusname as the virus detected by this bytecode.
+  \group_scan
  * @param virusname the name of the virus, excluding the prefix, must be one of
  * the virusnames declared in \p VIRUSNAMES.
  * \sa VIRUSNAMES */
@@ -217,6 +243,7 @@ static force_inline void __attribute__((overloadable)) foundVirus(void)
 #endif
 
 /** Returns the currently scanned file's size.
+  \group_file
   * @return file size as 32-bit unsigned integer */
 static force_inline uint32_t getFilesize(void)
 {
@@ -236,6 +263,7 @@ union unaligned_16 {
 /**
  * Returns true if the bytecode is executing on a big-endian CPU.
  * @return true if executing on bigendian CPU, false otherwise
+ \group_env
  *
  * This will be optimized away in libclamav, but it must be used when dealing
  * with endianess for portability reasons.
@@ -252,6 +280,7 @@ bool __is_bigendian(void) __attribute__((const)) __attribute__((nothrow));
 
 /** Converts the specified value if needed, knowing it is in little endian
  * order.
+ \group_adt
  * @param[in] v 32-bit integer as read from a file
  * @return integer converted to host's endianess */
 static uint32_t force_inline le32_to_host(uint32_t v)
@@ -265,6 +294,7 @@ static uint32_t force_inline le32_to_host(uint32_t v)
 
 /** Converts the specified value if needed, knowing it is in little endian
  * order.
+ \group_adt
  * @param[in] v 64-bit integer as read from a file
  * @return integer converted to host's endianess */
 static uint64_t force_inline le64_to_host(uint64_t v)
@@ -275,6 +305,7 @@ static uint64_t force_inline le64_to_host(uint64_t v)
 
 /** Converts the specified value if needed, knowing it is in little endian
  * order.
+ \group_adt
  * @param[in] v 16-bit integer as read from a file
  * @return integer converted to host's endianess */
 static uint16_t force_inline le16_to_host(uint16_t v)
@@ -284,6 +315,7 @@ static uint16_t force_inline le16_to_host(uint16_t v)
 }
 
 /** Reads from the specified buffer a 32-bit of little-endian integer.
+ \group_adt
  * @param[in] buff pointer to buffer
  * @return 32-bit little-endian integer converted to host endianness */
 static uint32_t force_inline cli_readint32(const void* buff)
@@ -293,6 +325,7 @@ static uint32_t force_inline cli_readint32(const void* buff)
 }
 
 /** Reads from the specified buffer a 16-bit of little-endian integer.
+ \group_adt
  * @param[in] buff pointer to buffer
  * @return 16-bit little-endian integer converted to host endianness */
 static uint16_t force_inline cli_readint16(const void* buff)
@@ -302,6 +335,7 @@ static uint16_t force_inline cli_readint16(const void* buff)
 }
 
 /** Writes the specified value into the specified buffer in little-endian order
+ \group_adt
  * @param[out] offset pointer to buffer to write to
  * @param[in] v value to write*/
 static void force_inline cli_writeint32(void* offset, uint32_t v)
@@ -311,6 +345,7 @@ static void force_inline cli_writeint32(void* offset, uint32_t v)
 
 /* --------------------- PE helper functions ------------------------ */
 /** Returns whether the current file has executable information.
+  \group_pe
  * @return true if the file has exe info, false otherwise */
 static force_inline bool hasExeInfo(void)
 {
@@ -318,6 +353,7 @@ static force_inline bool hasExeInfo(void)
 }
 
 /** Returns whether this is a PE32+ executable.
+  \group_pe
   @return true if this is a PE32+ executable
 */
 static force_inline bool isPE64(void)
@@ -327,6 +363,7 @@ static force_inline bool isPE64(void)
 
 static force_inline
 /** Returns MajorLinkerVersion for this PE file.
+  \group_pe
   * @return PE MajorLinkerVersion or 0 if not in PE hook */
 static force_inline uint8_t getPEMajorLinkerVersion(void)
 {
@@ -336,6 +373,7 @@ static force_inline uint8_t getPEMajorLinkerVersion(void)
 }
 
 /** Returns MinorLinkerVersion for this PE file.
+  \group_pe
   * @return PE MinorLinkerVersion or 0 if not in PE hook */
 static force_inline uint8_t getPEMinorLinkerVersion(void)
 {
@@ -345,6 +383,7 @@ static force_inline uint8_t getPEMinorLinkerVersion(void)
 }
 
 /** Return the PE SizeOfCode.
+  \group_pe
   * @return PE SizeOfCode or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfCode(void)
 {
@@ -354,6 +393,7 @@ static force_inline uint32_t getPESizeOfCode(void)
 }
 
 /** Return the PE SizeofInitializedData.
+  \group_pe
   * @return PE SizeOfInitializeData or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfInitializedData(void)
 {
@@ -363,6 +403,7 @@ static force_inline uint32_t getPESizeOfInitializedData(void)
 }
 
 /** Return the PE SizeofUninitializedData.
+  \group_pe
   * @return PE SizeofUninitializedData or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfUninitializedData(void)
 {
@@ -372,6 +413,7 @@ static force_inline uint32_t getPESizeOfUninitializedData(void)
 }
 
 /** Return the PE BaseOfCode.
+  \group_pe
  * @return PE BaseOfCode, or 0 if not in PE hook.
  */
 static force_inline uint32_t getPEBaseOfCode(void)
@@ -382,6 +424,7 @@ static force_inline uint32_t getPEBaseOfCode(void)
 }
 
 /** Return the PE BaseOfData.
+  \group_pe
   @return PE BaseOfData, or 0 if not in PE hook.
   */
 static force_inline uint32_t getPEBaseOfData(void)
@@ -392,6 +435,7 @@ static force_inline uint32_t getPEBaseOfData(void)
 }
 
 /** Return the PE ImageBase as 64-bit integer.
+  \group_pe
   * @return PE ImageBase as 64-bit int, or 0 if not in PE hook */
 static force_inline uint64_t getPEImageBase(void)
 {
@@ -401,6 +445,7 @@ static force_inline uint64_t getPEImageBase(void)
 }
 
 /** Return the PE SectionAlignment.
+  \group_pe
   * @return PE SectionAlignment, or 0 if not in PE hook */
 static force_inline uint32_t getPESectionAlignment(void)
 {
@@ -410,6 +455,7 @@ static force_inline uint32_t getPESectionAlignment(void)
 }
 
 /** Return the PE FileAlignment.
+  \group_pe
   * @return PE FileAlignment, or 0 if not in PE hook
   */
 static force_inline uint32_t getPEFileAlignment(void)
@@ -420,6 +466,7 @@ static force_inline uint32_t getPEFileAlignment(void)
 }
 
 /** Return the PE MajorOperatingSystemVersion.
+  \group_pe
   * @return PE MajorOperatingSystemVersion, or 0 if not in PE hook */
 static force_inline uint16_t getPEMajorOperatingSystemVersion(void)
 {
@@ -429,6 +476,7 @@ static force_inline uint16_t getPEMajorOperatingSystemVersion(void)
 }
 
 /** Return the PE MinorOperatingSystemVersion.
+  \group_pe
   * @return PE MinorOperatingSystemVersion, or 0 if not in PE hook */
 static force_inline uint16_t getPEMinorOperatingSystemVersion(void)
 {
@@ -438,6 +486,7 @@ static force_inline uint16_t getPEMinorOperatingSystemVersion(void)
 }
 
 /** Return the PE MajorImageVersion.
+  \group_pe
   * @return PE MajorImageVersion, or 0 if not in PE hook */
 static force_inline uint16_t getPEMajorImageVersion(void)
 {
@@ -447,6 +496,7 @@ static force_inline uint16_t getPEMajorImageVersion(void)
 }
 
 /** Return the PE MinorImageVersion.
+  \group_pe
   * @return PE MinorrImageVersion, or 0 if not in PE hook */
 static force_inline uint16_t getPEMinorImageVersion(void)
 {
@@ -456,6 +506,7 @@ static force_inline uint16_t getPEMinorImageVersion(void)
 }
 
 /** Return the PE MajorSubsystemVersion.
+  \group_pe
   * @return PE MajorSubsystemVersion or 0 if not in PE hook */
 static force_inline uint16_t getPEMajorSubsystemVersion(void)
 {
@@ -465,6 +516,7 @@ static force_inline uint16_t getPEMajorSubsystemVersion(void)
 }
 
 /** Return the PE MinorSubsystemVersion.
+  \group_pe
   * @return PE MinorSubsystemVersion, or 0 if not in PE hook */
 static force_inline uint16_t getPEMinorSubsystemVersion(void)
 {
@@ -474,6 +526,7 @@ static force_inline uint16_t getPEMinorSubsystemVersion(void)
 }
 
 /** Return the PE Win32VersionValue.
+  \group_pe
   * @return PE Win32VersionValue, or 0 if not in PE hook */
 static force_inline uint32_t getPEWin32VersionValue(void)
 {
@@ -483,6 +536,7 @@ static force_inline uint32_t getPEWin32VersionValue(void)
 }
 
 /** Return the PE SizeOfImage.
+  \group_pe
   * @return PE SizeOfImage, or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfImage(void)
 {
@@ -492,6 +546,7 @@ static force_inline uint32_t getPESizeOfImage(void)
 }
 
 /** Return the PE SizeOfHeaders.
+  \group_pe
   * @return PE SizeOfHeaders, or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfHeaders(void)
 {
@@ -501,6 +556,7 @@ static force_inline uint32_t getPESizeOfHeaders(void)
 }
 
 /** Return the PE CheckSum.
+  \group_pe
   * @return PE CheckSum, or 0 if not in PE hook
   */
 static force_inline uint32_t getPECheckSum(void)
@@ -511,6 +567,7 @@ static force_inline uint32_t getPECheckSum(void)
 }
 
 /** Return the PE Subsystem.
+  \group_pe
   * @return PE subsystem, or 0 if not in PE hook */
 static force_inline uint16_t getPESubsystem(void)
 {
@@ -519,7 +576,9 @@ static force_inline uint16_t getPESubsystem(void)
                       __clambc_pedata.opt32.Subsystem);
 }
 
-/** Return the PE DllCharacteristics.
+/** @brief Return the PE DllCharacteristics.
+
+  \group_pe
   * @return PE DllCharacteristics, or 0 if not in PE hook */
 static force_inline uint16_t getPEDllCharacteristics(void)
 {
@@ -529,6 +588,7 @@ static force_inline uint16_t getPEDllCharacteristics(void)
 }
 
 /** Return the PE SizeOfStackReserve.
+  \group_pe
   * @return PE SizeOfStackReserver, or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfStackReserve(void)
 {
@@ -538,6 +598,7 @@ static force_inline uint32_t getPESizeOfStackReserve(void)
 }
 
 /** Return the PE SizeOfStackCommit.
+  \group_pe
   * @return PE SizeOfStackCommit, or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfStackCommit(void)
 {
@@ -547,6 +608,7 @@ static force_inline uint32_t getPESizeOfStackCommit(void)
 }
 
 /** Return the PE SizeOfHeapReserve.
+  \group_pe
   * @return PE SizeOfHeapReserve, or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfHeapReserve(void)
 {
@@ -556,6 +618,7 @@ static force_inline uint32_t getPESizeOfHeapReserve(void)
 }
 
 /** Return the PE SizeOfHeapCommit.
+  \group_pe
   * @return PE SizeOfHeapCommit, or 0 if not in PE hook */
 static force_inline uint32_t getPESizeOfHeapCommit(void)
 {
@@ -565,6 +628,7 @@ static force_inline uint32_t getPESizeOfHeapCommit(void)
 }
 
 /** Return the PE LoaderFlags.
+  \group_pe
   * @return PE LoaderFlags or 0 if not in PE hook
   */
 static force_inline uint32_t getPELoaderFlags(void)
@@ -576,6 +640,7 @@ static force_inline uint32_t getPELoaderFlags(void)
 
 /** Returns the CPU this executable runs on, see libclamav/pe.c for possible
  * values.
+  \group_pe
   * @return PE Machine or 0 if not in PE hook */
 static force_inline uint16_t getPEMachine()
 {
@@ -583,6 +648,7 @@ static force_inline uint16_t getPEMachine()
 }
 
 /** Returns the PE TimeDateStamp from headers
+  \group_pe
   * @return PE TimeDateStamp or 0 if not in PE hook */
 static force_inline uint32_t getPETimeDateStamp()
 {
@@ -590,6 +656,7 @@ static force_inline uint32_t getPETimeDateStamp()
 }
 
 /** Returns pointer to the PE debug symbol table
+  \group_pe
   * @return PE PointerToSymbolTable or 0 if not in PE hook */
 static force_inline uint32_t getPEPointerToSymbolTable()
 {
@@ -597,6 +664,7 @@ static force_inline uint32_t getPEPointerToSymbolTable()
 }
 
 /** Returns the PE number of debug symbols
+  \group_pe
   * @return PE NumberOfSymbols or 0 if not in PE hook */
 static force_inline uint32_t getPENumberOfSymbols()
 {
@@ -604,6 +672,7 @@ static force_inline uint32_t getPENumberOfSymbols()
 }
 
 /** Returns the size of PE optional header.
+  \group_pe
   * @return size of PE optional header, or 0 if not in PE hook
   */
 static force_inline uint16_t getPESizeOfOptionalHeader()
@@ -613,6 +682,7 @@ static force_inline uint16_t getPESizeOfOptionalHeader()
 
 /** Returns PE characteristics.
   * For example you can use this to check whether it is a DLL (0x2000).
+  \group_pe
   * @return characteristic of PE file, or 0 if not in PE hook*/
 static force_inline uint16_t getPECharacteristics()
 {
@@ -621,6 +691,7 @@ static force_inline uint16_t getPECharacteristics()
 
 /** Returns whether this is a DLL.
   * Use this only in a PE hook!
+  \group_pe
   * @return true - the file is a DLL
             false - file is not a DLL
 */
@@ -630,6 +701,7 @@ static force_inline bool getPEisDLL()
 }
 
 /** Gets the virtual address of specified image data directory.
+  \group_pe
   @param n image directory requested
   @return Virtual Address of requested image directory
 */
@@ -644,6 +716,7 @@ static force_inline uint32_t getPEDataDirRVA(unsigned n)
 }
 
 /** Gets the size of the specified image data directory.
+  \group_pe
   @param n image directory requested
   @return Size of requested image directory
 */
@@ -656,6 +729,7 @@ static force_inline uint32_t getPEDataDirSize(unsigned n)
 }
 
 /** Returns the number of sections in this executable file.
+  \group_pe
  * @return number of sections as 16-bit unsigned integer */
 static force_inline uint16_t getNumberOfSections(void)
 {
@@ -663,6 +737,7 @@ static force_inline uint16_t getNumberOfSections(void)
 }
 
 /** Gets the offset to the PE header.
+  \group_pe
   @return offset to the PE header, or 0 if not in PE hook */
 static uint32_t getPELFANew(void)
 {
@@ -670,6 +745,7 @@ static uint32_t getPELFANew(void)
 }
 
 /** Read name of requested PE section.
+  \group_pe
   @param[out] name name of PE section
   @param[in] n PE section requested
   @return 0 if successful, 
@@ -697,6 +773,7 @@ static force_inline int readPESectionName(unsigned char name[8], unsigned n)
 }
 
 /** Returns the offset of the EntryPoint in the executable file.
+  \group_pe
  * @return offset of EP as 32-bit unsigned integer */
 static force_inline uint32_t getEntryPoint(void)
 {
@@ -704,6 +781,7 @@ static force_inline uint32_t getEntryPoint(void)
 }
 
 /** Returns the offset of the executable in the file.
+  \group_pe
  * @return offset of embedded executable inside file. */
 static force_inline uint32_t getExeOffset(void)
 {
@@ -713,6 +791,7 @@ static force_inline uint32_t getExeOffset(void)
 /** Returns the ImageBase with the correct endian conversion.
   * Only works if the bytecode is a PE hook (i.e. you invoked
   * PE_UNPACKER_DECLARE)
+  \group_pe
   * @return ImageBase of PE file, 0 - for non-PE hook
   */
 static force_inline uint32_t getImageBase(void)
@@ -721,6 +800,7 @@ static force_inline uint32_t getImageBase(void)
 }
 
 /** The address of the EntryPoint. Use this for matching EP against sections.
+  \group_pe
   * @return virtual address of EntryPoint, or 0 if not in PE hook */
 static uint32_t getVirtualEntryPoint(void)
 {
@@ -729,6 +809,10 @@ static uint32_t getVirtualEntryPoint(void)
                         __clambc_pedata.opt32.AddressOfEntryPoint);
 }
 
+/** Return the RVA of the specified section 
+  \group_pe.
+  @param i section index (from 0)
+  @return RVA of section, or -1 if invalid */
 static uint32_t getSectionRVA(unsigned i)
 {
   struct cli_exe_section section;
@@ -737,6 +821,10 @@ static uint32_t getSectionRVA(unsigned i)
   return section.rva;
 }
 
+/** Return the virtual size of the specified section.
+  \group_pe.
+  @param i section index (from 0)
+  @return VSZ of section, or -1 if invalid */
 static uint32_t getSectionVirtualSize(unsigned i)
 {
   struct cli_exe_section section;
@@ -747,6 +835,7 @@ static uint32_t getSectionVirtualSize(unsigned i)
 
 /** read the specified amount of bytes from the PE file, starting at the
   address specified by RVA.
+  \group_pe
   @param rva the Relative Virtual Address you want to read from (will be
   converted to file offset)
   @param[out] buf destination buffer
@@ -772,6 +861,7 @@ static force_inline bool readRVA(uint32_t rva, void *buf, size_t bufsize)
 #endif
 
 /** Scan the first \p n bytes of the buffer \p s, for the character \p c.
+  \group_string
   @param[in] s buffer to scan
   @param c character to look for
   @param n size of buffer
@@ -790,6 +880,7 @@ static void* memchr(const void* s, int c, size_t n)
 
 /* Provided by LLVM intrinsics */
 /** Fills the specified buffer to the specified value.
+  \group_string
  * @param[out] src pointer to buffer
  * @param[in] c character to fill buffer with
  * @param[in] n length of buffer
@@ -797,6 +888,7 @@ static void* memchr(const void* s, int c, size_t n)
 void* memset(void *src, int c, uintptr_t n) __attribute__((nothrow)) __attribute__((__nonnull__((1))));
 
 /** Copies data between two possibly overlapping buffers.
+  \group_string
  * @param[out] dst destination buffer
  * @param[in] src source buffer
  * @param[in] n amount of bytes to copy
@@ -804,6 +896,7 @@ void* memset(void *src, int c, uintptr_t n) __attribute__((nothrow)) __attribute
 void *memmove (void *dst, const void *src, uintptr_t n)
     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
 /** Copies data between two non-overlapping buffers.
+  \group_string
  * @param[out] dst destination buffer
  * @param[in] src source buffer
  * @param[in] n amount of bytes to copy
@@ -812,6 +905,7 @@ void *memcpy (void *restrict dst, const void *restrict src, uintptr_t n)
     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
 
 /** Compares two memory buffers.
+  \group_string
  * @param[in] s1 buffer one
  * @param[in] s2 buffer two
  * @param[in] n amount of bytes to copy
@@ -821,7 +915,8 @@ void *memcpy (void *restrict dst, const void *restrict src, uintptr_t n)
 int memcmp (const void *s1, const void *s2, uint32_t n)
     __attribute__ ((__nothrow__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
 
-/** disassembled memory operand: scale_reg*scale + add_reg + displacement */
+/** disassembled memory operand: scale_reg*scale + add_reg + displacement
+  \group_disasm */
 struct DIS_mem_arg {
     enum DIS_SIZE access_size;/**< size of access */
     enum X86REGS scale_reg;/**< register used as scale */
@@ -830,7 +925,8 @@ struct DIS_mem_arg {
     int32_t displacement;/**< displacement as immediate number */
 };
 
-/** disassembled operand */
+/** disassembled operand
+  \group_disasm */
 struct DIS_arg {
     enum DIS_ACCESS access_type;/**< type of access */
     enum DIS_SIZE access_size;/**< size of access */
@@ -841,7 +937,8 @@ struct DIS_arg {
     } u;
 };
 
-/** disassembled instruction */
+/** disassembled instruction.
+  \group_disasm */
 struct DIS_fixed {
     enum X86OPS x86_opcode;/**< opcode of X86 instruction */
     enum DIS_SIZE operation_size;/**< size of operation */
@@ -851,6 +948,7 @@ struct DIS_fixed {
 };
 
 /** Disassembles one X86 instruction starting at the specified offset.
+  \group_disasm
  * @param[out] result disassembly result
  * @param[in] offset start disassembling from this offset, in the current file
  * @param[in] len max amount of bytes to disassemble

@@ -179,7 +179,20 @@ TAB_SIZE               = 8
 # will result in a user-defined paragraph with heading "Side Effects:".
 # You can put \n's in the value part of an alias to insert newlines.
 
-ALIASES                =
+ALIASES     += "group_globals=\xrefitem globals \"Global variable\" \"Global variables\""
+ALIASES     += "group_math=\xrefitem math \"Math function\" \"Math functions\""
+ALIASES     += "group_string=\xrefitem stringops \"String operation\" \"String operations\""
+ALIASES     += "group_adt=\xrefitem adt \"Data structure\" \"Data structure handling functions\""
+ALIASES     += "group_file=\xrefitem fileops \"File operation\" \"File operations\""
+ALIASES     += "group_engine=\xrefitem engineq \"Engine query\" \"Engine queries\""
+ALIASES     += "group_scan=\xrefitem scanc \"Scan\" \"Scan control functions\""
+ALIASES     += "group_env=\xrefitem envdet \"Environment\" \"Environment detection functions\""
+ALIASES     += "group_pdf=\xrefitem pdfg \"PDF\" \"PDF handling functions\""
+ALIASES     += "group_icon=\xrefitem icon \"Icon\" \"Icon matcher APIs\""
+ALIASES     += "group_disasm=\xrefitem disasm \"Disassemble\" \"Disassemble APIs\""
+ALIASES     += "group_pe=\xrefitem pe \"PE\" \"PE functions\""
+ALIASES     += "group_js=\xrefitem js \"JavaScript\" \"JS normalize API\""
+ALIASES     += "group_config=\xrefitem config \"config\" \"Bytecode configuration\""
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.

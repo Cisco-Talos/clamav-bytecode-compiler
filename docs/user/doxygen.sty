@@ -334,10 +334,14 @@
 \sloppy
 \usepackage[T1]{fontenc}
 \makeatletter
+\ifpdf
+% leave paragraph as is to reduce space
+\else
 \renewcommand{\paragraph}{\@startsection{paragraph}{4}{0ex}%
    {-3.25ex plus -1ex minus -0.2ex}%
    {1.5ex plus 0.2ex}%
    {\normalfont\normalsize\bfseries}}
+\fi
 \makeatother
 \stepcounter{secnumdepth}
 \stepcounter{tocdepth}
