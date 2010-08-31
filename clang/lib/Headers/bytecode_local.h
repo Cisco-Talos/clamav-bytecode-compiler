@@ -28,20 +28,33 @@
 /** @file */
 #define force_inline inline __attribute__((always_inline))
 #define overloadable_func __attribute__((overloadable))
-#if __has_feature(attribute_overloadable)
+
+/* DOXYGEN defined() must come first */
+#if defined(DOXYGEN) || __has_feature(attribute_overloadable)
 /* Yes, clang supports overloading functions in C! */
+/** Prints \p str to clamscan's --debug output.
+  \param str null terminated string */
 static force_inline void overloadable_func debug(const char * str)
 {
     debug_print_str((const uint8_t*)str, 0);
 }
+
+/** Prints \p str to clamscan's --debug output.
+  \param str null terminated string */
 static force_inline void overloadable_func debug(const uint8_t* str)
 {
     debug_print_str((const uint8_t*)str, 0);
 }
+
+/** Prints \p a integer to clamscan's --debug output.
+  \param a integer */
 static force_inline void overloadable_func debug(uint32_t a)
 {
     debug_print_uint(a);
 }
+
+/** debug is an overloaded function (yes clang supports that in C!), but it only
+  works on strings, and integers. Give an error on any other type */
 void debug(...) __attribute__((overloadable, unavailable));
 #endif
 
@@ -234,7 +247,7 @@ static force_inline overloadable_func void foundVirus(const char *virusname)
     setvirusname((const uint8_t*)virusname, 0);
 }
 
-#if __has_feature(attribute_overloadable)
+#if defined(DOXYGEN) || __has_feature(attribute_overloadable)
 /** Like foundVirus() but just use the prefix as virusname */
 static force_inline void overloadable_func foundVirus(void)
 {

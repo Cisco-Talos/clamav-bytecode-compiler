@@ -49,6 +49,14 @@ struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed}
 \subsubsection*{Functions}
 \begin{DoxyCompactItemize}
 \item 
+static force\_\-inline void overloadable\_\-func \hyperlink{bytecode__local_8h_aa6f11e14ec5677b64c7f623a08a81ceb}{debug} (const char $\ast$str)
+\item 
+static force\_\-inline void overloadable\_\-func \hyperlink{bytecode__local_8h_a7393b44e1359ec29419ccee63a730716}{debug} (const uint8\_\-t $\ast$str)
+\item 
+static force\_\-inline void overloadable\_\-func \hyperlink{bytecode__local_8h_a86350ab4540ed8cc1607409355a1b04c}{debug} (uint32\_\-t a)
+\item 
+void \hyperlink{bytecode__local_8h_a37106786ad5566aa9fd1c8c1a0293029}{debug} (...) \hyperlink{bytecode__local_8h_aefc34b039d51ce77036cfcb6e1561a4e}{\_\-\_\-attribute\_\-\_\-}((overloadable
+\item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a3bee86d89c2e0d16b706f62ec0c2d716}{count\_\-match} (\_\-\_\-Signature sig)
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_afb7a07b6a6a5826f43f624fa1af2a8c6}{matches} (\_\-\_\-Signature sig)
@@ -58,6 +66,8 @@ static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a0731ae7f531521
 static force\_\-inline int32\_\-t \hyperlink{bytecode__local_8h_ae815c917305f5ce574b0e759f605819b}{match\_\-location\_\-check} (\_\-\_\-Signature sig, uint32\_\-t goback, const char $\ast$static\_\-start, uint32\_\-t static\_\-len)
 \item 
 static force\_\-inline overloadable\_\-func void \hyperlink{bytecode__local_8h_a95f6c4104903cf54fead01646fd7f9d2}{foundVirus} (const char $\ast$virusname)
+\item 
+static force\_\-inline void overloadable\_\-func \hyperlink{bytecode__local_8h_ad81d7009247e53d5074a464b3a59454c}{foundVirus} (void)
 \item 
 static force\_\-inline uint32\_\-t \hyperlink{bytecode__local_8h_a4dfb3482a7f04ae1e51942755253d720}{getFilesize} (void)
 \item 
@@ -471,7 +481,52 @@ number of times this subsignature matched in the entire file
 \item[\hyperlink{engineq__engineq000005}{Engine query}]\end{Desc}
 
 
-This is a constant-\/time operation, the counts for all subsignatures are already computed. \hypertarget{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{
+This is a constant-\/time operation, the counts for all subsignatures are already computed. \hypertarget{bytecode__local_8h_a37106786ad5566aa9fd1c8c1a0293029}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!debug@{debug}}
+\index{debug@{debug}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{debug}]{\setlength{\rightskip}{0pt plus 5cm}void debug (
+\begin{DoxyParamCaption}
+\item[{}]{ ...}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{bytecode__local_8h_a37106786ad5566aa9fd1c8c1a0293029}
+debug is an overloaded function (yes clang supports that in C!), but it only works on strings, and integers. Give an error on any other type \hypertarget{bytecode__local_8h_aa6f11e14ec5677b64c7f623a08a81ceb}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!debug@{debug}}
+\index{debug@{debug}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{debug}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void overloadable\_\-func debug (
+\begin{DoxyParamCaption}
+\item[{const char $\ast$}]{ str}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_aa6f11e14ec5677b64c7f623a08a81ceb}
+Prints {\ttfamily str} to clamscan's -\/-\/debug output. 
+\begin{DoxyParams}{Parameters}
+\item[{\em str}]null terminated string \end{DoxyParams}
+\hypertarget{bytecode__local_8h_a7393b44e1359ec29419ccee63a730716}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!debug@{debug}}
+\index{debug@{debug}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{debug}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void overloadable\_\-func debug (
+\begin{DoxyParamCaption}
+\item[{const uint8\_\-t $\ast$}]{ str}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a7393b44e1359ec29419ccee63a730716}
+Prints {\ttfamily str} to clamscan's -\/-\/debug output. 
+\begin{DoxyParams}{Parameters}
+\item[{\em str}]null terminated string \end{DoxyParams}
+\hypertarget{bytecode__local_8h_a86350ab4540ed8cc1607409355a1b04c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!debug@{debug}}
+\index{debug@{debug}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{debug}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void overloadable\_\-func debug (
+\begin{DoxyParamCaption}
+\item[{uint32\_\-t}]{ a}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_a86350ab4540ed8cc1607409355a1b04c}
+Prints {\ttfamily a} integer to clamscan's -\/-\/debug output. 
+\begin{DoxyParams}{Parameters}
+\item[{\em a}]integer \end{DoxyParams}
+\hypertarget{bytecode__local_8h_a1a801c0806f1cb7ed433f139e5769f99}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!DisassembleAt@{DisassembleAt}}
 \index{DisassembleAt@{DisassembleAt}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{DisassembleAt}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t DisassembleAt (
@@ -507,7 +562,16 @@ Sets the specified virusname as the virus detected by this bytecode. \begin{Desc
 \begin{DoxySeeAlso}{See also}
 \hyperlink{bytecode__local_8h_a07e03751d8c0faf422b28d7138f69a57}{VIRUSNAMES} 
 \end{DoxySeeAlso}
-\hypertarget{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{
+\hypertarget{bytecode__local_8h_ad81d7009247e53d5074a464b3a59454c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!foundVirus@{foundVirus}}
+\index{foundVirus@{foundVirus}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{foundVirus}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline void overloadable\_\-func foundVirus (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_ad81d7009247e53d5074a464b3a59454c}
+Like \hyperlink{bytecode__local_8h_a95f6c4104903cf54fead01646fd7f9d2}{foundVirus()} but just use the prefix as virusname \hypertarget{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!getEntryPoint@{getEntryPoint}}
 \index{getEntryPoint@{getEntryPoint}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{getEntryPoint}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline uint32\_\-t getEntryPoint (

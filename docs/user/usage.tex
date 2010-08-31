@@ -1,3 +1,4 @@
+% !TeX root = clambc-user.tex
 \chapter{Usage}
 \section{Invoking the compiler}
 Compiling is similar to gcc \footnote{Note that the ClamAV bytecode compiler will refuse to compile code it considers insecure}:
@@ -75,8 +76,27 @@ Of course, the bytecode can be stored inside CVD files, too.
 
 \section{Debugging bytecode}
 \subsection{``printf'' style debugging}
-You can use \verb+debug_print_str+ and \verb+debug_print_uint+ API %TODO: link to API section
-calls to print debug messages during the execution of the bytecode.
+Printf, and printf-like format specifiers are not supported in the bytecode.
+You can use these functions instead of printf to print strings and integer to
+clamscan's --debug output:
+
+\hyperlink{bytecode__api_8h_aa6d82179ea15d32450fefbc6d1bd8934}{debug\_\-print\_\-str},
+\hyperlink{bytecode__api_8h_a6e0cdd4d4c76ed46a8627bee56eee1c1}{debug\_\-print\_\-uint},
+\hyperlink{bytecode__api_8h_a43707290a22915315c960422a88ba4d4}{debug\_\-print\_\-str\_\-start},
+\hyperlink{bytecode__api_8h_a02f173e084fc9a4b9eaf3017aa4243ba}{debug\_\-print\_\-str\_\-nonl}.
+
+You can also use the \verb+debug+ convenience wrapper that automatically prints
+as string or integer depending on parameter type:
+\hyperlink{bytecode__local_8h_aa6f11e14ec5677b64c7f623a08a81ceb}{debug},
+\hyperlink{bytecode__local_8h_a7393b44e1359ec29419ccee63a730716}{debug},
+\hyperlink{bytecode__local_8h_a86350ab4540ed8cc1607409355a1b04c}{debug}.
+
+See \prettyref{prg:debugapi} for an example.
+\begin{program}
+\lstinputlisting{../../examples/in/debug.o1.c}
+\caption{Example of using debug APIs}
+\label{prg:debugapi}
+\end{program}
 
 \subsection{Single-stepping}
 %TODO: some glue code missing here: LLVM supports generation of dwarf debug info (including variable and line number info),
