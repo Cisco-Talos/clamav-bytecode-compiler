@@ -27,18 +27,18 @@
 
 /** @file */
 #define force_inline inline __attribute__((always_inline))
-#define overloadable ___attribute__((overloadable))
+#define overloadable_func __attribute__((overloadable))
 #if __has_feature(attribute_overloadable)
 /* Yes, clang supports overloading functions in C! */
-static force_inline void __attribute__((overloadable)) debug(const char * str)
+static force_inline void overloadable_func debug(const char * str)
 {
     debug_print_str((const uint8_t*)str, 0);
 }
-static force_inline void __attribute__((overloadable)) debug(const uint8_t* str)
+static force_inline void overloadable_func debug(const uint8_t* str)
 {
     debug_print_str((const uint8_t*)str, 0);
 }
-static force_inline void __attribute__((overloadable)) debug(uint32_t a)
+static force_inline void overloadable_func debug(uint32_t a)
 {
     debug_print_uint(a);
 }
@@ -229,14 +229,14 @@ static force_inline int32_t match_location_check(__Signature sig,
  * @param virusname the name of the virus, excluding the prefix, must be one of
  * the virusnames declared in \p VIRUSNAMES.
  * \sa VIRUSNAMES */
-static force_inline overloadable void foundVirus(const char *virusname)
+static force_inline overloadable_func void foundVirus(const char *virusname)
 {
     setvirusname((const uint8_t*)virusname, 0);
 }
 
 #if __has_feature(attribute_overloadable)
 /** Like foundVirus() but just use the prefix as virusname */
-static force_inline void __attribute__((overloadable)) foundVirus(void)
+static force_inline void overloadable_func foundVirus(void)
 {
   foundVirus("");
 }
