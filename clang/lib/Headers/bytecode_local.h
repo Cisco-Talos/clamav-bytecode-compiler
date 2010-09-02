@@ -77,10 +77,8 @@ typedef struct signature {
     uint64_t id;
 } __Signature;
 
-/** Make the current bytecode a PE hook, i.e. it will be called once
-  the logical signature trigger matches (or always if there is none), and you
-  have access to all the PE information. By default you only have access to
-  execs.h information, and not to PE field information (even for PE files).
+/** Like \p PE_HOOK_DECLARE, but it is not run for packed files that pe.c can
+ * unpack (only on the unpacked file).
  \group_config */
 #define PE_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_PE_UNPACKER;
 
@@ -91,6 +89,14 @@ typedef struct signature {
  * This hook is called several times, use pdf_get_phase() to find out in which
  * phase you got called. */
 #define PDF_HOOK_DECLARE const uint16_t __clambc_kind = BC_PDF;
+
+
+/** Make the current bytecode a PE hook, i.e. it will be called once
+  the logical signature trigger matches (or always if there is none), and you
+  have access to all the PE information. By default you only have access to
+  execs.h information, and not to PE field information (even for PE files).
+  \group_config */
+#define PE_HOOK_DECLARE const uint16_t __clambc_kind = BC_PE_ALL;
 
 /** Marks the beginning of the subsignature name declaration section.
  \group_config */

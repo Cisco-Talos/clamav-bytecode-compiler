@@ -21,6 +21,7 @@
  */
 #define DEBUG_TYPE "bcmodule"
 #include "llvm/System/DataTypes.h"
+#include "../clang/lib/Headers/bytecode_api.h"
 #include "clambc.h"
 #include "ClamBCDiagnostics.h"
 #include "ClamBCModule.h"

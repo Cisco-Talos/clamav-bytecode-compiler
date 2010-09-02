@@ -23,6 +23,7 @@
 #define DEBUG_TYPE "lsigcompiler"
 #include "ClamBCModule.h"
 #include "llvm/System/DataTypes.h"
+#include "../clang/lib/Headers/bytecode_api.h"
 #include "clambc.h"
 #include "ClamBCDiagnostics.h"
 #include "ClamBCModule.h"
@@ -68,7 +69,8 @@ private:
   std::string virusnames;
   bool compileLogicalSignature(Function &F, unsigned target, unsigned min,
                                unsigned max, const std::string& icon1,
-                               const std::string &icon2);
+                               const std::string &icon2,
+                               int kind);
   bool validateVirusName(const std::string& name, Module &M, bool suffix=false);
   bool compileVirusNames(Module &M, unsigned kind);
 };
@@ -1082,25 +1084,48 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   return valid;
 }
 
-static bool checkMinimum(llvm::Module *M, std::string s, unsigned min)
+static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, int kind)
 {
-  unsigned min_required = 0;
+  const char *msgreq = NULL, *msgrec;
+  unsigned min_required = 0, min_recommended = 0;
   StringRef ref(s);
   // Due to bb #1957 VI and $ sigs don't work properly in 0.96,
   // so using these sigs requires minimum functionality level
   if (ref.find('$') != StringRef::npos ||
-      ref.find("VI") != StringRef::npos)
+      ref.find("VI") != StringRef::npos) {
     min_required = FUNC_LEVEL_096_dev;
+    msgreq = "Logical signature use of VI/macros requires minimum "
+      "functionality level of 0.96_dev";
+  }
 
-  if (min_required && !min) {
-    printDiagnostic("Logical signature use of VI/macros requires minimum "
-                    "functionality level of 0.96_dev", M);
+  if (kind >= BC_PDF) {
+    min_required = FUNC_LEVEL_096_2;
+    msgreq = "Using 0.96.2+ hook requires FUNC_LEVEL_096_2 at least";
+  }
+
+  if (kind >= BC_PE_ALL) {
+    min_required = FUNC_LEVEL_096_2_dev;
+    msgreq = "Using 0.96.3 hook requires FUNC_LEVEL_096_2_dev at least";
+  }
+
+  size_t pos = 0;
+  while ((pos = ref.find_first_of("=><", pos)) != StringRef::npos) {
+    pos++;
+    if (pos >= 2 && ref[pos-2] != '>' && ref[pos-2] != '<' &&
+        pos < ref.size() && ref[pos] != '0') {
+      min_recommended = FUNC_LEVEL_096_2;
+      msgrec = "Logical signature use of count comparison "
+        "requires minimum functionality level of 0.96.2 (bb #2053)";
+      break;
+    }
+  }
+
+  if (min_required && min < min_required) {
+    printDiagnostic(msgreq, M);
     return false;
   }
-  if (min_required && min < min_required) {
-    printDiagnostic("Logical signature use of VI/macros requires minimum "
-                    "functionality level of 0.96_dev", M);
-    return false;
+  if (min_recommended && min < min_recommended) {
+    printDiagnostic(msgrec, M);
   }
   return true;
 }
@@ -1108,7 +1133,8 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min)
 bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target,
                                                     unsigned min, unsigned max,
                                                     const std::string& icon1,
-                                                    const std::string& icon2)
+                                                    const std::string& icon2,
+                                                    int kind)
 {
   LogicalCompiler compiler;
 
@@ -1217,7 +1243,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
        I != E; ++I) {
     LogicalSignature += ";"+*I;
   }
-  if (!checkMinimum(F.getParent(), LogicalSignature, min))
+  if (!checkMinimum(F.getParent(), LogicalSignature, min, kind))
     return false;
 
   F.setLinkage(GlobalValue::InternalLinkage);
@@ -1456,7 +1482,8 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     }
     //errs() << "icon1:"<<icon1<<" icon2:"<<icon2 <<"\n";
     //TODO: validate that target is a valid target
-    if (!compileLogicalSignature(*F, target, funcmin, funcmax, icon1, icon2)) {
+    if (!compileLogicalSignature(*F, target, funcmin, funcmax, icon1, icon2,
+                                 kind)) {
       Valid = false;
     }
     NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");

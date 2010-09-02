@@ -37,7 +37,6 @@
 #endif
 
 #ifndef __CLAMBC__
-#include "execs.h"
 struct DISASM_RESULT;
 #endif
 
@@ -53,6 +52,7 @@ enum BytecodeKind {
     BC_PE_UNPACKER,
     /* PDF hook */
     BC_PDF,
+    BC_PE_ALL,/* both packed and unpacked files */
     _BC_LAST_HOOK
 };
 
@@ -66,8 +66,9 @@ enum FunctionalityLevels {
     FUNC_LEVEL_096 = 51,
     FUNC_LEVEL_096_dev,
     FUNC_LEVEL_096_1,
-    FUNC_LEVEL_096_1_dev,
-    FUNC_LEVEL_096_2
+    FUNC_LEVEL_096_1_dev=54,
+    FUNC_LEVEL_096_2=54,
+    FUNC_LEVEL_096_2_dev
 };
 
 /** Phase of PDF parsing */
