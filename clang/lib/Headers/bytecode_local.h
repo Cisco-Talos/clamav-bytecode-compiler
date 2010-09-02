@@ -371,12 +371,27 @@ static force_inline bool hasExeInfo(void)
     return __clambc_pedata.offset != -1;
 }
 
+/** Returns whether PE information is available
+  \group_pe
+  * @return true if PE information is available (in PE hooks) */
+static force_inline bool hasPEInfo(void)
+{
+  return (__clambc_kind == BC_PE_ALL ||
+          __clambc_kind == BC_PE_UNPACKER);
+}
+
+#define NEED_PE_INFO {  /* only available in PE hooks */\
+  if (!hasPEInfo())\
+    __fail_missing_PE_HOOK_DECLARE__or__PE_UNPACKER_DECLARE();\
+}
+
 /** Returns whether this is a PE32+ executable.
   \group_pe
   @return true if this is a PE32+ executable
 */
 static force_inline bool isPE64(void)
 {
+  NEED_PE_INFO;
   return le16_to_host(__clambc_pedata.opt64.Magic) == 0x020b;
 }
 
@@ -663,6 +678,7 @@ static force_inline uint32_t getPELoaderFlags(void)
   * @return PE Machine or 0 if not in PE hook */
 static force_inline uint16_t getPEMachine()
 {
+  NEED_PE_INFO;
   return le16_to_host(__clambc_pedata.file_hdr.Machine);
 }
 
@@ -671,6 +687,7 @@ static force_inline uint16_t getPEMachine()
   * @return PE TimeDateStamp or 0 if not in PE hook */
 static force_inline uint32_t getPETimeDateStamp()
 {
+  NEED_PE_INFO;
   return le32_to_host(__clambc_pedata.file_hdr.TimeDateStamp);
 }
 
@@ -679,6 +696,7 @@ static force_inline uint32_t getPETimeDateStamp()
   * @return PE PointerToSymbolTable or 0 if not in PE hook */
 static force_inline uint32_t getPEPointerToSymbolTable()
 {
+  NEED_PE_INFO;
   return le32_to_host(__clambc_pedata.file_hdr.PointerToSymbolTable);
 }
 
@@ -687,6 +705,7 @@ static force_inline uint32_t getPEPointerToSymbolTable()
   * @return PE NumberOfSymbols or 0 if not in PE hook */
 static force_inline uint32_t getPENumberOfSymbols()
 {
+  NEED_PE_INFO;
   return le32_to_host(__clambc_pedata.file_hdr.NumberOfSymbols);
 }
 
@@ -696,6 +715,7 @@ static force_inline uint32_t getPENumberOfSymbols()
   */
 static force_inline uint16_t getPESizeOfOptionalHeader()
 {
+  NEED_PE_INFO;
   return le16_to_host(__clambc_pedata.file_hdr.SizeOfOptionalHeader);
 }
 
@@ -705,6 +725,7 @@ static force_inline uint16_t getPESizeOfOptionalHeader()
   * @return characteristic of PE file, or 0 if not in PE hook*/
 static force_inline uint16_t getPECharacteristics()
 {
+  NEED_PE_INFO;
   return le16_to_host(__clambc_pedata.file_hdr.Characteristics);
 }
 
@@ -726,6 +747,7 @@ static force_inline bool getPEisDLL()
 */
 static force_inline uint32_t getPEDataDirRVA(unsigned n)
 {
+  NEED_PE_INFO;
   struct pe_image_data_dir *p = &__clambc_pedata.opt64.DataDirectory[n];
   struct pe_image_data_dir *p32 = &__clambc_pedata.opt32.DataDirectory[n];
   return n < 16 ? le32_to_host(isPE64() ?
@@ -741,6 +763,7 @@ static force_inline uint32_t getPEDataDirRVA(unsigned n)
 */
 static force_inline uint32_t getPEDataDirSize(unsigned n)
 {
+  NEED_PE_INFO;
   return n < 16 ? le32_to_host(isPE64() ?
                                __clambc_pedata.opt64.DataDirectory[n].Size :
                                __clambc_pedata.opt32.DataDirectory[n].Size)
@@ -752,6 +775,7 @@ static force_inline uint32_t getPEDataDirSize(unsigned n)
  * @return number of sections as 16-bit unsigned integer */
 static force_inline uint16_t getNumberOfSections(void)
 {
+  /* available in non-PE hooks too */
     return __clambc_pedata.nsections;
 }
 
@@ -760,6 +784,7 @@ static force_inline uint16_t getNumberOfSections(void)
   @return offset to the PE header, or 0 if not in PE hook */
 static uint32_t getPELFANew(void)
 {
+  NEED_PE_INFO;
     return le32_to_host(__clambc_pedata.e_lfanew);
 }
 
@@ -772,6 +797,7 @@ static uint32_t getPELFANew(void)
 */
 static force_inline int readPESectionName(unsigned char name[8], unsigned n)
 {
+  NEED_PE_INFO;
   if (n >= getNumberOfSections())
     return -1;
   uint32_t at = getPELFANew() + sizeof(struct pe_image_file_hdr) + sizeof(struct pe_image_optional_hdr32);
@@ -796,6 +822,7 @@ static force_inline int readPESectionName(unsigned char name[8], unsigned n)
  * @return offset of EP as 32-bit unsigned integer */
 static force_inline uint32_t getEntryPoint(void)
 {
+  /* available in non-PE hooks too */
     return __clambc_pedata.ep;
 }
 
@@ -804,6 +831,7 @@ static force_inline uint32_t getEntryPoint(void)
  * @return offset of embedded executable inside file. */
 static force_inline uint32_t getExeOffset(void)
 {
+  /* available in non-PE hooks too */
     return __clambc_pedata.offset;
 }
 
@@ -815,6 +843,7 @@ static force_inline uint32_t getExeOffset(void)
   */
 static force_inline uint32_t getImageBase(void)
 {
+  NEED_PE_INFO;
   return le32_to_host(__clambc_pedata.opt32.ImageBase);
 }
 
@@ -823,7 +852,8 @@ static force_inline uint32_t getImageBase(void)
   * @return virtual address of EntryPoint, or 0 if not in PE hook */
 static uint32_t getVirtualEntryPoint(void)
 {
-    return le32_to_host(isPE64() ?
+  NEED_PE_INFO;
+  return le32_to_host(isPE64() ?
                         __clambc_pedata.opt64.AddressOfEntryPoint:
                         __clambc_pedata.opt32.AddressOfEntryPoint);
 }

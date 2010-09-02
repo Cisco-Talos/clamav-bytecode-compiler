@@ -37,6 +37,7 @@
 #endif
 
 #ifndef __CLAMBC__
+struct cli_exe_section;
 struct DISASM_RESULT;
 #endif
 
