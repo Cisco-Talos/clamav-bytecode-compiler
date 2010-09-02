@@ -141,6 +141,17 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
             GEPI->setOperand(i, V2);
           }
         }
+      } else if (ICmpInst *ICI = dyn_cast<ICmpInst>(II)) {
+        if (ConstantExpr *CE = dyn_cast<ConstantExpr>(ICI->getOperand(1))) {
+          if (CE->getOpcode() != Instruction::IntToPtr)
+            continue;
+          Builder.SetInsertPoint(ICI->getParent(), ICI);
+
+          Value *R = CE->getOperand(0);
+          Value *L = Builder.CreatePtrToInt(ICI->getOperand(0), R->getType());
+          Value *ICI2 = Builder.CreateICmp(ICI->getPredicate(), L, R);
+          ICI->replaceAllUsesWith(ICI2);
+        }
       }
     }
 }

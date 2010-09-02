@@ -1038,7 +1038,7 @@ DisassembleAt(struct DIS_fixed* result, uint32_t offset, uint32_t len)
 }
 
 // re2c macros
-#define RE2C_BSIZE 128
+#define RE2C_BSIZE 1024
 typedef struct {
   unsigned char *cur, *lim, *mrk, *ctx, *eof, *tok;
   int res;
