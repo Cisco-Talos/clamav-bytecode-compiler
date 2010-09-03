@@ -333,6 +333,12 @@ static int CompileSubprocess(const char **argv, int argc,
     exit(0);
   }
 
+  DiagnosticOptions &DiagOpts = Clang.getInvocation().getDiagnosticOpts();
+  DiagOpts.ShowOptionNames = DiagOpts.ShowColors = 1;
+  DiagOpts.MessageLength = 80;// we are writing to a file
+  DiagOpts.Warnings.push_back("all");
+  DiagOpts.Warnings.push_back("no-pointer-sign");
+
   Clang.createDiagnostics(argc-1, const_cast<char**>(argv+1));
   if (!Clang.hasDiagnostics())
     return 2;
@@ -356,11 +362,6 @@ static int CompileSubprocess(const char **argv, int argc,
 
   // Don't bother freeing of memory on exit 
   FrontendOpts.DisableFree = 1;
-
-  DiagnosticOptions &DiagOpts = Clang.getInvocation().getDiagnosticOpts();
-  DiagOpts.ShowOptionNames = DiagOpts.ShowColors = 1;
-  DiagOpts.MessageLength = 80;// we are writing to a file
-  DiagOpts.Warnings.push_back("all");
 
   CodeGenOptions &Opts = Clang.getInvocation().getCodeGenOpts();
   Opts.Inlining = CodeGenOptions::OnlyAlwaysInlining;
@@ -401,10 +402,23 @@ static int CompileSubprocess(const char **argv, int argc,
   // Inform the target of the language options
   Clang.getTarget().setForcedLangOptions(Clang.getLangOpts());
 
-  if (Clang.getHeaderSearchOpts().Verbose)
+  if (Clang.getHeaderSearchOpts().Verbose) {
     llvm::errs() << "clang -cc1 version " CLANG_VERSION_STRING
                  << " based upon " << PACKAGE_STRING
                  << " hosted on " << llvm::sys::getHostTriple() << "\n";
+    // Convert the invocation back to argument strings.
+    std::vector<std::string> InvocationArgs;
+    Clang.getInvocation().toArgs(InvocationArgs);
+
+    // Dump the converted arguments.
+    llvm::SmallVector<const char*, 32> Invocation2Args;
+    llvm::errs() << "invocation argv :";
+    for (unsigned i = 0, e = InvocationArgs.size(); i != e; ++i) {
+      Invocation2Args.push_back(InvocationArgs[i].c_str());
+      llvm::errs() << " \"" << InvocationArgs[i] << '"';
+    }
+    llvm::errs() << "\n";
+  }
 
   std::string Input = FrontendOpts.Inputs[0].second;
   if (Input == "-" && bugreport)
