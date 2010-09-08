@@ -48,6 +48,7 @@
 #include "llvm/Support/InstVisitor.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/PatternMatch.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/CodeGen/IntrinsicLowering.h"
 
@@ -137,8 +138,23 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
         for (unsigned i=1;i<GEPI->getNumOperands();i++) {
           Value *V = GEPI->getOperand(i);
           if (V->getType() != Type::getInt32Ty(C)) {
-            Value *V2 = Builder.CreateTrunc(V, Type::getInt32Ty(C));
-            GEPI->setOperand(i, V2);
+            Instruction *IVI = dyn_cast<Instruction>(V);
+            if (!IVI || (IVI->getOpcode() != Instruction::Sub &&
+                         IVI->getOpcode() != Instruction::Mul)) {
+              Value *V2 = Builder.CreateTrunc(V, Type::getInt32Ty(C));
+              GEPI->setOperand(i, V2);
+            }
+/*
+            // {s,z}ext i32 %foo to i64, getelementptr %ptr, i64 %sext ->
+            // getelementptr %ptr, i32 %foo
+            if (SExtInst *Ext = dyn_cast<SExtInst>(V))
+              GEPI->setOperand(i, Ext->getOperand(0));
+            if (ZExtInst *Ext = dyn_cast<ZExtInst>(V))
+              GEPI->setOperand(i, Ext->getOperand(0));
+            if (ConstantInt *CI = dyn_cast<ConstantInt>(V)) {
+              GEPI->setOperand(i, ConstantExpr::getTrunc(CI,
+                                                         Type::getInt32Ty(C)));
+            }*/
           }
         }
       } else if (ICmpInst *ICI = dyn_cast<ICmpInst>(II)) {
@@ -151,6 +167,21 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
           Value *L = Builder.CreatePtrToInt(ICI->getOperand(0), R->getType());
           Value *ICI2 = Builder.CreateICmp(ICI->getPredicate(), L, R);
           ICI->replaceAllUsesWith(ICI2);
+        }
+      } else if (PtrToIntInst *PI = dyn_cast<PtrToIntInst>(II)) {
+        // ptrtoint (getelementptr P1, (sub i64 C, ptrtoint P0))
+        // -> add V, (sub ptrtoint P1, ptrtoint P0)
+        GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(PI->getOperand(0));
+        if (GEP && GEP->getNumOperands() == 2) {
+          if (Instruction *I = dyn_cast<Instruction>(GEP->getOperand(1)))
+            if (I->getOpcode() == Instruction::Sub)
+              if (PtrToIntInst *P1 = dyn_cast<PtrToIntInst>(I->getOperand(1))) {
+                Value *P0 = Builder.CreatePtrToInt(GEP->getOperand(0),
+                                                   P1->getType());
+                Value *S = Builder.CreateSub(P0, P1);
+                Value *A = Builder.CreateAdd(S, I->getOperand(0));
+                PI->replaceAllUsesWith(A);
+              }
         }
       }
     }

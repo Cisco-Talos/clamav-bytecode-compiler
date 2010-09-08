@@ -59,6 +59,7 @@ class ClamBCVerifier : public FunctionPass,
     PointerTracking *PT;
     DominatorTree *DT;
     BasicBlock *AbrtBB;
+    bool Final;
 
     friend class InstVisitor<ClamBCVerifier,bool>;
 
@@ -414,6 +415,14 @@ class ClamBCVerifier : public FunctionPass,
 
     bool visitGetElementPtrInst(GetElementPtrInst &GEP)
     {
+      if (Final) {
+        for (unsigned i=1;i<GEP.getNumOperands();i++) {
+          if (GEP.getOperand(i)->getType() !=
+              Type::getInt32Ty(GEP.getContext())) {
+            printDiagnostic("Will fail to load with JIT (non 32-bit GEP index)", &GEP);
+          }
+        }
+      }
       std::string Msg;
       if (!checkGEP(GEP, Msg)) {
         printDiagnostic(Msg, &GEP);
@@ -440,8 +449,8 @@ class ClamBCVerifier : public FunctionPass,
 
   public:
     static char ID;
-    explicit ClamBCVerifier()
-      : FunctionPass(&ID) {}
+    explicit ClamBCVerifier(bool final)
+      : FunctionPass(&ID), Final(final) {}
 
     virtual bool runOnFunction(Function &F)
     {
@@ -476,11 +485,8 @@ class ClamBCVerifier : public FunctionPass,
     }
   };
 char ClamBCVerifier::ID=0;
-RegisterPass<ClamBCVerifier> X("clambc-verifier",
-                               "ClamAV bytecode verifier");
 }
 
-const PassInfo *const ClamBCVerifierID = &X;
-llvm::FunctionPass* createClamBCVerifier() {
-  return new ClamBCVerifier();
+llvm::FunctionPass* createClamBCVerifier(bool final) {
+  return new ClamBCVerifier(final);
 }

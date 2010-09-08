@@ -135,19 +135,21 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createIndVarSimplifyPass());
   PM.add(createConstantPropagationPass());
   PM.add(createClamBCLowering(false));
-  PM.add(createClamBCVerifier());
+  PM.add(createClamBCVerifier(false));
   PM.add(createClamBCRTChecks());
   PM.add(createClamBCLowering(false));
+  PM.add(createDeadCodeEliminationPass());
+  if (DumpIR)
+    PM.add(createBitcodeWriterPass(outs()));
   PM.add(createClamBCLogicalCompiler());
   PM.add(createGlobalDCEPass());
-  PM.add(createClamBCVerifier());
   PM.add(createInstructionCombiningPass());
   PM.add(createCFGSimplificationPass());
   PM.add(createClamBCTrace());
   PM.add(createClamBCLowering(true));
+  PM.add(createDeadCodeEliminationPass());
+  PM.add(createClamBCVerifier(false));
   PM.add(createVerifierPass());
-  if (DumpIR)
-    PM.add(createBitcodeWriterPass(outs()));
   PM.add(createStripDebugDeclarePass());
   PM.add(createGEPSplitterPass());
   PM.add(module);

@@ -208,7 +208,7 @@ private:
 
 llvm::FunctionPass *createClamBCWriter(ClamBCModule *module);
 llvm::Pass *createClamBCRTChecks();
-llvm::FunctionPass *createClamBCVerifier();
+llvm::FunctionPass *createClamBCVerifier(bool final);
 llvm::ModulePass *createClamBCLogicalCompiler();
 llvm::ModulePass *createClamBCLowering(bool final);
 llvm::ModulePass *createClamBCTrace();
