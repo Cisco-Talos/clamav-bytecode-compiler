@@ -160,15 +160,16 @@ static force_inline void parseFilters(uint8_t *filters, unsigned size,
   filters[j] = 0;
   if (!search(filters, j, "/Filter"))
     return;
-  if (search(filters, j, "/FlateDecode")) {
+  //FIXME: interpreter bug memstr is called with haystack == needle always!
+  if (search(filters, j, "/FlateDecode") == '/') {
     debug("found FlateDecode filter");
     *has_deflate = 1;
   }
-  if (search(filters, j, "/ASCIIHexDecode")) {
+  if (search(filters, j, "/ASCIIHexDecode") == '/') {
     debug("found AsciiHexDecode filter");
     *has_asciihex = 1;
   }
-  if (search(filters, j, "/ASCII85Decode")) {
+  if (search(filters, j, "/ASCII85Decode") == '/') {
     debug("found Ascii85Decode filter");
     *has_ascii85 = 1;
   }
