@@ -157,6 +157,10 @@ bool ClamBCModule::runOnModule(Module &M)
   LogicalSignature = Node ?
     cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
 
+  Node = M.getNamedMetadata("clambc.virusnames");
+  virusnames = Node ?
+    cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
+
   unsigned tid, cid, fid;
   startTID = tid = clamav::initTypeIDs(typeIDs, M.getContext());
   // arrays of [2 x i8] .. [7 x i8] used for struct padding

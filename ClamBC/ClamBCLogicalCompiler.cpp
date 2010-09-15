@@ -1300,11 +1300,9 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
     // hand-editing the visible virusnames won't change anything.
     // The prefix isn't editable either.
     ConstantArray *CA = cast<ConstantArray>(VNames->getInitializer());
-    if (CA->getNumOperands())
-      virusnames += ".{";
-    else
-      virusnames += "{";
     bool Valid = true;
+    std::vector<std::string> names;
+
     for (unsigned i=0;i<CA->getNumOperands();i++) {
       std::string virusnamepart;
       Constant *C = CA->getOperand(i);
@@ -1312,18 +1310,27 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
         printDiagnostic("Unable to determine virusname part string", &M);
         Valid = false;
       }
-      if (i)
-        virusnames += ",";
       if (virusnamepart.empty())
         continue;
       if (!validateVirusName(virusnamepart, M, true))
         Valid = false;
       virusNamesSet.insert(virusnamepart);
-      virusnames += virusnamepart;
+      names.push_back(virusnamepart);
     }
+    std::sort(names.begin(), names.end());
+    if (CA->getNumOperands())
+      virusnames += ".{";
+    else
+      virusnames += "{";
+    for (unsigned i=0;i<names.size();i++) {
+      if (i)
+        virusnames += ",";
+      virusnames += names[i];
+    }
+    virusnames += "}";
+    names.clear();
     if (!Valid)
       return false;
-    virusnames += "}";
     VNames->setLinkage(GlobalValue::InternalLinkage);
   }
   VPFX->setLinkage(GlobalValue::InternalLinkage);
@@ -1420,6 +1427,13 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       return true;
     Valid = false;
   }
+  if (Valid) {
+    NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.virusnames");
+    Value *S = MDString::get(M.getContext(), virusnames);
+    MDNode *N = MDNode::get(M.getContext(),  &S, 1);
+    Node->addOperand(N);
+  }
+
   GlobalVariable *GV = M.getGlobalVariable("__FuncMin");
   unsigned funcmin = 0, funcmax = 0;
   if (GV && GV->hasDefinitiveInitializer()) {
