@@ -90,6 +90,9 @@ typedef struct signature {
  * phase you got called. */
 #define PDF_HOOK_DECLARE const uint16_t __clambc_kind = BC_PDF;
 
+/** entrypoint() return code that tells hook invoker that it should skip
+ * executing, probably because it'd trigger a bug in it */
+#define BYTECODE_ABORT_HOOK 0xcea5e
 
 /** Make the current bytecode a PE hook, i.e. it will be called once
   the logical signature trigger matches (or always if there is none), and you
