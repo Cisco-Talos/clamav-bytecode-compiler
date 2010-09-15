@@ -10,7 +10,8 @@ VIRUSNAMES("MalwareFound")
 TARGET(0)
 
 //experimental, test out on git version first
-FUNCTIONALITY_LEVEL_MIN(FUNC_LEVEL_096_dev)
+//FUNCTIONALITY_LEVEL_MIN(FUNC_LEVEL_096_2)
+//FUNCTIONALITY_LEVEL_MAX(FUNC_LEVEL_096_2)
 
 SIGNATURES_DECL_BEGIN
 DECLARE_SIGNATURE(PDF_header_good)
@@ -54,7 +55,7 @@ static force_inline int decode_js_text(uint32_t *probTable,
   unsigned i = 0;
   seek(pos, SEEK_SET);
   BUFFER_FILL(buf, 0, 1, filled);
-  debug("decodejstext");
+  //debug("decodejstext");
 #ifndef TEST_ONLY
   if (extract_new(pos))
     return 1;
@@ -86,7 +87,7 @@ static void decode_js_hex(uint32_t *probTable, unsigned *entropySize,
   unsigned char buf[RE2C_BSIZE];
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
-  debug("decodejshex");
+  //debug("decodejshex");
 
 }
 
@@ -217,13 +218,16 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
 {
   char filters[1025];
   unsigned filtern;
-  debug("extractobj");
+  //debug("extractobj");
   unsigned back = seek(0, SEEK_CUR);
   seek(pos, SEEK_SET);
-  unsigned beginpos = pos;
+  unsigned beginpos = pos, maxpos;
   /* TODO: use state-machine here too,
      for now we just decode assuming deflate encoding!*/
-  pos = file_find("stream", 6);
+  maxpos = file_find("endobj", 6);
+  if (maxpos == -1)
+    return 0;
+  pos = file_find_limit("stream", 6, maxpos);
   if (pos == -1)
     return 0;
   seek(beginpos, SEEK_SET);
@@ -235,14 +239,15 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
   read(filters, filtern);
   filters[filtern]=0;
 
-  bool has_deflate=false, has_asciihex=false, has_ascii85=false;
+  bool has_deflate=false, has_asciihex=false, has_ascii85=false, has_raw = false;
   parseFilters(filters, filtern, &has_deflate, &has_asciihex,
                &has_ascii85);
   if (!has_deflate && !has_asciihex && !has_ascii85) {
 //    debug("not decodable");
 //    return 0;
+    has_raw = true;
   }
-  debug("decoding");
+  //debug("decoding");
 #ifndef TEST_ONLY
   if (extract_new(beginpos))
     return 1;
@@ -268,7 +273,7 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
       break;
   } while (c != '\n' && c != '\r');
   int32_t in = buffer_pipe_new_fromfile(pos);
-  seek(pos, SEEK_SET);
+  seek(pos + 6, SEEK_SET);
   int32_t out = buffer_pipe_new(4096);
 
   int32_t asciiin = in;
@@ -278,6 +283,8 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
   int32_t inf=0;
   debug("pos:");
   debug(pos);
+  debug(" - ");
+  debug(endpos);
   if (has_deflate) {
     debug("trying to inflate X bytes");
     debug(endpos - pos);
@@ -288,7 +295,6 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
   do {
     uint32_t avail;
     if (has_ascii85 || has_asciihex) {
-      debug("has_a");
       avail = buffer_pipe_read_avail(asciiin);
       if (!avail) {
         has_ascii85 = has_asciihex = false;
@@ -306,7 +312,8 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
         uint8_t *outdata = buffer_pipe_read_get(out, avail);
         if (outdata) {
 #ifndef TEST_ONLY
-          write(outdata, avail);
+          if (write(outdata, avail) == -1)
+            break;
 #endif
         }
         buffer_pipe_read_stopped(out, avail);
@@ -315,20 +322,22 @@ static force_inline int extract_obj(uint32_t *probTable, unsigned *entropySize, 
       avail = buffer_pipe_read_avail(in);
       if (avail > (endpos - pos))
         avail = endpos - pos;
-      uint8_t *outdata = buffer_pipe_read_get(in, avail);
-      debug("writing:");
+      if (!avail)
+        break;
+      debug("avail:");
       debug(avail);
+      uint8_t *outdata = buffer_pipe_read_get(in, avail);
       if (outdata) {
 #ifndef TEST_ONLY
-        write(outdata, avail);
+        if (write(outdata, avail) == -1)
+          break;
 #endif
       }
       buffer_pipe_read_stopped(in, avail);
+      pos += avail;
     }
-  } while (has_ascii85 || has_asciihex);
-  debug("done");
+  } while (has_ascii85 || has_asciihex || has_raw);
   seek(back, SEEK_SET);
-  debug("donejs");
   return 0;
 }
 
@@ -347,8 +356,10 @@ static int force_inline handle_pdfobj(uint32_t *probTable,
 //  if (hashset_contains(extractobjs, objid)) {
 // extract all objs for now
     if (extract_obj(probTable, entropySize, pos, hashset_contains(jsobjs,
-                                                                  objid)))
+                                                                  objid))) {
+      seek(back, SEEK_SET);
       return 1;
+    }
     hashset_remove(extractobjs, objid);
     hashset_remove(jsobjs, objid);
 //  }
@@ -501,13 +512,13 @@ static force_inline void formatCheck(unsigned* flags)
 int entrypoint(void)
 {
   unsigned detectionFlags = 0;
-  // use 0.96.1 API
-/*  if (engine_functionality_level() < FUNC_LEVEL_096_dev)
+  // only on 0.96.2
+  if (engine_functionality_level() != FUNC_LEVEL_096_2)
     return 0;
   if (!(engine_scan_options() & CL_SCAN_PDF))
-    return 0;*/
+    return 0;
 
-  formatCheck(&detectionFlags);
+  //formatCheck(&detectionFlags);
 
   seek(7, SEEK_SET);
   REGEX_SCANNER;
@@ -563,22 +574,20 @@ int entrypoint(void)
     PDFOBJECT {
         if (handle_pdfobj(probTable, &entropySize, jsnorm_objs, extract_objs,
         re2c_stokstart, REGEX_POS)) {
-        foundVirus("MalwareFound");//workaround for clamav bug
+    //    foundVirus("MalwareFound");//workaround for clamav bug
         return 1;
         }
         continue;
     }
 
     DIRECTTEXTJS {
-        debug("pdfjs text at:"); debug(REGEX_POS);
         if (decode_js_text(probTable, &entropySize, REGEX_POS)) {
-        foundVirus("MalwareFound");
+      //  foundVirus("MalwareFound");
         return 1;
         }
         continue;
     }
     DIRECTHEXJS {
-        debug("pdfjs hextext at:"); debug(REGEX_POS);
         decode_js_hex(probTable, &entropySize, REGEX_POS); continue;
     }
     INDIRECTJSOBJECT {
@@ -591,7 +600,7 @@ int entrypoint(void)
   }
   /* TODO: loop over elements in the set, lookup in the pdfobj->offset map, and
    * extract 'em */
-  if (extract_new(-1))
-    foundVirus("MalwareFound");
+//  if (extract_new(-1))
+    //foundVirus("MalwareFound");
   return REGEX_RESULT;
 }
