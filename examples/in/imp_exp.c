@@ -1,6 +1,7 @@
 //PE file format: http://kishorekumar.net/pecoff_v8.1.htm
 VIRUSNAME_PREFIX("BC.ImportsParser")
 
+//PE_HOOK_DECLARE
 PE_UNPACKER_DECLARE
 
 /* one pe_import_entry for each imported DLL */
@@ -166,6 +167,7 @@ static bool parse_PE_exports(import_dllname_cb_t dllname_cb,
     uint32_t name_pointer_rva;
     uint32_t name_pointer_table =
       pe_rawaddr(cli_readint32(&exports.name_pointer_rva));
+    exports.number_name_pointers = cli_readint32(&exports.number_name_pointers);
     for (i=0;i<exports.number_name_pointers;i++) {
       char funcname[FUNCNAME_MAX];
       if (seek(name_pointer_table + 4*i, SEEK_SET) == -1) {
@@ -176,6 +178,7 @@ static bool parse_PE_exports(import_dllname_cb_t dllname_cb,
         debug("corrupt exports, invalid name pointer");
         return false;
       }
+      name_pointer_rva = cli_readint32(&name_pointer_rva);
 
       if (!readRVA(name_pointer_rva, &funcname, sizeof(funcname)))
         return false;
