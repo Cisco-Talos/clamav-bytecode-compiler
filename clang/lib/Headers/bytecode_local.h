@@ -153,6 +153,8 @@ typedef struct signature {
  \group_config */
 #define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
 
+#define LDB_ADDATTRIBUTES(x) const char * __ldb_rawattrs = (x);
+
 /** Marks the beginning of subsignature pattern definitions. 
  \group_config
  * \sa SIGNATURES_DECL_BEGIN */
@@ -902,8 +904,9 @@ static force_inline bool readRVA(uint32_t rva, void *buf, size_t bufsize)
   int32_t oldpos = seek(off, SEEK_SET);
   if (oldpos == -1)
     return false;
-  if (read(buf, bufsize) != bufsize)
+  if (read(buf, bufsize) != bufsize) {
     return false;
+  }
   seek(oldpos, SEEK_SET);
   return true;
 }

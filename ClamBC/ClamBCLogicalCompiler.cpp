@@ -1230,8 +1230,28 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   if (!icon2.empty())
     LogicalSignature = LogicalSignature+
       ("IconGroup2:"+Twine(icon2)+",").str();
-  LogicalSignature = LogicalSignature +
-    ("Target:"+Twine(target)+";"+ndbsigs).str();
+  LogicalSignature = LogicalSignature+
+    ("Target:"+Twine(target)).str();
+
+  std::string rawattrs;
+  GV = F.getParent()->getGlobalVariable("__ldb_rawattrs");
+  if (GV && GV->hasDefinitiveInitializer() &&
+      GetConstantStringInfo(GV->getInitializer(), rawattrs)) {
+    GV->setLinkage(GlobalValue::InternalLinkage);
+    for (unsigned i=0;i<rawattrs.length();i++) {
+      unsigned char c = rawattrs[i];
+      if (isalnum(c) || c == ':' || c == '-' || c == ',')
+        continue;
+      printDiagnostic("Invalid character in ldb attribute: "+rawattrs.substr(0,i+1),
+                      F.getParent());
+      return false;
+    }
+    LogicalSignature = LogicalSignature + "," + rawattrs;
+  }
+  LogicalSignature = LogicalSignature+";"+ndbsigs;
+
+
+
   if (groups > 64) {
     printDiagnostic(("Logical signature: a maximum of 64 subexpressions are "
                      "supported, but logical signature has "+Twine(groups)+
@@ -1267,6 +1287,8 @@ bool ClamBCLogicalCompiler::validateVirusName(const std::string& name,
   }
   return true;
 }
+
+
 
 static bool isUnpacker(unsigned kind)
 {
