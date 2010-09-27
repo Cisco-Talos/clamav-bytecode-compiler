@@ -537,6 +537,8 @@ void ClamBCModule::printModuleHeader(Module &M, unsigned startTID, unsigned
   // Print 2 magic number to ensure reader works properly
   printNumber(OutReal, 0x53e5493e9f3d1c30ull);
   printFixedNumber(OutReal, 42, 2);
+  if (maxLine < 4096)
+      maxLine = 4096;
   OutReal << ":" << maxLine << "\n";
   // first line must fit into 8k
   assert(OutReal.tell() < 8192);
