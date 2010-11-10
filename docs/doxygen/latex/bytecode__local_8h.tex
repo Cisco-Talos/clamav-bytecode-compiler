@@ -22,6 +22,10 @@ struct \hyperlink{struct_d_i_s__fixed}{DIS\_\-fixed}
 \item 
 \#define \hyperlink{bytecode__local_8h_a96c0aeeec87fbf8c08a2dd17c86f4cb0}{PDF\_\-HOOK\_\-DECLARE}~const uint16\_\-t \hyperlink{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}{\_\-\_\-clambc\_\-kind} = BC\_\-PDF;
 \item 
+\#define \hyperlink{bytecode__local_8h_a6b52cfd01216f68d830d874feb25e07c}{BYTECODE\_\-ABORT\_\-HOOK}~0xcea5e
+\item 
+\#define \hyperlink{bytecode__local_8h_aab7294d18a5e7d7c16234c4afe573d44}{PE\_\-HOOK\_\-DECLARE}~const uint16\_\-t \hyperlink{bytecode__api_8h_a6eb3802e21949cfdf6b91570d3c62c99}{\_\-\_\-clambc\_\-kind} = BC\_\-PE\_\-ALL;
+\item 
 \#define \hyperlink{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{SIGNATURES\_\-DECL\_\-BEGIN}~struct \_\-\_\-Signatures \{
 \item 
 \#define \hyperlink{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{DECLARE\_\-SIGNATURE}(name)
@@ -86,6 +90,8 @@ static uint16\_\-t force\_\-inline \hyperlink{bytecode__local_8h_a50ecabc9fb33d2
 static void force\_\-inline \hyperlink{bytecode__local_8h_ae275f25ed41739954c981ed4717ebd22}{cli\_\-writeint32} (void $\ast$offset, uint32\_\-t v)
 \item 
 static force\_\-inline bool \hyperlink{bytecode__local_8h_a6241ff42b1300527c64034931f027738}{hasExeInfo} (void)
+\item 
+static force\_\-inline bool \hyperlink{bytecode__local_8h_abfb2cd189ec07a4e521a906581e421e6}{hasPEInfo} (void)
 \item 
 static force\_\-inline bool \hyperlink{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}{isPE64} (void)
 \item 
@@ -206,7 +212,12 @@ void $\ast$void $\ast$int struct \hyperlink{struct_d_i_s__mem__arg}{DIS\_\-mem\_
 
 
 \subsubsection{Define Documentation}
-\hypertarget{bytecode__local_8h_a07318d0dd98e1eea463bb91dcbca277c}{
+\hypertarget{bytecode__local_8h_a6b52cfd01216f68d830d874feb25e07c}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!BYTECODE\_\-ABORT\_\-HOOK@{BYTECODE\_\-ABORT\_\-HOOK}}
+\index{BYTECODE\_\-ABORT\_\-HOOK@{BYTECODE\_\-ABORT\_\-HOOK}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{BYTECODE\_\-ABORT\_\-HOOK}]{\setlength{\rightskip}{0pt plus 5cm}\#define BYTECODE\_\-ABORT\_\-HOOK~0xcea5e}\hfill}
+\label{bytecode__local_8h_a6b52cfd01216f68d830d874feb25e07c}
+entrypoint() return code that tells hook invoker that it should skip executing, probably because it'd trigger a bug in it \hypertarget{bytecode__local_8h_a07318d0dd98e1eea463bb91dcbca277c}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!COPYRIGHT@{COPYRIGHT}}
 \index{COPYRIGHT@{COPYRIGHT}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{COPYRIGHT}]{\setlength{\rightskip}{0pt plus 5cm}\#define COPYRIGHT(
@@ -216,7 +227,7 @@ void $\ast$void $\ast$int struct \hyperlink{struct_d_i_s__mem__arg}{DIS\_\-mem\_
 )~const char $\ast$const \_\-\_\-Copyright = (c);}\hfill}
 \label{bytecode__local_8h_a07318d0dd98e1eea463bb91dcbca277c}
 Defines an alternative copyright for this bytecode. \begin{Desc}
-\item[\hyperlink{config__config000009}{config}]This will also prevent the sourcecode from being embedded into the bytecode \end{Desc}
+\item[\hyperlink{config__config000010}{config}]This will also prevent the sourcecode from being embedded into the bytecode \end{Desc}
 \hypertarget{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!DECLARE\_\-SIGNATURE@{DECLARE\_\-SIGNATURE}}
 \index{DECLARE\_\-SIGNATURE@{DECLARE\_\-SIGNATURE}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -232,7 +243,7 @@ const char *name##_sig;\
     __Signature name;
 \end{DoxyCode}
 Declares a name for a subsignature. \begin{Desc}
-\item[\hyperlink{config__config000006}{config}]\end{Desc}
+\item[\hyperlink{config__config000007}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_af17ef9c55c87be7943edda3732ed34b4}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!DEFINE\_\-SIGNATURE@{DEFINE\_\-SIGNATURE}}
 \index{DEFINE\_\-SIGNATURE@{DEFINE\_\-SIGNATURE}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -252,7 +263,7 @@ Defines the pattern for a previously declared subsignature. \begin{DoxySeeAlso}{
 \hyperlink{bytecode__local_8h_a9cc5358469543c230937ff04cb545a72}{DECLARE\_\-SIGNATURE} 
 \end{DoxySeeAlso}
 \begin{Desc}
-\item[\hyperlink{config__config000015}{config}]\end{Desc}
+\item[\hyperlink{config__config000016}{config}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em name}]the name of a previously declared subsignature \item[{\em hex}]the pattern for this subsignature \end{DoxyParams}
@@ -266,7 +277,7 @@ Defines the pattern for a previously declared subsignature. \begin{DoxySeeAlso}{
 )~const unsigned short \_\-\_\-FuncMax = (m);}\hfill}
 \label{bytecode__local_8h_afc471efa427277a2b96a2a06ba647aa9}
 Define the maximum engine functionality level required for this bytecode/logical signature. Engines newer than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \begin{Desc}
-\item[\hyperlink{config__config000013}{config}]\end{Desc}
+\item[\hyperlink{config__config000014}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!FUNCTIONALITY\_\-LEVEL\_\-MIN@{FUNCTIONALITY\_\-LEVEL\_\-MIN}}
 \index{FUNCTIONALITY\_\-LEVEL\_\-MIN@{FUNCTIONALITY\_\-LEVEL\_\-MIN}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -277,7 +288,7 @@ Define the maximum engine functionality level required for this bytecode/logical
 )~const unsigned short \_\-\_\-FuncMin = (m);}\hfill}
 \label{bytecode__local_8h_a550536f35a9af1cf46db818baffe7912}
 Define the minimum engine functionality level required for this bytecode/logical signature. Engines older than this will skip loading the bytecode. You can use the 'enum FunctionalityLevels' constants here. \begin{Desc}
-\item[\hyperlink{config__config000012}{config}]\end{Desc}
+\item[\hyperlink{config__config000013}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a543de9b69d68ba528f60634777f72a5d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!ICONGROUP1@{ICONGROUP1}}
 \index{ICONGROUP1@{ICONGROUP1}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -290,7 +301,7 @@ Define the minimum engine functionality level required for this bytecode/logical
 Define IconGroup1 for logical signature.
 
 See logical signature documentation for what it is \begin{Desc}
-\item[\hyperlink{config__config000010}{config}]\end{Desc}
+\item[\hyperlink{config__config000011}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a655d7e9c6fcfec9b860d0acc56066326}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!ICONGROUP2@{ICONGROUP2}}
 \index{ICONGROUP2@{ICONGROUP2}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -301,7 +312,7 @@ See logical signature documentation for what it is \begin{Desc}
 )~const char $\ast$const \_\-\_\-IconGroup2 = (group);}\hfill}
 \label{bytecode__local_8h_a655d7e9c6fcfec9b860d0acc56066326}
 Define IconGroup2 for logical signature. See logical signature documentation for what it is. \begin{Desc}
-\item[\hyperlink{config__config000011}{config}]\end{Desc}
+\item[\hyperlink{config__config000012}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a96c0aeeec87fbf8c08a2dd17c86f4cb0}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!PDF\_\-HOOK\_\-DECLARE@{PDF\_\-HOOK\_\-DECLARE}}
 \index{PDF\_\-HOOK\_\-DECLARE@{PDF\_\-HOOK\_\-DECLARE}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -309,12 +320,19 @@ Define IconGroup2 for logical signature. See logical signature documentation for
 \label{bytecode__local_8h_a96c0aeeec87fbf8c08a2dd17c86f4cb0}
 Make the current bytecode a PDF hook. Having a logical signature doesn't make sense here, since logical signature is evaluated AFTER these hooks run. \begin{Desc}
 \item[\hyperlink{config__config000004}{config}]This hook is called several times, use \hyperlink{bytecode__api_8h_af7eb372ae4bc42a552e543ea2a306f5e}{pdf\_\-get\_\-phase()} to find out in which phase you got called. \end{Desc}
+\hypertarget{bytecode__local_8h_aab7294d18a5e7d7c16234c4afe573d44}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!PE\_\-HOOK\_\-DECLARE@{PE\_\-HOOK\_\-DECLARE}}
+\index{PE\_\-HOOK\_\-DECLARE@{PE\_\-HOOK\_\-DECLARE}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{PE\_\-HOOK\_\-DECLARE}]{\setlength{\rightskip}{0pt plus 5cm}\#define PE\_\-HOOK\_\-DECLARE~const uint16\_\-t {\bf \_\-\_\-clambc\_\-kind} = BC\_\-PE\_\-ALL;}\hfill}
+\label{bytecode__local_8h_aab7294d18a5e7d7c16234c4afe573d44}
+Make the current bytecode a PE hook, i.e. it will be called once the logical signature trigger matches (or always if there is none), and you have access to all the PE information. By default you only have access to execs.h information, and not to PE field information (even for PE files). \begin{Desc}
+\item[\hyperlink{config__config000005}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_adab197e0485a688211ac7f6add222691}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!PE\_\-UNPACKER\_\-DECLARE@{PE\_\-UNPACKER\_\-DECLARE}}
 \index{PE\_\-UNPACKER\_\-DECLARE@{PE\_\-UNPACKER\_\-DECLARE}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{PE\_\-UNPACKER\_\-DECLARE}]{\setlength{\rightskip}{0pt plus 5cm}\#define PE\_\-UNPACKER\_\-DECLARE~const uint16\_\-t {\bf \_\-\_\-clambc\_\-kind} = BC\_\-PE\_\-UNPACKER;}\hfill}
 \label{bytecode__local_8h_adab197e0485a688211ac7f6add222691}
-Make the current bytecode a PE hook, i.e. it will be called once the logical signature trigger matches (or always if there is none), and you have access to all the PE information. By default you only have access to execs.h information, and not to PE field information (even for PE files). \begin{Desc}
+Like {\ttfamily PE\_\-HOOK\_\-DECLARE}, but it is not run for packed files that pe.c can unpack (only on the unpacked file). \begin{Desc}
 \item[\hyperlink{config__config000003}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-BEGIN@{SIGNATURES\_\-DECL\_\-BEGIN}}
@@ -322,14 +340,14 @@ Make the current bytecode a PE hook, i.e. it will be called once the logical sig
 \paragraph[{SIGNATURES\_\-DECL\_\-BEGIN}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-BEGIN~struct \_\-\_\-Signatures \{}\hfill}
 \label{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}
 Marks the beginning of the subsignature name declaration section. \begin{Desc}
-\item[\hyperlink{config__config000005}{config}]\end{Desc}
+\item[\hyperlink{config__config000006}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DECL\_\-END@{SIGNATURES\_\-DECL\_\-END}}
 \index{SIGNATURES\_\-DECL\_\-END@{SIGNATURES\_\-DECL\_\-END}!bytecode_local.h@{bytecode\_\-local.h}}
 \paragraph[{SIGNATURES\_\-DECL\_\-END}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-DECL\_\-END~\};}\hfill}
 \label{bytecode__local_8h_a75c0ab3e5d9f66a1e134c823200d295d}
 Marks the end of the subsignature name declaration section. \begin{Desc}
-\item[\hyperlink{config__config000007}{config}]\end{Desc}
+\item[\hyperlink{config__config000008}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_af75911dca13ab8a873fe2bafd57a705a}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!SIGNATURES\_\-DEF\_\-BEGIN@{SIGNATURES\_\-DEF\_\-BEGIN}}
 \index{SIGNATURES\_\-DEF\_\-BEGIN@{SIGNATURES\_\-DEF\_\-BEGIN}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -341,7 +359,7 @@ static const unsigned __signature_bias = __COUNTER__+1;\
 const struct __Signatures Signatures = {\
 \end{DoxyCode}
 Marks the beginning of subsignature pattern definitions. \begin{Desc}
-\item[\hyperlink{config__config000014}{config}]\end{Desc}
+\item[\hyperlink{config__config000015}{config}]\end{Desc}
 \begin{DoxySeeAlso}{See also}
 \hyperlink{bytecode__local_8h_a9d8dab26434a3a759f8934956f87c822}{SIGNATURES\_\-DECL\_\-BEGIN} 
 \end{DoxySeeAlso}
@@ -351,7 +369,7 @@ Marks the beginning of subsignature pattern definitions. \begin{Desc}
 \paragraph[{SIGNATURES\_\-END}]{\setlength{\rightskip}{0pt plus 5cm}\#define SIGNATURES\_\-END~\};$\backslash$}\hfill}
 \label{bytecode__local_8h_ac9b976f78a0dac8a6996cbb31571044f}
 Marks the end of the subsignature pattern definitions. \begin{Desc}
-\item[\hyperlink{config__config000016}{config}]\end{Desc}
+\item[\hyperlink{config__config000017}{config}]\end{Desc}
 \hypertarget{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!TARGET@{TARGET}}
 \index{TARGET@{TARGET}!bytecode_local.h@{bytecode\_\-local.h}}
@@ -362,7 +380,7 @@ Marks the end of the subsignature pattern definitions. \begin{Desc}
 )~const unsigned short \_\-\_\-Target = (tgt);}\hfill}
 \label{bytecode__local_8h_a8f4214a187b6ecb97ad7eef2317ebd3f}
 Defines the ClamAV file target. \begin{Desc}
-\item[\hyperlink{config__config000008}{config}]\end{Desc}
+\item[\hyperlink{config__config000009}{config}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em tgt}]ClamAV signature type (0 -\/ raw, 1 -\/ PE, etc.) \end{DoxyParams}
@@ -581,7 +599,7 @@ Like \hyperlink{bytecode__local_8h_a95f6c4104903cf54fead01646fd7f9d2}{foundVirus
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ad26217bb0fe3c43d933bf48b9957bc53}
 Returns the offset of the EntryPoint in the executable file. \begin{Desc}
-\item[\hyperlink{pe__pe000046}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000047}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 offset of EP as 32-\/bit unsigned integer 
 \end{DoxyReturn}
@@ -595,7 +613,7 @@ offset of EP as 32-\/bit unsigned integer
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae06107422b3a2bd8a9a07fb344e8a8da}
 Returns the offset of the executable in the file. \begin{Desc}
-\item[\hyperlink{pe__pe000047}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000048}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 offset of embedded executable inside file. 
 \end{DoxyReturn}
@@ -623,7 +641,7 @@ file size as 32-\/bit unsigned integer
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a20fbd92de54ff30ade353ca8381ec766}
 Returns the ImageBase with the correct endian conversion. Only works if the bytecode is a PE hook (i.e. you invoked PE\_\-UNPACKER\_\-DECLARE) \begin{Desc}
-\item[\hyperlink{pe__pe000048}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000049}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 ImageBase of PE file, 0 -\/ for non-\/PE hook 
 \end{DoxyReturn}
@@ -637,7 +655,7 @@ ImageBase of PE file, 0 -\/ for non-\/PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_acc59dfc3eb084259883225674083e553}
 Returns the number of sections in this executable file. \begin{Desc}
-\item[\hyperlink{pe__pe000043}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000044}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 number of sections as 16-\/bit unsigned integer 
 \end{DoxyReturn}
@@ -651,7 +669,7 @@ number of sections as 16-\/bit unsigned integer
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a4856f8c8b2250e9ff7a15bfc651e9dc5}
 Return the PE BaseOfCode. \begin{Desc}
-\item[\hyperlink{pe__pe000012}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000013}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE BaseOfCode, or 0 if not in PE hook. 
 \end{DoxyReturn}
@@ -665,7 +683,7 @@ PE BaseOfCode, or 0 if not in PE hook.
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a906067648342e627e35608446ae28faf}
 Return the PE BaseOfData. \begin{Desc}
-\item[\hyperlink{pe__pe000013}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000014}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE BaseOfData, or 0 if not in PE hook. 
 \end{DoxyReturn}
@@ -679,7 +697,7 @@ PE BaseOfData, or 0 if not in PE hook.
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ab93887618aa8cebb250f28574634093a}
 Returns PE characteristics. For example you can use this to check whether it is a DLL (0x2000). \begin{Desc}
-\item[\hyperlink{pe__pe000039}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000040}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 characteristic of PE file, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -693,7 +711,7 @@ characteristic of PE file, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a07f9eaa84e03e09a833facf15d170bff}
 Return the PE CheckSum. \begin{Desc}
-\item[\hyperlink{pe__pe000026}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000027}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE CheckSum, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -707,7 +725,7 @@ PE CheckSum, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ab9e2deafba57fe896c13e38e5d45be9e}
 Gets the virtual address of specified image data directory. \begin{Desc}
-\item[\hyperlink{pe__pe000041}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000042}{PE}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em n}]image directory requested \end{DoxyParams}
@@ -724,7 +742,7 @@ Virtual Address of requested image directory
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a19dd537d51a4bfe23f58a92b2332ed02}
 Gets the size of the specified image data directory. \begin{Desc}
-\item[\hyperlink{pe__pe000042}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000043}{PE}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em n}]image directory requested \end{DoxyParams}
@@ -745,7 +763,7 @@ Size of requested image directory
 Return the PE DllCharacteristics. 
 
 \begin{Desc}
-\item[\hyperlink{pe__pe000028}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000029}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE DllCharacteristics, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -759,7 +777,7 @@ PE DllCharacteristics, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3d3676596ffad052f01ed7355062921c}
 Return the PE FileAlignment. \begin{Desc}
-\item[\hyperlink{pe__pe000016}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000017}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE FileAlignment, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -773,7 +791,7 @@ PE FileAlignment, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a5be87a6ddd3f434c8755a54b441da600}
 Return the PE ImageBase as 64-\/bit integer. \begin{Desc}
-\item[\hyperlink{pe__pe000014}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000015}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE ImageBase as 64-\/bit int, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -787,7 +805,7 @@ PE ImageBase as 64-\/bit int, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a027ee938f8372e45d6fe6197d10ecc96}
 Returns whether this is a DLL. Use this only in a PE hook! \begin{Desc}
-\item[\hyperlink{pe__pe000040}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000041}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 true -\/ the file is a DLL false -\/ file is not a DLL 
 \end{DoxyReturn}
@@ -801,7 +819,7 @@ true -\/ the file is a DLL false -\/ file is not a DLL
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a0ed633b358ee0280504b9e2b55492a8d}
 Gets the offset to the PE header. \begin{Desc}
-\item[\hyperlink{pe__pe000044}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000045}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 offset to the PE header, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -815,7 +833,7 @@ offset to the PE header, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_adae84c4057d5721d9606218d3eed5e34}
 Return the PE LoaderFlags. \begin{Desc}
-\item[\hyperlink{pe__pe000033}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000034}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE LoaderFlags or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -829,7 +847,7 @@ PE LoaderFlags or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a01fe1e273462c9386b45f7661d15b55a}
 Returns the CPU this executable runs on, see libclamav/pe.c for possible values. \begin{Desc}
-\item[\hyperlink{pe__pe000034}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000035}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE Machine or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -843,7 +861,7 @@ PE Machine or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_aea163191c14a5af87883231d7358070f}
 Return the PE MajorImageVersion. \begin{Desc}
-\item[\hyperlink{pe__pe000019}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000020}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MajorImageVersion, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -857,7 +875,7 @@ PE MajorImageVersion, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a0563ea1400d07e675a20ab0dcfd905eb}
 Returns MajorLinkerVersion for this PE file. \begin{Desc}
-\item[\hyperlink{pe__pe000007}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000008}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MajorLinkerVersion or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -871,7 +889,7 @@ PE MajorLinkerVersion or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a220d77f9285699cf6bfda4b629193aea}
 Return the PE MajorOperatingSystemVersion. \begin{Desc}
-\item[\hyperlink{pe__pe000017}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000018}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MajorOperatingSystemVersion, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -885,7 +903,7 @@ PE MajorOperatingSystemVersion, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a9c6364f035901ed9983edc13a709f8f4}
 Return the PE MajorSubsystemVersion. \begin{Desc}
-\item[\hyperlink{pe__pe000021}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000022}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MajorSubsystemVersion or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -899,7 +917,7 @@ PE MajorSubsystemVersion or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3c2af71ce767165317d0da8f8a23dc24}
 Return the PE MinorImageVersion. \begin{Desc}
-\item[\hyperlink{pe__pe000020}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000021}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MinorrImageVersion, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -913,7 +931,7 @@ PE MinorrImageVersion, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ac77d151a09c2de3b1d803567d24892b3}
 Returns MinorLinkerVersion for this PE file. \begin{Desc}
-\item[\hyperlink{pe__pe000008}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000009}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MinorLinkerVersion or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -927,7 +945,7 @@ PE MinorLinkerVersion or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a5b621a2c5114f83e6e1b2a2648b17909}
 Return the PE MinorOperatingSystemVersion. \begin{Desc}
-\item[\hyperlink{pe__pe000018}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000019}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MinorOperatingSystemVersion, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -941,7 +959,7 @@ PE MinorOperatingSystemVersion, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ab8516cf0fd00093557a6b84e766f21cf}
 Return the PE MinorSubsystemVersion. \begin{Desc}
-\item[\hyperlink{pe__pe000022}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000023}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE MinorSubsystemVersion, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -955,7 +973,7 @@ PE MinorSubsystemVersion, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a49632081cf680004297e0b2ce99c6cb8}
 Returns the PE number of debug symbols \begin{Desc}
-\item[\hyperlink{pe__pe000037}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000038}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE NumberOfSymbols or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -969,7 +987,7 @@ PE NumberOfSymbols or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a3edd1734cfe7362eb26f6d6630fefb00}
 Returns pointer to the PE debug symbol table \begin{Desc}
-\item[\hyperlink{pe__pe000036}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000037}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE PointerToSymbolTable or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -983,7 +1001,7 @@ PE PointerToSymbolTable or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a564b495dcdeaccf29a0ad97046be73c1}
 Return the PE SectionAlignment. \begin{Desc}
-\item[\hyperlink{pe__pe000015}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000016}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SectionAlignment, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -997,7 +1015,7 @@ PE SectionAlignment, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ad9f53af41bcca14d46ce507e2e6ab16c}
 Return the PE SizeOfCode. \begin{Desc}
-\item[\hyperlink{pe__pe000009}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000010}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfCode or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1011,7 +1029,7 @@ PE SizeOfCode or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a80cc732b7672ea102d4704946c6eb2aa}
 Return the PE SizeOfHeaders. \begin{Desc}
-\item[\hyperlink{pe__pe000025}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000026}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfHeaders, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1025,7 +1043,7 @@ PE SizeOfHeaders, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae9c031fc42de436f574943f089c508c5}
 Return the PE SizeOfHeapCommit. \begin{Desc}
-\item[\hyperlink{pe__pe000032}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000033}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfHeapCommit, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1039,7 +1057,7 @@ PE SizeOfHeapCommit, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_aea6b290ae054a0b872887071b4b0f9f2}
 Return the PE SizeOfHeapReserve. \begin{Desc}
-\item[\hyperlink{pe__pe000031}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000032}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfHeapReserve, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1053,7 +1071,7 @@ PE SizeOfHeapReserve, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a2a8e7a0acac5e007bfb4e28d57f3170f}
 Return the PE SizeOfImage. \begin{Desc}
-\item[\hyperlink{pe__pe000024}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000025}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfImage, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1067,7 +1085,7 @@ PE SizeOfImage, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a50cf975bcf2f8fff010b8a8a26bb8ada}
 Return the PE SizeofInitializedData. \begin{Desc}
-\item[\hyperlink{pe__pe000010}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000011}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfInitializeData or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1081,7 +1099,7 @@ PE SizeOfInitializeData or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a22825914a55dbe5d5548a5e07bb0b24d}
 Returns the size of PE optional header. \begin{Desc}
-\item[\hyperlink{pe__pe000038}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000039}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 size of PE optional header, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1095,7 +1113,7 @@ size of PE optional header, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ae99c81416872de61956e064fc1e32550}
 Return the PE SizeOfStackCommit. \begin{Desc}
-\item[\hyperlink{pe__pe000030}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000031}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfStackCommit, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1109,7 +1127,7 @@ PE SizeOfStackCommit, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a61370982c310e3aeed974dd0abe02284}
 Return the PE SizeOfStackReserve. \begin{Desc}
-\item[\hyperlink{pe__pe000029}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000030}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeOfStackReserver, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1123,7 +1141,7 @@ PE SizeOfStackReserver, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a8bcd1876daa53ee94772ada292b039d8}
 Return the PE SizeofUninitializedData. \begin{Desc}
-\item[\hyperlink{pe__pe000011}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000012}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE SizeofUninitializedData or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1137,7 +1155,7 @@ PE SizeofUninitializedData or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a4027528d4bc10b3b736bf733db903dd1}
 Return the PE Subsystem. \begin{Desc}
-\item[\hyperlink{pe__pe000027}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000028}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE subsystem, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1151,7 +1169,7 @@ PE subsystem, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a28e4809837328528a644c53d8a864fc6}
 Returns the PE TimeDateStamp from headers \begin{Desc}
-\item[\hyperlink{pe__pe000035}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000036}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE TimeDateStamp or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1165,7 +1183,7 @@ PE TimeDateStamp or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a20c5188f3da8c956592847265abc287b}
 Return the PE Win32VersionValue. \begin{Desc}
-\item[\hyperlink{pe__pe000023}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000024}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 PE Win32VersionValue, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1179,7 +1197,7 @@ PE Win32VersionValue, or 0 if not in PE hook
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_aedc2fa35d4664099b528c68653f593f2}
 Return the RVA of the specified section \begin{Desc}
-\item[\hyperlink{pe__pe000050}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000051}{PE}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em i}]section index (from 0) \end{DoxyParams}
@@ -1196,7 +1214,7 @@ RVA of section, or -\/1 if invalid
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_ad81443723d60b2eaf56aa13718a0bf47}
 Return the virtual size of the specified section. \begin{Desc}
-\item[\hyperlink{pe__pe000051}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000052}{PE}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em i}]section index (from 0) \end{DoxyParams}
@@ -1213,7 +1231,7 @@ VSZ of section, or -\/1 if invalid
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a488ebd9cda9e8ba46ba5daae94ddb453}
 The address of the EntryPoint. Use this for matching EP against sections. \begin{Desc}
-\item[\hyperlink{pe__pe000049}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000050}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 virtual address of EntryPoint, or 0 if not in PE hook 
 \end{DoxyReturn}
@@ -1230,6 +1248,20 @@ Returns whether the current file has executable information. \begin{Desc}
 \item[\hyperlink{pe__pe000005}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 true if the file has exe info, false otherwise 
+\end{DoxyReturn}
+\hypertarget{bytecode__local_8h_abfb2cd189ec07a4e521a906581e421e6}{
+\index{bytecode\_\-local.h@{bytecode\_\-local.h}!hasPEInfo@{hasPEInfo}}
+\index{hasPEInfo@{hasPEInfo}!bytecode_local.h@{bytecode\_\-local.h}}
+\paragraph[{hasPEInfo}]{\setlength{\rightskip}{0pt plus 5cm}static force\_\-inline bool hasPEInfo (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{bytecode__local_8h_abfb2cd189ec07a4e521a906581e421e6}
+Returns whether PE information is available \begin{Desc}
+\item[\hyperlink{pe__pe000006}{PE}]\end{Desc}
+\begin{DoxyReturn}{Returns}
+true if PE information is available (in PE hooks) 
 \end{DoxyReturn}
 \hypertarget{bytecode__local_8h_a3c9b722b5ff4d35cfcd8de8a5c48a0ed}{
 \index{bytecode\_\-local.h@{bytecode\_\-local.h}!ilog2\_\-compat@{ilog2\_\-compat}}
@@ -1251,7 +1283,7 @@ ilog2\_\-compat for 0.96 compatibility, you should use \hyperlink{bytecode__api_
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a7480d681206faafd4c0f1923938dd5fe}
 Returns whether this is a PE32+ executable. \begin{Desc}
-\item[\hyperlink{pe__pe000006}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000007}{PE}]\end{Desc}
 \begin{DoxyReturn}{Returns}
 true if this is a PE32+ executable 
 \end{DoxyReturn}
@@ -1467,7 +1499,7 @@ Fills the specified buffer to the specified value. \begin{Desc}
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a783b0c34b69dfcdcc3c00e0172e53938}
 Read name of requested PE section. \begin{Desc}
-\item[\hyperlink{pe__pe000045}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000046}{PE}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[\mbox{\tt[out]} {\em name}]name of PE section \item[\mbox{\tt[in]} {\em n}]PE section requested \end{DoxyParams}
@@ -1486,7 +1518,7 @@ Read name of requested PE section. \begin{Desc}
 )\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
 \label{bytecode__local_8h_a59c863dbbe659efa59f38a45dfc0094c}
 read the specified amount of bytes from the PE file, starting at the address specified by RVA. \begin{Desc}
-\item[\hyperlink{pe__pe000052}{PE}]\end{Desc}
+\item[\hyperlink{pe__pe000053}{PE}]\end{Desc}
 
 \begin{DoxyParams}{Parameters}
 \item[{\em rva}]the Relative Virtual Address you want to read from (will be converted to file offset) \item[\mbox{\tt[out]} {\em buf}]destination buffer \item[{\em bufsize}]size of buffer \end{DoxyParams}
