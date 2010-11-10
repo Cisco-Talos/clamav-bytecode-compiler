@@ -19,6 +19,7 @@
 %  MA 02110-1301, USA.
 
 \documentclass[a4paper,titlepage,english]{book}
+\usepackage{geometry}
 \usepackage{lmodern}
 \usepackage[T1]{fontenc}
 \usepackage{textcomp}
@@ -47,6 +48,7 @@
 \usepackage{doxygen}
 \usepackage{makeidx}
 \usepackage{xcolor}
+\usepackage{xspace}
 %\makeindex
 \lstset{language=[GNU]C++}
 \lstset{escapeinside={(*@}{@*)}}
@@ -65,29 +67,34 @@
 \newrefformat{alg}{Algorithm~\ref{#1}}
 \newrefformat{prg}{Program~\ref{#1}}
 \newrefformat{apdx}{Appendix~\ref{#1}}
+
+\definecolor{LinkColor1}{rgb}{0.208,0.374,0.486}
+\definecolor{LinkColor2}{rgb}{0.216,0.439,0.388}
 \ifpdf
 % pdfLaTeX setup
     \usepackage[pdftex]{graphicx}
     \DeclareGraphicsExtensions{.pdf, .eps}   %%% standard extension for included graphics
     \pdfcompresslevel=9
-    \pdfobjcompresslevel=1
+    \pdfobjcompresslevel=2
     \pdfminorversion=5
     \usepackage[                %%% hyper-references for pdflatex
     bookmarks=true,%                   %%% generate bookmarks ...
     bookmarksnumbered=true,%           %%% ... with numbers
     bookmarksopen = true,
-    citecolor=red,
     anchorcolor=green,
     colorlinks=true,
 %    hyperindex=true,
     hyperfigures,
-    linkcolor=blue,
+    linkcolor=LinkColor1,
+    filecolor=LinkColor2,
+    menucolor=LinkColor2,
+    urlcolor=LinkColor2,
+    citecolor=LinkColor1,
     linktocpage,
     pagebackref,
     pdfpagelabels,
     pdfpagelayout=OneColumn,
     plainpages=false,
-    urlcolor=blue,
     hypertexnames=true,%              %%% needed for correct links to figures !!!
     linkbordercolor={0 0 1},           %%% blue frames around links
     pdfborder={0 0 0}]{hyperref}%      %%% pdfborder={0 0 1} is the default
@@ -139,19 +146,24 @@
 \definecolor{grey1}{gray}{0.8}
 \definecolor{grey2}{gray}{0.3}
 \definecolor{grey3}{gray}{0.6}
+\definecolor{TitleColor}{rgb}{0.208,0.374,0.486}
+\definecolor{NameColor}{rgb}{0.126,0.263,0.361}
 % Based on Antonina Liedtke's article in Linux+ 6/2003
+\newlength{\grlength}
+\setlength{\grlength}{\textwidth}
+\addtolength{\grlength}{-9mm}
 \def\greyp{%
     \unitlength=1mm%
     \begin{picture}(0,0)
-	\put(0,-1.5){\textcolor{grey1}{\rule{13cm}{5.3mm}}\textcolor{grey2}%
-	{\rule{9mm}{5.3mm}}\hss}
+	\put(0,-1.5){\textcolor{grey1}{\rule{\grlength}{5.3mm}}\textcolor{grey2}%
+	    {\rule{9mm}{5.3mm}}\hss}
     \end{picture}
 }
 \def\greypl{%
     \unitlength=1mm%
     \begin{picture}(0,0)
 	\put(0,-1.5){\textcolor{grey2}{\rule{9mm}{5.3mm}}\textcolor{grey1}%
-	{\rule{13cm}{5.3mm}}\hss}
+	{\rule{\grlength}{5.3mm}}\hss}
     \end{picture}
 }
 \fancyhead{}
@@ -162,24 +174,26 @@
 
 \titleformat{\chapter}[display]
 {\normalfont\Large\bfseries\sffamily}%
-{\textcolor{grey2}{\MakeUppercase%
+{\textcolor{TitleColor}{\MakeUppercase%
 {\chaptertitlename}\ \Huge\thechapter}%
 }%
-{0pt}{\Huge\bfseries\rmfamily\filright}%
+{0pt}{\Huge\bfseries\rmfamily\filright\textcolor{NameColor}}%
 [\vspace{-13pt}{\textcolor{grey3}%
 {\titlerule[3pt]}}]
 
 \titleformat{\section}
 {\normalfont\Large\bfseries\sffamily}%
-{\textcolor{grey2}{\Large\thesection.}%
-}{1ex}{}[\vspace{-13pt}{\textcolor{grey3}%
+{\textcolor{TitleColor}{\Large\thesection.}%
+}{1ex}{\textcolor{NameColor}}
+[\vspace{-13pt}{\textcolor{grey3}%
 {\titlerule[1.5pt]}}]
 
 \titleformat{\subsection}
 {\normalfont\large\bfseries}%
-{\textcolor{grey2}{\large\sffamily%
+{\textcolor{TitleColor}{\large\sffamily%
 \thesubsection.}}{1ex}%
-{}[\vspace{-10pt}{\textcolor{grey1}%
+{\textcolor{NameColor}}
+[\vspace{-10pt}{\textcolor{grey1}%
 {\titlerule[1pt]}}]
 
 \titlespacing*{\chapter}{0pt}{50pt}{20pt}
