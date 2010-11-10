@@ -69,7 +69,9 @@ enum FunctionalityLevels {
     FUNC_LEVEL_096_1,
     FUNC_LEVEL_096_1_dev=54,
     FUNC_LEVEL_096_2=54,
-    FUNC_LEVEL_096_2_dev
+    FUNC_LEVEL_096_2_dev,/* 0.93 too */
+    FUNC_LEVEL_096_4=56,
+    FUNC_LEVEL_097=57
 };
 
 /** Phase of PDF parsing */
