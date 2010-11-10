@@ -9,6 +9,7 @@ cp -v $CLAMAV_PATH/libclamav/execs.h clang/lib/Headers/bytecode_execs.h.tmp
 cp -v $CLAMAV_PATH/libclamav/pe.h clang/lib/Headers/bytecode_pe.h.tmp
 cp -v $CLAMAV_PATH/libclamav/disasm-common.h clang/lib/Headers/bytecode_disasm.h.tmp
 cp -v $CLAMAV_PATH/libclamav/bytecode_detect.h clang/lib/Headers/bytecode_detect.h
+sed -i '/^.*vinfo;/d' clang/lib/Headers/bytecode_execs.h.tmp
 sed -i 's/#include "cltypes.h"//' clang/lib/Headers/bytecode_execs.h.tmp
 sed -i 's/#include "hashtab.h"//' clang/lib/Headers/bytecode_execs.h.tmp
 sed -i '/^#include .*/d' clang/lib/Headers/bytecode_pe.h.tmp
