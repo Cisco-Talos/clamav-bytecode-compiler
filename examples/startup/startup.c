@@ -14,23 +14,23 @@ int entrypoint()
     switch (env.arch) {
     case arch_i386:
       disable_jit_if("i[34]86 detected, JIT needs pentium or better",0,
-                     !memcmp(env.cpu,"i386",4) ||
-                     !memcmp(env.cpu,"i486",4));
+                     !memcmp(env.cpu,"i386",5) ||
+                     !memcmp(env.cpu,"i486",5));
       /* FIXME: update embedded LLVM to 2.8 which correctly skips CMOV if CPU
        * doesn't support it.
        * For now disable JIT on CPUs without cmov */
       disable_jit_if("CPU doesn't support CMOV, would need LLVM 2.8 to work!",0,
-		     !memcmp(env.cpu,"i586",4) ||
-		     !memcmp(env.cpu,"pentium",7) ||
-		     !memcmp(env.cpu,"i686",4) ||
-		     !memcmp(env.cpu,"k6",2) ||
-		     !memcmp(env.cpu,"k6-2",4) ||
-		     !memcmp(env.cpu,"k6-3",4) ||
-		     !memcmp(env.cpu,"athlon",6) ||
-		     !memcmp(env.cpu,"athlon-tbird",12) ||
-		     !memcmp(env.cpu,"winchip-c6",10) ||
-		     !memcmp(env.cpu,"winchip2",8) ||
-		     !memcmp(env.cpu,"c3",2));
+		     !memcmp(env.cpu,"i586",5) ||
+		     !memcmp(env.cpu,"pentium",8) ||
+		     !memcmp(env.cpu,"i686",5) ||
+		     !memcmp(env.cpu,"k6",3) ||
+		     !memcmp(env.cpu,"k6-2",5) ||
+		     !memcmp(env.cpu,"k6-3",5) ||
+		     !memcmp(env.cpu,"athlon",7) ||
+		     !memcmp(env.cpu,"athlon-tbird",13) ||
+		     !memcmp(env.cpu,"winchip-c6",11) ||
+		     !memcmp(env.cpu,"winchip2",9) ||
+		     !memcmp(env.cpu,"c3",3));
       break;
     default:
       break;
