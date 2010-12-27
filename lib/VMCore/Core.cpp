@@ -1541,6 +1541,12 @@ LLVMValueRef LLVMGetPreviousInstruction(LLVMValueRef Inst) {
   return wrap(--I);
 }
 
+LLVMOpcode LLVMGetInstructionOpcode(LLVMValueRef Inst) {
+    if (Instruction *C = dyn_cast<Instruction>(unwrap(Inst)))
+	return (LLVMOpcode)C->getOpcode();
+    return (LLVMOpcode)0;
+}
+
 /*--.. Call and invoke instructions ........................................--*/
 
 unsigned LLVMGetInstructionCallConv(LLVMValueRef Instr) {

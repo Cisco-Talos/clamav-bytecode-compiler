@@ -185,6 +185,72 @@ module Fcmp : sig
   | True
 end
 
+(** The opcodes for LLVM instructions and constant expressions. *)
+module Opcode : sig
+  type t =
+  | Invalid (* not an instruction *)
+  (* Terminator Instructions *)
+  | Ret
+  | Br
+  | Switch
+  | IndirectBr
+  | Invoke
+  | Unwind
+  | Unreachable
+  (* Standard Binary Operators *)
+  | Add
+  | FAdd
+  | Sub
+  | FSub
+  | Mul
+  | FMul
+  | UDiv
+  | SDiv
+  | FDiv
+  | URem
+  | SRem
+  | FRem
+  (* Logical Operators *)
+  | Shl
+  | LShr
+  | AShr
+  | And
+  | Or
+  | Xor
+  (* Memory Operators *)
+  | Alloca
+  | Load
+  | Store
+  | GetElementPtr
+  (* Cast Operators *)
+  | Trunc
+  | ZExt
+  | SExt
+  | FPToUI
+  | FPToSI
+  | UIToFP
+  | SIToFP
+  | FPTrunc
+  | FPExt
+  | PtrToInt
+  | IntToPtr
+  | BitCast
+  (* Other Operators *)
+  | ICmp
+  | FCmp
+  | PHI
+  | Call
+  | Select
+  | UserOp1
+  | UserOp2
+  | VAArg
+  | ExtractElement
+  | InsertElement
+  | ShuffleVector
+  | ExtractValue
+  | InsertValue
+end
+
 
 (** {6 Iteration} *)
 
@@ -503,8 +569,6 @@ val dump_value : llvalue -> unit
  * with the value [new]. See the method [llvm::Value::replaceAllUsesWith]. *)
 val replace_all_uses_with : llvalue -> llvalue -> unit
 
-
-
 (* {6 Uses} *)
 
 (** [use_begin v] returns the first position in the use list for the value [v].
@@ -582,7 +646,7 @@ val is_null : llvalue -> bool
     otherwise. Similar to [llvm::isa<UndefValue>]. *)
 val is_undef : llvalue -> bool
 
-
+val constexpr_opcode : llvalue -> Opcode.t
 (** {7 Operations on instructions} *)
 
 (** [has_metadata i] returns whether or not the instruction [i] has any
@@ -626,6 +690,10 @@ val const_int : lltype -> int -> llvalue
     [i]. See the method [llvm::ConstantInt::get]. *)
 val const_of_int64 : lltype -> Int64.t -> bool -> llvalue
 
+(** [int64_of_const c] returns the int64 value of the [c] constant integer.
+ * None is returned if this is not an integer constant, or bitwidth exceeds 64.
+ * See the method [llvm::ConstantInt::getSExtValue].*)
+val int64_of_const : llvalue -> Int64.t option
 
 (** [const_int_of_string ty s r] returns the integer constant of type [ty] and
  * value [s], with the radix [r]. See the method [llvm::ConstantInt::get]. *)
@@ -1470,6 +1538,7 @@ val instr_pred : llvalue -> (llbasicblock, llvalue) llrev_pos
     [f1,...,fN] are the instructions of basic block [bb]. Tail recursive. *)
 val fold_right_instrs: (llvalue -> 'a -> 'a) -> llbasicblock -> 'a -> 'a
 
+val instr_opcode : llvalue -> Opcode.t
 
 (** {7 Operations on call sites} *)
 
