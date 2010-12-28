@@ -413,6 +413,48 @@ CAMLprim LLVMTypeRef llvm_type_of(LLVMValueRef Val) {
   return LLVMTypeOf(Val);
 }
 
+/* keep in sync with ValueKind.t */
+enum ValueKind {
+  Argument=0,
+  BasicBlock,
+  InlineAsm,
+  ConstantAggregateZero,
+  ConstantArray,
+  ConstantExpr,
+  ConstantFP,
+  ConstantInt,
+  ConstantPointerNull,
+  ConstantStruct,
+  ConstantVector,
+  Function,
+  GlobalAlias,
+  GlobalVariable,
+  UndefValue,
+  Instruction
+};
+
+/* llvalue -> ValueKind.t */
+#define DEFINE_CASE(Val, Kind) \
+    do {if (LLVMIsA##Kind(Val)) return Val_int(Kind);} while(0)
+
+CAMLprim value llvm_classify_value(LLVMValueRef Val) {
+    if (LLVMIsAConstant(Val)) {
+	DEFINE_CASE(Val, ConstantAggregateZero);
+	DEFINE_CASE(Val, ConstantArray);
+	DEFINE_CASE(Val, ConstantExpr);
+	DEFINE_CASE(Val, ConstantFP);
+	DEFINE_CASE(Val, ConstantInt);
+	DEFINE_CASE(Val, ConstantPointerNull);
+	DEFINE_CASE(Val, ConstantStruct);
+	DEFINE_CASE(Val, ConstantVector);
+    }
+    DEFINE_CASE(Val, Function);
+    DEFINE_CASE(Val, GlobalAlias);
+    DEFINE_CASE(Val, GlobalVariable);
+    DEFINE_CASE(Val, UndefValue);
+    return Val_int(Instruction);
+}
+
 /* llvalue -> string */
 CAMLprim value llvm_value_name(LLVMValueRef Val) {
   return copy_string(LLVMGetValueName(Val));
@@ -533,7 +575,7 @@ CAMLprim LLVMValueRef llvm_const_of_int64(LLVMTypeRef IntTy, value N,
 /* llvalue -> Int64.t */
 CAMLprim value llvm_int64_of_const(LLVMValueRef Const)
 {
-    CAMLparam1(Const);
+    CAMLparam0();
     if (LLVMIsAConstantInt(Const) &&
 	LLVMGetIntTypeWidth(LLVMTypeOf(Const)) <= 64) {
 	value Option = alloc(1, 0);

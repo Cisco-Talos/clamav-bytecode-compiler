@@ -37,6 +37,26 @@ module TypeKind = struct
   | Metadata
 end
 
+module ValueKind = struct
+  type t =
+  | Argument
+  | BasicBlock
+  | InlineAsm
+  | ConstantAggregateZero
+  | ConstantArray
+  | ConstantExpr
+  | ConstantFP
+  | ConstantInt
+  | ConstantPointerNull
+  | ConstantStruct
+  | ConstantVector
+  | Function
+  | GlobalAlias
+  | GlobalVariable
+  | UndefValue
+  | Instruction
+end
+
 module Linkage = struct
   type t =
   | External
@@ -296,7 +316,7 @@ external handle_to_type : lltype -> lltypehandle = "llvm_handle_to_type"
 external type_of_handle : lltypehandle -> lltype = "llvm_type_of_handle"
 external refine_type : lltype -> lltype -> unit = "llvm_refine_type"
 
-
+external classify_value : llvalue -> ValueKind.t = "llvm_classify_value"
 (*===-- Values ------------------------------------------------------------===*)
 external type_of : llvalue -> lltype = "llvm_type_of"
 external value_name : llvalue -> string = "llvm_value_name"

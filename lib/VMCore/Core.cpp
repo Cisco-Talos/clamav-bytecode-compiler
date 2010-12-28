@@ -402,7 +402,7 @@ void LLVMSetValueName(LLVMValueRef Val, const char *Name) {
 }
 
 void LLVMDumpValue(LLVMValueRef Val) {
-  unwrap(Val)->dump();
+    unwrap(Val)->dump();
 }
 
 void LLVMReplaceAllUsesWith(LLVMValueRef OldVal, LLVMValueRef NewVal) {

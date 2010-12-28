@@ -74,6 +74,28 @@ module TypeKind : sig
   | Metadata
 end
 
+(** The kind of an [llvalue], the result of [classify_value v].
+ * See the various [LLVMIsA*] functions. *)
+module ValueKind : sig
+  type t =
+  | Argument
+  | BasicBlock
+  | InlineAsm
+  | ConstantAggregateZero
+  | ConstantArray
+  | ConstantExpr
+  | ConstantFP
+  | ConstantInt
+  | ConstantPointerNull
+  | ConstantStruct
+  | ConstantVector
+  | Function
+  | GlobalAlias
+  | GlobalVariable
+  | UndefValue
+  | Instruction
+end
+
 (** The linkage of a global value, accessed with {!linkage} and
     {!set_linkage}. See [llvm::GlobalValue::LinkageTypes]. *)
 module Linkage : sig
@@ -550,6 +572,8 @@ val refine_type : lltype -> lltype -> unit
 (** [type_of v] returns the type of the value [v].
     See the method [llvm::Value::getType]. *)
 val type_of : llvalue -> lltype
+
+val classify_value : llvalue -> ValueKind.t
 
 (** [value_name v] returns the name of the value [v]. For global values, this is
     the symbol name. For instructions and basic blocks, it is the SSA register
