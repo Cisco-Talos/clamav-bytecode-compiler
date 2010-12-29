@@ -17,3 +17,21 @@ UsedComponents := core
 UsedOcamLibs := llvm
 
 include ../Makefile.ocaml
+
+all-local:: $(OcamlDir)/META.llvm
+install-local:: install-meta
+uninstall-local:: uninstall-meta
+
+DestMETA := $(PROJ_libocamldir)/META.llvm
+
+$(OcamlDir)/META.llvm: META.llvm
+	$(Verb) $(CP) -f $< $@
+
+install-meta:: $(ObjDir)/META.llvm
+	$(Echo) "Install $(BuildMode) $(DestMETA)"
+	$(Verb) $(MKDIR) $(PROJ_libocamldir)
+	$(Verb) $(DataInstall) META.llvm "$(DestMETA)"
+
+uninstall-meta::
+	$(Echo) "Uninstalling $(DestMETA)"
+	-$(Verb) $(RM) -f "$(DestMETA)"
