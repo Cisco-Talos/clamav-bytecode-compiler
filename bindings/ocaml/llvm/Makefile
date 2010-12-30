@@ -18,11 +18,14 @@ UsedOcamLibs := llvm
 
 include ../Makefile.ocaml
 
-all-local:: $(OcamlDir)/META.llvm
+all-local:: copy-meta
 install-local:: install-meta
 uninstall-local:: uninstall-meta
 
 DestMETA := $(PROJ_libocamldir)/META.llvm
+
+# Easy way of generating META in the objdir
+copy-meta: $(OcamlDir)/META.llvm
 
 $(OcamlDir)/META.llvm: META.llvm
 	$(Verb) $(CP) -f $< $@
