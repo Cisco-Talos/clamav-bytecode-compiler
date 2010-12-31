@@ -1123,26 +1123,29 @@ let concat2 sep arr =
   end;
   !s
 
-let rec string_of_lltype ty =
-  (* FIXME: stop infinite recursion! :) *)
+let rec string_of_lltype_r visited ty =
+  let foldpos l a = if l = ty then 1 else if a = 0 then 0 else (a+1) in
+  let recpos = List.fold_right foldpos visited 0 in
+  if recpos > 0 then "\\" ^ (string_of_int recpos)
+  else let new_visited = ty :: visited in
   match classify_type ty with
     TypeKind.Integer -> "i" ^ string_of_int (integer_bitwidth ty)
-  | TypeKind.Pointer -> (string_of_lltype (element_type ty)) ^ "*"
+  | TypeKind.Pointer -> (string_of_lltype_r new_visited (element_type ty)) ^ "*"
   | TypeKind.Struct ->
       let s = "{ " ^ (concat2 ", " (
-                Array.map string_of_lltype (struct_element_types ty)
+                Array.map (string_of_lltype_r new_visited) (struct_element_types ty)
               )) ^ " }" in
       if is_packed ty
         then "<" ^ s ^ ">"
         else s
   | TypeKind.Array -> "["   ^ (string_of_int (array_length ty)) ^
-                      " x " ^ (string_of_lltype (element_type ty)) ^ "]"
+                      " x " ^ (string_of_lltype_r new_visited (element_type ty)) ^ "]"
   | TypeKind.Vector -> "<"   ^ (string_of_int (vector_size ty)) ^
-                       " x " ^ (string_of_lltype (element_type ty)) ^ ">"
+                       " x " ^ (string_of_lltype_r new_visited (element_type ty)) ^ ">"
   | TypeKind.Opaque -> "opaque"
-  | TypeKind.Function -> string_of_lltype (return_type ty) ^
+  | TypeKind.Function -> string_of_lltype_r new_visited (return_type ty) ^
                          " (" ^ (concat2 ", " (
-                           Array.map string_of_lltype (param_types ty)
+                           Array.map (string_of_lltype_r new_visited) (param_types ty)
                          )) ^ ")"
   | TypeKind.Label -> "label"
   | TypeKind.Ppc_fp128 -> "ppc_fp128"
@@ -1152,3 +1155,5 @@ let rec string_of_lltype ty =
   | TypeKind.Float -> "float"
   | TypeKind.Void -> "void"
   | TypeKind.Metadata -> "metadata"
+
+let string_of_lltype ty = string_of_lltype_r [] ty;;
