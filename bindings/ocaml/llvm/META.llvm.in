@@ -4,7 +4,7 @@ description = "Low Level Virtual Machine OCaml bindings"
 archive(byte) = "llvm.cma"
 archive(native) = "llvm.cmxa"
 directory = "."
-linkopts = "-cc g++"
+linkopts = "-ccopt -lstdc++"
 
 package "analysis" (
     requires = "llvm"
