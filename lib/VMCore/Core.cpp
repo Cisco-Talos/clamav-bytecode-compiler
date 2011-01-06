@@ -546,6 +546,8 @@ unsigned LLVMGetNamedMetadataNumOperands(LLVMModuleRef M, const char* name)
 void LLVMGetNamedMetadataOperands(LLVMModuleRef M, const char* name, LLVMValueRef *Dest)
 {
     NamedMDNode *N = unwrap(M)->getNamedMetadata(name);
+    if (!N)
+	return;
     for (unsigned i=0;i<N->getNumOperands();i++)
 	Dest[i] = wrap(N->getOperand(i));
 }
