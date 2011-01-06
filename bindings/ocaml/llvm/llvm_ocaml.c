@@ -581,6 +581,14 @@ CAMLprim value llvm_get_mdstring(LLVMValueRef V) {
     CAMLreturn(Val_int(0));
 }
 
+CAMLprim value llvm_get_namedmd(LLVMModuleRef M, value name)
+{
+  CAMLparam1(name);
+  CAMLlocal1(Nodes);
+  Nodes = alloc(LLVMGetNamedMetadataNumOperands(M, String_val(name)), 0);
+  LLVMGetNamedMetadataOperands(M, String_val(name), (LLVMValueRef *) Nodes);
+  CAMLreturn(Nodes);
+}
 /*--... Operations on scalar constants .....................................--*/
 
 /* lltype -> int -> llvalue */

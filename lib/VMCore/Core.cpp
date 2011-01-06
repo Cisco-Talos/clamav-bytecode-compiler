@@ -535,6 +535,21 @@ const char *LLVMGetMDString(LLVMValueRef V, unsigned* Len) {
     return 0;
 }
 
+unsigned LLVMGetNamedMetadataNumOperands(LLVMModuleRef M, const char* name)
+{
+    if (NamedMDNode *N = unwrap(M)->getNamedMetadata(name)) {
+	return N->getNumOperands();
+    }
+    return 0;
+}
+
+void LLVMGetNamedMetadataOperands(LLVMModuleRef M, const char* name, LLVMValueRef *Dest)
+{
+    NamedMDNode *N = unwrap(M)->getNamedMetadata(name);
+    for (unsigned i=0;i<N->getNumOperands();i++)
+	Dest[i] = wrap(N->getOperand(i));
+}
+
 /*--.. Operations on scalar constants ......................................--*/
 
 LLVMValueRef LLVMConstInt(LLVMTypeRef IntTy, unsigned long long N,

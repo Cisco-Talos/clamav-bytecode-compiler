@@ -708,6 +708,11 @@ val mdnode : llcontext -> llvalue array -> llvalue
  * See the method [llvm::MDString::getString] *)
 val get_mdstring : llvalue -> string option
 
+(** [get_named_metadata m name] return all the MDNodes belonging to the named
+ * metadata (if any).
+ * See the method [llvm::NamedMDNode::getOperand]. *)
+val get_named_metadata : llmodule -> string -> llvalue array
+
 (** {7 Operations on scalar constants} *)
 
 (** [const_int ty i] returns the integer constant of type [ty] and value [i].
