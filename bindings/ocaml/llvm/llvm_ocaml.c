@@ -24,6 +24,7 @@
 #include "llvm/Config/config.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 /* Can't use the recommended caml_named_value mechanism for backwards
@@ -415,7 +416,8 @@ CAMLprim LLVMTypeRef llvm_type_of(LLVMValueRef Val) {
 
 /* keep in sync with ValueKind.t */
 enum ValueKind {
-  Argument=0,
+  NullValue=0,
+  Argument,
   BasicBlock,
   InlineAsm,
   ConstantAggregateZero,
@@ -438,6 +440,8 @@ enum ValueKind {
     do {if (LLVMIsA##Kind(Val)) return Val_int(Kind);} while(0)
 
 CAMLprim value llvm_classify_value(LLVMValueRef Val) {
+    if (!Val)
+	return Val_int(NullValue);
     if (LLVMIsAConstant(Val)) {
 	DEFINE_CASE(Val, ConstantAggregateZero);
 	DEFINE_CASE(Val, ConstantArray);
@@ -557,6 +561,24 @@ CAMLprim LLVMValueRef llvm_mdstring(LLVMContextRef C, value S) {
 CAMLprim LLVMValueRef llvm_mdnode(LLVMContextRef C, value ElementVals) {
   return LLVMMDNodeInContext(C, (LLVMValueRef*) Op_val(ElementVals),
                              Wosize_val(ElementVals));
+}
+
+/* llvalue -> string option */
+CAMLprim value llvm_get_mdstring(LLVMValueRef V) {
+    CAMLparam0();
+    const char *S;
+    unsigned Len;
+
+    if ((S = LLVMGetMDString(V, &Len))) {
+	CAMLlocal2(Option, Str);
+
+	Str = caml_alloc_string(Len);
+	memcpy(String_val(Str), S, Len);
+	Option = alloc(1,0);
+	Store_field(Option, 0, Str);
+	CAMLreturn(Option);
+    }
+    CAMLreturn(Val_int(0));
 }
 
 /*--... Operations on scalar constants .....................................--*/

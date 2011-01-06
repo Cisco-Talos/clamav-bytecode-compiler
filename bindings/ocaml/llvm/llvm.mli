@@ -78,6 +78,7 @@ end
  * See the various [LLVMIsA*] functions. *)
 module ValueKind : sig
   type t =
+  | NullValue
   | Argument
   | BasicBlock
   | InlineAsm
@@ -703,6 +704,9 @@ val mdstring : llcontext -> string -> llvalue
     See the method [llvm::MDNode::get]. *)
 val mdnode : llcontext -> llvalue array -> llvalue
 
+(** [get_mdstring v] returns the MDString.
+ * See the method [llvm::MDString::getString] *)
+val get_mdstring : llvalue -> string option
 
 (** {7 Operations on scalar constants} *)
 

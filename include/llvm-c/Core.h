@@ -536,6 +536,9 @@ LLVMValueRef LLVMMDString(const char *Str, unsigned SLen);
 LLVMValueRef LLVMMDNodeInContext(LLVMContextRef C, LLVMValueRef *Vals,
                                  unsigned Count);
 LLVMValueRef LLVMMDNode(LLVMValueRef *Vals, unsigned Count);
+const char  *LLVMGetMDString(LLVMValueRef V, unsigned* Len);
+int LLVMGetMDNodeNumOperands(LLVMValueRef V);
+LLVMValueRef *LLVMGetMDNodeOperand(LLVMValueRef V, unsigned i);
 
 /* Operations on scalar constants */
 LLVMValueRef LLVMConstInt(LLVMTypeRef IntTy, unsigned long long N,

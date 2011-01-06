@@ -39,6 +39,7 @@ end
 
 module ValueKind = struct
   type t =
+  | NullValue
   | Argument
   | BasicBlock
   | InlineAsm
@@ -381,6 +382,7 @@ external clear_metadata : llvalue -> int -> unit = "llvm_clear_metadata"
 (*--... Operations on metadata .......,.....................................--*)
 external mdstring : llcontext -> string -> llvalue = "llvm_mdstring"
 external mdnode : llcontext -> llvalue array -> llvalue = "llvm_mdnode"
+external get_mdstring : llvalue -> string option = "llvm_get_mdstring"
 
 (*--... Operations on scalar constants .....................................--*)
 external const_int : lltype -> int -> llvalue = "llvm_const_int"

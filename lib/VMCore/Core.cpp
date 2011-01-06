@@ -456,7 +456,10 @@ LLVMValueRef LLVMGetUsedValue(LLVMUseRef U) {
 
 /*--.. Operations on Users .................................................--*/
 LLVMValueRef LLVMGetOperand(LLVMValueRef Val, unsigned Index) {
-  return wrap(unwrap<User>(Val)->getOperand(Index));
+  Value *V = unwrap(Val);
+  if (MDNode *MD = dyn_cast<MDNode>(V))
+      return wrap(MD->getOperand(Index));
+  return wrap(cast<User>(V)->getOperand(Index));
 }
 
 void LLVMSetOperand(LLVMValueRef Val, unsigned Index, LLVMValueRef Op) {
@@ -464,7 +467,10 @@ void LLVMSetOperand(LLVMValueRef Val, unsigned Index, LLVMValueRef Op) {
 }
 
 int LLVMGetNumOperands(LLVMValueRef Val) {
-  return unwrap<User>(Val)->getNumOperands();
+  Value *V = unwrap(Val);
+  if (MDNode *MD = dyn_cast<MDNode>(V))
+      return MD->getNumOperands();
+  return cast<User>(V)->getNumOperands();
 }
 
 /*--.. Operations on constants of any type .................................--*/
@@ -518,6 +524,15 @@ LLVMValueRef LLVMMDNodeInContext(LLVMContextRef C, LLVMValueRef *Vals,
 
 LLVMValueRef LLVMMDNode(LLVMValueRef *Vals, unsigned Count) {
   return LLVMMDNodeInContext(LLVMGetGlobalContext(), Vals, Count);
+}
+
+const char *LLVMGetMDString(LLVMValueRef V, unsigned* Len) {
+    if (const MDString *S = dyn_cast<MDString>(unwrap(V))) {
+	*Len = S->getString().size();
+	return S->getString().data();
+    }
+    *Len = 0;
+    return 0;
 }
 
 /*--.. Operations on scalar constants ......................................--*/
