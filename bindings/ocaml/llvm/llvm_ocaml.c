@@ -420,6 +420,9 @@ enum ValueKind {
   Argument,
   BasicBlock,
   InlineAsm,
+  MDNode,
+  MDString,
+  BlockAddress,
   ConstantAggregateZero,
   ConstantArray,
   ConstantExpr,
@@ -443,6 +446,7 @@ CAMLprim value llvm_classify_value(LLVMValueRef Val) {
     if (!Val)
 	return Val_int(NullValue);
     if (LLVMIsAConstant(Val)) {
+	DEFINE_CASE(Val, BlockAddress);
 	DEFINE_CASE(Val, ConstantAggregateZero);
 	DEFINE_CASE(Val, ConstantArray);
 	DEFINE_CASE(Val, ConstantExpr);
@@ -452,11 +456,20 @@ CAMLprim value llvm_classify_value(LLVMValueRef Val) {
 	DEFINE_CASE(Val, ConstantStruct);
 	DEFINE_CASE(Val, ConstantVector);
     }
-    DEFINE_CASE(Val, Function);
-    DEFINE_CASE(Val, GlobalAlias);
-    DEFINE_CASE(Val, GlobalVariable);
+    if (LLVMIsAInstruction(Val))
+	return Val_int(Instruction);
+    if (LLVMIsAGlobalValue(Val)) {
+	DEFINE_CASE(Val, Function);
+	DEFINE_CASE(Val, GlobalAlias);
+	DEFINE_CASE(Val, GlobalVariable);
+    }
+    DEFINE_CASE(Val, Argument);
+    DEFINE_CASE(Val, BasicBlock);
+    DEFINE_CASE(Val, InlineAsm);
+    DEFINE_CASE(Val, MDNode);
+    DEFINE_CASE(Val, MDString);
     DEFINE_CASE(Val, UndefValue);
-    return Val_int(Instruction);
+    failwith("Unknown Value class");
 }
 
 /* llvalue -> string */

@@ -43,6 +43,9 @@ module ValueKind = struct
   | Argument
   | BasicBlock
   | InlineAsm
+  | MDNode
+  | MDString
+  | BlockAddress
   | ConstantAggregateZero
   | ConstantArray
   | ConstantExpr

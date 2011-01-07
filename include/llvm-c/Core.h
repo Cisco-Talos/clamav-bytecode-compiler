@@ -430,8 +430,11 @@ void LLVMDisposeTypeHandle(LLVMTypeHandleRef TypeHandle);
   macro(Argument)                           \
   macro(BasicBlock)                         \
   macro(InlineAsm)                          \
+  macro(MDNode)                             \
+  macro(MDString)                           \
   macro(User)                               \
     macro(Constant)                         \
+      macro(BlockAddress)                   \
       macro(ConstantAggregateZero)          \
       macro(ConstantArray)                  \
       macro(ConstantExpr)                   \
@@ -451,14 +454,15 @@ void LLVMDisposeTypeHandle(LLVMTypeHandleRef TypeHandle);
         macro(IntrinsicInst)                \
           macro(DbgInfoIntrinsic)           \
             macro(DbgDeclareInst)           \
+          macro(EHExceptionInst)            \
           macro(EHSelectorInst)             \
           macro(MemIntrinsic)               \
             macro(MemCpyInst)               \
             macro(MemMoveInst)              \
             macro(MemSetInst)               \
       macro(CmpInst)                        \
-      macro(FCmpInst)                       \
-      macro(ICmpInst)                       \
+        macro(FCmpInst)                     \
+        macro(ICmpInst)                     \
       macro(ExtractElementInst)             \
       macro(GetElementPtrInst)              \
       macro(InsertElementInst)              \
@@ -469,6 +473,7 @@ void LLVMDisposeTypeHandle(LLVMTypeHandleRef TypeHandle);
       macro(StoreInst)                      \
       macro(TerminatorInst)                 \
         macro(BranchInst)                   \
+        macro(IndirectBrInst)               \
         macro(InvokeInst)                   \
         macro(ReturnInst)                   \
         macro(SwitchInst)                   \

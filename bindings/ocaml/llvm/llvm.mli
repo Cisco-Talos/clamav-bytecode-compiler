@@ -82,6 +82,9 @@ module ValueKind : sig
   | Argument
   | BasicBlock
   | InlineAsm
+  | MDNode
+  | MDString
+  | BlockAddress
   | ConstantAggregateZero
   | ConstantArray
   | ConstantExpr
