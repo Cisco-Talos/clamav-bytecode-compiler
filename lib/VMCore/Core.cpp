@@ -1579,6 +1579,12 @@ LLVMOpcode LLVMGetInstructionOpcode(LLVMValueRef Inst) {
     return (LLVMOpcode)0;
 }
 
+LLVMIntPredicate LLVMGetICmpPredicate(LLVMValueRef Inst) {
+    if (ICmpInst *I = dyn_cast<ICmpInst>(unwrap(Inst)))
+	return (LLVMIntPredicate)I->getPredicate();
+    return (LLVMIntPredicate)0;
+}
+
 /*--.. Call and invoke instructions ........................................--*/
 
 unsigned LLVMGetInstructionCallConv(LLVMValueRef Instr) {

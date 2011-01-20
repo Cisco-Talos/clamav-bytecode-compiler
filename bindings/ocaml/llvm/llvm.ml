@@ -813,6 +813,8 @@ external instr_pred : llvalue -> (llbasicblock, llvalue) llrev_pos
 
 external instr_opcode : llvalue -> Opcode.t = "llvm_instr_get_opcode"
 
+external instr_icmp_predicate : llvalue -> Icmp.t option = "llvm_instr_icmp_predicate"
+
 let rec iter_instrs_range f i e =
   if i = e then () else
   match i with

@@ -1576,6 +1576,8 @@ val fold_right_instrs: (llvalue -> 'a -> 'a) -> llbasicblock -> 'a -> 'a
 
 val instr_opcode : llvalue -> Opcode.t
 
+val instr_icmp_predicate : llvalue -> ICmp.t option
+
 (** {7 Operations on call sites} *)
 
 (** [instruction_call_conv ci] is the calling convention for the call or invoke
