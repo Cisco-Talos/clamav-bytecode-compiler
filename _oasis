@@ -1,0 +1,133 @@
+OASISFormat: 0.2
+OCamlVersion: >= 3.11.0
+Name:        ClamAV Bytecode Compiler
+Version:     0.97dev
+Synopsis:    Compiles a C-like language to ClamAV 0.97+ bytecode
+Description:
+  Clam AntiVirus Bytecode Compiler compiles a C-like language into
+  ClamAV bytecode (.cbc files), that libclamav can load and run.
+  It uses Clang as a frontend, and a custom LLVM backend.
+  .
+  Uses of bytecode:
+   - write more complicated heuristic/algorithmic detections that would
+   tipically require a pe.c update
+   - write unpackers
+   - write (limited) emulators
+   - workarounds bugs in libclamav (in some limited cases)
+  .
+  Features of compiler:
+   - preincluded headers
+   - it accepts a C-like language like input (but not the full language)
+   - bounds and div#0 checks are inserted as needed
+   - generates endian-independent and portable code
+   - fixed size integers and pointers
+   - thread safe: no global state
+   - no external/libc calls, only a safe list of libclamav APIs are available
+   - error in bytecode doesn't abort whole program
+   - rejects unsafe / non-portable code conservatively
+  .
+  Planned features:
+   - write regular expressions matchers
+   - DSL for matching regular expressions and file formats
+  .
+  Bytecodes are usually written specifically for the language that this compiler
+  supports, including other C code usually requires porting (if possible at all).
+
+Authors:     Török Edwin
+Copyrights:  (C) 2010 Sourcefire Inc.
+License:     GPL-2.0
+LicenseFile: COPYING
+Plugins:     DevFiles (0.2), StdFiles (0.2)
+BuildTools:  ocamlbuild, make
+BuildDepends: unix
+HomePage:    http://www.clamav.net
+
+Flag "fastbuild"
+  Description: "don't build LLVM"
+  Default: false
+
+if !flag(fastbuild)
+    PreConfCommand:   echo "Configuring LLVM" &&
+                  mkdir -p obj/ &&
+                  cd obj &&
+                  ../3rdparty/llvm-2.8/configure --enable-optimized --enable-targets=x86 --enable-assertions --prefix=$prefix &&
+                  make -C bindings/ocaml/llvm copy-meta
+
+if !flag(fastbuild)
+    PreBuildCommand:  $make -s -j6 -C obj/ libs-only
+                      $make -s -j6 -C obj/bindings/ocaml all
+                      $make -s -j6 -C obj/tools/clang libs-only
+                      $make -s -j6 -C obj/tools/llvm-as
+if !flag(fastbuild)
+    PostDistcleanCommand: $make -C obj/ distclean -s -j6
+PostInstallCommand: $make -C obj/tools/clang/lib/Headers install -j6 DESTDIR=$destdir
+PostUninstallCommand: $make -C obj/tools/clang/lib/Headers uninstall -j6 DESTDIR=$destdir
+#PostCleanCommand: $make -C obj/ clean -s -j6
+
+SourceRepository main
+  Type:     git
+  Location: http://git.clamav.net/clamav-bytecode-compiler.git
+  Browser:  http://git.clamav.net/gitweb?p=clamav-bytecode-compiler.git
+  Branch:   clambc-0.97
+
+Library "clambc-backend"
+  Path: src
+  BuildTools+: camlp4r
+  Install: false
+  BuildDepends: llvm (>= 2.8), llvm.analysis (>= 2.8), llvm.bitreader (>= 2.8), llvm.ipo (>= 2.8), llvm.scalar_opts (>= 2.8), llvm.target (>= 2.8), cryptokit, unix, str
+  Modules: Compiler
+  CompiledObject: Best
+
+Executable "clambc-compiler"
+  Path:       src
+  BuildTools+: camlp4r
+  MainIs:     main.ml
+  Install: true
+  BuildDepends: clambc-backend
+  CompiledObject: Byte
+  NativeOpt: -nodynlink
+
+Flag "tests"
+  Description: Build and run tests
+  Default: true
+
+Flag "bench"
+  Description: Build benchmarks
+  Default: false
+
+Executable "clambctest_nat"
+ Install: false
+ Build$:  flag(tests) && flag(is_native)
+ Path:    tests/
+ MainIs:  test.ml
+ BuildDepends: oUnit, clambc-backend
+ CompiledObject: Native
+
+Executable "clambctest_byte"
+ Install: false
+ Build$:    flag(tests) && (!flag(is_native) || flag(runbothtests))
+ Path:    tests/
+ MainIs:  test.ml
+ BuildDepends: oUnit, clambc-backend
+ CompiledObject: Byte
+
+Executable "clambcbench"
+ Build$: flag(bench) && flag(is_native)
+ Install: false
+ Path: tests/
+ MainIs: bench.ml
+ BuildDepends: clambc-backend
+ CompiledObject: Native
+
+Test "Unit tests (native)"
+  Command: $clambctest_nat
+  Run$:    flag(tests) && flag(is_native)
+
+Flag "runbothtests"
+  Description: "Run both bytecode and native tests"
+  Default: false
+
+Test "Unit tests (bytecode)"
+  Command: $clambctest_byte
+  Run$:    flag(tests) && (!flag(is_native) || flag(runbothtests))
+
