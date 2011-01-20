@@ -1,5 +1,8 @@
 _build
+obj
 *.native
 *.byte
 *.d.byte
 *.p.native
+setup.log
+setup.data
