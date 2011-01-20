@@ -1,4 +1,5 @@
 #!/bin/sh
+export OCAMLPATH=`pwd`/obj/Release+Asserts/lib/ocaml
 
 # OASIS_START
 # DO NOT EDIT (digest: ed33e59fe00e48bc31edf413bbc8b8d6)
