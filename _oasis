@@ -51,15 +51,16 @@ if !flag(fastbuild)
                   mkdir -p obj/ &&
                   cd obj &&
                   ../3rdparty/llvm-2.8/configure --enable-optimized --enable-targets=x86 --enable-assertions --prefix=$prefix &&
+                  mkdir Release+Asserts/lib/ocaml -p &&
                   cp bindings/ocaml/llvm/META.llvm Release+Asserts/lib/ocaml/
 
 if !flag(fastbuild)
-    PreBuildCommand:  $make -s -j6 -C obj/ libs-only
-                      $make -s -j6 -C obj/bindings/ocaml all
-                      # make sure dirs exist by running a dummy rule
-                      $make -s -j6 -C obj/tools ONLY_TOOLS="llvm-as clang" unitcheck
-                      $make -s -j6 -C obj/tools ONLY_TOOLS="llvm-as"
+    PreBuildCommand:  $make -s -j6 -C obj/ libs-only &&
+                      $make -s -j6 -C obj/bindings all &&
+                      $make -s -j6 -C obj/tools ONLY_TOOLS="llvm-as clang" unitcheck &&
+                      $make -s -j6 -C obj/tools ONLY_TOOLS="llvm-as" &&
                       $make -s -j6 -C obj/tools/clang libs-only
+# make sure dirs exist by running a dummy rule - unitcheck
 
 if !flag(fastbuild)
     PostDistcleanCommand: $make -C obj/ distclean -s -j6
