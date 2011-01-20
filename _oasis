@@ -57,7 +57,7 @@ if !flag(fastbuild)
     PreBuildCommand:  $make -s -j6 -C obj/ libs-only
                       $make -s -j6 -C obj/bindings/ocaml all
                       $make -s -j6 -C obj/tools/clang libs-only
-                      $make -s -j6 -C obj/tools/llvm-as
+		      $make -s -j6 -C obj/tools ONLY_TOOLS=llvm-as
 if !flag(fastbuild)
     PostDistcleanCommand: $make -C obj/ distclean -s -j6
 PostInstallCommand: $make -C obj/tools/clang/lib/Headers install -j6 DESTDIR=$destdir
