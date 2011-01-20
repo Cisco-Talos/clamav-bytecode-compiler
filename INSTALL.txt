@@ -1,0 +1,41 @@
+(* OASIS_START *)
+(* DO NOT EDIT (digest: d1080828364d5ae40317fdc68feae359) *)
+This is the INSTALL file for the ClamAV Bytecode Compiler distribution.
+
+This package uses OASIS to generate its build system. See section OASIS for
+full information. 
+
+Dependencies
+============
+
+In order to compile this package, you will need:
+* ocaml (>= 3.11.0) for all, test Unit tests (bytecode),
+  test Unit tests (native)
+* findlib
+* llvm (>= 2.8) for library clambc-backend
+* cryptokit for library clambc-backend
+* make for all, test Unit tests (bytecode), test Unit tests (native)
+* oUnit for executable clambctest_byte, executable clambctest_nat
+
+Installing
+==========
+
+1. Uncompress source directory and got to the root of the package
+2. Run 'ocaml setup.ml -configure'
+3. Run 'ocaml setup.ml -build'
+4. Run 'ocaml setup.ml -install'
+
+Uninstalling
+============
+
+1. Go to the root of the package 
+2. Run 'ocaml setup.ml -uninstall'
+
+OASIS
+=====
+
+OASIS is a software that helps to write setup.ml using a simple '_oasis'
+configuration file. The generated setup only depends on standard OCaml
+installation, no additional library is required.
+
+(* OASIS_STOP *)

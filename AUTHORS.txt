@@ -1,0 +1,5 @@
+(* OASIS_START *)
+(* DO NOT EDIT (digest: 31a8c40ad80d4b7ec605b38ca9a275fe) *)
+Authors of ClamAV Bytecode Compiler
+Török Edwin
+(* OASIS_STOP *)

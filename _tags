@@ -1,0 +1,74 @@
+# OASIS_START
+# DO NOT EDIT (digest: 73949108b8b25b6c7ca750fc03553c48)
+# Library clambc-backend
+"src": include
+# Executable clambc-compiler
+"src/main.byte": oasis_executable_clambc_compiler_native
+<src/*.ml{,i}>: oasis_executable_clambc_compiler_native
+"src/main.byte": use_clambc-backend
+"src/main.byte": pkg_unix
+"src/main.byte": pkg_str
+"src/main.byte": pkg_llvm.target
+"src/main.byte": pkg_llvm.scalar_opts
+"src/main.byte": pkg_llvm.ipo
+"src/main.byte": pkg_llvm.bitreader
+"src/main.byte": pkg_llvm.analysis
+"src/main.byte": pkg_llvm
+"src/main.byte": pkg_cryptokit
+<src/*.ml{,i}>: use_clambc-backend
+<src/*.ml{,i}>: pkg_unix
+<src/*.ml{,i}>: pkg_str
+<src/*.ml{,i}>: pkg_llvm.target
+<src/*.ml{,i}>: pkg_llvm.scalar_opts
+<src/*.ml{,i}>: pkg_llvm.ipo
+<src/*.ml{,i}>: pkg_llvm.bitreader
+<src/*.ml{,i}>: pkg_llvm.analysis
+<src/*.ml{,i}>: pkg_llvm
+<src/*.ml{,i}>: pkg_cryptokit
+# Executable clambctest_byte
+"tests/test.byte": use_clambc-backend
+"tests/test.byte": pkg_unix
+"tests/test.byte": pkg_str
+"tests/test.byte": pkg_oUnit
+"tests/test.byte": pkg_llvm.target
+"tests/test.byte": pkg_llvm.scalar_opts
+"tests/test.byte": pkg_llvm.ipo
+"tests/test.byte": pkg_llvm.bitreader
+"tests/test.byte": pkg_llvm.analysis
+"tests/test.byte": pkg_llvm
+"tests/test.byte": pkg_cryptokit
+# Executable clambcbench
+"tests/bench.native": use_clambc-backend
+"tests/bench.native": pkg_unix
+"tests/bench.native": pkg_str
+"tests/bench.native": pkg_llvm.target
+"tests/bench.native": pkg_llvm.scalar_opts
+"tests/bench.native": pkg_llvm.ipo
+"tests/bench.native": pkg_llvm.bitreader
+"tests/bench.native": pkg_llvm.analysis
+"tests/bench.native": pkg_llvm
+"tests/bench.native": pkg_cryptokit
+# Executable clambctest_nat
+"tests/test.native": use_clambc-backend
+"tests/test.native": pkg_unix
+"tests/test.native": pkg_str
+"tests/test.native": pkg_oUnit
+"tests/test.native": pkg_llvm.target
+"tests/test.native": pkg_llvm.scalar_opts
+"tests/test.native": pkg_llvm.ipo
+"tests/test.native": pkg_llvm.bitreader
+"tests/test.native": pkg_llvm.analysis
+"tests/test.native": pkg_llvm
+"tests/test.native": pkg_cryptokit
+<tests/*.ml{,i}>: use_clambc-backend
+<tests/*.ml{,i}>: pkg_unix
+<tests/*.ml{,i}>: pkg_str
+<tests/*.ml{,i}>: pkg_oUnit
+<tests/*.ml{,i}>: pkg_llvm.target
+<tests/*.ml{,i}>: pkg_llvm.scalar_opts
+<tests/*.ml{,i}>: pkg_llvm.ipo
+<tests/*.ml{,i}>: pkg_llvm.bitreader
+<tests/*.ml{,i}>: pkg_llvm.analysis
+<tests/*.ml{,i}>: pkg_llvm
+<tests/*.ml{,i}>: pkg_cryptokit
+# OASIS_STOP
