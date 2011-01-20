@@ -51,7 +51,7 @@ if !flag(fastbuild)
                   mkdir -p obj/ &&
                   cd obj &&
                   ../3rdparty/llvm-2.8/configure --enable-optimized --enable-targets=x86 --enable-assertions --prefix=$prefix &&
-                  make -C bindings/ocaml/llvm copy-meta
+                  cp bindings/ocaml/llvm/META.llvm Release+Asserts/lib/ocaml/
 
 if !flag(fastbuild)
     PreBuildCommand:  $make -s -j6 -C obj/ libs-only
