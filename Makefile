@@ -36,3 +36,16 @@ setup.data:
 .PHONY: build doc test all install uninstall reinstall clean distclean configure
 
 # OASIS_STOP
+# otags rule
+ALLML := $(wildcard src/*.ml src/*.mli)
+tags: $(ALLML)
+	otags -pc -pa r $(ALLML) -pr $(wildcard 3rdparty/llvm-2.8/bindings/ocaml/**/*.mli)  -vi
+
+# make check rule alias
+check: test
+	$(MAKE) -C obj check-all
+
+SETUP = export OCAMLPATH=`pwd`/obj/Release+Asserts/lib/ocaml; ocaml setup.ml
+
+headache:
+	git ls-files -- src/ tests/ | xargs headache -h _header

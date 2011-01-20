@@ -72,3 +72,8 @@
 <tests/*.ml{,i}>: pkg_llvm
 <tests/*.ml{,i}>: pkg_cryptokit
 # OASIS_STOP
+"3rdparty": not_hygienic, -traverse
+"obj": not_hygienic, -traverse
+".git": not_hygienic, -traverse
+<*/*.ml{,i}>: camlp4r, warn_A, annot
+<src/datasection.ml>: warn_e

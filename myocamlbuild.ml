@@ -483,4 +483,34 @@ let package_default =
 let dispatch_default = MyOCamlbuildBase.dispatch_default package_default;;
 
 (* OASIS_STOP *)
-Ocamlbuild_plugin.dispatch dispatch_default;;
+let version =
+        Ocamlbuild_pack.My_unix.run_and_open "(git describe --always --dirty || echo 'exported')" (fun ic ->
+            input_line ic);;
+
+let time =
+        let tm = Unix.gmtime (Unix.time ()) in
+        Printf.sprintf "%04d/%02d/%02d %02dh UTC"
+        (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1) tm.Unix.tm_mday
+        tm.Unix.tm_hour;;
+
+let uname =
+    let ic = Unix.open_process_in "uname -mrsp" in
+    let res = input_line ic in
+    close_in ic;
+    res;;
+
+let make_version _ _ =
+    let cmd =
+        Printf.sprintf "let version = %S;;\nlet compile_time = %S;;let sys_uname = %S;;" version time
+         uname
+    in
+    Cmd (S [ A "echo"; Quote (Sh cmd); Sh ">"; P "version.ml" ]);;
+
+Ocamlbuild_plugin.dispatch
+  (function
+     | After_rules as e ->
+         rule "version.ml" ~prod: "version.ml" make_version;
+         dispatch_default e
+     | e ->
+         dispatch_default e)
+;;
