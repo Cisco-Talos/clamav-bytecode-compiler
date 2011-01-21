@@ -521,9 +521,10 @@ value emit_block s f block =
           DstGlobal v ((Int64.to_int off) + o)
       ] in
 
-    match instr_opcode op with
+    match constexpr_opcode op with
     [ Opcode.GetElementPtr ->
         classify_dst (Layout.evaluate_gep op 0_L)
+    | _ -> assert False
     ]
 
   and get_dst_operand dst =
