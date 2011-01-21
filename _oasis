@@ -1,5 +1,6 @@
 OASISFormat: 0.2
 OCamlVersion: >= 3.11.0
+FindlibVersion: >= 1.2.0
 Name:        ClamAV Bytecode Compiler
 Version:     0.97dev
 Synopsis:    Compiles a C-like language to ClamAV 0.97+ bytecode

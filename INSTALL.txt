@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: d1080828364d5ae40317fdc68feae359) *)
+(* DO NOT EDIT (digest: 67bbef28258477da4541be38b77a406a) *)
 This is the INSTALL file for the ClamAV Bytecode Compiler distribution.
 
 This package uses OASIS to generate its build system. See section OASIS for
@@ -11,7 +11,7 @@ Dependencies
 In order to compile this package, you will need:
 * ocaml (>= 3.11.0) for all, test Unit tests (bytecode),
   test Unit tests (native)
-* findlib
+* findlib (>= 1.2.0)
 * llvm (>= 2.8) for library clambc-backend
 * cryptokit for library clambc-backend
 * make for all, test Unit tests (bytecode), test Unit tests (native)
