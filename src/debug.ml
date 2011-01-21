@@ -78,8 +78,7 @@ and tag_subprogram = {
   virtual_index: int;
   vtable: descriptor;
   artificial: bool;
-  optimized: bool;
-  function: llvalue;
+  optimized: option bool;
 }
 and tag_file = {
   location: sourceloc;
@@ -175,8 +174,8 @@ value rec parse_descriptor meta =
       | NullDescriptor -> None
       ]}}
     | tag when tag = llvm_tag_subprog -> do {
-      if ((num_operands meta) < 17) then
-        raise (FormatError "tag_subprogram 17 operands expected" (Some meta))
+      if ((num_operands meta) < 15) then
+        raise (FormatError "tag_subprogram 15 operands expected" (Some meta))
       else SubProgram
       {sp_name = {
         context = parse_descriptor (operand meta 2);
@@ -199,8 +198,8 @@ value rec parse_descriptor meta =
       virtual_index = get_i32 (operand meta 12);
       vtable = parse_descriptor (operand meta 13);
       artificial = get_bool (operand meta 14);
-      optimized = get_bool (operand meta 15);
-      function = (operand meta 16);
+      optimized = if (num_operands meta) >= 16 then
+        Some (get_bool (operand meta 15)) else None
       }}
      | tag when tag = llvm_tag_block -> do {
        assert ((num_operands meta) >= 4);

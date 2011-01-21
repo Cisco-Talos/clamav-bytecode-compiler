@@ -451,6 +451,8 @@ value emit_block s f block =
           raise (NotSupportedYet "constexpr dst" (Val dst))
       | ValueKind.Argument ->
           DstPtrArg dst 0
+      | ValueKind.ConstantPointerNull ->
+          raise (OutOfBounds "write to null pointer" (Val dst))
       | _ -> assert False]
     ] in
 
@@ -505,6 +507,7 @@ value emit_block s f block =
   let emit_instruction instr =
   try
     do {
+    Layout.check_type (type_of instr);
     let bcinst = match instr_opcode instr with
     [ Opcode.Alloca ->
       buildskip ()
@@ -588,7 +591,7 @@ value emit_block s f block =
         for i = 2 to n-1 do {
           let op = operand instr i in
           operands.(i) :=
-            (if i mod n = 0 then get_bbid else get_operand) op;
+            (if i mod 2 = 0 then get_operand else get_bbid) op;
         };
         build_result OpSwitch operands;
       };
@@ -641,7 +644,8 @@ value emit_block s f block =
     Hashtbl.add bb_values instr bcinst
   }
   with
-  [ (NotSupported _ as e) | (NotSupportedYet _ as e) | (LogicError _ as e)  | (UndefError _ as e) -> raise e
+  [ (NotSupported _ as e) | (NotSupportedYet _ as e) | (LogicError _ as e)  |
+    (UndefError _ as e) | (OutOfBounds _ as e) -> raise e
   |  e ->
     raise (Internal "emit_instruction" (get_bt ()) (Val instr) e)] in
 

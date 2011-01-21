@@ -72,6 +72,7 @@ value test_compiler (file,bc,cbc) = do {
     with
     [ NotSupported (_, _) -> skip_if True "Test uses unsupported features"
     | UndefError (_,_) -> skip_if True "Test uses undefined values"
+    | OutOfBounds (_,_) -> skip_if True "Test uses out of bounds writes"
     | LogicError (_, _) -> skip_if True "Test uses unexpected features"
     | NotSupportedYet (str, _) as e ->
         let base = Filename.basename file in

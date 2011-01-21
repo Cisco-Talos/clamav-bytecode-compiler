@@ -37,17 +37,18 @@ value thetd = TargetData.create
 
 value rec check_type t =
     match classify_type t with
-    [ TypeKind.Void  | TypeKind.Label | TypeKind.Metadata | TypeKind.Opaque ->
+    [ TypeKind.Label | TypeKind.Metadata | TypeKind.Opaque ->
       raise (LogicError "Can't use unsized type" (Ty t))
     | TypeKind.Float | TypeKind.Double | TypeKind.X86fp80 | TypeKind.Fp128 |
       TypeKind.Ppc_fp128 ->
       raise (NotSupported "Floating point types" (Ty t))
     | TypeKind.Vector -> raise (NotSupported "Vector types" (Ty t))
     | TypeKind.Function -> raise (NotSupported "Function type in global" (Ty t))
-    | TypeKind.Integer  | TypeKind.Pointer ->
+    | TypeKind.Integer  | TypeKind.Pointer->
       if (abi_size thetd t) = 0L then
         raise (LogicError "Can't allocate types with zero size" (Ty t))
       else ()
+    | TypeKind.Void -> ()
     | TypeKind.Struct ->
         Array.iter check_type (struct_element_types t)
     | TypeKind.Array ->
