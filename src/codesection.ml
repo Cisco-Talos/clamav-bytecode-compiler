@@ -166,6 +166,7 @@ type bcdest =
   [ DstBBValue of bcinstr (* store result to a BB local value *)
   | DstPtrAlloca of llvalue and int (* store result to alloca + offset *)
   | DstPtrOff of bcinstr and int (* store result to <ptr>+offset, where ptr is a local variable *)
+  | DstPtrArg of llvalue and int (* store result to <argvalue>+offset *)
   | DstGlobal of llvalue and int (* store result to global + offset *)
   ]
 
@@ -363,6 +364,7 @@ value emit_block s f block =
   let count = fold_left_instrs (fun c _ -> c+1) 0 block in
   let bb_values = Hashtbl.create (count*4/3) in
   let emitted_inst = InstHash.create (count*4/3) in
+  let num_args = Array.length (params (block_parent block)) in
 
   let get_load_addr src off fallback =
     match classify_value src with
@@ -400,7 +402,11 @@ value emit_block s f block =
           raise (NotSupportedYet "cexpr TODO" (Val op))
 
       | ValueKind.ConstantInt ->
-          SrcImmediate op
+          let n = integer_bitwidth (type_of op) in
+          if n <= 64 then
+            SrcImmediate op
+          else
+            raise (NotSupported "Larger than 64-bit integers" (Val op))
       | ValueKind.ConstantPointerNull ->
           SrcImmediate op
 
@@ -443,6 +449,8 @@ value emit_block s f block =
       | ValueKind.GlobalVariable -> DstGlobal dst 0
       | ValueKind.ConstantExpr -> (* TODO eval const  *)
           raise (NotSupportedYet "constexpr dst" (Val dst))
+      | ValueKind.Argument ->
+          DstPtrArg dst 0
       | _ -> assert False]
     ] in
 
@@ -469,12 +477,21 @@ value emit_block s f block =
   let buildskip () =
     build_result OpSkip [||] in
 
-  let map_function f =
-    match Hashtbl.find s.function_ids f with
-    [ (Linksection.Imported, id) ->
-      (OpCallAPI, id)
-    | (Linksection.Internal | Linksection.Exported, id) ->
-      (OpCallInternal, id)] in
+  let rec map_function f =
+    try
+      match Hashtbl.find s.function_ids f with
+      [ (Linksection.Imported, id) ->
+        (OpCallAPI, id)
+      | (Linksection.Internal | Linksection.Exported, id) ->
+          (OpCallInternal, id)]
+    with [Not_found ->
+      if (constexpr_opcode f) = Opcode.BitCast then
+        map_function (operand f 0)
+      else if classify_value f = ValueKind.InlineAsm then
+        raise (NotSupported "Inline assembly" (Val f))
+      else
+        assert False
+    ] in
 
   let get_bbid block = do {
     assert (value_is_block block);
@@ -596,6 +613,7 @@ value emit_block s f block =
         let loc = Debug.source_location instr s.f.Encode.name in
         (* TODO: include source loc here *)
         build_result OpAbort [|
+          SrcFuncId 0;
           (SrcImmediate (mapval loc.Debug.lineno));
           (SrcImmediate (mapval loc.Debug.col))
         |]
@@ -623,7 +641,7 @@ value emit_block s f block =
     Hashtbl.add bb_values instr bcinst
   }
   with
-  [ (NotSupported _ as e) | (NotSupportedYet _ as e) | (LogicError _ as e) -> raise e
+  [ (NotSupported _ as e) | (NotSupportedYet _ as e) | (LogicError _ as e)  | (UndefError _ as e) -> raise e
   |  e ->
     raise (Internal "emit_instruction" (get_bt ()) (Val instr) e)] in
 
@@ -681,7 +699,10 @@ value emit_block s f block =
       | SrcGlobalLoad llval off ->
           emit_global llval off
       | SrcImmediate llconst -> do {
-          Encode.add_bits_vbr s.f (Layout.get_const_value llconst);
+          if is_null llconst then
+            Encode.add_bits_vbr s.f 0_L
+          else
+            Encode.add_bits_vbr s.f (Layout.get_const_value llconst)
         }
       | SrcFuncId id | SrcBBId id ->
           Encode.add_bits_vbrlow s.f id
@@ -693,7 +714,7 @@ value emit_block s f block =
       match inst.dest with
       [ DstBBValue _ -> 0_L
       | DstPtrAlloca _ _ -> 1_L
-      | DstPtrOff _ _ -> 2_L
+      | DstPtrOff _ _ | DstPtrArg _ _ -> 2_L
       | DstGlobal _ _ -> 3_L
       ]) 2;
     match inst.dest with
@@ -705,9 +726,15 @@ value emit_block s f block =
     | DstPtrAlloca llval off ->
         emit_alloca_ref llval off
     | DstPtrOff llval off -> do {
-        let bbid = InstHash.find emitted_inst llval in
+        let bbid = num_args + (InstHash.find emitted_inst llval) in
         Encode.add_bits_vbrlow s.f bbid;
         Encode.add_bits_vbroff s.f off;
+      }
+    | DstPtrArg llval off -> do {
+         let p = arg_pos llval;
+         assert (p < num_args);
+         Encode.add_bits_vbrlow s.f p;
+         Encode.add_bits_vbroff s.f off;
       }
     | DstGlobal llval off -> emit_global llval off
     ]

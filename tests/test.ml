@@ -70,7 +70,9 @@ value test_compiler (file,bc,cbc) = do {
     try
       Compiler.compile bc cbc;
     with
-    [ NotSupported (_, _) | LogicError (_, _) -> skip_if True "Test uses unsupported features"
+    [ NotSupported (_, _) -> skip_if True "Test uses unsupported features"
+    | UndefError (_,_) -> skip_if True "Test uses undefined values"
+    | LogicError (_, _) -> skip_if True "Test uses unexpected features"
     | NotSupportedYet (str, _) as e ->
         let base = Filename.basename file in
         if base = "2007-04-25-AssemblerFoldExternWeak.ll" then
