@@ -71,6 +71,7 @@ value get_const_value v = match int64_of_const v with
 
 value evaluate_gep c off = do {
   assert (classify_value c = ValueKind.ConstantExpr);
+  assert (constexpr_opcode c = Opcode.GetElementPtr);
   let rec evaluate_gep_r t c i off =
     if (num_operands c) = i then
       off

@@ -383,6 +383,77 @@ value emit_block s f block =
     |  _ as result -> SrcBBValue result
     ] in
 
+  let get_global_offset g = 0_L
+    (* TODO: from datasection... *) in
+
+  let rec eval_cexpr op =
+    match classify_value op with
+    [ ValueKind.ConstantInt -> op
+    | ValueKind.GlobalVariable ->
+        const_of_int64 (i64_type context) (get_global_offset op) True
+    | ValueKind.Function ->
+        raise (NotSupported "function pointers" (Val op))
+    | ValueKind.ConstantExpr ->
+        let fwd builder = do {
+          assert ((num_operands op) = 2);
+          let a = operand op 0
+          and b = operand op 1 in
+          let ea = eval_cexpr a
+         and eb=  eval_cexpr b in do {
+            assert ((type_of ea) == (type_of eb));
+            builder ea eb
+          }
+        }
+      and fwdcast builder = do {
+        assert ((num_operands op) = 1);
+        builder (eval_cexpr (operand op 0)) (type_of op)
+      }
+      and opc = constexpr_opcode op in
+      match opc with
+      [ Opcode.Add -> fwd const_add
+      | Opcode.Sub -> fwd const_sub
+      | Opcode.Mul -> fwd const_mul
+      | Opcode.UDiv -> fwd const_udiv
+      | Opcode.SDiv -> fwd const_sdiv
+      | Opcode.URem -> fwd const_urem
+      | Opcode.SRem -> fwd const_srem
+      | Opcode.Shl -> fwd const_shl
+      | Opcode.LShr -> fwd const_lshr
+      | Opcode.AShr -> fwd const_ashr
+      | Opcode.And -> fwd const_and
+      | Opcode.Or -> fwd const_or
+      | Opcode.Xor -> fwd const_xor
+      | Opcode.ZExt -> fwdcast const_zext
+      | Opcode.SExt -> fwdcast const_sext
+      | Opcode.Trunc -> fwdcast const_trunc
+      | Opcode.ICmp -> match icmp_predicate op with
+          [ Some pred -> fwd (const_icmp pred)
+          | None -> assert False]
+
+      | Opcode.GetElementPtr ->
+          const_of_int64 (i64_type context) (
+            Layout.evaluate_gep op (get_global_offset (operand op 0))
+          ) True
+      | Opcode.PtrToInt ->
+          let p = eval_cexpr (operand op 0) in
+          if (type_of p) <> (type_of op) then
+            const_trunc p (type_of op)
+          else
+            p
+      | Opcode.ExtractValue | Opcode.ShuffleVector | Opcode.InsertValue |
+        Opcode.ExtractElement | Opcode.InsertElement ->
+          raise (NotSupported "Vector types" (Val op))
+      | Opcode.FAdd | Opcode.FSub | Opcode.FMul | Opcode.FDiv | Opcode.FRem ->
+          raise (NotSupported "Floating point types" (Val op))
+      | _ -> do {
+        dump_value op;
+        raise (NotSupportedYet "Unexpected constexpr opcode" (Val op))
+      }
+      ]
+    | _ ->
+      assert False
+    ] in
+
   let get_operand op =
     try
       optimize_operand (Hashtbl.find bb_values op)
@@ -398,8 +469,7 @@ value emit_block s f block =
         }
 
       | ValueKind.ConstantExpr ->
-          (*TODO: eval constant expr and build an SrcAddressOf*)
-          raise (NotSupportedYet "cexpr TODO" (Val op))
+          SrcImmediate (eval_cexpr op)
 
       | ValueKind.ConstantInt ->
           let n = integer_bitwidth (type_of op) in
@@ -432,6 +502,28 @@ value emit_block s f block =
       | ValueKind.Function ->
           raise (NotSupported "Function pointers" (Val op))
       ]
+    ] in
+
+  let rec eval_dst_cexpr op =
+    let classify_dst off =
+      match get_dst_operand (operand op 0) with
+      [ DstBBValue _ as d -> do {
+          assert (off = 0_L);
+          d
+        }
+      | DstPtrAlloca v o ->
+          DstPtrAlloca v ((Int64.to_int off) + o)
+      | DstPtrOff v o ->
+          DstPtrOff v ((Int64.to_int off) + o)
+      | DstPtrArg v o ->
+          DstPtrArg v ((Int64.to_int off) + o)
+      | DstGlobal v o ->
+          DstGlobal v ((Int64.to_int off) + o)
+      ] in
+
+    match instr_opcode op with
+    [ Opcode.GetElementPtr ->
+        classify_dst (Layout.evaluate_gep op 0_L)
     ]
 
   and get_dst_operand dst =
@@ -447,8 +539,8 @@ value emit_block s f block =
         DstPtrAlloca dst 0
        }
       | ValueKind.GlobalVariable -> DstGlobal dst 0
-      | ValueKind.ConstantExpr -> (* TODO eval const  *)
-          raise (NotSupportedYet "constexpr dst" (Val dst))
+      | ValueKind.ConstantExpr ->
+          eval_dst_cexpr dst
       | ValueKind.Argument ->
           DstPtrArg dst 0
       | ValueKind.ConstantPointerNull ->
@@ -565,7 +657,7 @@ value emit_block s f block =
 
     | Opcode.ICmp ->
         buildop (
-        match instr_icmp_predicate instr with
+        match icmp_predicate instr with
         [ Some Icmp.Eq -> OpICmpEQ
         | Some Icmp.Ne -> OpICmpNE
         | Some Icmp.Ugt -> OpICmpUGT
