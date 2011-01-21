@@ -1576,7 +1576,7 @@ val fold_right_instrs: (llvalue -> 'a -> 'a) -> llbasicblock -> 'a -> 'a
 
 val instr_opcode : llvalue -> Opcode.t
 
-val instr_icmp_predicate : llvalue -> Icmp.t option
+val icmp_predicate : llvalue -> Icmp.t option
 
 (** {7 Operations on call sites} *)
 

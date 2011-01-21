@@ -1582,6 +1582,9 @@ LLVMOpcode LLVMGetInstructionOpcode(LLVMValueRef Inst) {
 LLVMIntPredicate LLVMGetICmpPredicate(LLVMValueRef Inst) {
     if (ICmpInst *I = dyn_cast<ICmpInst>(unwrap(Inst)))
 	return (LLVMIntPredicate)I->getPredicate();
+    if (ConstantExpr *CE = dyn_cast<ConstantExpr>(unwrap(Inst)))
+	if (CE->getOpcode() == Instruction::ICmp)
+	    return (LLVMIntPredicate)CE->getPredicate();
     return (LLVMIntPredicate)0;
 }
 
