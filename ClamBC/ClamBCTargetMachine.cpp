@@ -124,6 +124,7 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   exports.push_back("main");
   exports.push_back("logical_trigger");
   exports.push_back("__clambc_kind");
+  exports.push_back("__Copyright");
   PM.add(createGlobalDCEPass());
   PM.add(createStripDeadPrototypesPass());
   PM.add(createDeadTypeEliminationPass());
