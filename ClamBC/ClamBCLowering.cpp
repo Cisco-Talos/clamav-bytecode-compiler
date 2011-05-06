@@ -68,6 +68,7 @@ private:
   void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
   void fixupBitCasts(Function &F);
   void fixupGEPs(Function &F);
+  void fixupPtrToInts(Function &F);
 };
 char ClamBCLowering::ID=0;
 void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
@@ -122,15 +123,14 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
           Idx = BO->getOperand(0);
         }
         if (!PII || !isa<IntegerType>(Idx->getType())
-            || isa<PtrToIntInst>(Idx))
+            || isa<PtrToIntInst>(Idx) ||
+	    Idx->getType() == Type::getInt64Ty(F.getContext()))
           continue;
         Builder.SetInsertPoint(BO->getParent(), BO);
         Value *V = Builder.CreatePointerCast(PII->getOperand(0),
                                              PointerType::getUnqual(Type::getInt8Ty(F.getContext())));
         V = Builder.CreateGEP(V, Idx);
         V = Builder.CreatePtrToInt(V, BO->getType());
-        V->dump();
-        BO->dump();
         BO->replaceAllUsesWith(V);
       } else if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(II)) {
         LLVMContext &C = GEPI->getContext();
@@ -169,20 +169,21 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
           ICI->replaceAllUsesWith(ICI2);
         }
       } else if (PtrToIntInst *PI = dyn_cast<PtrToIntInst>(II)) {
-        // ptrtoint (getelementptr P1, (sub i64 C, ptrtoint P0))
-        // -> add V, (sub ptrtoint P1, ptrtoint P0)
+        // ptrtoint (getelementptr i8* P0, V1)
+	// -> add (ptrtoint P0), V1
         GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(PI->getOperand(0));
         if (GEP && GEP->getNumOperands() == 2) {
-          if (Instruction *I = dyn_cast<Instruction>(GEP->getOperand(1)))
-            if (I->getOpcode() == Instruction::Sub)
-              if (PtrToIntInst *P1 = dyn_cast<PtrToIntInst>(I->getOperand(1))) {
+	    Value *V1 = GEP->getOperand(1);
+	    if (GEP->getType()->getElementType() == Type::getInt8Ty(F.getContext())) {
                 Value *P0 = Builder.CreatePtrToInt(GEP->getOperand(0),
-                                                   P1->getType());
-                Value *S = Builder.CreateSub(P0, P1);
-                Value *A = Builder.CreateAdd(S, I->getOperand(0));
-                PI->replaceAllUsesWith(A);
-              }
-        }
+                                                   V1->getType());
+                Value *A = Builder.CreateAdd(P0, V1);
+		if (A->getType() != PI->getType())
+		    A = Builder.CreateZExt(A, PI->getType());
+		PI->replaceAllUsesWith(A);
+		PI->eraseFromParent();
+	    }
+	}
       }
     }
 }
@@ -291,6 +292,33 @@ void ClamBCLowering::fixupGEPs(Function &F)
   }
 }
 
+void ClamBCLowering::fixupPtrToInts(Function &F)
+{
+    // we only have ptrtoint -> i64, not i32
+    // so emit as ptrtoint -> 64, followed by trunc to i32
+  const Type *I64Ty = Type::getInt64Ty(F.getContext());
+  const Type *I32Ty = Type::getInt32Ty(F.getContext());
+  std::vector<PtrToIntInst*> insts;
+  for (inst_iterator I=inst_begin(F),E=inst_end(F);
+       I != E; ++I) {
+      if (PtrToIntInst *PI = dyn_cast<PtrToIntInst>(&*I)) {
+	  if (PI->getType() != I64Ty)
+	      insts.push_back(PI);
+      }
+  }
+  IRBuilder<false> Builder(F.getContext());
+  for (std::vector<PtrToIntInst*>::iterator I=insts.begin(),E=insts.end();
+       I != E; ++I) {
+      PtrToIntInst *PI = *I;
+      Builder.SetInsertPoint(PI->getParent(), PI);
+      Value *PI2 = Builder.CreatePtrToInt(PI->getOperand(0), I64Ty);
+      Value *R = Builder.CreateTrunc(PI2, I32Ty);
+      PI->replaceAllUsesWith(R);
+      PI->eraseFromParent();
+  }
+}
+
+
 bool ClamBCLowering::runOnModule(Module &M)
 {
 
@@ -305,6 +333,7 @@ bool ClamBCLowering::runOnModule(Module &M)
     if (final) {
       fixupBitCasts(*I);
       fixupGEPs(*I);
+      fixupPtrToInts(*I);
     }
   }
   //delete IL;
