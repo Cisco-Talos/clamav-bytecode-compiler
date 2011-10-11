@@ -1016,7 +1016,7 @@ DisassembleAt(struct DIS_fixed* result, uint32_t offset, uint32_t len)
     struct DISASM_RESULT res;
     unsigned i;
     seek(offset, SEEK_SET);
-    offset = disasm_x86(&res, sizeof(res));
+    offset = disasm_x86(&res, len < sizeof(res) ? len : sizeof(res));
     result->x86_opcode = (enum X86OPS) cli_readint16(&res.real_op);
     result->operation_size = (enum DIS_SIZE) res.opsize;
     result->address_size = (enum DIS_SIZE) res.adsize;
