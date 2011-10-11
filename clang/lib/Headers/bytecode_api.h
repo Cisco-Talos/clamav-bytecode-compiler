@@ -71,7 +71,10 @@ enum FunctionalityLevels {
     FUNC_LEVEL_096_2=54,
     FUNC_LEVEL_096_2_dev,/* 0.93 too */
     FUNC_LEVEL_096_4=56,
-    FUNC_LEVEL_097=57
+    FUNC_LEVEL_097=57,
+    FUNC_LEVEL_097_1=61,
+    FUNC_LEVEL_097_2=62,
+    FUNC_LEVEL_097_3=63,
 };
 
 /** Phase of PDF parsing */
@@ -103,7 +106,9 @@ enum pdf_flag {
     HAS_OPENACTION,
     BAD_STREAMLEN,
     ENCRYPTED_PDF,
-    LINEARIZED_PDF /* not bad, just as flag */
+    LINEARIZED_PDF, /* not bad, just as flag */
+    DECRYPTABLE_PDF,
+    HAS_LAUNCHACTION
 };
 
 /** PDF obj flags */
@@ -128,7 +133,9 @@ enum pdf_objflags {
     OBJ_SIGNED,
     OBJ_IMAGE,
     OBJ_TRUNCATED,
-    OBJ_FORCEDUMP
+    OBJ_FORCEDUMP,
+    OBJ_FILTER_STANDARD,
+    OBJ_LAUNCHACTION
 };
 
 #ifdef __CLAMBC__
