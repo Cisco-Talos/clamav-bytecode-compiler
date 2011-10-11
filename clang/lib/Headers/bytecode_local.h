@@ -984,6 +984,7 @@ struct DIS_mem_arg {
   \group_disasm */
 struct DIS_arg {
     enum DIS_ACCESS access_type;/**< type of access */
+    uint32_t dummy;
     union {
 	struct DIS_mem_arg mem;/**< memory operand */
 	enum X86REGS reg;/**< register operand */
