@@ -999,6 +999,8 @@ struct DIS_fixed {
     enum DIS_SIZE operation_size;/**< size of operation */
     enum DIS_SIZE address_size;/**< size of address */
     uint8_t segment;/**< segment */
+    uint8_t padding1;
+    uint16_t padding2;
     struct DIS_arg arg[3];/** arguments */
 };
 
