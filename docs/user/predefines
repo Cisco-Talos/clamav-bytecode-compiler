@@ -97,9 +97,13 @@
 #define false 0
 #define __bool_true_false_are_defined 1
 #define force_inline inline __attribute__((always_inline))
+#define overloadable_func __attribute__((overloadable))
 #define VIRUSNAME_PREFIX(name) const char __clambc_virusname_prefix[] = name;
 #define VIRUSNAMES(...) const char *const __clambc_virusnames[] = {__VA_ARGS__};
 #define PE_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_PE_UNPACKER;
+#define PDF_HOOK_DECLARE const uint16_t __clambc_kind = BC_PDF;
+#define BYTECODE_ABORT_HOOK 0xcea5e
+#define PE_HOOK_DECLARE const uint16_t __clambc_kind = BC_PE_ALL;
 #define SIGNATURES_DECL_BEGIN struct __Signatures {
 #define DECLARE_SIGNATURE(name) const char *name##_sig; __Signature name;
 #define SIGNATURES_DECL_END };
@@ -109,10 +113,12 @@
 #define ICONGROUP2(group) const char *const __IconGroup2 = (group);
 #define FUNCTIONALITY_LEVEL_MIN(m) const unsigned short __FuncMin = (m);
 #define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
+#define LDB_ADDATTRIBUTES(x) const char * __ldb_rawattrs = (x);
 #define SIGNATURES_DEF_BEGIN static const unsigned __signature_bias = __COUNTER__+1;const struct __Signatures Signatures = {
 #define DEFINE_SIGNATURE(name,hex) .name##_sig = (hex), .name = {__COUNTER__ - __signature_bias},
 #define SIGNATURES_END };
-#define RE2C_BSIZE 128
+#define NEED_PE_INFO { if (!hasPEInfo()) __fail_missing_PE_HOOK_DECLARE__or__PE_UNPACKER_DECLARE();}
+#define RE2C_BSIZE 1024
 #define YYCTYPE unsigned char
 #define YYCURSOR re2c_scur
 #define YYLIMIT re2c_slim

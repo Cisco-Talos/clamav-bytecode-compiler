@@ -1,8 +1,8 @@
-all: clean refman.pdf
+all: refman.pdf
 
 pdf: refman.pdf
 
-refman.pdf: refman.tex
+refman.pdf: clean refman.tex
 	pdflatex refman.tex
 	makeindex refman.idx
 	pdflatex refman.tex
