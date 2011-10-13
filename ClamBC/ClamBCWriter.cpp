@@ -195,13 +195,21 @@ private :
     case 2:
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
         if (CI->isZero()) {
-          printFixedNumber(OP_BC_GEPZ, 2);
-          printType(GEP.getPointerOperand()->getType(), 0, &GEP);
           assert(!isa<GlobalVariable>(GEP.getOperand(0)) &&
              !isa<ConstantExpr>(GEP.getOperand(0)) &&
              "would hit libclamav interpreter bug");
-          printOperand(GEP, GEP.getOperand(0));
-          printOperand(GEP, GEP.getOperand(2));
+	      printFixedNumber(OP_BC_GEPZ, 2);
+	      printType(GEP.getPointerOperand()->getType(), 0, &GEP);
+	      printOperand(GEP, GEP.getOperand(0));
+	      printOperand(GEP, GEP.getOperand(2));
+	    if (ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
+		if (!CI->isZero()) {
+	    const PointerType *Ty = cast<PointerType>(GEP.getPointerOperand()->getType());
+	    const ArrayType *ATy = dyn_cast<ArrayType>(Ty->getElementType());
+	    if (ATy)
+		stop("ATy", &GEP);
+		}
+	    }
           return;
         }
       }

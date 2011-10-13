@@ -66,6 +66,7 @@ public:
 private:
   bool final;
   void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
+  void splitGEPZArray(Function &F);
   void fixupBitCasts(Function &F);
   void fixupGEPs(Function &F);
   void fixupPtrToInts(Function &F);
@@ -318,6 +319,38 @@ void ClamBCLowering::fixupPtrToInts(Function &F)
   }
 }
 
+void ClamBCLowering::splitGEPZArray(Function &F)
+{
+    for (inst_iterator I=inst_begin(F),E=inst_end(F);
+	 I != E; )
+    {
+	Instruction *II = &*I;
+	++I;
+	if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(II)) {
+	    if (GEPI->getNumIndices() != 2)
+		continue;
+	    ConstantInt *CI = dyn_cast<ConstantInt>(GEPI->getOperand(1));
+	    if (!CI->isZero())
+		continue;
+	    CI = dyn_cast<ConstantInt>(GEPI->getOperand(2));
+	    if (CI && CI->isZero())
+		continue;
+	    const PointerType *Ty = cast<PointerType>(GEPI->getPointerOperand()->getType());
+	    const ArrayType *ATy = dyn_cast<ArrayType>(Ty->getElementType());
+	    if (!ATy)
+		continue;
+	    const Type *ETy = PointerType::getUnqual(ATy->getElementType());
+	    Value *V[] = { GEPI->getOperand(2) };
+	    Constant *Zero = ConstantInt::get(Type::getInt32Ty(Ty->getContext()), 0);
+	    Value *VZ[] = { Zero,  Zero };
+	    // transform GEPZ: [4 x i16]* %p, 0, %i -> GEP1 i16* (bitcast)%p, %i
+	    Value *C = GetElementPtrInst::CreateInBounds(GEPI->getPointerOperand(), &VZ[0], &VZ[0]+2, "", GEPI);
+	    Value *NG = GetElementPtrInst::CreateInBounds(C, V, V+1, "", GEPI);
+	    GEPI->replaceAllUsesWith(NG);
+	    GEPI->eraseFromParent();
+	}
+    }
+}
 
 bool ClamBCLowering::runOnModule(Module &M)
 {
@@ -334,6 +367,7 @@ bool ClamBCLowering::runOnModule(Module &M)
       fixupBitCasts(*I);
       fixupGEPs(*I);
       fixupPtrToInts(*I);
+      splitGEPZArray(*I);
     }
   }
   //delete IL;
