@@ -62,7 +62,8 @@ public:
       }
       for (std::vector<Function*>::iterator I=functions.begin(),
 	   E=functions.end(); I != E; ++I) {
-	  FMap[*I] = createFunction(*I, &M);
+	  Function *F;
+	  FMap[*I] = F = createFunction(*I, &M);
       }
       for (std::vector<Function*>::iterator I=functions.begin(),
 	   E=functions.end(); I != E; ++I) {
@@ -125,9 +126,9 @@ private:
       llvm_unreachable("unknown type");
   }
 
-  ConstantInt *u64const(uint64_t n)
+  ConstantInt *u32const(uint32_t n)
   {
-      return ConstantInt::get(Type::getInt64Ty(*Context), n);
+      return ConstantInt::get(Type::getInt32Ty(*Context), n);
   }
 
   ConstantInt *i32const(int32_t n)
@@ -138,14 +139,14 @@ private:
   void visitAllocaInst(AllocaInst &AI) {
       if (!isa<ConstantInt>(AI.getArraySize()))
 	  stop("VLA not supported", &AI);
-      uint64_t n = cast<ConstantInt>(AI.getArraySize())->getZExtValue();
+      uint32_t n = cast<ConstantInt>(AI.getArraySize())->getZExtValue();
       const Type *Ty = rebuildType(AI.getAllocatedType());
       if (const ArrayType *ATy = dyn_cast<ArrayType>(Ty)) {
 	  Ty = ATy->getElementType();
 	  //TODO: check for overflow
 	  n *= ATy->getNumElements();
       }
-      Value *V = Builder->CreateAlloca(Ty, n == 1 ? 0 : u64const(n), AI.getName());
+      Value *V = Builder->CreateAlloca(Ty, n == 1 ? 0 : u32const(n), AI.getName());
       VMap[&AI] = Builder->CreatePointerCast(V, AI.getType(), AI.getName());
   }
 
@@ -397,7 +398,7 @@ private:
       }
   }
 
-  Function* createFunction(const Function *F, Module *M)
+  Function* createFunction(Function *F, Module *M)
   {
       unsigned i;
       std::vector<const Type*> params;
@@ -408,9 +409,10 @@ private:
       }
 
       FTy = FunctionType::get(rebuildType(FTy->getReturnType()), params, false);
+      StringRef Name = F->getName();
+      F->setName("");
 
-      return Function::Create(FTy, GlobalValue::InternalLinkage, F->getName(),
-			      M);
+      return Function::Create(FTy, F->getLinkage(), Name, M);
   }
 };
 char ClamBCRebuild::ID = 0;

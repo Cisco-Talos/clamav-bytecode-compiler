@@ -253,7 +253,9 @@ bool ClamBCModule::runOnModule(Module &M)
   }
 
   Function *Ep = M.getFunction("entrypoint");
-  if (!Ep || Ep->getFunctionType()->getNumParams() != 0)
+  if (!Ep)
+    stop("Bytecode must define an entrypoint (with 0 parameters)!\n", &M);
+  if (Ep->getFunctionType()->getNumParams() != 0)
     stop("Bytecode must define an entrypoint with 0 parameters!\n", &M);
 
   unsigned dbgid = 0;
