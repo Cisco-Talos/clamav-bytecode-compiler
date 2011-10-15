@@ -31,6 +31,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/InstIterator.h"
 #include "llvm/Support/InstVisitor.h"
 #include "llvm/Support/IRBuilder.h"
 #include "llvm/Support/TargetFolder.h"
@@ -158,7 +159,12 @@ private:
   {
       if (Constant *C = dyn_cast<Constant>(V))
 	  return mapConstant(C);
+      if (isa<MDNode>(V))
+	  return V;
       Value *NV = VMap[V];
+      if (!NV) {
+	  errs() << "Cannot map:" << *V;
+      }
       assert(NV);
       return NV;
   }
@@ -269,7 +275,8 @@ private:
 	  int64_t m = I->second / divisor;
 	  int32_t m2 = m;
 	  assert((int64_t)m2 == m);
-	  Value *V = Builder->CreateTruncOrBitCast(const_cast<Value*>(I->first), i32Ty);
+	  Value *V = const_cast<Value*>(I->first);
+	  V = Builder->CreateTruncOrBitCast(mapValue(V), i32Ty);
 	  if (m2 != 1)
 	      V = Builder->CreateNSWMul(i32const(m), V);
 	  if (Sum)
