@@ -249,7 +249,8 @@ private :
   {
     Value *V = SI.getPointerOperand();
     // checking is done by the verifier!
-    if (isa<GetElementPtrInst>(V)) {
+    if (isa<GetElementPtrInst>(V) ||
+	isa<BitCastInst>(V)) {
       printFixedNumber(OP_BC_STORE, 2);
       printOperand(SI, SI.getOperand(0));
       printOperand(SI, V);
