@@ -22,6 +22,7 @@
 #include "llvm/System/DataTypes.h"
 #include "ClamBCModule.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/BasicBlock.h"
 #include "llvm/Constants.h"
@@ -89,6 +90,7 @@ private:
   ValueMapTy VMap;
   TargetData *TD;
   LLVMContext *Context;
+  DenseSet<const BasicBlock*> visitedBB;
   IRBuilder<true,TargetFolder> *Builder;
 
   void stop(const std::string &Msg, const llvm::Instruction *I) {
@@ -164,7 +166,18 @@ private:
 	  return V;
       Value *NV = VMap[V];
       if (!NV) {
-	  errs() << "Cannot map:" << *V;
+	  Instruction *I = cast<Instruction>(V);
+	  BasicBlock *NowBB = Builder->GetInsertBlock();
+	  BasicBlock *IBB = I->getParent();
+	  assert(IBB != NowBB);
+
+	  runOnBasicBlock(IBB);
+	  Builder->SetInsertPoint(NowBB);
+
+	  NV = VMap[V];
+      }
+      if (!NV) {
+	  errs() << "not remapped: " << *V << "\n";
       }
       assert(NV);
       return NV;
@@ -306,19 +319,8 @@ private:
 
   void visitPHINode(PHINode &I)
   {
-      PHINode *PN;
-      if (Value *VV = VMap[&I]) {
-	  PN = cast<PHINode>(VV);
-      } else {
-	  VMap[&I] = PN = Builder->CreatePHI(I.getType());
-      }
-      PN->reserveOperandSpace(I.getNumIncomingValues());
-      for (unsigned i=0;i<PN->getNumIncomingValues();i++) {
-	  Value *V = mapPHIValue(PN->getIncomingValue(i));
-	  BasicBlock *BB = mapBlock(PN->getIncomingBlock(i));
-	  PN->setIncomingBlock(i, BB);
-	  PN->setIncomingValue(i, V);
-      }
+      VMap[&I] = Builder->CreatePHI(I.getType());
+      //2nd phase will map the operands
   }
 
   void visitCastInst(CastInst &I)
@@ -376,26 +378,48 @@ private:
     stop("ClamAV bytecode backend rebuilder does not know about ", &I);
   }
 
+  void runOnBasicBlock(BasicBlock *BB)
+  {
+      BasicBlock *NBB = BBMap[BB];
+      assert(NBB);
+      if (visitedBB.count(BB))
+	  return;
+      Builder->SetInsertPoint(NBB);
+      visitedBB.insert(BB);
+      visit(BB);
+  }
+
   void runOnFunction(Function *F)
   {
       Function *NF = FMap[F];
       assert(NF);
       VMap.clear();
       BBMap.clear();
+      visitedBB.clear();
       TargetFolder TF(TD);
+      Builder = new IRBuilder<true,TargetFolder>(*Context, TF);
       for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
 	  BasicBlock *BB = &*I;
 	  BBMap[BB] = BasicBlock::Create(BB->getContext(), BB->getName(), NF, 0);
       }
       for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
-	  BasicBlock *BB = &*I;
-	  BasicBlock *NBB = BBMap[BB];
-	  assert(NBB);
-	  Builder = new IRBuilder<true,TargetFolder>(NBB, TF);
-
-	  visit(BB);
-	  delete Builder;
+	  runOnBasicBlock(&*I);
       }
+      //map PHI operands now
+      for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
+	 if (PHINode *N = dyn_cast<PHINode>(&*I)) {
+	     PHINode *PN = dyn_cast<PHINode>(VMap[N]);
+	     assert(PN);
+	     PN->reserveOperandSpace(N->getNumIncomingValues());
+	     for (unsigned i=0;i<N->getNumIncomingValues();i++) {
+		 Value *V = mapPHIValue(N->getIncomingValue(i));
+		 BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
+		 PN->addIncoming(V, BB);
+	     }
+	     assert(PN->getNumIncomingValues() > 0);
+	 }
+      }
+      delete Builder;
   }
 
   Function* createFunction(Function *F, Module *M)
