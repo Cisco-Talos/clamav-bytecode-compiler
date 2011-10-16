@@ -24,12 +24,15 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/ScalarEvolutionExpander.h"
 #include "llvm/BasicBlock.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Function.h"
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/PassManager.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/InstIterator.h"
@@ -39,22 +42,22 @@
 
 using namespace llvm;
 
-class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild> {
+class ClamBCRebuild : public FunctionPass, public InstVisitor<ClamBCRebuild> {
 public:
   static char ID;
-  explicit ClamBCRebuild() : ModulePass(&ID) {}
+  explicit ClamBCRebuild() : FunctionPass(&ID) {}
   virtual const char *getPassName() const { return "ClamAV bytecode backend rebuilder"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<TargetData>();
+      AU.addRequired<ScalarEvolution>();
   }
 
-  bool runOnModule(Module &M) {
+  bool doInitialization(Module &M) {
       FMap.clear();
-      TD = &getAnalysis<TargetData>();
+      FMapRev.clear();
       Context = &M.getContext();
 
-      std::vector<Function*> functions;
       for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
 	  Function *F = &*I;
 	  if (F->isDeclaration())
@@ -65,11 +68,18 @@ public:
 	   E=functions.end(); I != E; ++I) {
 	  Function *F;
 	  FMap[*I] = F = createFunction(*I, &M);
+	  FMapRev[F] = *I;
+	  BasicBlock *BB = BasicBlock::Create(*Context, "dummy", F, 0);
+	  new UnreachableInst(*Context, BB);
       }
+      return true;
+  }
+
+  bool doFinalization(Module &M)
+  {
       for (std::vector<Function*>::iterator I=functions.begin(),
 	   E=functions.end(); I != E; ++I) {
 	  Function *F = *I;
-	  runOnFunction(F);
 	  F->deleteBody();
       }
       for (std::vector<Function*>::iterator I=functions.begin(),
@@ -79,19 +89,67 @@ public:
       }
       return true;
   }
+
+  bool runOnFunction(Function &NF)
+  {
+      Function *F = FMapRev[&NF];
+      if (!F)
+	  return false;
+      NF.getEntryBlock().eraseFromParent();
+      VMap.clear();
+      BBMap.clear();
+      visitedBB.clear();
+      TargetFolder TF(TD);
+      Builder = new IRBuilder<true,TargetFolder>(*Context, TF);
+
+      TD = &getAnalysis<TargetData>();
+      SE = &getAnalysis<ScalarEvolution>();
+      Expander = new SCEVExpander(*SE);
+      for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
+	  BasicBlock *BB = &*I;
+	  BBMap[BB] = BasicBlock::Create(BB->getContext(), BB->getName(), &NF, 0);
+      }
+      for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
+	  runOnBasicBlock(&*I);
+      }
+      //map PHI operands now
+      for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
+	 if (PHINode *N = dyn_cast<PHINode>(&*I)) {
+	     PHINode *PN = dyn_cast<PHINode>(VMap[N]);
+	     assert(PN);
+	     PN->reserveOperandSpace(N->getNumIncomingValues());
+	     for (unsigned i=0;i<N->getNumIncomingValues();i++) {
+		 Value *V = mapPHIValue(N->getIncomingValue(i));
+		 BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
+		 PN->addIncoming(V, BB);
+	     }
+	     assert(PN->getNumIncomingValues() > 0);
+	 }
+      }
+      delete Expander;
+      delete Builder;
+      return true;
+  }
+
 private:
   typedef DenseMap<const Function*, Function*> FMapTy;
   typedef DenseMap<const BasicBlock*, BasicBlock*> BBMapTy;
   typedef DenseMap<const Value*, Value*> ValueMapTy;
   typedef SmallVector<std::pair<const Value*, int64_t>,4 > IndicesVectorTy;
 
+  std::vector<Function*> functions;
   FMapTy FMap;
+  FMapTy FMapRev;
   BBMapTy BBMap;
   ValueMapTy VMap;
   TargetData *TD;
+  ScalarEvolution *SE;
+  FunctionPassManager *FPM;
   LLVMContext *Context;
   DenseSet<const BasicBlock*> visitedBB;
   IRBuilder<true,TargetFolder> *Builder;
+  SCEVExpander *Expander;
+
 
   void stop(const std::string &Msg, const llvm::Instruction *I) {
     ClamBCModule::stop(Msg, I);
@@ -285,6 +343,7 @@ private:
 	  P = Builder->CreatePointerCast(P, i8pTy);
       }
       Value *Sum = 0;
+      const SCEV *S = SE->getConstant(i32Ty, 0, true);
       for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
 	   I != E; ++I) {
 	  int64_t m = I->second / divisor;
@@ -298,7 +357,12 @@ private:
 	      Sum = Builder->CreateNSWAdd(Sum, V);
 	  else
 	      Sum = V;
+	  S = SE->getAddExpr(S, SE->getMulExpr(SE->getSCEV(V),
+					       SE->getConstant(i32Ty, m2),
+					       false, true),
+			     false, true);
       }
+      Expander->expandCodeFor(S, i32Ty, cast<Instruction>(P));
       if (Sum)
 	  P = Builder->CreateGEP(P, Sum);
       P = Builder->CreatePointerCast(P, II.getType(), II.getName());
@@ -390,38 +454,6 @@ private:
       visit(BB);
   }
 
-  void runOnFunction(Function *F)
-  {
-      Function *NF = FMap[F];
-      assert(NF);
-      VMap.clear();
-      BBMap.clear();
-      visitedBB.clear();
-      TargetFolder TF(TD);
-      Builder = new IRBuilder<true,TargetFolder>(*Context, TF);
-      for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
-	  BasicBlock *BB = &*I;
-	  BBMap[BB] = BasicBlock::Create(BB->getContext(), BB->getName(), NF, 0);
-      }
-      for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
-	  runOnBasicBlock(&*I);
-      }
-      //map PHI operands now
-      for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
-	 if (PHINode *N = dyn_cast<PHINode>(&*I)) {
-	     PHINode *PN = dyn_cast<PHINode>(VMap[N]);
-	     assert(PN);
-	     PN->reserveOperandSpace(N->getNumIncomingValues());
-	     for (unsigned i=0;i<N->getNumIncomingValues();i++) {
-		 Value *V = mapPHIValue(N->getIncomingValue(i));
-		 BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
-		 PN->addIncoming(V, BB);
-	     }
-	     assert(PN->getNumIncomingValues() > 0);
-	 }
-      }
-      delete Builder;
-  }
 
   Function* createFunction(Function *F, Module *M)
   {
@@ -434,7 +466,7 @@ private:
       }
 
       FTy = FunctionType::get(rebuildType(FTy->getReturnType()), params, false);
-      StringRef Name = F->getName();
+      std::string Name = F->getName().str();
       F->setName("");
 
       return Function::Create(FTy, F->getLinkage(), Name, M);
@@ -442,7 +474,7 @@ private:
 };
 char ClamBCRebuild::ID = 0;
 
-llvm::ModulePass *createClamBCRebuild(void)
+llvm::FunctionPass *createClamBCRebuild(void)
 {
     return new ClamBCRebuild();
 }
