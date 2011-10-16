@@ -57,6 +57,7 @@ public:
       FMap.clear();
       FMapRev.clear();
       Context = &M.getContext();
+      i8pTy = PointerType::getUnqual(Type::getInt8Ty(*Context));
 
       for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
 	  Function *F = &*I;
@@ -97,6 +98,7 @@ public:
 	  return false;
       NF.getEntryBlock().eraseFromParent();
       VMap.clear();
+      CastMap.clear();
       BBMap.clear();
       visitedBB.clear();
       TargetFolder TF(TD);
@@ -142,8 +144,10 @@ private:
   FMapTy FMapRev;
   BBMapTy BBMap;
   ValueMapTy VMap;
+  DenseMap<std::pair<const Value*, const Type*>, Value*> CastMap;
   TargetData *TD;
   ScalarEvolution *SE;
+  const Type *i8pTy;
   FunctionPassManager *FPM;
   LLVMContext *Context;
   DenseSet<const BasicBlock*> visitedBB;
@@ -206,8 +210,7 @@ private:
 	  //TODO: check for overflow
 	  n *= ATy->getNumElements();
       }
-      Value *V = Builder->CreateAlloca(Ty, n == 1 ? 0 : u32const(n), AI.getName());
-      VMap[&AI] = Builder->CreatePointerCast(V, AI.getType(), AI.getName());
+      VMap[&AI] = Builder->CreateAlloca(Ty, n == 1 ? 0 : u32const(n), AI.getName());
   }
 
   Constant *mapConstant(Constant *C)
@@ -241,14 +244,43 @@ private:
       return NV;
   }
 
-  Value *mapPointer(Value *P, const Type *Ty = 0)
+  Value *makeCast(Value *V, const Type *Ty)
+  {
+      if (V->getType() == Ty)
+	  return V;
+      Instruction *I = dyn_cast<Instruction>(V);
+      if (!I)
+	  return Builder->CreatePointerCast(V, Ty, "rbcastc");
+      std::pair<const Value*, const Type*> pair(V, Ty);
+      Value *R = CastMap[pair];
+      if (!R) {
+	  BasicBlock *thisBB = Builder->GetInsertBlock();
+	  BasicBlock *targetBB = I->getParent();
+	  if (thisBB != targetBB) {
+	      BasicBlock::iterator IP = I;
+	      ++IP;
+	      while (isa<AllocaInst>(IP)) ++IP;
+	      Builder->SetInsertPoint(targetBB, IP);
+	  }
+	  CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcast");
+	  if (thisBB != targetBB)
+	      Builder->SetInsertPoint(thisBB);
+      }
+      return R;
+  }
+
+  Value *mapPointer(Value *P, const Type *Ty)
   {
       Value *PV = mapValue(P);
-      if (!Ty)
-	  Ty = P->getType();
-      if (PV->getType() != Ty)
-	  PV = Builder->CreatePointerCast(PV->stripPointerCasts(), Ty, "rbcast");
-      return PV;
+      if (PV->getType() == Ty) {
+	  assert(!isa<AllocaInst>(PV) ||
+		 cast<PointerType>(Ty)->getElementType()->isIntegerTy());
+	  return PV;
+      }
+      PV = PV->stripPointerCasts();
+      if (isa<AllocaInst>(PV))
+	  PV = makeCast(PV, i8pTy);
+      return makeCast(PV, Ty);
   }
 
   BasicBlock *mapBlock(const BasicBlock *BB)
@@ -296,13 +328,15 @@ private:
   }
 
   void visitLoadInst(LoadInst &I) {
-      VMap[&I] = Builder->CreateLoad(mapPointer(I.getPointerOperand()),
+      Value *P = I.getPointerOperand();
+      VMap[&I] = Builder->CreateLoad(mapPointer(P, P->getType()),
 				     I.getName());
   }
 
   void visitStoreInst(StoreInst &I) {
+      Value *P = I.getPointerOperand();
       Builder->CreateStore(mapValue(I.getOperand(0)),
-			   mapPointer(I.getPointerOperand()));
+			   mapPointer(P, P->getType()));
   }
 
   void visitGetElementPtrInst(GetElementPtrInst &II)
@@ -316,7 +350,6 @@ private:
 
       int64_t BaseOffs;
       IndicesVectorTy VarIndices;
-      const Type *i8pTy = PointerType::getUnqual(Type::getInt8Ty(*Context));
       const Type *i32Ty = Type::getInt32Ty(*Context);
 
       Value *P = const_cast<Value*>(DecomposeGEPExpression(&II, BaseOffs, VarIndices, TD));
@@ -326,7 +359,7 @@ private:
       if (!(BaseOffs % divisor))
 	  P = Builder->CreateConstGEP1_64(P, BaseOffs / divisor, "rb.base");
       else {
-	  P = Builder->CreatePointerCast(P, i8pTy);
+	  P = makeCast(P, i8pTy);
 	  P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
       }
       //TODO:add varindices too
@@ -340,10 +373,10 @@ private:
       }
       if (!allDivisible) {
 	  divisor = 1;
-	  P = Builder->CreatePointerCast(P, i8pTy);
+	  P = makeCast(P, i8pTy);
       }
-      Value *Sum = 0;
-      const SCEV *S = SE->getConstant(i32Ty, 0, true);
+      const SCEV *Zero = SE->getConstant(i32Ty, 0, true);
+      const SCEV *S = Zero;
       for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
 	   I != E; ++I) {
 	  int64_t m = I->second / divisor;
@@ -351,21 +384,16 @@ private:
 	  assert((int64_t)m2 == m);
 	  Value *V = const_cast<Value*>(I->first);
 	  V = Builder->CreateTruncOrBitCast(mapValue(V), i32Ty);
-	  if (m2 != 1)
-	      V = Builder->CreateNSWMul(i32const(m), V);
-	  if (Sum)
-	      Sum = Builder->CreateNSWAdd(Sum, V);
-	  else
-	      Sum = V;
 	  S = SE->getAddExpr(S, SE->getMulExpr(SE->getSCEV(V),
 					       SE->getConstant(i32Ty, m2),
 					       false, true),
 			     false, true);
       }
-      Expander->expandCodeFor(S, i32Ty, cast<Instruction>(P));
-      if (Sum)
-	  P = Builder->CreateGEP(P, Sum);
-      P = Builder->CreatePointerCast(P, II.getType(), II.getName());
+      if (S != Zero) {
+	  P = Builder->CreateGEP(P,
+				 Expander->expandCodeFor(S, i32Ty, cast<Instruction>(P)));
+      }
+      P = makeCast(P, II.getType());
       VMap[&II] = P;
   }
 
