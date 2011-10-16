@@ -356,19 +356,22 @@ private:
       P = mapValue(P)->stripPointerCasts();
       const PointerType *PTy = cast<PointerType>(P->getType());
       unsigned divisor = TD->getTypeAllocSize(PTy->getElementType());
+      bool allDivisible = true;
+
       if (!(BaseOffs % divisor))
 	  P = Builder->CreateConstGEP1_64(P, BaseOffs / divisor, "rb.base");
       else {
+	  allDivisible = false;
 	  P = makeCast(P, i8pTy);
 	  P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
       }
-      //TODO:add varindices too
-      bool allDivisible = true;
-      for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
-	   I != E; ++I) {
-	  if (I->second % divisor) {
-	      allDivisible = false;
-	      break;
+      if (allDivisible) {
+	  for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
+	       I != E; ++I) {
+	      if (I->second % divisor) {
+		  allDivisible = false;
+		  break;
+	      }
 	  }
       }
       if (!allDivisible) {
@@ -384,14 +387,20 @@ private:
 	  assert((int64_t)m2 == m);
 	  Value *V = const_cast<Value*>(I->first);
 	  V = Builder->CreateTruncOrBitCast(mapValue(V), i32Ty);
-	  S = SE->getAddExpr(S, SE->getMulExpr(SE->getSCEV(V),
-					       SE->getConstant(i32Ty, m2),
-					       false, true),
-			     false, true);
+	  const SCEV *SV = SE->getUnknown(V);//TODO: use getSCEV and build this once
+	  //the function is fully built and analyzable
+	  const SCEV *mulc = SE->getConstant(i32Ty, m2);
+	  S = SE->getAddExpr(S, SE->getMulExpr(SV, mulc, false, false /* see above TODO true*/),
+			     false, false/* see above TODO true*/);
       }
       if (S != Zero) {
-	  P = Builder->CreateGEP(P,
-				 Expander->expandCodeFor(S, i32Ty, cast<Instruction>(P)));
+	  Instruction *Dummy = Builder->CreateUnreachable();
+	  errs() << "baseoff: " << BaseOffs << ", div: " << divisor << "\n";
+	  errs() << "Sum: " << *S << "\n";
+	  Value *SC = Expander->expandCodeFor(S, i32Ty, Dummy);
+	  Builder->SetInsertPoint(Builder->GetInsertBlock());//move to end of BB
+	  Dummy->eraseFromParent();
+	  P = Builder->CreateGEP(P, SC);
       }
       P = makeCast(P, II.getType());
       VMap[&II] = P;
