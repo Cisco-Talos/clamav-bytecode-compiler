@@ -183,10 +183,13 @@ private:
       return NV;
   }
 
-  Value *mapPointer(Value *P)
+  Value *mapPointer(Value *P, const Type *Ty = 0)
   {
       Value *PV = mapValue(P);
-      PV = Builder->CreatePointerCast(PV, P->getType(), "rbcast");
+      if (!Ty)
+	  Ty = P->getType();
+      if (PV->getType() != Ty)
+	  PV = Builder->CreatePointerCast(PV->stripPointerCasts(), Ty, "rbcast");
       return PV;
   }
 
@@ -248,9 +251,7 @@ private:
   {
       if (II.hasAllZeroIndices()) {
 	  //just a bitcast
-	  Value *V = mapValue(II.getOperand(0));
-	  const Type *Ty = rebuildType(II.getType());
-	  VMap[&II] = Builder->CreatePointerCast(V, Ty, "rbcast");
+	  VMap[&II] = mapPointer(II.getOperand(0), rebuildType(II.getType()));
 	  return;
       }
       //TODO: create inbounds GEPs if original one is inbounds
@@ -261,10 +262,10 @@ private:
       const Type *i32Ty = Type::getInt32Ty(*Context);
 
       Value *P = const_cast<Value*>(DecomposeGEPExpression(&II, BaseOffs, VarIndices, TD));
-      P = mapValue(P);
+      P = mapValue(P)->stripPointerCasts();
       const PointerType *PTy = cast<PointerType>(P->getType());
       unsigned divisor = TD->getTypeAllocSize(PTy->getElementType());
-      if (BaseOffs % divisor)
+      if (!(BaseOffs % divisor))
 	  P = Builder->CreateConstGEP1_64(P, BaseOffs / divisor, "rb.base");
       else {
 	  P = Builder->CreatePointerCast(P, i8pTy);
