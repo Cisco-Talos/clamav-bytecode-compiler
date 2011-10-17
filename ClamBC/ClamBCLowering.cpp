@@ -206,6 +206,34 @@ static bool hasBitcastUse(Instruction *I)
   return false;
 }
 
+void replaceUses(Instruction *V2, Value *V, Value *VR, const Type *APTy)
+{
+    for (Value::use_iterator UI=V2->use_begin(),UE=V2->use_end();
+	 UI != UE; ++UI) {
+	Instruction *II = dyn_cast<BitCastInst>(*UI);
+	if (!II) {
+	    if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(*UI)) {
+		if (!G->hasAllZeroIndices())
+		    continue;
+		II = G;
+	    } else
+		continue;
+	}
+	if (II->getType() == APTy) {
+	    II->replaceAllUsesWith(V);
+	    continue;
+	}
+	Instruction *BC2 = new BitCastInst(V, II->getType(), "bcastr", II);
+	replaceUses(II, BC2, 0, APTy);
+    }
+    if (!V2->use_empty()) {
+	if (VR)
+	    V2->replaceAllUsesWith(VR);
+    } else {
+	V2->eraseFromParent();
+    }
+}
+
 void ClamBCLowering::fixupBitCasts(Function &F)
 {
   // bitcast of alloca doesn't work properly in libclamav,
@@ -225,72 +253,30 @@ void ClamBCLowering::fixupBitCasts(Function &F)
         allocas.push_back(AI);
       ++J;
     } while (AI);
-    const Type *i8pTy = PointerType::getUnqual(Type::getInt8Ty(F.getContext()));
+    ConstantInt *Zero = ConstantInt::get(Type::getInt32Ty(F.getContext()),
+					 0);
     for (std::vector<AllocaInst*>::iterator J=allocas.begin(),JE=allocas.end();
          J != JE; ++J) {
       AllocaInst *AI = *J;
       Value *V = AI;
       Value *B = 0;
-      if (AI->getType() == i8pTy)
+      if (AI->getAllocatedType()->isIntegerTy())
 	  continue;
+      const ArrayType *arTy = cast<ArrayType>(AI->getAllocatedType());
+      const Type *APTy = PointerType::getUnqual(arTy->getElementType());
+
       Instruction *AIC = AI->clone();
       AIC->insertBefore(AI);
-      AllocaInst *AI2 = new AllocaInst(i8pTy, "rbcastp8", AI);
+      AllocaInst *AI2 = new AllocaInst(APTy, "base_ptr", AI);
       BasicBlock::iterator IP = AI;
       while (isa<AllocaInst>(IP)) ++IP;
-      B = new BitCastInst(AIC, i8pTy, "rbicast", IP);
-      new StoreInst(B, AI2, "rbicasts", IP);
-      V = new LoadInst(AI2, "rbicastl", IP);
+      Value *Idx[] = {Zero, Zero};
+      B = GetElementPtrInst::Create(AIC, &Idx[0], &Idx[2], "base_gepz", IP);
+      new StoreInst(B, AI2, "base_store", IP);
+      V = new LoadInst(AI2, "base_load", IP);
 
-      Value *V2 = new BitCastInst(V, AI->getType(), "rbicastr", IP);
-      AI->replaceAllUsesWith(V2);
-
-      DenseMap<const Type*, Value*> typeMap;
-      for (Value::use_iterator UI=V2->use_begin(),UE=V2->use_end();
-	   UI != UE; ++UI) {
-	  BitCastInst *II = dyn_cast<BitCastInst>(*UI);
-	  if (!II)
-	      continue;
-	  if (II->getType() == i8pTy)
-	      II->replaceAllUsesWith(V);
-	  else {
-	      Instruction *BC2 = new BitCastInst(V, II->getType(), "rbcastr", II);
-	      II->replaceAllUsesWith(BC2);
-	  }
-      }
-/*	  BasicBlock::iterator IP = II->getParent()->begin();
-	  while (isa<AllocaInst>(IP)) ++IP;
-	  BasicBlock::iterator IP0 = IP;
-	  const Type *ETy = cast<PointerType>(II->getType())->getElementType();
-	  bool isInt = ETy->isIntegerTy();
-	  const Type *PTy = II->getType();
-	  if (!isInt) {
-	      const ArrayType *ATy = cast<ArrayType>(AI->getAllocatedType());
-	      PTy = PointerType::getUnqual(ATy->getElementType());
-	  }
-	  AllocaInst *NewAI = new AllocaInst(PTy, "", IP);
-	  IP = II;
-	  ++IP;
-	  Value *L;
-	  if (!isInt) {
-	      AllocatInst *AI2 = AI->clone();
-	      AI2->InsertBefore(IP0);
-	      Value *B = new BitCastInst(AI2, PTy, "rbicast", IP);
-	      Value *Back = new BitCastInst(B, 
-
-	      new StoreInst(B, NewAI, "rbcasts", IP);
-	      L = new LoadInst(NewAI, "rbcastl", IP);
-	      L = new BitCastInst(L, II->getType(), "rbcastlbit", IP);
-	  } else {
-	      Instruction *S = II->clone();
-	      S->insertBefore(II);
-	      new StoreInst(S, NewAI, "rbcasts", IP);
-	      L = new LoadInst(NewAI, "rbcastl", IP);
-	  }
-	  II->replaceAllUsesWith(L);
-	  II->eraseFromParent();
-
-      }*/
+      Value *V2 = new BitCastInst(V, AI->getType(), "bcastl", IP);
+      replaceUses(AI, V, V2, APTy);
     }
   }
 }
