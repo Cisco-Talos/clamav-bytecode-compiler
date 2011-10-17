@@ -215,7 +215,9 @@ private:
 	  //TODO: check for overflow
 	  n *= ATy->getNumElements();
       }
-      VMap[&AI] = Builder->CreateAlloca(Ty, n == 1 ? 0 : u32const(n), AI.getName());
+      if (n != 1)
+	  Ty = ArrayType::get(Ty, n);
+      VMap[&AI] = Builder->CreateAlloca(Ty, 0, AI.getName());
   }
 
   Constant *mapConstant(Constant *C)

@@ -702,6 +702,8 @@ void ClamBCWriter::printMapping(const Value *V, unsigned id, bool newline)
       if (const AllocaInst *AI = dyn_cast<AllocaInst>(V)) {
         if (AI->isArrayAllocation() && !isa<ArrayType>(AI->getAllocatedType()))
           stop("VLAs are not (yet) supported", AI);
+	if (AI->isArrayAllocation())
+	    stop("Array allocs are not supported", AI);
         Ty = AI->getAllocatedType();
       } else {
         Ty = V->getType();

@@ -221,6 +221,12 @@ void ClamBCLowering::fixupBitCasts(Function &F)
       AI = dyn_cast<AllocaInst>(J);
       if (!AI)
         break;
+      if (AI->isArrayAllocation() ||
+	  isa<ArrayType>(AI->getAllocatedType())) {
+//TODO: this workaround works for JIT but not interpreter
+//	  ++J;
+//	  continue;
+      }
       if (hasBitcastUse(AI))
         allocas.push_back(AI);
       ++J;
