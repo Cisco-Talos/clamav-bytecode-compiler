@@ -115,6 +115,7 @@ namespace {
       SE = &getAnalysis<ScalarEvolution>();
       PT = &getAnalysis<PointerTracking>();
       DT = &getAnalysis<DominatorTree>();
+      expander = new SCEVExpander(*SE);
 
       std::vector<Instruction*> insns;
 
@@ -220,6 +221,7 @@ namespace {
 	    BB->getInstList().erase(BBI++);
 	}
       }
+      delete expander;
       return Changed;
     }
 
@@ -240,6 +242,7 @@ namespace {
     PointerTracking *PT;
     TargetData *TD;
     ScalarEvolution *SE;
+    SCEVExpander *expander;
     DominatorTree *DT;
     DenseMap<Value*, Value*> BaseMap;
     DenseMap<Value*, Value*> BoundsMap;
@@ -509,13 +512,12 @@ namespace {
                                        locationid), BB);
 
       TerminatorInst *TI = BB->getTerminator();
-      SCEVExpander expander(*SE);
-      Value *IdxV = expander.expandCodeFor(Idx, Limit->getType(), TI);
+      Value *IdxV = expander->expandCodeFor(Idx, Limit->getType(), TI);
 /*      if (isa<PointerType>(IdxV->getType())) {
         IdxV = new PtrToIntInst(IdxV, Idx->getType(), "", TI);
       }*/
       //verifyFunction(*BB->getParent());
-      Value *LimitV = expander.expandCodeFor(Limit, Limit->getType(), TI);
+      Value *LimitV = expander->expandCodeFor(Limit, Limit->getType(), TI);
       //verifyFunction(*BB->getParent());
       Value *Cond = new ICmpInst(TI, strict ?
                                  ICmpInst::ICMP_ULT :

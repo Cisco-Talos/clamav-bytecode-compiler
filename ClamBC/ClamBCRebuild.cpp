@@ -133,7 +133,6 @@ public:
 	  if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(&*I))
 	     rebuildGEP(G);
       }
-      NF.dump();
       delete Expander;
       delete Builder;
       return true;
