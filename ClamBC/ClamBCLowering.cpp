@@ -206,8 +206,9 @@ static bool hasBitcastUse(Instruction *I)
   return false;
 }
 
-void replaceUses(Instruction *V2, Value *V, Value *VR, const Type *APTy)
+void replaceUses(Instruction *V2, Instruction *V, const Type *APTy)
 {
+    errs() << "replace: " << *V2 << ", with: " << *V << "\n";
     for (Value::use_iterator UI=V2->use_begin(),UE=V2->use_end();
 	 UI != UE; ++UI) {
 	Instruction *II = dyn_cast<BitCastInst>(*UI);
@@ -219,19 +220,19 @@ void replaceUses(Instruction *V2, Value *V, Value *VR, const Type *APTy)
 	    } else
 		continue;
 	}
-	if (II->getType() == APTy) {
-	    II->replaceAllUsesWith(V);
-	    continue;
-	}
-	Instruction *BC2 = new BitCastInst(V, II->getType(), "bcastr", II);
-	replaceUses(II, BC2, 0, APTy);
+	errs() << "\tuser: " << *II << "\n";
+	replaceUses(II, V, APTy);
     }
-    if (!V2->use_empty()) {
-	if (VR)
-	    V2->replaceAllUsesWith(VR);
-    } else {
+    if (V2->use_empty()) {
 	V2->eraseFromParent();
+	return;
     }
+    if (V->getType() != V2->getType()) {
+	Instruction *BC = new BitCastInst(V, V2->getType(), "bcastrr");
+	BC->insertAfter(V);
+	V2->replaceAllUsesWith(BC);
+    } else
+	V2->replaceAllUsesWith(V);
 }
 
 void ClamBCLowering::fixupBitCasts(Function &F)
@@ -258,7 +259,7 @@ void ClamBCLowering::fixupBitCasts(Function &F)
     for (std::vector<AllocaInst*>::iterator J=allocas.begin(),JE=allocas.end();
          J != JE; ++J) {
       AllocaInst *AI = *J;
-      Value *V = AI;
+      Instruction *V = AI;
       Value *B = 0;
       if (AI->getAllocatedType()->isIntegerTy())
 	  continue;
@@ -275,8 +276,7 @@ void ClamBCLowering::fixupBitCasts(Function &F)
       new StoreInst(B, AI2, "base_store", IP);
       V = new LoadInst(AI2, "base_load", IP);
 
-      Value *V2 = new BitCastInst(V, AI->getType(), "bcastl", IP);
-      replaceUses(AI, V, V2, APTy);
+      replaceUses(AI, V, APTy);
     }
   }
 }
