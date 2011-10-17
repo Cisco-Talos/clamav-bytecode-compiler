@@ -1195,6 +1195,10 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
                            F.getParent(), C);
       return false;
     }
+    size_t offsetp = String.find(':');
+    if (offsetp == StringRef::npos)
+	offsetp = 0;
+    std::transform(String.begin()+offsetp, String.end(), String.begin()+offsetp, ::tolower);
     valid = validateNDB(String.c_str(), F.getParent(), NewGV);
     SubSignatures[id] = String;
   }
