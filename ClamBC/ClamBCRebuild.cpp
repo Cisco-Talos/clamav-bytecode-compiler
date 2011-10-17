@@ -270,7 +270,7 @@ private:
 	      while (isa<AllocaInst>(IP)) ++IP;
 	      Builder->SetInsertPoint(targetBB, IP);
 	  }
-	  CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcast");
+	  CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcastp");
 	  if (thisBB != targetBB)
 	      Builder->SetInsertPoint(thisBB, thisP);
       }
