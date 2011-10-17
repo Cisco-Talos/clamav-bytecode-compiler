@@ -229,13 +229,38 @@ void ClamBCLowering::fixupBitCasts(Function &F)
     for (std::vector<AllocaInst*>::iterator J=allocas.begin(),JE=allocas.end();
          J != JE; ++J) {
       AllocaInst *AI = *J;
-      for (Value::use_iterator UI=AI->use_begin(),UE=AI->use_end();
+      Value *V = AI;
+      Value *B = 0;
+      if (AI->getType() == i8pTy)
+	  continue;
+      Instruction *AIC = AI->clone();
+      AIC->insertBefore(AI);
+      AllocaInst *AI2 = new AllocaInst(i8pTy, "rbcastp8", AI);
+      BasicBlock::iterator IP = AI;
+      while (isa<AllocaInst>(IP)) ++IP;
+      B = new BitCastInst(AIC, i8pTy, "rbicast", IP);
+      new StoreInst(B, AI2, "rbicasts", IP);
+      V = new LoadInst(AI2, "rbicastl", IP);
+
+      Value *V2 = new BitCastInst(V, AI->getType(), "rbicastr", IP);
+      AI->replaceAllUsesWith(V2);
+
+      DenseMap<const Type*, Value*> typeMap;
+      for (Value::use_iterator UI=V2->use_begin(),UE=V2->use_end();
 	   UI != UE; ++UI) {
 	  BitCastInst *II = dyn_cast<BitCastInst>(*UI);
 	  if (!II)
 	      continue;
-	  BasicBlock::iterator IP = II->getParent()->begin();
+	  if (II->getType() == i8pTy)
+	      II->replaceAllUsesWith(V);
+	  else {
+	      Instruction *BC2 = new BitCastInst(V, II->getType(), "rbcastr", II);
+	      II->replaceAllUsesWith(BC2);
+	  }
+      }
+/*	  BasicBlock::iterator IP = II->getParent()->begin();
 	  while (isa<AllocaInst>(IP)) ++IP;
+	  BasicBlock::iterator IP0 = IP;
 	  const Type *ETy = cast<PointerType>(II->getType())->getElementType();
 	  bool isInt = ETy->isIntegerTy();
 	  const Type *PTy = II->getType();
@@ -248,7 +273,11 @@ void ClamBCLowering::fixupBitCasts(Function &F)
 	  ++IP;
 	  Value *L;
 	  if (!isInt) {
-	      Value *B = new BitCastInst(AI, PTy, "rbicast", IP);
+	      AllocatInst *AI2 = AI->clone();
+	      AI2->InsertBefore(IP0);
+	      Value *B = new BitCastInst(AI2, PTy, "rbicast", IP);
+	      Value *Back = new BitCastInst(B, 
+
 	      new StoreInst(B, NewAI, "rbcasts", IP);
 	      L = new LoadInst(NewAI, "rbcastl", IP);
 	      L = new BitCastInst(L, II->getType(), "rbcastlbit", IP);
@@ -261,7 +290,7 @@ void ClamBCLowering::fixupBitCasts(Function &F)
 	  II->replaceAllUsesWith(L);
 	  II->eraseFromParent();
 
-      }
+      }*/
     }
   }
 }
