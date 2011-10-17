@@ -57,7 +57,8 @@ public:
       FMap.clear();
       FMapRev.clear();
       Context = &M.getContext();
-      i8pTy = PointerType::getUnqual(Type::getInt8Ty(*Context));
+      i8Ty = Type::getInt8Ty(*Context);
+      i8pTy = PointerType::getUnqual(i8Ty);
 
       for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
 	  Function *F = &*I;
@@ -152,6 +153,7 @@ private:
   DenseMap<std::pair<const Value*, const Type*>, Value*> CastMap;
   TargetData *TD;
   ScalarEvolution *SE;
+  const Type *i8Ty;
   const Type *i8pTy;
   FunctionPassManager *FPM;
   LLVMContext *Context;
@@ -185,12 +187,8 @@ private:
       if (const PointerType *PTy = dyn_cast<PointerType>(Ty))
 	  return PointerType::getUnqual(getInnerElementType(PTy));
       if (const CompositeType *CTy = dyn_cast<CompositeType>(Ty)) {
-	  const Type *ETy = getInnerElementType(CTy);
 	  unsigned bytes = TD->getTypeAllocSize(CTy);
-	  unsigned esize = TD->getTypeAllocSize(ETy);
-	  unsigned n = bytes / esize;
-	  assert(!(bytes % esize));
-	  return ArrayType::get(ETy, n);
+	  return ArrayType::get(i8Ty, bytes);
       }
       llvm_unreachable("unknown type");
   }
@@ -217,7 +215,9 @@ private:
       }
       if (n != 1)
 	  Ty = ArrayType::get(Ty, n);
-      VMap[&AI] = Builder->CreateAlloca(Ty, 0, AI.getName());
+      Instruction *I = Builder->CreateAlloca(Ty, 0, AI.getName());
+      I->dump();
+      VMap[&AI] = I;
   }
 
   Constant *mapConstant(Constant *C)
@@ -381,45 +381,22 @@ private:
       Value *P = const_cast<Value*>(DecomposeGEPExpression(II, BaseOffs, VarIndices, TD));
       P = mapValue(P)->stripPointerCasts();
       const PointerType *PTy = cast<PointerType>(P->getType());
-      unsigned divisor = TD->getTypeAllocSize(PTy->getElementType());
-      bool allDivisible = true;
       bool inbounds = II->isInBounds();
       Builder->SetInsertPoint(Old->getParent(), Old);
 
-      if (!(BaseOffs % divisor)) {
-	  BaseOffs /= divisor;
-	  if (inbounds)
-	      P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.based");
-	  else
-	      P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.based");
-      }  else {
-	  allDivisible = false;
-	  P = makeCast(P, i8pTy);
-	  if (inbounds)
-	      P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.base8");
-	  else
-	      P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
-      }
-      if (allDivisible) {
-	  for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
-	       I != E; ++I) {
-	      if (I->second % divisor) {
-		  allDivisible = false;
-		  break;
-	      }
-	  }
-      }
-      if (!allDivisible) {
-	  divisor = 1;
-	  P = makeCast(P, i8pTy);
-      }
+      P = makeCast(P, i8pTy);
+      if (inbounds)
+	  P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.base8");
+      else
+	  P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
+      P = makeCast(P, i8pTy);
       const SCEV *Zero = SE->getIntegerSCEV(0, i32Ty);
       const SCEV *S = Zero;
       BasicBlock *thisBB = Old->getParent();
       Instruction *IP = thisBB->getFirstNonPHI();
       for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
 	   I != E; ++I) {
-	  int64_t m = I->second / divisor;
+	  int64_t m = I->second;
 	  int32_t m2 = m;
 	  assert((int64_t)m2 == m);
 	  Value *V = const_cast<Value*>(I->first);

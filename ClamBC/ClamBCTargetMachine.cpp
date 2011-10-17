@@ -140,9 +140,6 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createCFGSimplificationPass());
   PM.add(createIndVarSimplifyPass());
   PM.add(createConstantPropagationPass());
-  PM.add(createClamBCRebuild());
-  PM.add(createVerifierPass());
-  PM.add(createInstructionCombiningPass());
   PM.add(createClamBCLowering(false));
   PM.add(createClamBCVerifier(false));
   PM.add(createClamBCRTChecks());
@@ -154,6 +151,8 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createInternalizePass(exports));
   PM.add(createGlobalDCEPass());
   PM.add(createInstructionCombiningPass());
+  PM.add(createClamBCRebuild());/* instcombine would undo the transform, must be after */
+  PM.add(createVerifierPass());
   PM.add(createCFGSimplificationPass());
   PM.add(createDeadCodeEliminationPass());
   PM.add(createClamBCVerifier(false));

@@ -208,7 +208,6 @@ static bool hasBitcastUse(Instruction *I)
 
 void replaceUses(Instruction *V2, Instruction *V, const Type *APTy)
 {
-    errs() << "replace: " << *V2 << ", with: " << *V << "\n";
     for (Value::use_iterator UI=V2->use_begin(),UE=V2->use_end();
 	 UI != UE; ++UI) {
 	Instruction *II = dyn_cast<BitCastInst>(*UI);
@@ -220,7 +219,6 @@ void replaceUses(Instruction *V2, Instruction *V, const Type *APTy)
 	    } else
 		continue;
 	}
-	errs() << "\tuser: " << *II << "\n";
 	replaceUses(II, V, APTy);
     }
     if (V2->use_empty()) {
