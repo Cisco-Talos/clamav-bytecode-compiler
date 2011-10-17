@@ -59,6 +59,7 @@ public:
       Context = &M.getContext();
       i8Ty = Type::getInt8Ty(*Context);
       i8pTy = PointerType::getUnqual(i8Ty);
+      TD = new TargetData(&M);
 
       for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
 	  Function *F = &*I;
@@ -105,7 +106,6 @@ public:
       TargetFolder TF(TD);
       Builder = new IRBuilder<true,TargetFolder>(*Context, TF);
 
-      TD = &getAnalysis<TargetData>();
       SE = &getAnalysis<ScalarEvolution>();
       Expander = new SCEVExpander(*SE);
       for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
@@ -180,17 +180,17 @@ private:
       return ETy;
   }
 
-  const Type *rebuildType(const Type *Ty)
+  const Type *rebuildType(const Type *Ty, bool i8only = false)
   {
-      if (Ty->isIntegerTy() || Ty->isVoidTy())
+      assert(Ty);
+      if (!i8only && Ty->isIntegerTy())
 	  return Ty;
-      if (const PointerType *PTy = dyn_cast<PointerType>(Ty))
-	  return PointerType::getUnqual(getInnerElementType(PTy));
-      if (const CompositeType *CTy = dyn_cast<CompositeType>(Ty)) {
-	  unsigned bytes = TD->getTypeAllocSize(CTy);
-	  return ArrayType::get(i8Ty, bytes);
-      }
-      llvm_unreachable("unknown type");
+      if (isa<PointerType>(Ty))
+	  return i8pTy;
+      if (Ty->isVoidTy() || Ty == i8Ty)
+	  return Ty;
+      unsigned bytes = TD->getTypeAllocSize(Ty);
+      return ArrayType::get(i8Ty, bytes);
   }
 
   ConstantInt *u32const(uint32_t n)
@@ -207,7 +207,7 @@ private:
       if (!isa<ConstantInt>(AI.getArraySize()))
 	  stop("VLA not supported", &AI);
       uint32_t n = cast<ConstantInt>(AI.getArraySize())->getZExtValue();
-      const Type *Ty = rebuildType(AI.getAllocatedType());
+      const Type *Ty = rebuildType(AI.getAllocatedType(), true);
       if (const ArrayType *ATy = dyn_cast<ArrayType>(Ty)) {
 	  Ty = ATy->getElementType();
 	  //TODO: check for overflow
