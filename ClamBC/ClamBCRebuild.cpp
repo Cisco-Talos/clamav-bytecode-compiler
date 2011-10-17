@@ -114,7 +114,7 @@ public:
       for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
 	  runOnBasicBlock(&*I);
       }
-      //map PHI operands now
+      //phase 2: map PHI operands now
       for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
 	 if (PHINode *N = dyn_cast<PHINode>(&*I)) {
 	     PHINode *PN = dyn_cast<PHINode>(VMap[N]);
@@ -126,10 +126,14 @@ public:
 		 PN->addIncoming(V, BB);
 	     }
 	     assert(PN->getNumIncomingValues() > 0);
-	 } else if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(&*I)) {
-	     rebuildGEP(G);
 	 }
       }
+      //phase 3: map GEPs, SCEVs need fully built function (including PHIs)
+      for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
+	  if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(&*I))
+	     rebuildGEP(G);
+      }
+      NF.dump();
       delete Expander;
       delete Builder;
       return true;
@@ -361,7 +365,7 @@ private:
 	  P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
       else
 	  P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
-      VMap[&II] = P;
+      VMap[&II] = makeCast(P, rebuildType(II.getType()));;
   }
 
   void rebuildGEP(GetElementPtrInst *II)
@@ -408,30 +412,39 @@ private:
 	  divisor = 1;
 	  P = makeCast(P, i8pTy);
       }
-      const SCEV *Zero = SE->getConstant(i32Ty, 0, true);
+      const SCEV *Zero = SE->getIntegerSCEV(0, i32Ty);
       const SCEV *S = Zero;
+      BasicBlock *thisBB = Old->getParent();
+      Instruction *IP = thisBB->getFirstNonPHI();
       for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
 	   I != E; ++I) {
 	  int64_t m = I->second / divisor;
 	  int32_t m2 = m;
 	  assert((int64_t)m2 == m);
 	  Value *V = const_cast<Value*>(I->first);
-	  V = Builder->CreateTruncOrBitCast(mapValue(V), i32Ty);
-	  const SCEV *SV = SE->getUnknown(V);//TODO: use getSCEV and build this once
-	  //the function is fully built and analyzable
-	  const SCEV *mulc = SE->getConstant(i32Ty, m2);
-	  S = SE->getAddExpr(S, SE->getMulExpr(SV, mulc, false, false /* see above TODO true*/),
-			     false, false/* see above TODO true*/);
+	  V = mapValue(V);
+	  if (Instruction *IV = dyn_cast<Instruction>(V)) {
+	      unsigned i = IV - IV->getParent()->begin();
+	      unsigned ip = IP - thisBB->begin();
+	      if (IV->getParent() == thisBB &&
+		  i > ip)
+		  IP = IV;
+	  }
+	  const SCEV *SV = SE->getSCEV(V);
+	  SV = SE->getTruncateOrNoop(SV, i32Ty);
+	  const SCEV *mulc = SE->getIntegerSCEV(m2, i32Ty);
+	  S = SE->getAddExpr(S, SE->getMulExpr(SV, mulc, false, true),
+			     false, true);
       }
       if (S != Zero) {
-	  Value *SC = Expander->expandCodeFor(S, i32Ty, Old);
+	  Value *SC = Expander->expandCodeFor(S, i32Ty, IP);
 	  Builder->SetInsertPoint(Old->getParent(), Old);//move to end of BB
 	  if (inbounds)
 	      P = Builder->CreateInBoundsGEP(P, SC);
 	  else
 	      P = Builder->CreateGEP(P, SC);
       }
-      P = makeCast(P, rebuildType(II->getType()));
+      P = makeCast(P, Old->getType());
       Old->replaceAllUsesWith(P);
       VMap[II] = P;
       Old->eraseFromParent();

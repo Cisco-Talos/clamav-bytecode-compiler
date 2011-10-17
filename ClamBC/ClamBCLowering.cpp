@@ -142,6 +142,8 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
             Instruction *IVI = dyn_cast<Instruction>(V);
             if (!IVI || (IVI->getOpcode() != Instruction::Sub &&
                          IVI->getOpcode() != Instruction::Mul)) {
+	      if (IVI && isa<CastInst>(IVI))
+		  V = IVI->getOperand(0);
               Value *V2 = Builder.CreateTrunc(V, Type::getInt32Ty(C));
               GEPI->setOperand(i, V2);
             }
