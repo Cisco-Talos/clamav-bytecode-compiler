@@ -216,7 +216,6 @@ private:
       if (n != 1)
 	  Ty = ArrayType::get(Ty, n);
       Instruction *I = Builder->CreateAlloca(Ty, 0, AI.getName());
-      I->dump();
       VMap[&AI] = I;
   }
 
@@ -372,8 +371,14 @@ private:
   void rebuildGEP(GetElementPtrInst *II)
   {
       Instruction *Old = dyn_cast<Instruction>(VMap[II]);
-      if (II->hasAllZeroIndices() || !Old)
+      if (!Old)
 	  return;
+      Old = cast<Instruction>(Old->stripPointerCasts());
+      if (!isa<GetElementPtrInst>(Old)) {
+	  Old = cast<Instruction>(makeCast(Old, i8pTy));
+	  VMap[II] = Old;
+	  return;
+      }
       int64_t BaseOffs;
       IndicesVectorTy VarIndices;
       const Type *i32Ty = Type::getInt32Ty(*Context);
@@ -389,7 +394,6 @@ private:
 	  P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.base8");
       else
 	  P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
-      P = makeCast(P, i8pTy);
       const SCEV *Zero = SE->getIntegerSCEV(0, i32Ty);
       const SCEV *S = Zero;
       BasicBlock *thisBB = Old->getParent();
@@ -425,7 +429,6 @@ private:
       P = makeCast(P, Old->getType());
       Old->replaceAllUsesWith(P);
       VMap[II] = P;
-      Old->eraseFromParent();
   }
 
 

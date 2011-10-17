@@ -145,13 +145,14 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createClamBCRTChecks());
   PM.add(createClamBCLowering(false));
   PM.add(createDeadCodeEliminationPass());
-  if (DumpIR)
-    PM.add(createBitcodeWriterPass(outs()));
   PM.add(createClamBCLogicalCompiler());
   PM.add(createInternalizePass(exports));
   PM.add(createGlobalDCEPass());
   PM.add(createInstructionCombiningPass());
   PM.add(createClamBCRebuild());/* instcombine would undo the transform, must be after */
+  PM.add(createDeadTypeEliminationPass());
+  if (DumpIR)
+    PM.add(createBitcodeWriterPass(outs()));
   PM.add(createVerifierPass());
   PM.add(createCFGSimplificationPass());
   PM.add(createDeadCodeEliminationPass());

@@ -191,6 +191,11 @@ private :
       assert(!isa<GlobalVariable>(GEP.getOperand(0)) &&
              !isa<ConstantExpr>(GEP.getOperand(0)) &&
              "would hit libclamav interpreter bug");
+      {
+      int iid = OModule->getTypeID(GEP.getPointerOperand()->getType());
+      if (iid > 65)
+	  stop("gep1 with type > 65 won't work on interpreter", &GEP);
+      }
       break;
     case 2:
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
