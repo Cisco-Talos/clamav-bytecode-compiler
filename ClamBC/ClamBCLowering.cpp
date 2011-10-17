@@ -260,7 +260,6 @@ void ClamBCLowering::fixupBitCasts(Function &F)
          J != JE; ++J) {
       AllocaInst *AI = *J;
       Instruction *V = AI;
-      Value *B = 0;
       if (AI->getAllocatedType()->isIntegerTy())
 	  continue;
       const ArrayType *arTy = cast<ArrayType>(AI->getAllocatedType());
@@ -268,13 +267,10 @@ void ClamBCLowering::fixupBitCasts(Function &F)
 
       Instruction *AIC = AI->clone();
       AIC->insertBefore(AI);
-      AllocaInst *AI2 = new AllocaInst(APTy, "base_ptr", AI);
       BasicBlock::iterator IP = AI;
       while (isa<AllocaInst>(IP)) ++IP;
       Value *Idx[] = {Zero, Zero};
-      B = GetElementPtrInst::Create(AIC, &Idx[0], &Idx[2], "base_gepz", IP);
-      new StoreInst(B, AI2, "base_store", IP);
-      V = new LoadInst(AI2, "base_load", IP);
+      V = GetElementPtrInst::Create(AIC, &Idx[0], &Idx[2], "base_gepz", IP);
 
       replaceUses(AI, V, APTy);
     }
