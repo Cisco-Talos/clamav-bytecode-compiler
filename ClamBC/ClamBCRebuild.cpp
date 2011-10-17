@@ -126,6 +126,8 @@ public:
 		 PN->addIncoming(V, BB);
 	     }
 	     assert(PN->getNumIncomingValues() > 0);
+	 } else if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(&*I)) {
+	     rebuildGEP(G);
 	 }
       }
       delete Expander;
@@ -255,6 +257,7 @@ private:
       Value *R = CastMap[pair];
       if (!R) {
 	  BasicBlock *thisBB = Builder->GetInsertBlock();
+	  BasicBlock::iterator thisP = Builder->GetInsertPoint();
 	  BasicBlock *targetBB = I->getParent();
 	  if (thisBB != targetBB) {
 	      BasicBlock::iterator IP = I;
@@ -264,7 +267,7 @@ private:
 	  }
 	  CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcast");
 	  if (thisBB != targetBB)
-	      Builder->SetInsertPoint(thisBB);
+	      Builder->SetInsertPoint(thisBB, thisP);
       }
       return R;
   }
@@ -346,24 +349,51 @@ private:
 	  VMap[&II] = mapPointer(II.getOperand(0), rebuildType(II.getType()));
 	  return;
       }
-      //TODO: create inbounds GEPs if original one is inbounds
+      // will replace this later once the entire function is built,
+      // needed because we use SCEVs
+      Value *P = mapPointer(II.getOperand(0), II.getOperand(0)->getType());
+      std::vector<Value*> idxs;
+      for (GetElementPtrInst::op_iterator I=II.idx_begin(),E=II.idx_end();
+	   I != E; ++I) {
+	  idxs.push_back(mapValue(*I));
+      }
+      if (II.isInBounds())
+	  P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
+      else
+	  P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
+      VMap[&II] = P;
+  }
 
+  void rebuildGEP(GetElementPtrInst *II)
+  {
+      Instruction *Old = dyn_cast<Instruction>(VMap[II]);
+      if (II->hasAllZeroIndices() || !Old)
+	  return;
       int64_t BaseOffs;
       IndicesVectorTy VarIndices;
       const Type *i32Ty = Type::getInt32Ty(*Context);
 
-      Value *P = const_cast<Value*>(DecomposeGEPExpression(&II, BaseOffs, VarIndices, TD));
+      Value *P = const_cast<Value*>(DecomposeGEPExpression(II, BaseOffs, VarIndices, TD));
       P = mapValue(P)->stripPointerCasts();
       const PointerType *PTy = cast<PointerType>(P->getType());
       unsigned divisor = TD->getTypeAllocSize(PTy->getElementType());
       bool allDivisible = true;
+      bool inbounds = II->isInBounds();
+      Builder->SetInsertPoint(Old->getParent(), Old);
 
-      if (!(BaseOffs % divisor))
-	  P = Builder->CreateConstGEP1_64(P, BaseOffs / divisor, "rb.base");
-      else {
+      if (!(BaseOffs % divisor)) {
+	  BaseOffs /= divisor;
+	  if (inbounds)
+	      P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.based");
+	  else
+	      P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.based");
+      }  else {
 	  allDivisible = false;
 	  P = makeCast(P, i8pTy);
-	  P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
+	  if (inbounds)
+	      P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.base8");
+	  else
+	      P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
       }
       if (allDivisible) {
 	  for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
@@ -394,16 +424,17 @@ private:
 			     false, false/* see above TODO true*/);
       }
       if (S != Zero) {
-	  Instruction *Dummy = Builder->CreateUnreachable();
-	  errs() << "baseoff: " << BaseOffs << ", div: " << divisor << "\n";
-	  errs() << "Sum: " << *S << "\n";
-	  Value *SC = Expander->expandCodeFor(S, i32Ty, Dummy);
-	  Builder->SetInsertPoint(Builder->GetInsertBlock());//move to end of BB
-	  Dummy->eraseFromParent();
-	  P = Builder->CreateGEP(P, SC);
+	  Value *SC = Expander->expandCodeFor(S, i32Ty, Old);
+	  Builder->SetInsertPoint(Old->getParent(), Old);//move to end of BB
+	  if (inbounds)
+	      P = Builder->CreateInBoundsGEP(P, SC);
+	  else
+	      P = Builder->CreateGEP(P, SC);
       }
-      P = makeCast(P, II.getType());
-      VMap[&II] = P;
+      P = makeCast(P, rebuildType(II->getType()));
+      Old->replaceAllUsesWith(P);
+      VMap[II] = P;
+      Old->eraseFromParent();
   }
 
 
