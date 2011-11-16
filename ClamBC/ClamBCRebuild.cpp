@@ -279,7 +279,7 @@ private:
   Value *mapPointer(Value *P, const Type *Ty)
   {
       Value *PV = mapValue(P);
-      if (PV->getType() == Ty) {
+      if (PV->getType() == Ty && !isa<AllocaInst>(PV)) {
 	  assert(!isa<AllocaInst>(PV) ||
 		 cast<PointerType>(Ty)->getElementType()->isIntegerTy());
 	  return PV;
