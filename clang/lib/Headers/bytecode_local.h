@@ -812,7 +812,7 @@ static force_inline int readPESectionName(unsigned char name[8], unsigned n)
   } else {
     at += sizeof(struct pe_image_optional_hdr64) - sizeof(struct pe_image_optional_hdr32);
   }
-  at += n * sizeof(struct pe_image_file_hdr);
+  at += n * sizeof(struct pe_image_section_hdr);
   int32_t pos = seek(at, SEEK_SET);
   if (pos == -1)
     return -2;
@@ -984,7 +984,7 @@ struct DIS_mem_arg {
   \group_disasm */
 struct DIS_arg {
     enum DIS_ACCESS access_type;/**< type of access */
-    uint32_t dummy;
+    enum DIS_SIZE access_size;/**< size of access */
     union {
 	struct DIS_mem_arg mem;/**< memory operand */
 	enum X86REGS reg;/**< register operand */
@@ -999,8 +999,6 @@ struct DIS_fixed {
     enum DIS_SIZE operation_size;/**< size of operation */
     enum DIS_SIZE address_size;/**< size of address */
     uint8_t segment;/**< segment */
-    uint8_t padding1;
-    uint16_t padding2;
     struct DIS_arg arg[3];/** arguments */
 };
 
@@ -1016,7 +1014,7 @@ DisassembleAt(struct DIS_fixed* result, uint32_t offset, uint32_t len)
     struct DISASM_RESULT res;
     unsigned i;
     seek(offset, SEEK_SET);
-    offset = disasm_x86(&res, len < sizeof(res) ? len : sizeof(res));
+    offset = disasm_x86(&res, len);
     result->x86_opcode = (enum X86OPS) cli_readint16(&res.real_op);
     result->operation_size = (enum DIS_SIZE) res.opsize;
     result->address_size = (enum DIS_SIZE) res.adsize;
