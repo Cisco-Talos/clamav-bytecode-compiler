@@ -155,6 +155,8 @@ typedef struct signature {
 
 #define LDB_ADDATTRIBUTES(x) const char * __ldb_rawattrs = (x);
 
+#define CONTAINER(x) const char * __ldb_container = (x);
+
 /** Marks the beginning of subsignature pattern definitions. 
  \group_config
  * \sa SIGNATURES_DECL_BEGIN */

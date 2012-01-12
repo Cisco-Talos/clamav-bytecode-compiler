@@ -70,6 +70,7 @@ private:
   bool compileLogicalSignature(Function &F, unsigned target, unsigned min,
                                unsigned max, const std::string& icon1,
                                const std::string &icon2,
+			       const std::string &container,
                                int kind);
   bool validateVirusName(const std::string& name, Module &M, bool suffix=false);
   bool compileVirusNames(Module &M, unsigned kind);
@@ -1119,6 +1120,10 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, int kind)
       break;
     }
   }
+  if (min_recommended < FUNC_LEVEL_096_4) {
+      min_recommended = FUNC_LEVEL_096_4;
+      msgrec = "0.96.4 is minimum recommended engine version. Older versions have quadratic load time";
+  }
 
   if (min_required && min < min_required) {
     printDiagnostic(msgreq, M);
@@ -1134,6 +1139,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
                                                     unsigned min, unsigned max,
                                                     const std::string& icon1,
                                                     const std::string& icon2,
+                                                    const std::string& container,
                                                     int kind)
 {
   LogicalCompiler compiler;
@@ -1222,8 +1228,10 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
       max = 255;/* for now it should be enough, we can always increase it later
                    */
     if (!min)
-      min = FUNC_LEVEL_096;/* 0.96 is first to have bytecode support */
-    LogicalSignature = LogicalSignature +
+      min = FUNC_LEVEL_096_4;
+    /* 0.96 is first to have bytecode support, but <0.96.4 has quadratic load
+     * time */
+    LogicalSignature = LogicalSignature+
       (";Engine:"+Twine(min)+"-"+Twine(max)+",").str();
   } else
     LogicalSignature = LogicalSignature + ";";
@@ -1234,6 +1242,9 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
   if (!icon2.empty())
     LogicalSignature = LogicalSignature+
       ("IconGroup2:"+Twine(icon2)+",").str();
+  if (!container.empty())
+      LogicalSignature = LogicalSignature+
+       ("Container:"+Twine(container)+",").str();
   LogicalSignature = LogicalSignature+
     ("Target:"+Twine(target)).str();
 
@@ -1244,7 +1255,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
     GV->setLinkage(GlobalValue::InternalLinkage);
     for (unsigned i=0;i<rawattrs.length();i++) {
       unsigned char c = rawattrs[i];
-      if (isalnum(c) || c == ':' || c == '-' || c == ',')
+      if (isalnum(c) || c == ':' || c == '-' || c == ',' || c == '_')
         continue;
       printDiagnostic("Invalid character in ldb attribute: "+rawattrs.substr(0,i+1),
                       F.getParent());
@@ -1461,7 +1472,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
   }
 
   GlobalVariable *GV = M.getGlobalVariable("__FuncMin");
-  unsigned funcmin = 0, funcmax = 0;
+  unsigned funcmin = FUNC_LEVEL_096_4, funcmax = 0;
   if (GV && GV->hasDefinitiveInitializer()) {
     NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.funcmin");
     Value *C = GV->getInitializer();
@@ -1505,7 +1516,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
       GV->setLinkage(GlobalValue::InternalLinkage);
     }
 
-    std::string icon1, icon2;
+    std::string icon1, icon2, container;
     GV = M.getGlobalVariable("__IconGroup1");
     if (GV && GV->hasDefinitiveInitializer() &&
         GetConstantStringInfo(GV->getInitializer(), icon1)) {
@@ -1520,10 +1531,18 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
         Valid = false;
       GV->setLinkage(GlobalValue::InternalLinkage);
     }
+    GV = M.getGlobalVariable("__ldb_container");
+    if (GV && GV->hasDefinitiveInitializer() &&
+        GetConstantStringInfo(GV->getInitializer(), container)) {
+	if (!StringRef(container).startswith("CL_TYPE_"))
+	    Valid = false;
+	GV->setLinkage(GlobalValue::InternalLinkage);
+    }
+
     //errs() << "icon1:"<<icon1<<" icon2:"<<icon2 <<"\n";
     //TODO: validate that target is a valid target
     if (!compileLogicalSignature(*F, target, funcmin, funcmax, icon1, icon2,
-                                 kind)) {
+				 container, kind)) {
       Valid = false;
     }
     NamedMDNode *Node = M.getOrInsertNamedMetadata("clambc.logicalsignature");
