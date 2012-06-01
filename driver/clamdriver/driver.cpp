@@ -581,7 +581,7 @@ int CompileFile(int argc, const char **argv, const sys::Path* out,
       freopen(out->str().c_str(), "w", stdout);
     if (err)
       freopen(err->str().c_str(), "w", stderr);
-    exit(CompileSubprocess(argv, argc, ResourceDir, bugreport, versionOnly,
+    _Exit(CompileSubprocess(argv, argc, ResourceDir, bugreport, versionOnly,
                            apiMapPath));
   }
   int Res = 0;
