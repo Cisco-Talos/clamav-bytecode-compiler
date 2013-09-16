@@ -397,23 +397,6 @@ void ClamBCModule::describeType(llvm::raw_ostream &Out, const Type *Ty, Module
              M);
       }
       elements.push_back(getTypeID(Ty));
-      offset += TD->getTypeAllocSize(Ty);
-      unsigned tdoffset = i+1 < STy->getNumElements() ?
-        SL->getElementOffset(i+1) : SL->getSizeInBytes();
-      while (tdoffset > offset) {
-        unsigned diff = tdoffset - offset;
-        if (diff >= 8) diff = 8;
-        elements.push_back(getTypeID(ArrayType::get(I8Ty, diff)));
-        offset += diff;
-      }
-      if (tdoffset < offset) {
-        STy->dump();
-        stop("Internal error: calculated offset in struct higher than in structlayout\n", M);
-      }
-    }
-    if (TD->RoundUpAlignment(offset, SL->getAlignment()) != offset) {
-      STy->dump();
-      stop("Internal error: struct not padded according to alignment\n", M);
     }
 
     printFixedNumber(Out, STy->isPacked() ? 2 : 3, 1);
