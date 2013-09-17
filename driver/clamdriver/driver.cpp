@@ -577,10 +577,15 @@ int CompileFile(int argc, const char **argv, const sys::Path* out,
 
   if (!pid) {
     // Child process
-    if (out)
-      freopen(out->str().c_str(), "w", stdout);
-    if (err)
-      freopen(err->str().c_str(), "w", stderr);
+    if (out) {
+      int fd = open(out->str().c_str(), O_CREAT | O_WRONLY);
+      dup2(fd, fileno(stdout));
+    }
+    if (err) {
+      int fd = open(err->str().c_str(), O_CREAT | O_WRONLY);
+      dup2(fd, fileno(stderr));
+    }
+
     _Exit(CompileSubprocess(argv, argc, ResourceDir, bugreport, versionOnly,
                            apiMapPath));
   }
