@@ -46,7 +46,7 @@ class ClamBCRebuild : public FunctionPass, public InstVisitor<ClamBCRebuild> {
 public:
   static char ID;
   explicit ClamBCRebuild() : FunctionPass(&ID) {}
-  virtual const char *getPassName() const { return "ClamAV bytecode backend rebuilder"; }
+  virtual const char *getPassName() const { return "ClamAV Bytecode Backend Rebuilder"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<TargetData>();
@@ -108,6 +108,7 @@ public:
 
       SE = &getAnalysis<ScalarEvolution>();
       Expander = new SCEVExpander(*SE);
+      visitFunction(F, &NF);
       for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
 	  BasicBlock *BB = &*I;
 	  BBMap[BB] = BasicBlock::Create(BB->getContext(), BB->getName(), &NF, 0);
@@ -516,6 +517,16 @@ private:
       visit(BB);
   }
 
+  void visitFunction(Function *F, Function *NF)
+  {
+    //VMap[&F] = &NF;
+    assert(!F->isVarArg() || !NF->isVarArg());
+    Function::arg_iterator FAI = F->arg_begin(), FAIE = F->arg_end();
+    Function::arg_iterator NFAI = NF->arg_begin();
+    for (;FAI != FAIE; ++FAI, ++NFAI) {
+      VMap[&*FAI] = &*NFAI;
+    }
+  }
 
   Function* createFunction(Function *F, Module *M)
   {
