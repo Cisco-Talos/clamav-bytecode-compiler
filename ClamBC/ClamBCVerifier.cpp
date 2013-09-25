@@ -451,6 +451,7 @@ class ClamBCVerifier : public FunctionPass,
     static char ID;
     explicit ClamBCVerifier(bool final)
       : FunctionPass(&ID), Final(final) {}
+    virtual const char *getPassName() const { return "ClamAV Bytecode Verifier"; }
 
     virtual bool runOnFunction(Function &F)
     {

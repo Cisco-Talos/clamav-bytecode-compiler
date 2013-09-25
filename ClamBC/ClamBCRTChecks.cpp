@@ -64,6 +64,7 @@ namespace {
   public:
     static char ID;
     PtrVerifier() : FunctionPass((intptr_t)&ID),rootNode(0) {}
+    virtual const char *getPassName() const { return "ClamAV Bytecode RT Checks"; }
 
     virtual bool runOnFunction(Function &F) {
 #ifndef CLAMBC_COMPILER
