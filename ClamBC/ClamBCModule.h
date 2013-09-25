@@ -89,6 +89,7 @@ public:
   static char ID;
   explicit ClamBCModule(llvm::formatted_raw_ostream &o,
                         const std::vector<std::string> &APIList);
+  virtual const char *getPassName() const { return "ClamAV Module: Bytecode Builder"; }
 
   void writeGlobalMap(llvm::raw_ostream* Out);
   unsigned getDbgId(const llvm::MDNode *MB)

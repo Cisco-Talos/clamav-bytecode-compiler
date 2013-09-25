@@ -59,6 +59,7 @@ class ClamBCTrace : public ModulePass {
 public:
   static char ID;
   ClamBCTrace() : ModulePass((intptr_t)&ID) {}
+  virtual const char *getPassName() const { return "ClamAV Bytecode Execution Tracing"; }
   virtual bool runOnModule(Module &M);
 };
 char ClamBCTrace::ID;

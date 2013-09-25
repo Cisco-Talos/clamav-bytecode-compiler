@@ -59,6 +59,7 @@ class ClamBCLowering : public ModulePass {
 public:
   static char ID;
   ClamBCLowering(bool final) : ModulePass((uintptr_t)&ID), final(final) {}
+  virtual const char *getPassName() const { return "ClamAV Bytecode Lowering"; }
   virtual bool runOnModule(Module &M);
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 //    AU.addRequired<TargetData>();

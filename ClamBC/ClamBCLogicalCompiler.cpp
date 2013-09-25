@@ -77,7 +77,7 @@ private:
 };
 char ClamBCLogicalCompiler::ID = 0;
 RegisterPass<ClamBCLogicalCompiler> X("clambc-lcompiler",
-                                      "ClamAV logical compiler");
+                                      "ClamAV Logical Compiler");
 enum LogicalKind {
   LOG_SUBSIGNATURE,
   LOG_AND,
