@@ -176,7 +176,7 @@ const struct __Signatures Signatures = {\
     .name = {__COUNTER__ - __signature_bias},
 /** Marks the end of the subsignature pattern definitions.
  \group_config */
-#define SIGNATURES_END };\
+#define SIGNATURES_END };
 
 /** Returns how many times the specified signature matched.
  * @param sig name of subsignature queried
