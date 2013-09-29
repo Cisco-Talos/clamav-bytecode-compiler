@@ -96,7 +96,7 @@ public:
       delete MapOut;
     }
   }
-  virtual const char *getPassName() const { return "ClamAV bytecode backend"; }
+  virtual const char *getPassName() const { return "ClamAV Bytecode Backend Writer"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(ClamBCRegAllocID);
@@ -350,6 +350,11 @@ private :
     printOperand(I, I.getCondition());
     printBasicBlockID(I.getSuccessor(0));
     printBasicBlockID(I.getSuccessor(1));
+  }
+
+  void visitSwitchInst(SwitchInst &I)
+  {
+    stop("ClamAV bytecode backend has not implemented switch statements, please lower ", &I);
   }
 
   void visitBinaryOperator(Instruction &I)

@@ -420,7 +420,7 @@ private:
 			     false, true);
       }
       if (S != Zero) {
-	  Value *SC = Expander->expandCodeFor(S, i32Ty, IP);
+	  Value *SC = Expander->expandCodeFor(S, i32Ty, Old);
 	  Builder->SetInsertPoint(Old->getParent(), Old);//move to end of BB
 	  if (inbounds)
 	      P = Builder->CreateInBoundsGEP(P, SC);

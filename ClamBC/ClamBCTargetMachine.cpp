@@ -156,6 +156,7 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
   PM.add(createVerifierPass());
   PM.add(createCFGSimplificationPass());
   PM.add(createDeadCodeEliminationPass());
+  PM.add(createLowerSwitchPass());
   PM.add(createClamBCVerifier(false));
   PM.add(createVerifierPass());
   PM.add(createStripDebugDeclarePass());

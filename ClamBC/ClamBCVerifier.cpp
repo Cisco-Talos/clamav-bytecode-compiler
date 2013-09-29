@@ -84,6 +84,11 @@ class ClamBCVerifier : public FunctionPass,
     {
       return true;
     }
+    bool visitSwitchInst(SwitchInst &I)
+    {
+      printDiagnostic("Need to lower switchInst's to branches", &I);
+      return false;
+    }
     bool visitBinaryOperator(Instruction &I)
     {
       return true;
