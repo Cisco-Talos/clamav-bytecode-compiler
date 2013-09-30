@@ -173,7 +173,7 @@ void printLocation(const llvm::Module *M, const llvm::Value *V) {
 
 static void printMsg(const Twine &Msg, const llvm::Module *M,
                      const llvm::Function *F, const llvm::Instruction *I,
-                     const llvm::Value *V, bool internal)
+                     const llvm::Value *V, bool error, bool internal)
 {
 #ifdef CLAMBC_COMPILER
   bool hasColors = true;
@@ -192,12 +192,23 @@ static void printMsg(const Twine &Msg, const llvm::Module *M,
     printLocation(M);
   }
 
-  if (hasColors)
-    errs().changeColor(raw_ostream::RED, true);
-  if (internal)
-    errs() << "internal compiler error: ";
-  else
-    errs() << "error: ";
+  if (error) {
+    if (hasColors)
+      errs().changeColor(raw_ostream::RED, true);
+    if (internal)
+      errs() << "internal compiler error: ";
+    else
+      errs() << "error: ";
+  }
+  else {
+    if (hasColors)
+      errs().changeColor(raw_ostream::MAGENTA, true);
+    if (internal)
+      errs() << "internal compiler warning: ";
+    else
+      errs() << "warning: ";
+  }
+
   if (hasColors) {
     errs().resetColor();
     errs().changeColor(raw_ostream::SAVEDCOLOR, true);
@@ -215,28 +226,56 @@ static void printMsg(const Twine &Msg, const llvm::Module *M,
 
 void printDiagnostic(const Twine &Msg, const llvm::Module *M, bool internal)
 {
-  printMsg(Msg, M, 0, 0, 0, internal);
+  printMsg(Msg, M, 0, 0, 0, true, internal);
 }
 
 void printDiagnostic(const Twine &Msg, const llvm::Function *F, bool internal)
 {
-  printMsg(Msg, F->getParent(), F, 0, 0, internal);
+  printMsg(Msg, F->getParent(), F, 0, 0, true, internal);
 }
 
 void printDiagnostic(const Twine &Msg, const llvm::Instruction *I,
                      bool internal)
 {
   const Function *F = I->getParent()->getParent();
-  printMsg(Msg, F->getParent(), F, I, 0, internal);
+  printMsg(Msg, F->getParent(), F, I, 0, true, internal);
 }
 
 void printDiagnosticValue(const Twine &Msg, const llvm::Module *M,
                           const llvm::Value *V, bool internal)
 {
   if (const Instruction *I = dyn_cast<Instruction>(V))
-    printMsg(Msg, M, I->getParent()->getParent(), I, V, internal);
+    printMsg(Msg, M, I->getParent()->getParent(), I, V, 0, internal);
   else if (const Argument *A = dyn_cast<Argument>(V))
-    printMsg(Msg, M, A->getParent(), 0, A, internal);
+    printMsg(Msg, M, A->getParent(), 0, A, 0, internal);
   else
-    printMsg(Msg, M, 0, 0, V, internal);
+    printMsg(Msg, M, 0, 0, V, true, internal);
+}
+
+void printWarning(const Twine &Msg, const llvm::Module *M, bool internal)
+{
+  printMsg(Msg, M, 0, 0, 0, false, internal);
+}
+
+void printWarning(const Twine &Msg, const llvm::Function *F, bool internal)
+{
+  printMsg(Msg, F->getParent(), F, 0, 0, false, internal);
+}
+
+void printWarning(const Twine &Msg, const llvm::Instruction *I,
+                     bool internal)
+{
+  const Function *F = I->getParent()->getParent();
+  printMsg(Msg, F->getParent(), F, I, 0, false, internal);
+}
+
+void printWarningValue(const Twine &Msg, const llvm::Module *M,
+                          const llvm::Value *V, bool internal)
+{
+  if (const Instruction *I = dyn_cast<Instruction>(V))
+    printMsg(Msg, M, I->getParent()->getParent(), I, V, 0, internal);
+  else if (const Argument *A = dyn_cast<Argument>(V))
+    printMsg(Msg, M, A->getParent(), 0, A, 0, internal);
+  else
+    printMsg(Msg, M, 0, 0, V, false, internal);
 }

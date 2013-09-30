@@ -1390,8 +1390,8 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
     // but no foundVirus calls is certainly a bad thing for non-unpacker
     // bytecodes.
     if (!isUnpacker(kind))
-      printDiagnostic("Virusnames declared, but foundVirus was not called!", &M);
-    // non-fatal
+      printWarning("Virusnames declared, but foundVirus was not called!", &M);
+    // non-fatal, should be if we could check if foundVirusVirus was reachable
     return true;
   }
   bool Valid = true;
