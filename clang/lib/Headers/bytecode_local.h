@@ -960,7 +960,7 @@ static force_inline bool readRVA(uint32_t rva, void *buf, size_t bufsize)
   @param n size of buffer
   @return a pointer to the first byte to match, or NULL if not found.
  */
-static void* memchr(const void* s, int c, size_t n)
+static force_inline void* memchr(const void* s, int c, size_t n)
 {
   unsigned char cc = c;
   const char *end, *p = s;
