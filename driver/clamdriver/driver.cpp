@@ -578,11 +578,12 @@ int CompileFile(int argc, const char **argv, const sys::Path* out,
   if (!pid) {
     // Child process
     if (out) {
-      int fd = open(out->str().c_str(), O_CREAT | O_WRONLY);
+      int fd = open(out->str().c_str(), O_WRONLY, O_CREAT);
       dup2(fd, fileno(stdout));
     }
     if (err) {
-      int fd = open(err->str().c_str(), O_CREAT | O_WRONLY);
+      // known issue with Ubuntu 64-bit headers
+      int fd = open(err->str().c_str(), O_WRONLY, O_CREAT);
       dup2(fd, fileno(stderr));
     }
 
