@@ -67,6 +67,7 @@ public:
 private:
   bool final;
   void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
+  void simplifyOperands(Function &F);
   void splitGEPZArray(Function &F);
   void fixupBitCasts(Function &F);
   void fixupGEPs(Function &F);
@@ -234,6 +235,87 @@ void replaceUses(Instruction *V2, Instruction *V, const Type *APTy)
 	V2->replaceAllUsesWith(V);
 }
 
+void ClamBCLowering::simplifyOperands(Function &F)
+{
+  std::vector<Instruction *> InstDel;
+
+  for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
+    Instruction *II = &*I;
+    if (SelectInst *SI = dyn_cast<SelectInst>(II)) {
+      //Builder->SetInsertPoint(SI->getParent(), SI);
+      std::vector<Value *> Ops;
+      bool Changed = false;
+      for (unsigned i = 0; i < II->getNumOperands(); ++i) {
+        if (ConstantExpr *CE = dyn_cast<ConstantExpr>(II->getOperand(i))) {
+          if (CE->getOpcode() == Instruction::GetElementPtr) {
+	    /*//SI->print(outs(),0);
+            //CE->print(outs(),0);
+
+            // generate new GEP inst from extracted GEP expr
+	    std::vector<Value*> indices;
+            for (unsigned index = 1; index < CE->getNumOperands(); ++index) {
+              indices.push_back(CE->getOperand(index));
+            }
+            Value *NCE = GetElementPtrInst::Create(CE->getOperand(0),
+						   indices.begin(),
+						   indices.end(),
+						   "exgep",
+						   II);
+	    
+	    Constant *C = cast<Constant>(CE->getOperand(0));
+	    Value *NCE = ConstantExpr::getInBoundsGetElementPtr(C,
+								&indices[0],
+								indices.size());
+	    
+	    Value *NBC = CastInst::CreatePointerCast(NCE,
+						     SI->getType(),
+						     "exgep_cast",
+						     II);
+            II->replaceUsesOfWith(CE, NBC);
+            //SI->getParent()->print(outs(),0);*/
+
+	    // rip out GEP expr and load it
+            Ops.push_back(new LoadInst(CE, "gepex_load", SI));
+	    Changed = true;
+          }
+        }
+	else {
+	  Ops.push_back(II->getOperand(i));
+	}
+      }
+      if (!Changed)
+	continue;
+
+      // generate new select instruction using loaded values
+      assert(Ops.size() == 3 && "malformed selectInst has occurred!");
+      SelectInst *NSI = SelectInst::Create(Ops[0], Ops[1], Ops[2],
+				      "load_sel", SI);
+
+      //replaceUses(SI, NSI, NULL);
+      for (Value::use_iterator UI=SI->use_begin(),UE=SI->use_end();
+	   UI != UE; ++UI) {
+	if (LoadInst *LI = dyn_cast<LoadInst>(*UI)) {
+	  // read it
+	  replaceUses(LI, NSI, NULL);
+	  
+	  // delete LI instruction or run DCE
+	  InstDel.push_back(LI);
+	}
+	else {
+	  assert(0 && "unhandled inst in simplying operands ClamAV Bytecode Lowering!");
+	}
+      }
+      
+      // destroy old SelectInst (push to later) or run DCE
+      InstDel.push_back(SI);
+    }
+  }
+  
+  for (unsigned i = 0; i < InstDel.size(); ++i) {
+    InstDel[i]->eraseFromParent();
+  }
+}
+
 void ClamBCLowering::fixupBitCasts(Function &F)
 {
   // bitcast of alloca doesn't work properly in libclamav,
@@ -399,6 +481,7 @@ bool ClamBCLowering::runOnModule(Module &M)
       continue;
     lowerIntrinsics(0, *I);
     if (final) {
+      simplifyOperands(*I);
       fixupBitCasts(*I);
       fixupGEPs(*I);
       fixupPtrToInts(*I);
