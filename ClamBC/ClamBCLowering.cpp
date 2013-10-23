@@ -141,13 +141,31 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F) {
         for (unsigned i=1;i<GEPI->getNumOperands();i++) {
           Value *V = GEPI->getOperand(i);
           if (V->getType() != Type::getInt32Ty(C)) {
+	    // assuming we what the operands to be precisely Int32Ty
             Instruction *IVI = dyn_cast<Instruction>(V);
             if (!IVI || (IVI->getOpcode() != Instruction::Sub &&
                          IVI->getOpcode() != Instruction::Mul)) {
 	      if (IVI && isa<CastInst>(IVI))
-		  V = IVI->getOperand(0);
-              Value *V2 = Builder.CreateTrunc(V, Type::getInt32Ty(C));
-              GEPI->setOperand(i, V2);
+		V = IVI->getOperand(0);
+
+	      // take care of varying sizes
+	      unsigned VSz = V->getType()->getPrimitiveSizeInBits();
+	      Value *V2;
+	      if (VSz < 32) {
+		// needs zext, never sext (as index cannot be negative)
+		V2 = Builder.CreateZExtOrBitCast(V, Type::getInt32Ty(C));
+	      }
+	      else if (VSz == 32) { //possible through CastInst path
+		// pass-through
+		V2 = V;
+	      }
+	      else { // VSz > 32
+		// truncation
+		V2 = Builder.CreateTrunc(V, Type::getInt32Ty(C));
+	      }
+
+	      // replace the operand with the 32-bit sized index
+	      GEPI->setOperand(i, V2);
             }
 /*
             // {s,z}ext i32 %foo to i64, getelementptr %ptr, i64 %sext ->
@@ -248,32 +266,6 @@ void ClamBCLowering::simplifyOperands(Function &F)
       for (unsigned i = 0; i < II->getNumOperands(); ++i) {
         if (ConstantExpr *CE = dyn_cast<ConstantExpr>(II->getOperand(i))) {
           if (CE->getOpcode() == Instruction::GetElementPtr) {
-	    /*//SI->print(outs(),0);
-            //CE->print(outs(),0);
-
-            // generate new GEP inst from extracted GEP expr
-	    std::vector<Value*> indices;
-            for (unsigned index = 1; index < CE->getNumOperands(); ++index) {
-              indices.push_back(CE->getOperand(index));
-            }
-            Value *NCE = GetElementPtrInst::Create(CE->getOperand(0),
-						   indices.begin(),
-						   indices.end(),
-						   "exgep",
-						   II);
-	    
-	    Constant *C = cast<Constant>(CE->getOperand(0));
-	    Value *NCE = ConstantExpr::getInBoundsGetElementPtr(C,
-								&indices[0],
-								indices.size());
-	    
-	    Value *NBC = CastInst::CreatePointerCast(NCE,
-						     SI->getType(),
-						     "exgep_cast",
-						     II);
-            II->replaceUsesOfWith(CE, NBC);
-            //SI->getParent()->print(outs(),0);*/
-
 	    // rip out GEP expr and load it
             Ops.push_back(new LoadInst(CE, "gepex_load", SI));
 	    Changed = true;
@@ -291,26 +283,27 @@ void ClamBCLowering::simplifyOperands(Function &F)
       SelectInst *NSI = SelectInst::Create(Ops[0], Ops[1], Ops[2],
 				      "load_sel", SI);
 
-      //replaceUses(SI, NSI, NULL);
       for (Value::use_iterator UI=SI->use_begin(),UE=SI->use_end();
 	   UI != UE; ++UI) {
 	if (LoadInst *LI = dyn_cast<LoadInst>(*UI)) {
 	  // read it
 	  replaceUses(LI, NSI, NULL);
 	  
-	  // delete LI instruction or run DCE
+	  // push old LoadInst for deletion
 	  InstDel.push_back(LI);
 	}
+	// TODO: handle StoreInst, CallInst, MemIntrinsicInst
 	else {
 	  assert(0 && "unhandled inst in simplying operands ClamAV Bytecode Lowering!");
 	}
       }
       
-      // destroy old SelectInst (push to later) or run DCE
+      // push old SelectInst for deletion
       InstDel.push_back(SI);
     }
   }
-  
+
+  // delete obsolete instructions
   for (unsigned i = 0; i < InstDel.size(); ++i) {
     InstDel[i]->eraseFromParent();
   }

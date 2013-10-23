@@ -414,7 +414,7 @@ private:
 		  IP = IV;
 	  }
 	  const SCEV *SV = SE->getSCEV(V);
-	  SV = SE->getTruncateOrNoop(SV, i32Ty);
+	  SV = SE->getTruncateOrZeroExtend(SV, i32Ty);
 	  const SCEV *mulc = SE->getIntegerSCEV(m2, i32Ty);
 	  S = SE->getAddExpr(S, SE->getMulExpr(SV, mulc, false, true),
 			     false, true);
