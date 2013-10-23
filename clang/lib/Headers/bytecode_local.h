@@ -177,6 +177,7 @@ const struct __Signatures Signatures = {\
 /** Marks the end of the subsignature pattern definitions.
  \group_config */
 #define SIGNATURES_END };
+#define SIGNATURES_DEF_END };
 
 /** Returns how many times the specified signature matched.
  * @param sig name of subsignature queried
