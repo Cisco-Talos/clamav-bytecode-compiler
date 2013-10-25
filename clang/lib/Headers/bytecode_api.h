@@ -135,7 +135,9 @@ enum pdf_objflags {
     OBJ_TRUNCATED,
     OBJ_FORCEDUMP,
     OBJ_FILTER_STANDARD,
-    OBJ_LAUNCHACTION
+    OBJ_LAUNCHACTION,
+    OBJ_PAGE,
+    OBJ_CONTENTS
 };
 
 #ifdef __CLAMBC__
@@ -429,7 +431,8 @@ uint32_t buffer_pipe_read_avail(int32_t id);
   * @param amount to read
   * @return pointer to buffer, or NULL if buffer has less than
   specified amount */
-uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);
+//uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);
+const uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);
 
 /**
   \group_adt
@@ -919,7 +922,8 @@ uint32_t pdf_getobjsize(int32_t objidx);
   @param amount - size returned by pdf_getobjsize (or smaller)
   @return NULL - invalid objidx/amount
           pointer - pointer to original object */
-uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);
+//uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);
+const uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);
 
 /* Return the object id for the specified object index.
   \group_pdf
