@@ -64,26 +64,36 @@ enum {
 
 /** LibClamAV functionality level constants */
 enum FunctionalityLevels {
-    FUNC_LEVEL_096 = 51,
-    FUNC_LEVEL_096_dev,
-    FUNC_LEVEL_096_1,
-    FUNC_LEVEL_096_1_dev=54,
-    FUNC_LEVEL_096_2=54,
-    FUNC_LEVEL_096_2_dev,/* 0.93 too */
-    FUNC_LEVEL_096_4=56,
-    FUNC_LEVEL_097=57,
-    FUNC_LEVEL_097_1=61,
-    FUNC_LEVEL_097_2=62,
-    FUNC_LEVEL_097_3=63
+    FUNC_LEVEL_096       = 51, /*bytecode engine released*/
+    FUNC_LEVEL_096_dev   = 52,
+    FUNC_LEVEL_096_1     = 53,
+    FUNC_LEVEL_096_1_dev = 54,
+    FUNC_LEVEL_096_2     = 54,
+    FUNC_LEVEL_096_2_dev = 55,
+    FUNC_LEVEL_096_3     = 55, /*retro-added*/
+    FUNC_LEVEL_096_4     = 56,
+    FUNC_LEVEL_096_5     = 58, /*retro-added*/
+    FUNC_LEVEL_097       = 60, /*formerly incorrectly = 57*/
+    FUNC_LEVEL_097_1     = 61,
+    FUNC_LEVEL_097_2     = 62,
+    FUNC_LEVEL_097_3     = 63, /*last bcc changes*/
+    FUNC_LEVEL_097_4     = 64,
+    FUNC_LEVEL_097_5     = 65,
+    FUNC_LEVEL_097_6     = 67,
+    FUNC_LEVEL_097_7     = 68,
+    FUNC_LEVEL_097_8     = 69,
+    FUNC_LEVEL_098       = 74,
+    FUNC_LEVEL_098_1     = 76, /*last syncing to clamav - pending*/ /*current*/
+    FUNC_LEVEL_100       = 100 /*future release candidate*/
 };
 
 /** Phase of PDF parsing */
 enum pdf_phase {
-    PDF_PHASE_NONE /* not a PDF */,
-    PDF_PHASE_PARSED, /* after parsing a PDF, object flags can be set etc. */
+  PDF_PHASE_NONE,       /* not a PDF */
+    PDF_PHASE_PARSED,   /* after parsing a PDF, object flags can be set etc. */
     PDF_PHASE_POSTDUMP, /* after an obj was dumped and scanned */
-    PDF_PHASE_END, /* after the pdf scan finished */
-    PDF_PHASE_PRE /* before pdf is parsed at all */
+    PDF_PHASE_END,      /* after the pdf scan finished */
+    PDF_PHASE_PRE       /* before pdf is parsed at all */
 };
 
 /** PDF flags */
