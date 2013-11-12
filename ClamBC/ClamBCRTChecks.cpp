@@ -68,7 +68,7 @@ namespace {
 
     virtual bool runOnFunction(Function &F) {
 #ifndef CLAMBC_COMPILER
-      // Bytecode was already verifier and had stack protector applied.
+2      // Bytecode was already verifier and had stack protector applied.
       // We get called again because ALL bytecode functions loaded are part of
       // the same module.
       if (F.hasFnAttr(Attribute::StackProtectReq))
@@ -124,7 +124,7 @@ namespace {
         Instruction *II = &*I;
         if (isa<LoadInst>(II) || isa<StoreInst>(II) || isa<MemIntrinsic>(II))
           insns.push_back(II);
-        if (CallInst *CI = dyn_cast<CallInst>(II)) {
+        else if (CallInst *CI = dyn_cast<CallInst>(II)) {
           Value *V = CI->getCalledValue()->stripPointerCasts();
           Function *F = dyn_cast<Function>(V);
           if (!F) {
@@ -133,14 +133,14 @@ namespace {
             valid = 0;
             continue;
           }
-          if (!F->isDeclaration())
-            continue;
+	  // this statement disable checks on user-defined CallInst
+          //if (!F->isDeclaration())
+	  //continue;
           insns.push_back(CI);
         }
       }
-      while (!insns.empty()) {
-        Instruction *II = insns.back();
-        insns.pop_back();
+      for (unsigned Idx = 0; Idx < insns.size(); ++Idx) {
+        Instruction *II = insns[Idx];
         DEBUG(dbgs() << "checking " << *II << "\n");
         if (LoadInst *LI = dyn_cast<LoadInst>(II)) {
           const Type *Ty = LI->getType();
@@ -222,6 +222,7 @@ namespace {
 	    BB->getInstList().erase(BBI++);
 	}
       }
+
       delete expander;
       return Changed;
     }
@@ -315,11 +316,60 @@ namespace {
       return BaseMap[Ptr] = Ptr;
     }
 
+    Value* getValAtIdx(Function *F, unsigned Idx) {
+      Value *Val= NULL;
+
+      // check if accessed Idx is within function parameter list
+      if (Idx < F->arg_size()) {
+	Function::arg_iterator It = F->arg_begin();
+	Function::arg_iterator ItEnd = F->arg_end();
+	for (unsigned i = 0; i < Idx; ++i, ++It) {
+	  // redundant check, should not be possible
+	  if (It == ItEnd) {
+	    // Houston, the impossible has become possible
+	    printDiagnostic("Idx is outside of Function parameters", F);
+	    break;
+	  } 
+	}
+	// retrieve value ptr of argument of F at Idx
+	Val = &(*It);
+      }
+      else {
+	// Idx is outside function parameter list
+	printDiagnostic("Idx is outside of Function parameters", F);
+      }
+      return Val;
+    }
+
     Value* getPointerBounds(Value *Base) {
       if (BoundsMap.count(Base))
         return BoundsMap[Base];
       const Type *I64Ty =
         Type::getInt64Ty(Base->getContext());
+
+      if (Base->getType()->isPointerTy()) {
+	if (Argument *A = dyn_cast<Argument>(Base)) {
+	  Function *F = A->getParent();
+	  const FunctionType *FT = F->getFunctionType();
+
+	  bool checks = true;
+	  // last argument check
+	  if (A->getArgNo() == (FT->getNumParams()-1)) {
+	    printDiagnostic("pointer argument cannot be last argument", F);
+	    checks = false;
+	  }
+
+	  // argument after pointer MUST be a integer (unsigned probably too)
+	  if (checks && !FT->getParamType(A->getArgNo()+1)->isIntegerTy()) {
+	    printDiagnostic("argument following pointer argument is not an integer", F);
+	    checks = false;
+	  }
+
+	  if (checks)
+	    return BoundsMap[Base] = getValAtIdx(F, A->getArgNo()+1);
+	}
+      }
+
 #ifndef CLAMBC_COMPILER
       // first arg is hidden ctx
       if (Argument *A = dyn_cast<Argument>(Base)) {
@@ -486,7 +536,6 @@ namespace {
         AbrtC->setDoesNotThrow(true);
         new UnreachableInst(BB->getContext(), AbrtBB);
         DT->addNewBlock(AbrtBB, BB);
-        //verifyFunction(*BB->getParent());
       } else {
         PN = cast<PHINode>(AbrtBB->begin());
       }
@@ -501,29 +550,16 @@ namespace {
         if (Approximate)
           col = 255;
         locationid |= col;
-//      Loc.getFilename();
-      } else {
-        static int wcounters = 100000;
-/*        locationid = (wcounters++)<<8;
-        errs() << "fake location: " << (locationid>>8) << "\n";
-        I->dump();
-        I->getParent()->dump();*/
       }
       PN->addIncoming(ConstantInt::get(Type::getInt32Ty(BB->getContext()),
                                        locationid), BB);
 
       TerminatorInst *TI = BB->getTerminator();
       Value *IdxV = expander->expandCodeFor(Idx, Limit->getType(), TI);
-/*      if (isa<PointerType>(IdxV->getType())) {
-        IdxV = new PtrToIntInst(IdxV, Idx->getType(), "", TI);
-      }*/
-      //verifyFunction(*BB->getParent());
       Value *LimitV = expander->expandCodeFor(Limit, Limit->getType(), TI);
-      //verifyFunction(*BB->getParent());
       Value *Cond = new ICmpInst(TI, strict ?
                                  ICmpInst::ICMP_ULT :
                                  ICmpInst::ICMP_ULE, IdxV, LimitV);
-      //verifyFunction(*BB->getParent());
       BranchInst::Create(newBB, AbrtBB, Cond, TI);
       TI->eraseFromParent();
       // Update dominator info
@@ -531,7 +567,6 @@ namespace {
         DT->findNearestCommonDominator(BB,
                                        DT->getNode(AbrtBB)->getIDom()->getBlock());
       DT->changeImmediateDominator(AbrtBB, DomBB);
-      //verifyFunction(*BB->getParent());
       return true;
     }
    
