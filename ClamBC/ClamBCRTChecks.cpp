@@ -68,7 +68,7 @@ namespace {
 
     virtual bool runOnFunction(Function &F) {
 #ifndef CLAMBC_COMPILER
-2      // Bytecode was already verifier and had stack protector applied.
+      // Bytecode was already verified and had stack protector applied.
       // We get called again because ALL bytecode functions loaded are part of
       // the same module.
       if (F.hasFnAttr(Attribute::StackProtectReq))
