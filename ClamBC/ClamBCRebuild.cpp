@@ -386,7 +386,7 @@ private:
 
       Value *P = const_cast<Value*>(DecomposeGEPExpression(II, BaseOffs, VarIndices, TD));
       P = mapValue(P)->stripPointerCasts();
-      const PointerType *PTy = cast<PointerType>(P->getType());
+      //const PointerType *PTy = cast<PointerType>(P->getType());
       bool inbounds = II->isInBounds();
       Builder->SetInsertPoint(Old->getParent(), Old);
 
@@ -469,28 +469,34 @@ private:
 
   void visitCallInst(CallInst &I)
   {
-      std::vector<Value*> params;
       Function *F = I.getCalledFunction();
+      //APIcall, types preserved, no mapping of F for declarations
+      if (!F->isDeclaration()) {
+	  F = FMap[F];
+	  assert(F);
+      }
       const FunctionType *FTy = F->getFunctionType();
-      if (F->isDeclaration()) {
-	  //APIcall, types preserved, no mapping of F
-	  assert(!FTy->isVarArg());
-	  for (unsigned i=0;i<FTy->getNumParams();i++) {
-	      Value *V = mapValue(I.getOperand(i+1));
-	      const Type *Ty = FTy->getParamType(i);
-	      if (V->getType() != Ty)
-		  V = Builder->CreateBitCast(V, Ty);
-	      params.push_back(V);
-	  }
-	  VMap[&I] = Builder->CreateCall(F, params.begin(), params.end(),
-					 I.getName());
-	  return;
-      }
-      F = FMap[F];
-      assert(F);
+
+      // Variable argument functions NOT allowed
+      assert(!FTy->isVarArg());
+
+      std::vector<Value*> params;
       for (unsigned i=0;i<FTy->getNumParams();i++) {
-	  params.push_back(mapValue(I.getOperand(i+1)));
+	  Value *V = mapValue(I.getOperand(i+1));
+	  const Type *Ty = FTy->getParamType(i);
+	  if (V->getType() != Ty) {
+	      // CompositeType, FunctionType, IntegerType; not all are handled TODO
+	      if (Ty->isIntegerTy())
+		  V = Builder->CreateBitCast(V, Ty);
+	      else if (Ty->isPointerTy()) // A CompositeType
+		  V = Builder->CreatePointerCast(V, Ty);
+	      else {
+		  stop("Type conversion unhandled in ClamAV Bytecode Backend Rebuilder", &I);
+	      }
+	  }
+	  params.push_back(V);
       }
+
       VMap[&I] = Builder->CreateCall(F, params.begin(), params.end(), I.getName());
   }
 
