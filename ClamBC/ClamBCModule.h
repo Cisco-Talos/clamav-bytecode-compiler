@@ -71,6 +71,7 @@ class ClamBCModule : public llvm::ModulePass {
   std::vector<const llvm::Type*> extraTypes;
   FunctionMapTy functionIDs;
   llvm::StringMap<unsigned> apiMap;
+  llvm::StringMap<unsigned> banMap;
   CEMapTy CEMap;
   GlobalMapTy globals;
   FunctionMapTy apiCalls;

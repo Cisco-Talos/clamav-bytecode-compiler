@@ -71,6 +71,7 @@ ClamBCModule::ClamBCModule(llvm::formatted_raw_ostream &o,
        I != E; ++I) {
     apiMap[*I] = id++;
   }
+  banMap["malloc"] = 0;
 
   // Assign IDs to globals. Each global variable that is filled by libclamav
   // must be listed here.
@@ -628,6 +629,12 @@ void ClamBCModule::printGlobals(Module &M, uint16_t stid)
              I);
       }
       continue;
+    }
+
+    // Forbid the usage of specified functions
+    StringMap<unsigned>::iterator K = banMap.find(Name);
+    if (K != banMap.end()) {
+      stop("Usage of function '"+Name+"' is currently disabled", &M);
     }
 
     // Skip llvm.* intrinsics
