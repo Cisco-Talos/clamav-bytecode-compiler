@@ -26,6 +26,8 @@
  */
 
 /** @file */
+#define NULL (void*)0x0
+
 #define force_inline inline __attribute__((always_inline))
 #define overloadable_func __attribute__((overloadable))
 

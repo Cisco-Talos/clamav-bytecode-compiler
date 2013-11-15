@@ -611,8 +611,14 @@ namespace {
     {
       for (Value::use_iterator U=CI->use_begin(),UE=CI->use_end();
            U != UE; ++U) {
-        if (ICmpInst *ICI = dyn_cast<ICmpInst>(U)) {
-          if (ICI->getOperand(0)->stripPointerCasts() == CI &&
+	if (CastInst *CSI = dyn_cast<CastInst>(U)) {
+	  if (checkCondition(CSI, I))
+	    return true;
+	}
+	else if (0) {
+	}
+        else if (ICmpInst *ICI = dyn_cast<ICmpInst>(U)) {
+          if (ICI->getOperand(0) == CI &&
               isa<ConstantPointerNull>(ICI->getOperand(1))) {
             if (checkCond(ICI, I, ICI->getPredicate() == ICmpInst::ICMP_EQ))
               return true;
@@ -643,7 +649,9 @@ namespace {
           return false;
         }
 
+	// checks if a NULL pointer check (returned from function) is made:
         if (CallInst *CI = dyn_cast<CallInst>(Base->stripPointerCasts())) {
+	  // by checking if use is in the same block (i.e. no branching decisions)
           if (I->getParent() == CI->getParent()) {
             printLocation(I, true);
             errs() << "no null pointer check of pointer ";
@@ -652,6 +660,8 @@ namespace {
             errs() << " before use in same block\n";
             return false;
           }
+	  // by checking if a conditional contains the values in question somewhere
+	  // between their usage
           if (!checkCondition(CI, I)) {
             printLocation(I, true);
             errs() << "no null pointer check of pointer ";

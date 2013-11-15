@@ -449,7 +449,7 @@ void ClamBCLowering::splitGEPZArray(Function &F)
 	    const ArrayType *ATy = dyn_cast<ArrayType>(Ty->getElementType());
 	    if (!ATy)
 		continue;
-	    const Type *ETy = PointerType::getUnqual(ATy->getElementType());
+	    //const Type *ETy = PointerType::getUnqual(ATy->getElementType());
 	    Value *V[] = { GEPI->getOperand(2) };
 	    Constant *Zero = ConstantInt::get(Type::getInt32Ty(Ty->getContext()), 0);
 	    Value *VZ[] = { Zero,  Zero };

@@ -161,7 +161,8 @@ bool ClamBCModule::runOnModule(Module &M)
   virusnames = Node ?
     cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
 
-  unsigned tid, cid, fid;
+  unsigned tid, fid; 
+  //unsigned cid;
   startTID = tid = clamav::initTypeIDs(typeIDs, M.getContext());
   // arrays of [2 x i8] .. [7 x i8] used for struct padding
   for (unsigned i=1;i<8;i++) {
@@ -172,7 +173,7 @@ bool ClamBCModule::runOnModule(Module &M)
   }
 
   std::vector<const Type*> types;
-  cid=1;
+  //cid=1;
   fid=1;
   for (Module::global_iterator I = M.global_begin(); I != M.global_end(); ++I) {
     for (Value::use_iterator J=I->use_begin(), JE=I->use_end(); J != JE; ++J) {
@@ -375,10 +376,10 @@ void ClamBCModule::describeType(llvm::raw_ostream &Out, const Type *Ty, Module
   if (const StructType *STy = dyn_cast<StructType>(Ty)) {
     TargetData *TD = &getAnalysis<TargetData>();
     // get field offsets and insert explicit padding
-    const StructLayout *SL = TD->getStructLayout(STy);
-    unsigned offset = 0;
+    //const StructLayout *SL = TD->getStructLayout(STy);
+    //unsigned offset = 0;
     std::vector<unsigned> elements;
-    const Type *I8Ty = Type::getInt8Ty(STy->getContext());
+    //const Type *I8Ty = Type::getInt8Ty(STy->getContext());
     for (unsigned i=0;i<STy->getNumElements();i++) {
       const Type *Ty = STy->getTypeAtIndex(i);
       if (isa<PointerType>(Ty)) {
