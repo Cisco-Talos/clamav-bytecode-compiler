@@ -76,6 +76,7 @@ void ClamBCRegAlloc::handlePHI(PHINode *PN) {
 bool ClamBCRegAlloc::runOnFunction(Function &F)
 {
   ValueMap.clear();
+  RevValueMap.clear();
   DT = &getAnalysis<DominatorTree>();
   bool Changed = false;
   for (Function::iterator I=F.begin(), E=F.end(); I != E; ++I) {
@@ -94,7 +95,12 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
   for(Function::arg_iterator I=F.arg_begin(), E=F.arg_end();
       I != E; ++I) {
     Argument *A = &*I;
-    ValueMap[A] = id++;
+    ValueMap[A] = id;
+    if (RevValueMap.size() == id)
+      RevValueMap.push_back(A);
+    else
+      errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+    ++id;
   }
 
   for(inst_iterator I=inst_begin(F), E=inst_end(F);I != E; ++I) {
@@ -130,7 +136,12 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
         if (AllocaInst *AI = dyn_cast<AllocaInst>(BCI->getOperand(0))) {
           if (!AI->isArrayAllocation()) {
             // we need to use a GEP 0,0 for bitcast here
-            ValueMap[II] = id++;
+            ValueMap[II] = id;
+            if (RevValueMap.size() == id)
+              RevValueMap.push_back(II);
+            else
+              errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+            ++id;
             continue;
           }
         }
@@ -150,8 +161,14 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
       // single-use store to alloca -> store directly to alloca
       if (StoreInst *SI = dyn_cast<StoreInst>(*II->use_begin())) {
         if (AllocaInst *AI = dyn_cast<AllocaInst>(SI->getPointerOperand())) {
-          if (!ValueMap.count(AI))
-            ValueMap[AI] = id++;
+          if (!ValueMap.count(AI)) {
+            ValueMap[AI] = id;
+            if (RevValueMap.size() == id)
+              RevValueMap.push_back(II);
+            else
+              errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+            ++id;
+          }
           ValueMap[II] = getValueID(AI);
           continue;
         }
@@ -166,7 +183,13 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
               }
               }*/
     }
-    ValueMap[II] = id++;
+    ValueMap[II] = id;
+    if (RevValueMap.size() == id)
+      RevValueMap.push_back(II);
+    else {
+      errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+    }
+    ++id;
   }
   //TODO: reduce the number of virtual registers used, by using 
   // an algorithms that walks the dominatortree and does value liveness
@@ -181,14 +204,18 @@ void ClamBCRegAlloc::dump() const {
   }
 }
 
+void ClamBCRegAlloc::revdump() const {
+  for (unsigned i = 0; i < RevValueMap.size(); ++i) {
+    errs() << i << ": ";
+    RevValueMap[i]->print(errs(),0);
+    errs()<< "\n";
+  }
+}
+
 unsigned ClamBCRegAlloc::buildReverseMap(std::vector<const Value*> &reverseMap)
 {
-  unsigned maxp=ValueMap.size();
-  reverseMap.resize(maxp);
-  for (unsigned i=0;i<maxp;i++)
-    reverseMap[i] = 0;
+  // Check using the older building code to determine changes due to building difference
   unsigned max=0;
-  bool hasAny = false;
   for (ValueIDMap::iterator I=ValueMap.begin(),E=ValueMap.end(); I != E; ++I) {
     if (const Instruction *II = dyn_cast<Instruction>(I->first)) {
       if (SkipMap.count(II))
@@ -196,12 +223,24 @@ unsigned ClamBCRegAlloc::buildReverseMap(std::vector<const Value*> &reverseMap)
     }
     if (I->second == ~0u)
       continue;
-    hasAny = true;
-    reverseMap[I->second] = I->first;
     if (I->second > max)
       max = I->second;
   }
-  return hasAny ? max+1 : 0;
+  if (max+1 != RevValueMap.size()) {
+    errs() << "mismatch in expected number of values in map at ";
+    errs() << __FILE__ << ":" << __LINE__ << "\n";
+    errs() << "found " << max+1 << ", expected " << RevValueMap.size() << "\n"; 
+    revdump();
+    assert(max+1 == RevValueMap.size());
+    return 0;
+  }
+
+  // New building code, copies previously-built vector
+  reverseMap.resize(RevValueMap.size());
+  for (unsigned i = 0; i < RevValueMap.size(); ++i) {
+    reverseMap[i] = RevValueMap[i];
+  }
+  return RevValueMap.size();
 }
 
 void ClamBCRegAlloc::getAnalysisUsage(AnalysisUsage &AU) const {

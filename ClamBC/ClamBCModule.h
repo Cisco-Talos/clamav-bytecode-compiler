@@ -201,10 +201,12 @@ public:
   virtual bool runOnFunction(llvm::Function &F);
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
   void dump() const;
+  void revdump() const;
 private:
   void handlePHI(llvm::PHINode *PN);
   typedef llvm::DenseMap<const llvm::Value*, unsigned> ValueIDMap;
   ValueIDMap ValueMap;
+  std::vector<const llvm::Value*> RevValueMap;
   llvm::DenseSet<const llvm::Instruction*> SkipMap;
   llvm::DominatorTree *DT;
 };
