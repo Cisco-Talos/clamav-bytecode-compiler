@@ -330,9 +330,11 @@ private:
   }
 
   void visitICmpInst(ICmpInst &I) {
+      Value* op0 = mapValue(I.getOperand(0));
+      Value* op1 = mapValue(I.getOperand(1));
+
       VMap[&I] = Builder->CreateICmp(I.getPredicate(),
-				     mapValue(I.getOperand(0)),
-				     mapValue(I.getOperand(1)), I.getName());
+				     op0, op1, I.getName());
   }
 
   void visitLoadInst(LoadInst &I) {
