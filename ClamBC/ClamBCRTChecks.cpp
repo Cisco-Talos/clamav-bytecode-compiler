@@ -72,7 +72,7 @@ namespace {
       // We get called again because ALL bytecode functions loaded are part of
       // the same module.
       if (F.hasFnAttr(Attribute::StackProtectReq))
-	  return false;
+        return false;
 #endif
 
       DEBUG(F.dump());
@@ -87,12 +87,12 @@ namespace {
         // No recursive functions for now.
         // In the future we may insert runtime checks for stack depth.
         for (scc_iterator<CallGraphNode*> SCCI = scc_begin(rootNode),
-             E = scc_end(rootNode); SCCI != E; ++SCCI) {
+               E = scc_end(rootNode); SCCI != E; ++SCCI) {
           const std::vector<CallGraphNode*> &nextSCC = *SCCI;
           if (nextSCC.size() > 1 || SCCI.hasLoop()) {
             errs() << "INVALID: Recursion detected, callgraph SCC components: ";
             for (std::vector<CallGraphNode*>::const_iterator I = nextSCC.begin(),
-                 E = nextSCC.end(); I != E; ++I) {
+                   E = nextSCC.end(); I != E; ++I) {
               Function *FF = (*I)->getFunction();
               if (FF) {
                 errs() << FF->getName() << ", ";
@@ -133,9 +133,9 @@ namespace {
             valid = 0;
             continue;
           }
-	  // this statement disable checks on user-defined CallInst
+          // this statement disable checks on user-defined CallInst
           //if (!F->isDeclaration())
-	  //continue;
+          //continue;
           insns.push_back(CI);
         }
       }
@@ -164,11 +164,11 @@ namespace {
             valid &= validateAccess(CI->getOperand(2), CI->getOperand(3), CI);
             continue;
           }
-	  unsigned i;
+          unsigned i;
 #ifdef CLAMBC_COMPILER
-	  i = 0;
+          i = 0;
 #else
-	  i = 1;// skip hidden ctx*
+          i = 1;// skip hidden ctx*
 #endif
           for (;i<FTy->getNumParams();i++) {
             if (isa<PointerType>(FTy->getParamType(i))) {
@@ -197,30 +197,30 @@ namespace {
         valid = 0;
 
       if (!valid) {
-	DEBUG(F.dump());
+        DEBUG(F.dump());
         ClamBCModule::stop("Verification found errors!", &F);	
-	// replace function with call to abort
+        // replace function with call to abort
         std::vector<const Type*>args;
         FunctionType* abrtTy = FunctionType::get(
-          Type::getVoidTy(F.getContext()),args,false);
+                                                 Type::getVoidTy(F.getContext()),args,false);
         Constant *func_abort =
           F.getParent()->getOrInsertFunction("abort", abrtTy);
 
-	BasicBlock *BB = &F.getEntryBlock();
-	Instruction *I = &*BB->begin();
-	Instruction *UI = new UnreachableInst(F.getContext(), I);
-	CallInst *AbrtC = CallInst::Create(func_abort, "", UI);
+        BasicBlock *BB = &F.getEntryBlock();
+        Instruction *I = &*BB->begin();
+        Instruction *UI = new UnreachableInst(F.getContext(), I);
+        CallInst *AbrtC = CallInst::Create(func_abort, "", UI);
         AbrtC->setCallingConv(CallingConv::C);
         AbrtC->setTailCall(true);
         AbrtC->setDoesNotReturn(true);
         AbrtC->setDoesNotThrow(true);
-	// remove all instructions from entry
-	BasicBlock::iterator BBI = I, BBE=BB->end();
-	while (BBI != BBE) {
-	    if (!BBI->use_empty())
-		BBI->replaceAllUsesWith(UndefValue::get(BBI->getType()));
-	    BB->getInstList().erase(BBI++);
-	}
+        // remove all instructions from entry
+        BasicBlock::iterator BBI = I, BBE=BB->end();
+        while (BBI != BBE) {
+          if (!BBI->use_empty())
+            BBI->replaceAllUsesWith(UndefValue::get(BBI->getType()));
+          BB->getInstList().erase(BBI++);
+        }
       }
 
       delete expander;
@@ -321,22 +321,22 @@ namespace {
 
       // check if accessed Idx is within function parameter list
       if (Idx < F->arg_size()) {
-	Function::arg_iterator It = F->arg_begin();
-	Function::arg_iterator ItEnd = F->arg_end();
-	for (unsigned i = 0; i < Idx; ++i, ++It) {
-	  // redundant check, should not be possible
-	  if (It == ItEnd) {
-	    // Houston, the impossible has become possible
-	    printDiagnostic("Idx is outside of Function parameters", F);
-	    break;
-	  } 
-	}
-	// retrieve value ptr of argument of F at Idx
-	Val = &(*It);
+        Function::arg_iterator It = F->arg_begin();
+        Function::arg_iterator ItEnd = F->arg_end();
+        for (unsigned i = 0; i < Idx; ++i, ++It) {
+          // redundant check, should not be possible
+          if (It == ItEnd) {
+            // Houston, the impossible has become possible
+            printDiagnostic("Idx is outside of Function parameters", F);
+            break;
+          } 
+        }
+        // retrieve value ptr of argument of F at Idx
+        Val = &(*It);
       }
       else {
-	// Idx is outside function parameter list
-	printDiagnostic("Idx is outside of Function parameters", F);
+        // Idx is outside function parameter list
+        printDiagnostic("Idx is outside of Function parameters", F);
       }
       return Val;
     }
@@ -348,46 +348,46 @@ namespace {
         Type::getInt64Ty(Base->getContext());
 
       if (Base->getType()->isPointerTy()) {
-	if (Argument *A = dyn_cast<Argument>(Base)) {
-	  Function *F = A->getParent();
-	  const FunctionType *FT = F->getFunctionType();
+        if (Argument *A = dyn_cast<Argument>(Base)) {
+          Function *F = A->getParent();
+          const FunctionType *FT = F->getFunctionType();
 
-	  bool checks = true;
-	  // last argument check
-	  if (A->getArgNo() == (FT->getNumParams()-1)) {
-	    printDiagnostic("pointer argument cannot be last argument", F);
-	    checks = false;
-	  }
+          bool checks = true;
+          // last argument check
+          if (A->getArgNo() == (FT->getNumParams()-1)) {
+            printDiagnostic("pointer argument cannot be last argument", F);
+            checks = false;
+          }
 
-	  // argument after pointer MUST be a integer (unsigned probably too)
-	  if (checks && !FT->getParamType(A->getArgNo()+1)->isIntegerTy()) {
-	    printDiagnostic("argument following pointer argument is not an integer", F);
-	    checks = false;
-	  }
+          // argument after pointer MUST be a integer (unsigned probably too)
+          if (checks && !FT->getParamType(A->getArgNo()+1)->isIntegerTy()) {
+            printDiagnostic("argument following pointer argument is not an integer", F);
+            checks = false;
+          }
 
-	  if (checks)
-	    return BoundsMap[Base] = getValAtIdx(F, A->getArgNo()+1);
-	}
+          if (checks)
+            return BoundsMap[Base] = getValAtIdx(F, A->getArgNo()+1);
+        }
       }
 
 #ifndef CLAMBC_COMPILER
       // first arg is hidden ctx
       if (Argument *A = dyn_cast<Argument>(Base)) {
-	  if (A->getArgNo() == 0) {
+        if (A->getArgNo() == 0) {
 	      const Type *Ty = cast<PointerType>(A->getType())->getElementType();
 	      return ConstantInt::get(I64Ty, TD->getTypeAllocSize(Ty));
-	  }
+        }
       }
       if (LoadInst *LI = dyn_cast<LoadInst>(Base)) {
-	  Value *V = LI->getPointerOperand()->stripPointerCasts()->getUnderlyingObject();
-	  if (Argument *A = dyn_cast<Argument>(V)) {
+        Value *V = LI->getPointerOperand()->stripPointerCasts()->getUnderlyingObject();
+        if (Argument *A = dyn_cast<Argument>(V)) {
 	      if (A->getArgNo() == 0) {
-		  // pointers from hidden ctx are trusted to be at least the
-		  // size they say they are
-		  const Type *Ty = cast<PointerType>(LI->getType())->getElementType();
-		  return ConstantInt::get(I64Ty, TD->getTypeAllocSize(Ty));
+            // pointers from hidden ctx are trusted to be at least the
+            // size they say they are
+            const Type *Ty = cast<PointerType>(LI->getType())->getElementType();
+            return ConstantInt::get(I64Ty, TD->getTypeAllocSize(Ty));
 	      }
-	  }
+        }
       }
 #endif
       if (PHINode *PN = dyn_cast<PHINode>(Base)) {
@@ -429,17 +429,17 @@ namespace {
       const Type *Ty;
       Value *V = PT->computeAllocationCountValue(Base, Ty);
       if (!V) {
-	  Base = Base->stripPointerCasts();
-	  if (CallInst *CI = dyn_cast<CallInst>(Base)) {
+        Base = Base->stripPointerCasts();
+        if (CallInst *CI = dyn_cast<CallInst>(Base)) {
 	      Function *F = CI->getCalledFunction();
-              const FunctionType *FTy = F->getFunctionType();
-              // last operand is always size for this API call kind
-              if (F->isDeclaration() && FTy->getNumParams() > 0) {
-                if (FTy->getParamType(FTy->getNumParams()-1)->isIntegerTy())
-                  V = CI->getOperand(FTy->getNumParams());
-              }
-	  }
-	  if (!V)
+          const FunctionType *FTy = F->getFunctionType();
+          // last operand is always size for this API call kind
+          if (F->isDeclaration() && FTy->getNumParams() > 0) {
+            if (FTy->getParamType(FTy->getNumParams()-1)->isIntegerTy())
+              V = CI->getOperand(FTy->getNumParams());
+          }
+        }
+        if (!V)
 	      return BoundsMap[Base] = 0;
       } else {
         unsigned size = TD->getTypeAllocSize(Ty);
@@ -512,17 +512,17 @@ namespace {
       if (!AbrtBB) {
         std::vector<const Type*>args;
         FunctionType* abrtTy = FunctionType::get(
-          Type::getVoidTy(BB->getContext()),args,false);
+                                                 Type::getVoidTy(BB->getContext()),args,false);
         args.push_back(Type::getInt32Ty(BB->getContext()));
         FunctionType* rterrTy = FunctionType::get(
-          Type::getInt32Ty(BB->getContext()),args,false);
+                                                  Type::getInt32Ty(BB->getContext()),args,false);
         Constant *func_abort =
           BB->getParent()->getParent()->getOrInsertFunction("abort", abrtTy);
         Constant *func_rterr =
           BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
         AbrtBB = BasicBlock::Create(BB->getContext(), "", BB->getParent());
         PN = PHINode::Create(Type::getInt32Ty(BB->getContext()),"",
-                                      AbrtBB);
+                             AbrtBB);
         if (MDDbgKind) {
           CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", AbrtBB);
           RtErrCall->setCallingConv(CallingConv::C);
@@ -611,12 +611,12 @@ namespace {
     {
       for (Value::use_iterator U=CI->use_begin(),UE=CI->use_end();
            U != UE; ++U) {
-	if (CastInst *CSI = dyn_cast<CastInst>(U)) {
-	  if (checkCondition(CSI, I))
-	    return true;
-	}
-	else if (0) {
-	}
+        if (CastInst *CSI = dyn_cast<CastInst>(U)) {
+          if (checkCondition(CSI, I))
+            return true;
+        }
+        else if (0) {
+        }
         else if (ICmpInst *ICI = dyn_cast<ICmpInst>(U)) {
           if (ICI->getOperand(0) == CI &&
               isa<ConstantPointerNull>(ICI->getOperand(1))) {
@@ -630,102 +630,102 @@ namespace {
 
     bool validateAccess(Value *Pointer, Value *Length, Instruction *I)
     {
-        // get base
-        Value *Base = getPointerBase(Pointer);
+      // get base
+      Value *Base = getPointerBase(Pointer);
 
-	Value *SBase = Base->stripPointerCasts();
-        // get bounds
-        Value *Bounds = getPointerBounds(SBase);
-        if (!Bounds) {
+      Value *SBase = Base->stripPointerCasts();
+      // get bounds
+      Value *Bounds = getPointerBounds(SBase);
+      if (!Bounds) {
+        printLocation(I, true);
+        errs() << "no bounds for base ";
+        printValue(SBase);
+        errs() << " while checking access to ";
+        printValue(Pointer);
+        errs() << " of length ";
+        printValue(Length);
+        errs() << "\n";
+
+        return false;
+      }
+
+      // checks if a NULL pointer check (returned from function) is made:
+      if (CallInst *CI = dyn_cast<CallInst>(Base->stripPointerCasts())) {
+        // by checking if use is in the same block (i.e. no branching decisions)
+        if (I->getParent() == CI->getParent()) {
           printLocation(I, true);
-          errs() << "no bounds for base ";
-          printValue(SBase);
-          errs() << " while checking access to ";
-          printValue(Pointer);
-          errs() << " of length ";
-          printValue(Length);
-          errs() << "\n";
-
+          errs() << "no null pointer check of pointer ";
+          printValue(Base, false, true);
+          errs() << " obtained by function call";
+          errs() << " before use in same block\n";
           return false;
         }
-
-	// checks if a NULL pointer check (returned from function) is made:
-        if (CallInst *CI = dyn_cast<CallInst>(Base->stripPointerCasts())) {
-	  // by checking if use is in the same block (i.e. no branching decisions)
-          if (I->getParent() == CI->getParent()) {
-            printLocation(I, true);
-            errs() << "no null pointer check of pointer ";
-            printValue(Base, false, true);
-            errs() << " obtained by function call";
-            errs() << " before use in same block\n";
-            return false;
-          }
-	  // by checking if a conditional contains the values in question somewhere
-	  // between their usage
-          if (!checkCondition(CI, I)) {
-            printLocation(I, true);
-            errs() << "no null pointer check of pointer ";
-            printValue(Base, false, true);
-            errs() << " obtained by function call";
-            errs() << " before use\n";
-            return false;
-          }
-        }
-
-        const Type *I64Ty =
-          Type::getInt64Ty(Base->getContext());
-        const SCEV *SLen = SE->getSCEV(Length);
-        const SCEV *OffsetP = SE->getMinusSCEV(SE->getSCEV(Pointer),
-                                               SE->getSCEV(Base));
-        SLen = SE->getNoopOrZeroExtend(SLen, I64Ty);
-        OffsetP = SE->getNoopOrZeroExtend(OffsetP, I64Ty);
-        const SCEV *Limit = SE->getSCEV(Bounds);
-        Limit = SE->getNoopOrZeroExtend(Limit, I64Ty);
-
-        DEBUG(dbgs() << "Checking access to " << *Pointer << " of length " <<
-              *Length << "\n");
-        if (OffsetP == Limit) {
+        // by checking if a conditional contains the values in question somewhere
+        // between their usage
+        if (!checkCondition(CI, I)) {
           printLocation(I, true);
-          errs() << "OffsetP == Limit: " << *OffsetP << "\n";
-          errs() << " while checking access to ";
-          printValue(Pointer);
-          errs() << " of length ";
-          printValue(Length);
-          errs() << "\n";
+          errs() << "no null pointer check of pointer ";
+          printValue(Base, false, true);
+          errs() << " obtained by function call";
+          errs() << " before use\n";
           return false;
         }
+      }
 
-        if (SLen == Limit) {
-          if (const SCEVConstant *SC = dyn_cast<SCEVConstant>(OffsetP)) {
-            if (SC->isZero())
-              return true;
-          }
-          errs() << "SLen == Limit: " << *SLen << "\n";
-          errs() << " while checking access to " << *Pointer << " of length "
-            << *Length << " at " << *I << "\n";
-          return false;
+      const Type *I64Ty =
+        Type::getInt64Ty(Base->getContext());
+      const SCEV *SLen = SE->getSCEV(Length);
+      const SCEV *OffsetP = SE->getMinusSCEV(SE->getSCEV(Pointer),
+                                             SE->getSCEV(Base));
+      SLen = SE->getNoopOrZeroExtend(SLen, I64Ty);
+      OffsetP = SE->getNoopOrZeroExtend(OffsetP, I64Ty);
+      const SCEV *Limit = SE->getSCEV(Bounds);
+      Limit = SE->getNoopOrZeroExtend(Limit, I64Ty);
+
+      DEBUG(dbgs() << "Checking access to " << *Pointer << " of length " <<
+            *Length << "\n");
+      if (OffsetP == Limit) {
+        printLocation(I, true);
+        errs() << "OffsetP == Limit: " << *OffsetP << "\n";
+        errs() << " while checking access to ";
+        printValue(Pointer);
+        errs() << " of length ";
+        printValue(Length);
+        errs() << "\n";
+        return false;
+      }
+
+      if (SLen == Limit) {
+        if (const SCEVConstant *SC = dyn_cast<SCEVConstant>(OffsetP)) {
+          if (SC->isZero())
+            return true;
         }
+        errs() << "SLen == Limit: " << *SLen << "\n";
+        errs() << " while checking access to " << *Pointer << " of length "
+               << *Length << " at " << *I << "\n";
+        return false;
+      }
 
-        bool valid = true;
-        SLen = SE->getAddExpr(OffsetP, SLen);
-        // check that offset + slen <= limit; 
-        // umax(offset+slen, limit) == limit is a sufficient (but not necessary
-        // condition)
-        const SCEV *MaxL = SE->getUMaxExpr(SLen, Limit);
-        if (MaxL != Limit) {
-          DEBUG(dbgs() << "MaxL != Limit: " << *MaxL << ", " << *Limit << "\n");
-          valid &= insertCheck(SLen, Limit, I, false);
-        }
+      bool valid = true;
+      SLen = SE->getAddExpr(OffsetP, SLen);
+      // check that offset + slen <= limit; 
+      // umax(offset+slen, limit) == limit is a sufficient (but not necessary
+      // condition)
+      const SCEV *MaxL = SE->getUMaxExpr(SLen, Limit);
+      if (MaxL != Limit) {
+        DEBUG(dbgs() << "MaxL != Limit: " << *MaxL << ", " << *Limit << "\n");
+        valid &= insertCheck(SLen, Limit, I, false);
+      }
 
-        //TODO: nullpointer check
-        const SCEV *Max = SE->getUMaxExpr(OffsetP, Limit);
-        if (Max == Limit)
-          return valid;
-        DEBUG(dbgs() << "Max != Limit: " << *Max << ", " << *Limit << "\n");
-
-        // check that offset < limit
-        valid &= insertCheck(OffsetP, Limit, I, true);
+      //TODO: nullpointer check
+      const SCEV *Max = SE->getUMaxExpr(OffsetP, Limit);
+      if (Max == Limit)
         return valid;
+      DEBUG(dbgs() << "Max != Limit: " << *Max << ", " << *Limit << "\n");
+
+      // check that offset < limit
+      valid &= insertCheck(OffsetP, Limit, I, true);
+      return valid;
     }
 
     bool validateAccess(Value *Pointer, unsigned size, Instruction *I)
