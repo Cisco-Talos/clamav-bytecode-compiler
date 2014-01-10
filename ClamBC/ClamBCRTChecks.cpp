@@ -563,7 +563,8 @@ namespace {
       TerminatorInst *TI = BB->getTerminator();
       Value *IdxV = expander->expandCodeFor(Idx, Limit->getType(), TI);
       Value *LimitV = expander->expandCodeFor(Limit, Limit->getType(), TI);
-      if (!DT->dominates(cast<Instruction>(IdxV)->getParent(),I->getParent())) {
+      if (isa<Instruction>(IdxV) &&
+          !DT->dominates(cast<Instruction>(IdxV)->getParent(),I->getParent())) {
         printLocation(I, true);
         errs() << "basic block with value [ " << IdxV->getName();
         errs() << " ] with limit [ " << LimitV->getName();
@@ -571,7 +572,7 @@ namespace {
         return false;
       }
       if (isa<Instruction>(LimitV) && 
-          !DT->dominates(cast<Instruction>(IdxV)->getParent(),I->getParent())) {
+          !DT->dominates(cast<Instruction>(LimitV)->getParent(),I->getParent())) {
         printLocation(I, true);
         errs() << "basic block with limit [" << LimitV->getName();
         errs() << " ] on value [ " << IdxV->getName();
