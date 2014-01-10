@@ -60,6 +60,7 @@ namespace {
   class PtrVerifier : public FunctionPass {
   private:
     DenseSet<Function*> badFunctions;
+    std::vector<Instruction*> delInst;
     CallGraphNode *rootNode;
   public:
     static char ID;
@@ -79,6 +80,7 @@ namespace {
       Changed = false;
       BaseMap.clear();
       BoundsMap.clear();
+      delInst.clear();
       AbrtBB = 0;
       valid = true;
 
@@ -222,6 +224,10 @@ namespace {
           BB->getInstList().erase(BBI++);
         }
       }
+
+      // bb#9967 - deleting obsolete termination instructions
+      for (unsigned i = 0; i < delInst.size(); ++i)
+        delInst[i]->eraseFromParent();
 
       delete expander;
       return Changed;
@@ -520,7 +526,7 @@ namespace {
           BB->getParent()->getParent()->getOrInsertFunction("abort", abrtTy);
         Constant *func_rterr =
           BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
-        AbrtBB = BasicBlock::Create(BB->getContext(), "", BB->getParent());
+        AbrtBB = BasicBlock::Create(BB->getContext(), "rterr.trig", BB->getParent());
         PN = PHINode::Create(Type::getInt32Ty(BB->getContext()),"",
                              AbrtBB);
         if (MDDbgKind) {
@@ -557,11 +563,27 @@ namespace {
       TerminatorInst *TI = BB->getTerminator();
       Value *IdxV = expander->expandCodeFor(Idx, Limit->getType(), TI);
       Value *LimitV = expander->expandCodeFor(Limit, Limit->getType(), TI);
+      if (!DT->dominates(cast<Instruction>(IdxV)->getParent(),I->getParent())) {
+        printLocation(I, true);
+        errs() << "basic block with value [ " << IdxV->getName();
+        errs() << " ] with limit [ " << LimitV->getName();
+        errs() << " ] does not dominate" << *I << "\n";
+        return false;
+      }
+      if (isa<Instruction>(LimitV) && 
+          !DT->dominates(cast<Instruction>(IdxV)->getParent(),I->getParent())) {
+        printLocation(I, true);
+        errs() << "basic block with limit [" << LimitV->getName();
+        errs() << " ] on value [ " << IdxV->getName();
+        errs() << " ] does not dominate" << *I << "\n";
+        return false;
+      }
       Value *Cond = new ICmpInst(TI, strict ?
                                  ICmpInst::ICMP_ULT :
                                  ICmpInst::ICMP_ULE, IdxV, LimitV);
       BranchInst::Create(newBB, AbrtBB, Cond, TI);
-      TI->eraseFromParent();
+      //TI->eraseFromParent();
+      delInst.push_back(TI);
       // Update dominator info
       BasicBlock *DomBB =
         DT->findNearestCommonDominator(BB,
