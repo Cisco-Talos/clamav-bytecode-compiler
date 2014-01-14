@@ -80,16 +80,16 @@ public:
   static char ID;
   explicit ClamBCWriter(ClamBCModule *module)
     : FunctionPass(&ID),
-    OModule(module), TheModule(0), TD(0), MapOut(0), Dumper(0) {
-      if (!MapFile.empty()) {
-        std::string ErrorInfo;
-        MapOut = new raw_fd_ostream(MapFile.c_str(), ErrorInfo);
-        if (!ErrorInfo.empty()) {
-          errs() << "error opening mapfile" << MapFile << ": " << ErrorInfo << "\n";
-          MapOut = 0;
-        }
+      OModule(module), TheModule(0), TD(0), MapOut(0), Dumper(0) {
+    if (!MapFile.empty()) {
+      std::string ErrorInfo;
+      MapOut = new raw_fd_ostream(MapFile.c_str(), ErrorInfo);
+      if (!ErrorInfo.empty()) {
+        errs() << "error opening mapfile" << MapFile << ": " << ErrorInfo << "\n";
+        MapOut = 0;
       }
     }
+  }
 
   ~ClamBCWriter() {
     if (MapOut) {
@@ -192,35 +192,35 @@ private :
              !isa<ConstantExpr>(GEP.getOperand(0)) &&
              "would hit libclamav interpreter bug");
       {
-      int iid = OModule->getTypeID(GEP.getPointerOperand()->getType());
-      if (iid > 65)
-	  stop("gep1 with type > 65 won't work on interpreter", &GEP);
+        int iid = OModule->getTypeID(GEP.getPointerOperand()->getType());
+        if (iid > 65)
+          stop("gep1 with type > 65 won't work on interpreter", &GEP);
       }
       break;
     case 2:
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
         if (CI->isZero()) {
           assert(!isa<GlobalVariable>(GEP.getOperand(0)) &&
-             !isa<ConstantExpr>(GEP.getOperand(0)) &&
-             "would hit libclamav interpreter bug");
+                 !isa<ConstantExpr>(GEP.getOperand(0)) &&
+                 "would hit libclamav interpreter bug");
 	      printFixedNumber(OP_BC_GEPZ, 2);
 	      printType(GEP.getPointerOperand()->getType(), 0, &GEP);
 	      printOperand(GEP, GEP.getOperand(0));
 	      printOperand(GEP, GEP.getOperand(2));
-	    if (ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
-		if (!CI->isZero()) {
-	    const PointerType *Ty = cast<PointerType>(GEP.getPointerOperand()->getType());
-	    const ArrayType *ATy = dyn_cast<ArrayType>(Ty->getElementType());
-	    if (ATy)
-		stop("ATy", &GEP);
-		}
-	    }
+          if (ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
+            if (!CI->isZero()) {
+              const PointerType *Ty = cast<PointerType>(GEP.getPointerOperand()->getType());
+              const ArrayType *ATy = dyn_cast<ArrayType>(Ty->getElementType());
+              if (ATy)
+                stop("ATy", &GEP);
+            }
+          }
           return;
         }
       }
       // fall through
     default:
-        stop("GEPN", &GEP);
+      stop("GEPN", &GEP);
       printFixedNumber(OP_BC_GEPN, 2);
       // If needed we could use DecomposeGEPExpression here.
       if (ops >= 16)
@@ -255,7 +255,7 @@ private :
     Value *V = SI.getPointerOperand();
     // checking is done by the verifier!
     if (isa<GetElementPtrInst>(V) ||
-	isa<BitCastInst>(V)) {
+        isa<BitCastInst>(V)) {
       printFixedNumber(OP_BC_STORE, 2);
       printOperand(SI, SI.getOperand(0));
       printOperand(SI, V);
@@ -674,89 +674,89 @@ void ClamBCWriter::printMapping(const Value *V, unsigned id, bool newline)
   *MapOut << "Value id " << id << ": " << *V << "\n";
 }
 
-  void ClamBCWriter::printFunction(Function &F) {     
-    if (F.hasStructRetAttr())
-      stop("Functions with struct ret are not supported", &F);
+void ClamBCWriter::printFunction(Function &F) {     
+  if (F.hasStructRetAttr())
+    stop("Functions with struct ret are not supported", &F);
 
-    if (MapOut) {
-      *MapOut << "Function " << (OModule->getFunctionID(&F)-1) << ": " <<
-        F.getName() << "\n\n";
-    }
-    printEOL();
-    OModule->printOne('A');
-    printFixedNumber(F.arg_size(), 1);
-    printType(F.getReturnType());
+  if (MapOut) {
+    *MapOut << "Function " << (OModule->getFunctionID(&F)-1) << ": " <<
+      F.getName() << "\n\n";
+  }
+  printEOL();
+  OModule->printOne('A');
+  printFixedNumber(F.arg_size(), 1);
+  printType(F.getReturnType());
 
-    OModule->printOne('L');
+  OModule->printOne('L');
 
-    unsigned id = 0;
-    for (inst_iterator I = inst_begin(&F), E = inst_end(&F); I != E; ++I) {
-      id++;
-    }
-    if (id >= 32768) /* upper 32k "operands" are globals */
-      stop("Attempted to use more than 32k instructions", &F);
+  unsigned id = 0;
+  for (inst_iterator I = inst_begin(&F), E = inst_end(&F); I != E; ++I) {
+    id++;
+  }
+  if (id >= 32768) /* upper 32k "operands" are globals */
+    stop("Attempted to use more than 32k instructions", &F);
 
 
-    std::vector<const Value*> reverseValueMap;
-    id = RA->buildReverseMap(reverseValueMap);
-    printCount(*F.getParent(), id - F.arg_size(), "values");
-    /* We can't iterate directly on the densemap when writing bytecode, because:
-     *  - iteration is non-deterministic, because DenseMaps are  sorted by pointer
-     *      values that change each run
-     *  - we need to write out types in order of increasing IDs, otherwise we'd
-     *      have to write out the ID with the type */
-    for (unsigned i=0;i<id;i++) {
-      const Type *Ty;
-      const Value *V = reverseValueMap[i];
-      assert(V && "Null Value in idmap?");
-      if (const AllocaInst *AI = dyn_cast<AllocaInst>(V)) {
-        if (AI->isArrayAllocation() && !isa<ArrayType>(AI->getAllocatedType()))
-          stop("VLAs are not (yet) supported", AI);
-	if (AI->isArrayAllocation())
+  std::vector<const Value*> reverseValueMap;
+  id = RA->buildReverseMap(reverseValueMap);
+  printCount(*F.getParent(), id - F.arg_size(), "values");
+  /* We can't iterate directly on the densemap when writing bytecode, because:
+   *  - iteration is non-deterministic, because DenseMaps are  sorted by pointer
+   *      values that change each run
+   *  - we need to write out types in order of increasing IDs, otherwise we'd
+   *      have to write out the ID with the type */
+  for (unsigned i=0;i<id;i++) {
+    const Type *Ty;
+    const Value *V = reverseValueMap[i];
+    assert(V && "Null Value in idmap?");
+    if (const AllocaInst *AI = dyn_cast<AllocaInst>(V)) {
+      if (AI->isArrayAllocation() && !isa<ArrayType>(AI->getAllocatedType()))
+        stop("VLAs are not (yet) supported", AI);
+      if (AI->isArrayAllocation())
 	    stop("Array allocs are not supported", AI);
-        Ty = AI->getAllocatedType();
-      } else {
-        Ty = V->getType();
-      }
-      printMapping(V, i, isa<Argument>(V));
-      printType(Ty, 0, dyn_cast<Instruction>(V));
-      printFixedNumber(isa<AllocaInst>(V), 1);
+      Ty = AI->getAllocatedType();
+    } else {
+      Ty = V->getType();
     }
+    printMapping(V, i, isa<Argument>(V));
+    printType(Ty, 0, dyn_cast<Instruction>(V));
+    printFixedNumber(isa<AllocaInst>(V), 1);
+  }
 
-    OModule->printOne('F');
-    unsigned instructions=0;
-    for(inst_iterator II=inst_begin(F),IE=inst_end(F); II != IE; ++II) {
-      if (isa<AllocaInst>(*II) || isa<DbgInfoIntrinsic>(*II))
-        continue;
-      if (!isa<TerminatorInst>(&*II) && RA->skipInstruction(&*II)) {
-        continue;
-      }
-      instructions++;
+  OModule->printOne('F');
+  unsigned instructions=0;
+  for(inst_iterator II=inst_begin(F),IE=inst_end(F); II != IE; ++II) {
+    if (isa<AllocaInst>(*II) || isa<DbgInfoIntrinsic>(*II))
+      continue;
+    if (!isa<TerminatorInst>(&*II) && RA->skipInstruction(&*II)) {
+      continue;
     }
-    printNumber(instructions);
+    instructions++;
+  }
+  printNumber(instructions);
 
-    id = 0;// entry BB gets ID 0, because it can have no predecessors
-    for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
-      BBMap[&*BB] = id++;
-    }
-    printCount(*F.getParent(), id, "basic blocks");
+  id = 0;// entry BB gets ID 0, because it can have no predecessors
+  for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
+    BBMap[&*BB] = id++;
+  }
+  printCount(*F.getParent(), id, "basic blocks");
 
-    for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
-      printBasicBlock(BB);
-    }
+  for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
+    printBasicBlock(BB);
+  }
 
-    OModule->printOne('E');
-    if (anyDbg) {
-      OModule->printOne('D');
-      OModule->printOne('B');
-      OModule->printOne('G');
-      printNumber(dbgInfo.size());
-      for (std::vector<unsigned>::iterator I=dbgInfo.begin(),E=dbgInfo.end();
-           I != E; ++I) {
-        printNumber(*I);
-      }
+  OModule->printOne('E');
+  if (anyDbg) {
+    OModule->printOne('D');
+    OModule->printOne('B');
+    OModule->printOne('G');
+    printNumber(dbgInfo.size());
+    for (std::vector<unsigned>::iterator I=dbgInfo.begin(),E=dbgInfo.end();
+         I != E; ++I) {
+      printNumber(*I);
     }
   }
+}
 
 void ClamBCWriter::printBasicBlock(BasicBlock *BB) {
   printEOL();
