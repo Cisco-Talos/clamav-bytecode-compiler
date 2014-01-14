@@ -215,6 +215,7 @@ void ClamBCRegAlloc::revdump() const {
 unsigned ClamBCRegAlloc::buildReverseMap(std::vector<const Value*> &reverseMap)
 {
   // Check using the older building code to determine changes due to building difference
+  // Note: this code can be removed if necessary
   unsigned max=0;
   for (ValueIDMap::iterator I=ValueMap.begin(),E=ValueMap.end(); I != E; ++I) {
     if (const Instruction *II = dyn_cast<Instruction>(I->first)) {
@@ -226,7 +227,7 @@ unsigned ClamBCRegAlloc::buildReverseMap(std::vector<const Value*> &reverseMap)
     if (I->second > max)
       max = I->second;
   }
-  if (max+1 != RevValueMap.size()) {
+  if ((max != 0) && (max+1 != RevValueMap.size())) {
     errs() << "mismatch in expected number of values in map at ";
     errs() << __FILE__ << ":" << __LINE__ << "\n";
     errs() << "found " << max+1 << ", expected " << RevValueMap.size() << "\n"; 
