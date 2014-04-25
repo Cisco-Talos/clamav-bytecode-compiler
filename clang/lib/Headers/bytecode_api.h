@@ -83,7 +83,8 @@ enum FunctionalityLevels {
     FUNC_LEVEL_097_7     = 68,
     FUNC_LEVEL_097_8     = 69,
     FUNC_LEVEL_098       = 74,
-    FUNC_LEVEL_098_1     = 76, /*last syncing to clamav - pending*/ /*current*/
+    FUNC_LEVEL_098_1     = 76, /*last syncing to clamav*/
+    FUNC_LEVEL_098_2     = 77, /*current*/
     FUNC_LEVEL_100       = 100 /*future release candidate*/
 };
 
