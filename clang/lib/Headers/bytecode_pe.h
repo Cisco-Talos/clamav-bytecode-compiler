@@ -1,5 +1,6 @@
 /*
- *  Copyright (C) 2009 Sourcefire, Inc.
+ *  Copyright (C) 2014 Cisco Systems, Inc.
+ *  Copyright (C) 2009-2013 Sourcefire, Inc.
  *  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,8 +29,10 @@
 #define __PE_H
 
 /** @file */
-/** Header for this PE file
-  \group_pe */
+/**
+\group_pe
+ * Header for this PE file
+ */
 struct pe_image_file_hdr {
     uint32_t Magic;  /**< PE magic header: PE\\0\\0 */
     uint16_t Machine;/**< CPU this executable runs on, see libclamav/pe.c for possible values */
@@ -41,15 +44,19 @@ struct pe_image_file_hdr {
     uint16_t Characteristics;
 };
 
-/** PE data directory header
-  \group_pe */
+/**
+\group_pe
+ * PE data directory header
+ */
 struct pe_image_data_dir {
     uint32_t VirtualAddress;
     uint32_t Size;
 };
 
-/** 32-bit PE optional header
-  \group_pe */
+/**
+\group_pe
+ * 32-bit PE optional header
+ */
 struct pe_image_optional_hdr32 {
     uint16_t Magic;
     uint8_t  MajorLinkerVersion;		    /**< unreliable */
@@ -84,8 +91,10 @@ struct pe_image_optional_hdr32 {
     struct pe_image_data_dir DataDirectory[16];
 };
 
-/** PE 64-bit optional header
-  \group_pe */
+/**
+\group_pe
+ * PE 64-bit optional header
+ */
 struct pe_image_optional_hdr64 {
     uint16_t Magic;
     uint8_t  MajorLinkerVersion;		    /**< unreliable */
@@ -119,8 +128,10 @@ struct pe_image_optional_hdr64 {
     struct pe_image_data_dir DataDirectory[16];
 };
 
-/** PE section header
-  \group_pe */
+/**
+\group_pe
+ * PE section header
+ */
 struct pe_image_section_hdr {
     uint8_t Name[8];			    /**< may not end with NULL */
     /*
@@ -140,8 +151,10 @@ struct pe_image_section_hdr {
     uint32_t Characteristics;
 };
 
-/** Data for the bytecode PE hook
-  \group_pe */
+/**
+\group_pe
+ * Data for the bytecode PE hook
+ */
 struct cli_pe_hook_data {
   uint32_t offset;
   uint32_t ep; /**< EntryPoint as file offset */

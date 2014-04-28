@@ -1,65 +1,48 @@
-\hypertarget{structpe__image__file__hdr}{
-\subsection{pe\_\-image\_\-file\_\-hdr Struct Reference}
-\label{structpe__image__file__hdr}\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}}
+\hypertarget{structpe__image__file__hdr}{\subsection{pe\-\_\-image\-\_\-file\-\_\-hdr Struct Reference}
+\label{structpe__image__file__hdr}\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
 }
 \subsubsection*{Data Fields}
 \begin{DoxyCompactItemize}
 \item 
-uint32\_\-t \hyperlink{structpe__image__file__hdr_aacdf4d16fc118936413e1bfe23b9e444}{Magic}
+uint32\-\_\-t \hyperlink{structpe__image__file__hdr_aacdf4d16fc118936413e1bfe23b9e444}{Magic}
 \item 
-uint16\_\-t \hyperlink{structpe__image__file__hdr_a51d503029c67ea2862fe31a71cd4212d}{Machine}
+uint16\-\_\-t \hyperlink{structpe__image__file__hdr_a51d503029c67ea2862fe31a71cd4212d}{Machine}
 \item 
-uint16\_\-t \hyperlink{structpe__image__file__hdr_aad0798860a6f2bc09b927345db02e074}{NumberOfSections}
+uint16\-\_\-t \hyperlink{structpe__image__file__hdr_aad0798860a6f2bc09b927345db02e074}{Number\-Of\-Sections}
 \item 
-uint32\_\-t \hyperlink{structpe__image__file__hdr_ac83cc1a91ccb0a2a67bab786974b7cb0}{TimeDateStamp}
+uint32\-\_\-t \hyperlink{structpe__image__file__hdr_ac83cc1a91ccb0a2a67bab786974b7cb0}{Time\-Date\-Stamp}
 \item 
-uint32\_\-t \hyperlink{structpe__image__file__hdr_a6d4bc2ab7b55577dd6f5491a8b21ef97}{PointerToSymbolTable}
+uint32\-\_\-t \hyperlink{structpe__image__file__hdr_a6d4bc2ab7b55577dd6f5491a8b21ef97}{Pointer\-To\-Symbol\-Table}
 \item 
-uint32\_\-t \hyperlink{structpe__image__file__hdr_a4dbc3cb95c8f5dfe95a9c7d346db9844}{NumberOfSymbols}
+uint32\-\_\-t \hyperlink{structpe__image__file__hdr_a4dbc3cb95c8f5dfe95a9c7d346db9844}{Number\-Of\-Symbols}
 \item 
-uint16\_\-t \hyperlink{structpe__image__file__hdr_a4333c57f9c44ac4ca60e99b04dbed87d}{SizeOfOptionalHeader}
+uint16\-\_\-t \hyperlink{structpe__image__file__hdr_a4333c57f9c44ac4ca60e99b04dbed87d}{Size\-Of\-Optional\-Header}
 \end{DoxyCompactItemize}
 
 
 \subsubsection{Detailed Description}
-Header for this PE file \begin{Desc}
-\item[\hyperlink{pe__pe000054}{PE}]\end{Desc}
-
+Header for this P\-E file 
 
 \subsubsection{Field Documentation}
-\hypertarget{structpe__image__file__hdr_a51d503029c67ea2862fe31a71cd4212d}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!Machine@{Machine}}
-\index{Machine@{Machine}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{Machine}]{\setlength{\rightskip}{0pt plus 5cm}uint16\_\-t {\bf Machine}}}
-\label{structpe__image__file__hdr_a51d503029c67ea2862fe31a71cd4212d}
-CPU this executable runs on, see libclamav/pe.c for possible values \hypertarget{structpe__image__file__hdr_aacdf4d16fc118936413e1bfe23b9e444}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!Magic@{Magic}}
-\index{Magic@{Magic}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{Magic}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf Magic}}}
-\label{structpe__image__file__hdr_aacdf4d16fc118936413e1bfe23b9e444}
-PE magic header: PE$\backslash$0$\backslash$0 \hypertarget{structpe__image__file__hdr_aad0798860a6f2bc09b927345db02e074}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!NumberOfSections@{NumberOfSections}}
-\index{NumberOfSections@{NumberOfSections}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{NumberOfSections}]{\setlength{\rightskip}{0pt plus 5cm}uint16\_\-t {\bf NumberOfSections}}}
-\label{structpe__image__file__hdr_aad0798860a6f2bc09b927345db02e074}
-Number of sections in this executable \hypertarget{structpe__image__file__hdr_a4dbc3cb95c8f5dfe95a9c7d346db9844}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!NumberOfSymbols@{NumberOfSymbols}}
-\index{NumberOfSymbols@{NumberOfSymbols}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{NumberOfSymbols}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf NumberOfSymbols}}}
-\label{structpe__image__file__hdr_a4dbc3cb95c8f5dfe95a9c7d346db9844}
-debug \hypertarget{structpe__image__file__hdr_a6d4bc2ab7b55577dd6f5491a8b21ef97}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!PointerToSymbolTable@{PointerToSymbolTable}}
-\index{PointerToSymbolTable@{PointerToSymbolTable}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{PointerToSymbolTable}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf PointerToSymbolTable}}}
-\label{structpe__image__file__hdr_a6d4bc2ab7b55577dd6f5491a8b21ef97}
-debug \hypertarget{structpe__image__file__hdr_a4333c57f9c44ac4ca60e99b04dbed87d}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!SizeOfOptionalHeader@{SizeOfOptionalHeader}}
-\index{SizeOfOptionalHeader@{SizeOfOptionalHeader}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{SizeOfOptionalHeader}]{\setlength{\rightskip}{0pt plus 5cm}uint16\_\-t {\bf SizeOfOptionalHeader}}}
-\label{structpe__image__file__hdr_a4333c57f9c44ac4ca60e99b04dbed87d}
-== 224 \hypertarget{structpe__image__file__hdr_ac83cc1a91ccb0a2a67bab786974b7cb0}{
-\index{pe\_\-image\_\-file\_\-hdr@{pe\_\-image\_\-file\_\-hdr}!TimeDateStamp@{TimeDateStamp}}
-\index{TimeDateStamp@{TimeDateStamp}!pe_image_file_hdr@{pe\_\-image\_\-file\_\-hdr}}
-\paragraph[{TimeDateStamp}]{\setlength{\rightskip}{0pt plus 5cm}uint32\_\-t {\bf TimeDateStamp}}}
-\label{structpe__image__file__hdr_ac83cc1a91ccb0a2a67bab786974b7cb0}
+\hypertarget{structpe__image__file__hdr_a51d503029c67ea2862fe31a71cd4212d}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Machine@{Machine}}
+\index{Machine@{Machine}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Machine}]{\setlength{\rightskip}{0pt plus 5cm}uint16\-\_\-t Machine}}\label{structpe__image__file__hdr_a51d503029c67ea2862fe31a71cd4212d}
+C\-P\-U this executable runs on, see libclamav/pe.\-c for possible values \hypertarget{structpe__image__file__hdr_aacdf4d16fc118936413e1bfe23b9e444}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Magic@{Magic}}
+\index{Magic@{Magic}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Magic}]{\setlength{\rightskip}{0pt plus 5cm}uint32\-\_\-t Magic}}\label{structpe__image__file__hdr_aacdf4d16fc118936413e1bfe23b9e444}
+P\-E magic header\-: P\-E\textbackslash{}0\textbackslash{}0 \hypertarget{structpe__image__file__hdr_aad0798860a6f2bc09b927345db02e074}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Number\-Of\-Sections@{Number\-Of\-Sections}}
+\index{Number\-Of\-Sections@{Number\-Of\-Sections}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Number\-Of\-Sections}]{\setlength{\rightskip}{0pt plus 5cm}uint16\-\_\-t Number\-Of\-Sections}}\label{structpe__image__file__hdr_aad0798860a6f2bc09b927345db02e074}
+Number of sections in this executable \hypertarget{structpe__image__file__hdr_a4dbc3cb95c8f5dfe95a9c7d346db9844}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Number\-Of\-Symbols@{Number\-Of\-Symbols}}
+\index{Number\-Of\-Symbols@{Number\-Of\-Symbols}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Number\-Of\-Symbols}]{\setlength{\rightskip}{0pt plus 5cm}uint32\-\_\-t Number\-Of\-Symbols}}\label{structpe__image__file__hdr_a4dbc3cb95c8f5dfe95a9c7d346db9844}
+debug \hypertarget{structpe__image__file__hdr_a6d4bc2ab7b55577dd6f5491a8b21ef97}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Pointer\-To\-Symbol\-Table@{Pointer\-To\-Symbol\-Table}}
+\index{Pointer\-To\-Symbol\-Table@{Pointer\-To\-Symbol\-Table}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Pointer\-To\-Symbol\-Table}]{\setlength{\rightskip}{0pt plus 5cm}uint32\-\_\-t Pointer\-To\-Symbol\-Table}}\label{structpe__image__file__hdr_a6d4bc2ab7b55577dd6f5491a8b21ef97}
+debug \hypertarget{structpe__image__file__hdr_a4333c57f9c44ac4ca60e99b04dbed87d}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Size\-Of\-Optional\-Header@{Size\-Of\-Optional\-Header}}
+\index{Size\-Of\-Optional\-Header@{Size\-Of\-Optional\-Header}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Size\-Of\-Optional\-Header}]{\setlength{\rightskip}{0pt plus 5cm}uint16\-\_\-t Size\-Of\-Optional\-Header}}\label{structpe__image__file__hdr_a4333c57f9c44ac4ca60e99b04dbed87d}
+== 224 \hypertarget{structpe__image__file__hdr_ac83cc1a91ccb0a2a67bab786974b7cb0}{\index{pe\-\_\-image\-\_\-file\-\_\-hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}!Time\-Date\-Stamp@{Time\-Date\-Stamp}}
+\index{Time\-Date\-Stamp@{Time\-Date\-Stamp}!pe_image_file_hdr@{pe\-\_\-image\-\_\-file\-\_\-hdr}}
+\paragraph[{Time\-Date\-Stamp}]{\setlength{\rightskip}{0pt plus 5cm}uint32\-\_\-t Time\-Date\-Stamp}}\label{structpe__image__file__hdr_ac83cc1a91ccb0a2a67bab786974b7cb0}
 Unreliable 
