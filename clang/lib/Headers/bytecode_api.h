@@ -1,6 +1,6 @@
 /*
- *  Copyright (C) 2014 Cisco Systems, Inc.
  *  Copyright (C) 2009-2013 Sourcefire, Inc.
+ *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates.
  *  All rights reserved.
  *  Authors: Török Edvin, Kevin Lin
  *
@@ -99,6 +99,7 @@ enum FunctionalityLevels {
     FUNC_LEVEL_097_8     = 69, /**< LibClamAV release 0.97.8 */
     FUNC_LEVEL_098_1     = 76, /**< LibClamAV release 0.98.2 */ /*last syncing to clamav*/
     FUNC_LEVEL_098_2     = 77, /**< LibClamAV release 0.98.2 */
+    FUNC_LEVEL_098_3     = 78, /**< LibClamAV release 0.98.3 */
     FUNC_LEVEL_100       = 100 /*future release candidate*/
 };
 
@@ -172,6 +173,20 @@ enum pdf_objflags {
     OBJ_LAUNCHACTION,    /**< */
     OBJ_PAGE,            /**< */
     OBJ_CONTENTS         /**< */
+};
+
+/**
+\group_json
+ * JSON types
+ */
+enum bc_json_type {
+    JSON_TYPE_NULL=0,    /**< */
+    JSON_TYPE_BOOLEAN,   /**< */
+    JSON_TYPE_DOUBLE,    /**< */
+    JSON_TYPE_INT,       /**< */
+    JSON_TYPE_OBJECT,    /**< */
+    JSON_TYPE_ARRAY,     /**< */
+    JSON_TYPE_STRING     /**< */
 };
 
 #ifdef __CLAMBC__
@@ -1087,8 +1102,8 @@ int32_t matchicon(const uint8_t* group1, int32_t group1_len,
 \group_engine
  * Returns whether running on JIT. As side-effect it disables
  * interp / JIT comparisons in test mode (errors are still checked)
- * @return  1 - running on JIT
- * @return  0 - running on ClamAV interpreter
+ * @return 1 - running on JIT
+ * @return 0 - running on ClamAV interpreter
  */
 int32_t running_on_jit(void);
 
@@ -1103,5 +1118,82 @@ int32_t running_on_jit(void);
 int32_t get_file_reliability(void);
 
 /* ----------------- END 0.96.4 APIs ---------------------------------- */
+/* ----------------- BEGIN 0.98.3 APIs -------------------------------- */
+/* ----------------- JSON Parsing APIs -------------------------------- */
+/*
+\group_json
+ * @return 0 - json is disabled or option not specified
+ * @return 1 - json is active and properties are available
+ */
+int32_t json_is_active(void);
+
+/*
+\group_json
+ * @return objid of json object with specified name
+ * @return 0 if json object of specified name cannot be found
+ * @return -1 if an error has occurred
+ * @param[in] name - name of object in ASCII
+ * @param[in] name_len - length of specified name (not including terminating NULL),
+ *                       must be >= 0
+ * @param[in] objid - id value of json object to query
+ */
+int32_t json_get_object(const int8_t* name, int32_t name_len, int32_t objid);
+
+/*
+\group_json
+ * @return type (json_type) of json object specified
+ * @return -1 if type unknown or invalid id
+ * @param[in] objid - id value of json object to query
+ */
+int32_t json_get_type(int32_t objid);
+
+
+//int32_t json_get_boolean(int32_t objid);
+//double json_get_double(int32_t objid);
+//int32_t json_get_int(int32_t objid);
+
+/*
+\group_json
+ * @return number of elements in the json array of objid
+ * @return -1 if an error has occurred
+ * @return -2 if object is not JSON_TYPE_ARRAY
+ * @param[in] objid - id value of json object (should be JSON_TYPE_ARRAY) to query
+ */
+int32_t json_get_array_length(int32_t objid);
+
+/*
+\group_json
+ * @return objid of json object at idx of json array of objid
+ * @return 0 if invalid idx
+ * @return -1 if an error has occurred
+ * @return -2 if object is not JSON_TYPE_ARRAY
+ * @param[in] idx - index of array to query, must be >= 0 and less than array length
+ * @param[in] objid - id value of json object (should be JSON_TYPE_ARRAY) to query
+ */
+int32_t json_get_array_idx(int32_t idx, int32_t objid);
+
+/*
+\group_json
+ * @return length of json string of objid, not including terminating null-character
+ * @return -1 if an error has occurred
+ * @return -2 if object is not JSON_TYPE_STRING
+ * @param[in] objid - id value of json object (should be JSON_TYPE_STRING) to query
+ */
+int32_t json_get_string_length(int32_t objid);
+
+/*
+\group_json
+ * @return number of characters transferred (capped by str_len), 
+ *         including terminating null-character
+ * @return -1 if an error has occurred
+ * @return -2 if object is not JSON_TYPE_STRING
+ * @param[out] str - user location to store string data; will be null-terminated
+ * @param[in] str_len - length of str or limit of string data to read,
+ *                      including terminating null-character
+ * @param[in] objid - id value of json object (should be JSON_TYPE_STRING) to query
+ */
+int32_t json_get_string(int8_t* str, int32_t str_len, int32_t objid);
+
+/* ----------------- END 0.98.3 APIs ---------------------------------- */
 #endif
 #endif
