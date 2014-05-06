@@ -1,6 +1,6 @@
 /*
- *  Copyright (C) 2014 Cisco Systems, Inc.
  *  Copyright (C) 2009-2013 Sourcefire, Inc.
+ *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates.
  *  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,9 @@
 #include "bcfeatures.h"
 
 /** @file */
-/**
-\group_pe
- * Section of executable file.
- */
+/** Section of executable file.
+  \group_pe
+*/
 struct cli_exe_section {
     uint32_t rva;/**< Relative VirtualAddress */
     uint32_t vsz;/**< VirtualSize */
@@ -49,10 +48,9 @@ struct cli_exe_section {
     uint32_t ursz; /**< PE - unaligned SizeOfRawData */
 };
 
-/**
-\group_pe
- * Executable file information.
- */
+/** Executable file information
+  \group_pe
+*/
 struct cli_exe_info {
     /** Information about all the sections of this file. 
      * This array has \p nsection elements */

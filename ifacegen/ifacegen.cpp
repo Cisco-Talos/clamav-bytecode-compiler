@@ -1069,7 +1069,7 @@ void Parser::outputHeader(raw_ostream &Out, const std::string HeaderName)
   Out << "/*\n *  ClamAV bytecode internal API\n";
   Out << " *  This is an automatically generated file!\n *\n";
   Out << " *  Copyright (C) 2009-2013 Sourcefire, Inc.\n"
-    << " * Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates."
+    << " *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates."
     << " *  All rights reserved.\n *\n"
     << " * Redistribution and use in source and binary forms, with or without\n"
     << " * modification, are permitted provided that the following conditions\n"
