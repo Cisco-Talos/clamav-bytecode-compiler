@@ -1148,11 +1148,6 @@ int32_t json_get_object(const int8_t* name, int32_t name_len, int32_t objid);
  */
 int32_t json_get_type(int32_t objid);
 
-
-//int32_t json_get_boolean(int32_t objid);
-//double json_get_double(int32_t objid);
-//int32_t json_get_int(int32_t objid);
-
 /*
 \group_json
  * @return number of elements in the json array of objid
@@ -1194,6 +1189,24 @@ int32_t json_get_string_length(int32_t objid);
  * @param[in] objid - id value of json object (should be JSON_TYPE_STRING) to query
  */
 int32_t json_get_string(int8_t* str, int32_t str_len, int32_t objid);
+
+/*
+\group_json
+ * @return boolean value of queried objid; will force other types to boolean
+ * @param[in] objid - id value of json object to query
+ */
+int32_t json_get_boolean(int32_t objid);
+
+/*
+\group_json
+ * @return integer value of queried objid; will force other types to integer
+ * @param[in] objid - id value of json object to query
+ */
+int32_t json_get_int(int32_t objid);
+
+//int64_t json_get_int64(int32_t objid);
+/* bytecode does not support double type */
+//double json_get_double(int32_t objid);
 
 /* ----------------- END 0.98.4 APIs ---------------------------------- */
 #endif
