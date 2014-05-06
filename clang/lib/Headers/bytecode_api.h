@@ -99,7 +99,8 @@ enum FunctionalityLevels {
     FUNC_LEVEL_097_8     = 69, /**< LibClamAV release 0.97.8 */
     FUNC_LEVEL_098_1     = 76, /**< LibClamAV release 0.98.2 */ /*last syncing to clamav*/
     FUNC_LEVEL_098_2     = 77, /**< LibClamAV release 0.98.2 */
-    FUNC_LEVEL_098_3     = 78, /**< LibClamAV release 0.98.3 */
+    FUNC_LEVEL_098_3     = 77, /**< LibClamAV release 0.98.3 */
+    FUNC_LEVEL_098_4     = 78, /**< LibClamAV release 0.98.4: JSON reading API requires this minimum level */
     FUNC_LEVEL_100       = 100 /*future release candidate*/
 };
 
