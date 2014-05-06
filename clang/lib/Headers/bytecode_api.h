@@ -1119,7 +1119,7 @@ int32_t running_on_jit(void);
 int32_t get_file_reliability(void);
 
 /* ----------------- END 0.96.4 APIs ---------------------------------- */
-/* ----------------- BEGIN 0.98.3 APIs -------------------------------- */
+/* ----------------- BEGIN 0.98.4 APIs -------------------------------- */
 /* ----------------- JSON Parsing APIs -------------------------------- */
 /*
 \group_json
@@ -1195,6 +1195,6 @@ int32_t json_get_string_length(int32_t objid);
  */
 int32_t json_get_string(int8_t* str, int32_t str_len, int32_t objid);
 
-/* ----------------- END 0.98.3 APIs ---------------------------------- */
+/* ----------------- END 0.98.4 APIs ---------------------------------- */
 #endif
 #endif
