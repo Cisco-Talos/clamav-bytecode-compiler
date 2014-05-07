@@ -1084,19 +1084,49 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   }
   return valid;
 }
-
-static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, int kind)
+static const char *json_api_funcs[] = {"json_is_active", "json_get_object", "json_get_type", 
+                                       "json_get_array_length", "json_get_array_idx",
+                                       "json_get_string_length", "json_get_string",
+                                       "json_get_boolean", "json_get_int"};
+#define num_json_api_funcs 9
+#define FUNCDEBUG 1
+static bool hasJSONUsage(llvm::Module *M)
 {
-  const char *msgreq = NULL, *msgrec;
-  unsigned min_required = 0, min_recommended = 0;
+#if FUNCDEBUG
+    bool found = false;
+#endif
+    Function *F = NULL;
+    for (unsigned i = 0; i < num_json_api_funcs; ++i) {
+        F = M->getFunction(json_api_funcs[i]);
+        if (F && F->isDeclaration()) {
+#if FUNCDEBUG
+            llvm::outs() << "found " << json_api_funcs[i] << "!\n";
+            found = true;
+#else
+            return true;
+#endif
+        }
+    }
+
+#if FUNCDEBUG
+    if (found) return true;
+#endif
+    return false;
+}
+
+static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned target, int kind)
+{
+  const char *msgreq = NULL, *msgrec = NULL, *tarreq = NULL;
+  unsigned min_required = 0, min_recommended = 0, target_required = 0;
   StringRef ref(s);
+  bool valid = true;
   // Due to bb #1957 VI and $ sigs don't work properly in 0.96,
   // so using these sigs requires minimum functionality level
   if (ref.find('$') != StringRef::npos ||
       ref.find("VI") != StringRef::npos) {
     min_required = FUNC_LEVEL_096_dev;
     msgreq = "Logical signature use of VI/macros requires minimum "
-      "functionality level of 0.96_dev";
+      "functionality level of FUNC_LEVEL_096_dev";
   }
 
   if (kind >= BC_PDF) {
@@ -1116,23 +1146,42 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, int kind)
         pos < ref.size() && ref[pos] != '0') {
       min_recommended = FUNC_LEVEL_096_2;
       msgrec = "Logical signature use of count comparison "
-        "requires minimum functionality level of 0.96.2 (bb #2053)";
+        "requires minimum functionality level of FUNC_LEVEL_096_2 (bb #2053)";
       break;
     }
   }
   if (min_recommended < FUNC_LEVEL_096_4) {
       min_recommended = FUNC_LEVEL_096_4;
-      msgrec = "0.96.4 is minimum recommended engine version. Older versions have quadratic load time";
+      msgrec = "FUNC_LEVEL_096_4 is minimum recommended engine version. Older "
+          "versions have quadratic load time";
   }
 
+  /*JSON CHECK*/
+  if (hasJSONUsage(M)) {
+      min_required = FUNC_LEVEL_098_4;
+      target_required = 13;
+      tarreq = "JSON reading API requires target type 13";
+      msgreq = "JSON reading API requires minimum functionality level "
+          "of FUNC_LEVEL_098_4";
+  }
+  /*JSON CHECK*/
+
+  if (target_required && (target != target_required)) {
+      printDiagnostic(tarreq, M);
+      valid = false;
+  }
   if (min_required && min < min_required) {
-    printDiagnostic(msgreq, M);
-    return false;
+      printDiagnostic(msgreq, M);
+      valid = false;
   }
   if (min_recommended && min < min_recommended) {
-    printDiagnostic(msgrec, M);
+      printWarning(msgrec, M);
   }
-  return true;
+
+  if (valid)
+      return true;
+  else
+      return false;
 }
 
 bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target,
@@ -1278,7 +1327,7 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
        I != E; ++I) {
     LogicalSignature += ";"+*I;
   }
-  if (!checkMinimum(F.getParent(), LogicalSignature, min, kind))
+  if (!checkMinimum(F.getParent(), LogicalSignature, min, target, kind))
     return false;
 
   F.setLinkage(GlobalValue::InternalLinkage);
