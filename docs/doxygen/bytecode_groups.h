@@ -9,6 +9,7 @@
  * \defgroup fileops File Operations
  * \defgroup globals Global Variables
  * \defgroup js JavaScript Normalization
+ * \defgroup json JSON Querying
  * \defgroup icon Icon Matcher
  * \defgroup math Math Operation
  * \defgroup pdfg PDF Handling

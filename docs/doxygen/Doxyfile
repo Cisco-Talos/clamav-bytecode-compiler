@@ -231,6 +231,7 @@ TAB_SIZE               = 8
 #          "group_env=\xrefitem envdet \"Environment\" \"Environment functions\"" \
 #          "group_pdf=\xrefitem pdfg \"PDF\" \"PDF handling functions\"" \
 #          "group_icon=\xrefitem icon \"Icon\" \"Icon matcher API\"" \
+#          "group_json=\xrefitem json \"JSON\" \"JSON querying API\"" \
 #          "group_disasm=\xrefitem disasm \"Disassemble\" \"Disassemble API\"" \
 #          "group_pe=\xrefitem pe \"PE\" \"PE functions\"" \
 #          "group_js=\xrefitem js \"JavaScript\" \"JS normalization API\"" \
@@ -253,6 +254,7 @@ ALIASES = "group_set=\if MODULEDEFN" \
           "group_disasm=\ingroup disasm Disassembly" \
           "group_pe=\ingroup pe PE Operations" \
           "group_js=\ingroup js JavaScript Normalization" \
+          "group_json=\ingroup json JSON Queries" \
           "group_config=\ingroup config Bytecode Configuration" \
           "group_debug=\ingroup debug Debugging"
 

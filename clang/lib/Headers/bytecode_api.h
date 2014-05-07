@@ -109,7 +109,7 @@ enum FunctionalityLevels {
  * Phase of PDF parsing used for PDF Hooks
  */
 enum pdf_phase {
-    PDF_PHASE_NONE,     /* not a PDF */
+    PDF_PHASE_NONE,     /**< not a PDF */
     PDF_PHASE_PARSED,   /**< after parsing a PDF, object flags can be set etc. */
     PDF_PHASE_POSTDUMP, /**< after an obj was dumped and scanned */
     PDF_PHASE_END,      /**< after the pdf scan finished */
@@ -1121,14 +1121,14 @@ int32_t get_file_reliability(void);
 /* ----------------- END 0.96.4 APIs ---------------------------------- */
 /* ----------------- BEGIN 0.98.4 APIs -------------------------------- */
 /* ----------------- JSON Parsing APIs -------------------------------- */
-/*
+/**
 \group_json
  * @return 0 - json is disabled or option not specified
  * @return 1 - json is active and properties are available
  */
 int32_t json_is_active(void);
 
-/*
+/**
 \group_json
  * @return objid of json object with specified name
  * @return 0 if json object of specified name cannot be found
@@ -1140,7 +1140,7 @@ int32_t json_is_active(void);
  */
 int32_t json_get_object(const int8_t* name, int32_t name_len, int32_t objid);
 
-/*
+/**
 \group_json
  * @return type (json_type) of json object specified
  * @return -1 if type unknown or invalid id
@@ -1148,7 +1148,7 @@ int32_t json_get_object(const int8_t* name, int32_t name_len, int32_t objid);
  */
 int32_t json_get_type(int32_t objid);
 
-/*
+/**
 \group_json
  * @return number of elements in the json array of objid
  * @return -1 if an error has occurred
@@ -1157,7 +1157,7 @@ int32_t json_get_type(int32_t objid);
  */
 int32_t json_get_array_length(int32_t objid);
 
-/*
+/**
 \group_json
  * @return objid of json object at idx of json array of objid
  * @return 0 if invalid idx
@@ -1168,7 +1168,7 @@ int32_t json_get_array_length(int32_t objid);
  */
 int32_t json_get_array_idx(int32_t idx, int32_t objid);
 
-/*
+/**
 \group_json
  * @return length of json string of objid, not including terminating null-character
  * @return -1 if an error has occurred
@@ -1177,7 +1177,7 @@ int32_t json_get_array_idx(int32_t idx, int32_t objid);
  */
 int32_t json_get_string_length(int32_t objid);
 
-/*
+/**
 \group_json
  * @return number of characters transferred (capped by str_len), 
  *         including terminating null-character
@@ -1190,14 +1190,14 @@ int32_t json_get_string_length(int32_t objid);
  */
 int32_t json_get_string(int8_t* str, int32_t str_len, int32_t objid);
 
-/*
+/**
 \group_json
  * @return boolean value of queried objid; will force other types to boolean
  * @param[in] objid - id value of json object to query
  */
 int32_t json_get_boolean(int32_t objid);
 
-/*
+/**
 \group_json
  * @return integer value of queried objid; will force other types to integer
  * @param[in] objid - id value of json object to query
