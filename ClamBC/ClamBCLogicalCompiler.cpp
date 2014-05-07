@@ -1089,7 +1089,7 @@ static const char *json_api_funcs[] = {"json_is_active", "json_get_object", "jso
                                        "json_get_string_length", "json_get_string",
                                        "json_get_boolean", "json_get_int"};
 #define num_json_api_funcs 9
-#define FUNCDEBUG 1
+#define FUNCDEBUG 0
 static bool hasJSONUsage(llvm::Module *M)
 {
 #if FUNCDEBUG
