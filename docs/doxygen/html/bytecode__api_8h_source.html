@@ -94,8 +94,8 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 </div><!--header-->
 <div class="contents">
 <a href="bytecode__api_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="comment">/*</span></div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment"> *  Copyright (C) 2014 Cisco Systems, Inc.</span></div>
-<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="comment"> *  Copyright (C) 2009-2013 Sourcefire, Inc.</span></div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment"> *  Copyright (C) 2009-2013 Sourcefire, Inc.</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="comment"> *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates.</span></div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="comment"> *  All rights reserved.</span></div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="comment"> *  Authors: Török Edvin, Kevin Lin</span></div>
 <div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="comment"> *</span></div>
@@ -170,305 +170,343 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="line"><a name="l00097"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999adc681d49cf724cd321b27637c79e72d4">   97</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999adc681d49cf724cd321b27637c79e72d4">FUNC_LEVEL_097_6</a>     = 67, </div>
 <div class="line"><a name="l00098"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a50c8294e9b8773beba1c2f88e089e5b9">   98</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a50c8294e9b8773beba1c2f88e089e5b9">FUNC_LEVEL_097_7</a>     = 68, </div>
 <div class="line"><a name="l00099"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a89a2375f49e550652664e885a462069a">   99</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a89a2375f49e550652664e885a462069a">FUNC_LEVEL_097_8</a>     = 69, </div>
-<div class="line"><a name="l00100"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999aaeeb84deb9d9af7c249baa4bf97269e3">  100</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999aaeeb84deb9d9af7c249baa4bf97269e3">FUNC_LEVEL_098</a>       = 74, </div>
-<div class="line"><a name="l00101"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29">  101</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29">FUNC_LEVEL_098_1</a>     = 76, </div>
-<div class="line"><a name="l00102"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa">  102</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa">FUNC_LEVEL_098_2</a>     = 78, </div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;    FUNC_LEVEL_100       = 100 <span class="comment">/*future release candidate*/</span></div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;};</div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;</div>
-<div class="line"><a name="l00110"></a><span class="lineno"><a class="line" href="group__pdfg.html#ga8146b4e22199a811df993111bc8afc45">  110</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__pdfg.html#ga8146b4e22199a811df993111bc8afc45">pdf_phase</a> {</div>
-<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;    PDF_PHASE_NONE,     <span class="comment">/* not a PDF */</span></div>
-<div class="line"><a name="l00112"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9">  112</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9">PDF_PHASE_PARSED</a>,   </div>
-<div class="line"><a name="l00113"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32">  113</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32">PDF_PHASE_POSTDUMP</a>, </div>
-<div class="line"><a name="l00114"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033">  114</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033">PDF_PHASE_END</a>,      </div>
-<div class="line"><a name="l00115"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56">  115</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56">PDF_PHASE_PRE</a>       </div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;};</div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;</div>
-<div class="line"><a name="l00122"></a><span class="lineno"><a class="line" href="group__pdfg.html#ga5597245ed8666431babaa5371fe7e009">  122</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__pdfg.html#ga5597245ed8666431babaa5371fe7e009">pdf_flag</a> {</div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;    BAD_PDF_VERSION=0,      </div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;    BAD_PDF_HEADERPOS,      </div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;    BAD_PDF_TRAILER,        </div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;    BAD_PDF_TOOMANYOBJS,    </div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;    BAD_STREAM_FILTERS,     </div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;    BAD_FLATE,              </div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;    BAD_FLATESTART,         </div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;    BAD_STREAMSTART,        </div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;    BAD_ASCIIDECODE,        </div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;    BAD_INDOBJ,             </div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;    UNTERMINATED_OBJ_DICT,  </div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;    ESCAPED_COMMON_PDFNAME, </div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;    HEX_JAVASCRIPT,         </div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;    UNKNOWN_FILTER,         </div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;    MANY_FILTERS,           </div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;    HAS_OPENACTION,         </div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;    BAD_STREAMLEN,          </div>
-<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;    ENCRYPTED_PDF,          </div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;    LINEARIZED_PDF,          <span class="comment">/* not bad, just as flag */</span></div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;    DECRYPTABLE_PDF,        </div>
-<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;    HAS_LAUNCHACTION        </div>
-<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;};</div>
-<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;</div>
-<div class="line"><a name="l00150"></a><span class="lineno"><a class="line" href="group__pdfg.html#gabf356e8393462916811603aaf950bf0a">  150</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__pdfg.html#gabf356e8393462916811603aaf950bf0a">pdf_objflags</a> {</div>
-<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;    OBJ_STREAM=0,        </div>
-<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;    OBJ_DICT,            </div>
-<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;    OBJ_EMBEDDED_FILE,   </div>
-<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;    OBJ_FILTER_AH,       </div>
-<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;    OBJ_FILTER_A85,      </div>
-<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;    OBJ_FILTER_FLATE,    </div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;    OBJ_FILTER_LZW,      </div>
-<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;    OBJ_FILTER_RL,       </div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;    OBJ_FILTER_FAX,      </div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;    OBJ_FILTER_JBIG2,    </div>
-<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;    OBJ_FILTER_DCT,      </div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;    OBJ_FILTER_JPX,      </div>
-<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;    OBJ_FILTER_CRYPT,    </div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;    OBJ_FILTER_UNKNOWN,  </div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;    OBJ_JAVASCRIPT,      </div>
-<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;    OBJ_OPENACTION,      </div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;    OBJ_HASFILTERS,      </div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;    OBJ_SIGNED,          </div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;    OBJ_IMAGE,           </div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;    OBJ_TRUNCATED,       </div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;    OBJ_FORCEDUMP,       </div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;    OBJ_FILTER_STANDARD, </div>
-<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;    OBJ_LAUNCHACTION,    </div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;    OBJ_PAGE,            </div>
-<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;    OBJ_CONTENTS         </div>
-<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;};</div>
-<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;</div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;<span class="preprocessor">#ifdef __CLAMBC__</span></div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;<span class="comment">/* --------------- BEGIN GLOBALS -------------------------------------------- */</span></div>
-<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> uint32_t <a class="code" href="group__globals.html#ga35a0a4f1219a792c77b7207924c3c4ec">__clambc_match_counts</a>[64];</div>
-<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;</div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> uint32_t <a class="code" href="group__globals.html#gae39872934c5879706b3cedaef090d227">__clambc_match_offsets</a>[64];</div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;</div>
-<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> <span class="keyword">struct </span><a class="code" href="structcli__pe__hook__data.html">cli_pe_hook_data</a> <a class="code" href="group__globals.html#ga7a72f243ec3f5daf5a337e2fc86bc2ad">__clambc_pedata</a>;</div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> uint32_t <a class="code" href="group__globals.html#gab8d6c50474be3ba69906161a3e520ce7">__clambc_filesize</a>[1];</div>
-<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;</div>
-<div class="line"><a name="l00212"></a><span class="lineno"><a class="line" href="group__globals.html#ga6eb3802e21949cfdf6b91570d3c62c99">  212</a></span>&#160;<span class="keyword">const</span> uint16_t <a class="code" href="group__globals.html#ga6eb3802e21949cfdf6b91570d3c62c99">__clambc_kind</a>;</div>
-<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;<span class="comment">/* ---------------- END GLOBALS --------------------------------------------- */</span></div>
-<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;<span class="comment">/* ---------------- BEGIN 0.96 APIs (don&#39;t touch) --------------------------- */</span></div>
-<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;uint32_t <a class="code" href="bytecode__api_8h.html#af445932f85a581e254806f034225ecf1">test1</a>(uint32_t a, uint32_t b);</div>
+<div class="line"><a name="l00100"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29">  100</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29">FUNC_LEVEL_098_1</a>     = 76,  <span class="comment">/*last syncing to clamav*/</span></div>
+<div class="line"><a name="l00101"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa">  101</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa">FUNC_LEVEL_098_2</a>     = 77, </div>
+<div class="line"><a name="l00102"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a675dcb47376b5a0766215d942861d430">  102</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a675dcb47376b5a0766215d942861d430">FUNC_LEVEL_098_3</a>     = 77, </div>
+<div class="line"><a name="l00103"></a><span class="lineno"><a class="line" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a993969ab876ecf33012f31458a3720f4">  103</a></span>&#160;    <a class="code" href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a993969ab876ecf33012f31458a3720f4">FUNC_LEVEL_098_4</a>     = 78, </div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;    FUNC_LEVEL_100       = 100 <span class="comment">/*future release candidate*/</span></div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;};</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;</div>
+<div class="line"><a name="l00111"></a><span class="lineno"><a class="line" href="group__pdfg.html#ga8146b4e22199a811df993111bc8afc45">  111</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__pdfg.html#ga8146b4e22199a811df993111bc8afc45">pdf_phase</a> {</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;    PDF_PHASE_NONE,     <span class="comment">/* not a PDF */</span></div>
+<div class="line"><a name="l00113"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9">  113</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9">PDF_PHASE_PARSED</a>,   </div>
+<div class="line"><a name="l00114"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32">  114</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32">PDF_PHASE_POSTDUMP</a>, </div>
+<div class="line"><a name="l00115"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033">  115</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033">PDF_PHASE_END</a>,      </div>
+<div class="line"><a name="l00116"></a><span class="lineno"><a class="line" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56">  116</a></span>&#160;    <a class="code" href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56">PDF_PHASE_PRE</a>       </div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;};</div>
+<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;</div>
+<div class="line"><a name="l00123"></a><span class="lineno"><a class="line" href="group__pdfg.html#ga5597245ed8666431babaa5371fe7e009">  123</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__pdfg.html#ga5597245ed8666431babaa5371fe7e009">pdf_flag</a> {</div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;    BAD_PDF_VERSION=0,      </div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;    BAD_PDF_HEADERPOS,      </div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;    BAD_PDF_TRAILER,        </div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;    BAD_PDF_TOOMANYOBJS,    </div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;    BAD_STREAM_FILTERS,     </div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;    BAD_FLATE,              </div>
+<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;    BAD_FLATESTART,         </div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;    BAD_STREAMSTART,        </div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;    BAD_ASCIIDECODE,        </div>
+<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;    BAD_INDOBJ,             </div>
+<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;    UNTERMINATED_OBJ_DICT,  </div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;    ESCAPED_COMMON_PDFNAME, </div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;    HEX_JAVASCRIPT,         </div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;    UNKNOWN_FILTER,         </div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;    MANY_FILTERS,           </div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;    HAS_OPENACTION,         </div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;    BAD_STREAMLEN,          </div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;    ENCRYPTED_PDF,          </div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;    LINEARIZED_PDF,          <span class="comment">/* not bad, just as flag */</span></div>
+<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;    DECRYPTABLE_PDF,        </div>
+<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;    HAS_LAUNCHACTION        </div>
+<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;};</div>
+<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;</div>
+<div class="line"><a name="l00151"></a><span class="lineno"><a class="line" href="group__pdfg.html#gabf356e8393462916811603aaf950bf0a">  151</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__pdfg.html#gabf356e8393462916811603aaf950bf0a">pdf_objflags</a> {</div>
+<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;    OBJ_STREAM=0,        </div>
+<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;    OBJ_DICT,            </div>
+<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;    OBJ_EMBEDDED_FILE,   </div>
+<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;    OBJ_FILTER_AH,       </div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;    OBJ_FILTER_A85,      </div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;    OBJ_FILTER_FLATE,    </div>
+<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;    OBJ_FILTER_LZW,      </div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;    OBJ_FILTER_RL,       </div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;    OBJ_FILTER_FAX,      </div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;    OBJ_FILTER_JBIG2,    </div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;    OBJ_FILTER_DCT,      </div>
+<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;    OBJ_FILTER_JPX,      </div>
+<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;    OBJ_FILTER_CRYPT,    </div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;    OBJ_FILTER_UNKNOWN,  </div>
+<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;    OBJ_JAVASCRIPT,      </div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;    OBJ_OPENACTION,      </div>
+<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;    OBJ_HASFILTERS,      </div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;    OBJ_SIGNED,          </div>
+<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;    OBJ_IMAGE,           </div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;    OBJ_TRUNCATED,       </div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;    OBJ_FORCEDUMP,       </div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;    OBJ_FILTER_STANDARD, </div>
+<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;    OBJ_LAUNCHACTION,    </div>
+<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;    OBJ_PAGE,            </div>
+<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;    OBJ_CONTENTS         </div>
+<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;};</div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;</div>
+<div class="line"><a name="l00183"></a><span class="lineno"><a class="line" href="group__json.html#ga936375042c8c0e1e0b304f4a89bca395">  183</a></span>&#160;<span class="keyword">enum</span> <a class="code" href="group__json.html#ga936375042c8c0e1e0b304f4a89bca395">bc_json_type</a> {</div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;    JSON_TYPE_NULL=0,    </div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;    JSON_TYPE_BOOLEAN,   </div>
+<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;    JSON_TYPE_DOUBLE,    </div>
+<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;    JSON_TYPE_INT,       </div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;    JSON_TYPE_OBJECT,    </div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;    JSON_TYPE_ARRAY,     </div>
+<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;    JSON_TYPE_STRING     </div>
+<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;};</div>
+<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;</div>
+<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;<span class="preprocessor">#ifdef __CLAMBC__</span></div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;<span class="comment">/* --------------- BEGIN GLOBALS -------------------------------------------- */</span></div>
+<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> uint32_t <a class="code" href="group__globals.html#ga35a0a4f1219a792c77b7207924c3c4ec">__clambc_match_counts</a>[64];</div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;</div>
+<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> uint32_t <a class="code" href="group__globals.html#gae39872934c5879706b3cedaef090d227">__clambc_match_offsets</a>[64];</div>
+<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;</div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> <span class="keyword">struct </span><a class="code" href="structcli__pe__hook__data.html">cli_pe_hook_data</a> <a class="code" href="group__globals.html#ga7a72f243ec3f5daf5a337e2fc86bc2ad">__clambc_pedata</a>;</div>
+<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;<span class="keyword">extern</span> <span class="keyword">const</span> uint32_t <a class="code" href="group__globals.html#gab8d6c50474be3ba69906161a3e520ce7">__clambc_filesize</a>[1];</div>
 <div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160;</div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;int32_t <a class="code" href="group__fileops.html#gafa4f1c799291804204aea54ce23077d6">read</a>(uint8_t *data, int32_t size);</div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;</div>
-<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;<span class="keyword">enum</span> {</div>
-<div class="line"><a name="l00238"></a><span class="lineno"><a class="line" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05">  238</a></span>&#160;    <a class="code" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05">SEEK_SET</a>=0,</div>
-<div class="line"><a name="l00240"></a><span class="lineno"><a class="line" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c">  240</a></span>&#160;    <a class="code" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c">SEEK_CUR</a>,</div>
-<div class="line"><a name="l00242"></a><span class="lineno"><a class="line" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63">  242</a></span>&#160;    <a class="code" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63">SEEK_END</a></div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;};</div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;</div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;int32_t <a class="code" href="group__fileops.html#ga01d98e416d08e0eabd02d2e8aa56f28e">write</a>(uint8_t *data, int32_t size);</div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;</div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;int32_t <a class="code" href="group__fileops.html#gaac5ea598a656985291c56321ad2140ea">seek</a>(int32_t pos, uint32_t whence);</div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;</div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;uint32_t <a class="code" href="group__scanc.html#ga77cd19560715e7a2f658fc3ac519d18e">setvirusname</a>(<span class="keyword">const</span> uint8_t *name, uint32_t len);</div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;</div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;uint32_t <a class="code" href="group__debug.html#gaa6d82179ea15d32450fefbc6d1bd8934">debug_print_str</a>(<span class="keyword">const</span> uint8_t *str, uint32_t len);</div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;</div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;uint32_t <a class="code" href="group__debug.html#ga6e0cdd4d4c76ed46a8627bee56eee1c1">debug_print_uint</a>(uint32_t a);</div>
-<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;</div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;uint32_t <a class="code" href="group__disasm.html#ga95e7d1048a56c98dec19335a6aa7afca">disasm_x86</a>(<span class="keyword">struct</span> <a class="code" href="struct_d_i_s_a_s_m___r_e_s_u_l_t.html">DISASM_RESULT</a>* result, uint32_t len);</div>
+<div class="line"><a name="l00227"></a><span class="lineno"><a class="line" href="group__globals.html#ga6eb3802e21949cfdf6b91570d3c62c99">  227</a></span>&#160;<span class="keyword">const</span> uint16_t <a class="code" href="group__globals.html#ga6eb3802e21949cfdf6b91570d3c62c99">__clambc_kind</a>;</div>
+<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;<span class="comment">/* ---------------- END GLOBALS --------------------------------------------- */</span></div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;<span class="comment">/* ---------------- BEGIN 0.96 APIs (don&#39;t touch) --------------------------- */</span></div>
+<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;uint32_t <a class="code" href="bytecode__api_8h.html#af445932f85a581e254806f034225ecf1">test1</a>(uint32_t a, uint32_t b);</div>
+<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;</div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;int32_t <a class="code" href="group__fileops.html#gafa4f1c799291804204aea54ce23077d6">read</a>(uint8_t *data, int32_t size);</div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;</div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;<span class="keyword">enum</span> {</div>
+<div class="line"><a name="l00253"></a><span class="lineno"><a class="line" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05">  253</a></span>&#160;    <a class="code" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05">SEEK_SET</a>=0,</div>
+<div class="line"><a name="l00255"></a><span class="lineno"><a class="line" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c">  255</a></span>&#160;    <a class="code" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c">SEEK_CUR</a>,</div>
+<div class="line"><a name="l00257"></a><span class="lineno"><a class="line" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63">  257</a></span>&#160;    <a class="code" href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63">SEEK_END</a></div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;};</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;</div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;int32_t <a class="code" href="group__fileops.html#ga01d98e416d08e0eabd02d2e8aa56f28e">write</a>(uint8_t *data, int32_t size);</div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;</div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;int32_t <a class="code" href="group__fileops.html#gaac5ea598a656985291c56321ad2140ea">seek</a>(int32_t pos, uint32_t whence);</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;</div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;uint32_t <a class="code" href="group__scanc.html#ga77cd19560715e7a2f658fc3ac519d18e">setvirusname</a>(<span class="keyword">const</span> uint8_t *name, uint32_t len);</div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;</div>
+<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;uint32_t <a class="code" href="group__debug.html#gaa6d82179ea15d32450fefbc6d1bd8934">debug_print_str</a>(<span class="keyword">const</span> uint8_t *str, uint32_t len);</div>
+<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;</div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;uint32_t <a class="code" href="group__debug.html#ga6e0cdd4d4c76ed46a8627bee56eee1c1">debug_print_uint</a>(uint32_t a);</div>
 <div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;</div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;<span class="comment">/* tracing API, private */</span></div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;</div>
-<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;<span class="comment">/* a scope: lexical block, function, or compile unit */</span></div>
-<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;uint32_t trace_directory(<span class="keyword">const</span> uint8_t* directory, uint32_t dummy);</div>
-<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;uint32_t trace_scope(<span class="keyword">const</span> uint8_t* newscope, uint32_t scopeid);</div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;uint32_t trace_source(<span class="keyword">const</span> uint8_t* srcfile, uint32_t line);</div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;uint32_t trace_op(<span class="keyword">const</span> uint8_t* opname, uint32_t column);</div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;uint32_t trace_value(<span class="keyword">const</span> uint8_t* name, uint32_t v);</div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;uint32_t trace_ptr(<span class="keyword">const</span> uint8_t* ptr, uint32_t dummy);</div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;</div>
-<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;uint32_t <a class="code" href="group__pe.html#ga0d081f8f58263eb99d68690f1f9b2a81">pe_rawaddr</a>(uint32_t rva);</div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;</div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;int32_t <a class="code" href="group__fileops.html#ga56355a07d9fb739dd483dd756f7fe821">file_find</a>(<span class="keyword">const</span> uint8_t* data, uint32_t len);</div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;</div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;int32_t <a class="code" href="group__fileops.html#ga1e192cd4fe94e68dbac5023a1e2481c9">file_byteat</a>(uint32_t offset);</div>
-<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;</div>
-<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;<span class="keywordtype">void</span>* <a class="code" href="group__adt.html#ga8704c31c2d7a73953f3c1c320447c24a">malloc</a>(uint32_t size);</div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;</div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;uint32_t <a class="code" href="bytecode__api_8h.html#abf709b9bcdfd2da159ec288df9dc7ad9">test2</a>(uint32_t a);</div>
-<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;</div>
-<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160;int32_t <a class="code" href="group__pe.html#gae7e5e9cef42c34a52cfe814910a1e293">get_pe_section</a>(<span class="keyword">struct</span> <a class="code" href="structcli__exe__section.html">cli_exe_section</a> *section, uint32_t num);</div>
-<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;</div>
-<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;int32_t <a class="code" href="group__fileops.html#ga5c25c11f12899883af10f3ba75cfc5c5">fill_buffer</a>(uint8_t* buffer, uint32_t len, uint32_t filled,</div>
-<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;                    uint32_t cursor, uint32_t fill);</div>
-<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;</div>
-<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;int32_t <a class="code" href="group__scanc.html#gaed98502eb13f9e2209d9c6b1620eb17a">extract_new</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;</div>
-<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;int32_t <a class="code" href="group__fileops.html#ga50b84b15fbaf03aa39b41ef7ffb5243e">read_number</a>(uint32_t radix);</div>
-<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;</div>
-<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;int32_t <a class="code" href="group__adt.html#gab791b1626efae568e0fb62c36ce8aa74">hashset_new</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;</div>
-<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;int32_t <a class="code" href="group__adt.html#gadb42ee13e5883410846a392513d6866b">hashset_add</a>(int32_t hs, uint32_t key);</div>
-<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;</div>
-<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160;int32_t <a class="code" href="group__adt.html#ga06c14cce8ec4cc839a02094547964a00">hashset_remove</a>(int32_t hs, uint32_t key);</div>
-<div class="line"><a name="l00431"></a><span class="lineno">  431</span>&#160;</div>
-<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;int32_t <a class="code" href="group__adt.html#ga0907920e08ec8e80f3ff829e8aaf58de">hashset_contains</a>(int32_t hs, uint32_t key);</div>
-<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;</div>
-<div class="line"><a name="l00453"></a><span class="lineno">  453</span>&#160;int32_t <a class="code" href="group__adt.html#gabd5e701c80bf5346a72fb145834b865a">hashset_done</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;</div>
-<div class="line"><a name="l00461"></a><span class="lineno">  461</span>&#160;int32_t <a class="code" href="group__adt.html#ga854fcc65ad8cc0578c55aea6bc88b193">hashset_empty</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00462"></a><span class="lineno">  462</span>&#160;</div>
-<div class="line"><a name="l00469"></a><span class="lineno">  469</span>&#160;int32_t  <a class="code" href="group__adt.html#gae755b425ff65feddef7b86092dcdeed7">buffer_pipe_new</a>(uint32_t size);</div>
-<div class="line"><a name="l00470"></a><span class="lineno">  470</span>&#160;</div>
-<div class="line"><a name="l00478"></a><span class="lineno">  478</span>&#160;int32_t  <a class="code" href="group__adt.html#gadccae1152247859c54706b7d1753b689">buffer_pipe_new_fromfile</a>(uint32_t pos);</div>
-<div class="line"><a name="l00479"></a><span class="lineno">  479</span>&#160;</div>
-<div class="line"><a name="l00486"></a><span class="lineno">  486</span>&#160;uint32_t <a class="code" href="group__adt.html#ga53de1d976b1536c5b6a0d5d31de201b2">buffer_pipe_read_avail</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00487"></a><span class="lineno">  487</span>&#160;</div>
-<div class="line"><a name="l00498"></a><span class="lineno">  498</span>&#160;<span class="comment">//uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);</span></div>
-<div class="line"><a name="l00499"></a><span class="lineno">  499</span>&#160;<span class="keyword">const</span> uint8_t *<a class="code" href="group__adt.html#ga54cd26b62a0d16082b8909b110d605b3">buffer_pipe_read_get</a>(int32_t <span class="keywordtype">id</span>, uint32_t amount);</div>
-<div class="line"><a name="l00500"></a><span class="lineno">  500</span>&#160;</div>
-<div class="line"><a name="l00508"></a><span class="lineno">  508</span>&#160;int32_t  <a class="code" href="group__adt.html#gae67b360d1ab3c9dc4ac9d0f90208f6fe">buffer_pipe_read_stopped</a>(int32_t <span class="keywordtype">id</span>, uint32_t amount);</div>
-<div class="line"><a name="l00509"></a><span class="lineno">  509</span>&#160;</div>
-<div class="line"><a name="l00516"></a><span class="lineno">  516</span>&#160;uint32_t <a class="code" href="group__adt.html#ga1b9d87fbb40620d92b57549e24b189e6">buffer_pipe_write_avail</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00517"></a><span class="lineno">  517</span>&#160;</div>
-<div class="line"><a name="l00528"></a><span class="lineno">  528</span>&#160;uint8_t *<a class="code" href="group__adt.html#ga8268aaabee12eed25ab561f678128ddd">buffer_pipe_write_get</a>(int32_t <span class="keywordtype">id</span>, uint32_t size);</div>
-<div class="line"><a name="l00529"></a><span class="lineno">  529</span>&#160;</div>
-<div class="line"><a name="l00537"></a><span class="lineno">  537</span>&#160;int32_t  <a class="code" href="group__adt.html#ga57b76f82f0fb9bdabaad6c3d98037e94">buffer_pipe_write_stopped</a>(int32_t <span class="keywordtype">id</span>, uint32_t amount);</div>
-<div class="line"><a name="l00538"></a><span class="lineno">  538</span>&#160;</div>
-<div class="line"><a name="l00548"></a><span class="lineno">  548</span>&#160;int32_t  <a class="code" href="group__adt.html#ga984890c1d3b68b99e68c2e6b1a7704d0">buffer_pipe_done</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00549"></a><span class="lineno">  549</span>&#160;</div>
-<div class="line"><a name="l00559"></a><span class="lineno">  559</span>&#160;int32_t <a class="code" href="group__adt.html#ga65eec3722a1e992e9e4104c037503fdc">inflate_init</a>(int32_t from_buffer, int32_t to_buffer, int32_t windowBits);</div>
-<div class="line"><a name="l00560"></a><span class="lineno">  560</span>&#160;</div>
-<div class="line"><a name="l00573"></a><span class="lineno">  573</span>&#160;int32_t <a class="code" href="group__adt.html#ga10ad344e58c26566defe1780b303f0a4">inflate_process</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00574"></a><span class="lineno">  574</span>&#160;</div>
-<div class="line"><a name="l00584"></a><span class="lineno">  584</span>&#160;int32_t <a class="code" href="group__adt.html#ga123c12ca76a5b736217b68fdb126066e">inflate_done</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00585"></a><span class="lineno">  585</span>&#160;</div>
-<div class="line"><a name="l00592"></a><span class="lineno">  592</span>&#160;int32_t <a class="code" href="group__scanc.html#gad7ea886d4274f1f389acf0d5cdc50b7d">bytecode_rt_error</a>(int32_t locationid);</div>
-<div class="line"><a name="l00593"></a><span class="lineno">  593</span>&#160;</div>
-<div class="line"><a name="l00603"></a><span class="lineno">  603</span>&#160;int32_t <a class="code" href="group__js.html#gafb97628e1638c524b0cf45190403553d">jsnorm_init</a>(int32_t from_buffer);</div>
-<div class="line"><a name="l00604"></a><span class="lineno">  604</span>&#160;</div>
-<div class="line"><a name="l00613"></a><span class="lineno">  613</span>&#160;int32_t <a class="code" href="group__js.html#ga5c0da722aa4ccb9618052c5a2361ed8e">jsnorm_process</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00614"></a><span class="lineno">  614</span>&#160;</div>
-<div class="line"><a name="l00621"></a><span class="lineno">  621</span>&#160;int32_t <a class="code" href="group__js.html#ga7445bceea42b0a4d1d841b2c8826db4a">jsnorm_done</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00622"></a><span class="lineno">  622</span>&#160;</div>
-<div class="line"><a name="l00623"></a><span class="lineno">  623</span>&#160;<span class="comment">/* ---------------- END 0.96 APIs (don&#39;t touch) --------------------------- */</span></div>
-<div class="line"><a name="l00624"></a><span class="lineno">  624</span>&#160;<span class="comment">/* ---------------- BEGIN 0.96.1 APIs ------------------------------------- */</span></div>
-<div class="line"><a name="l00625"></a><span class="lineno">  625</span>&#160;</div>
-<div class="line"><a name="l00626"></a><span class="lineno">  626</span>&#160;<span class="comment">/* ---------------- Math -------------------------------------------------- */</span></div>
-<div class="line"><a name="l00627"></a><span class="lineno">  627</span>&#160;</div>
-<div class="line"><a name="l00635"></a><span class="lineno">  635</span>&#160;int32_t <a class="code" href="group__math.html#ga59893a4520a13171c94d6ce63fce6c4b">ilog2</a>(uint32_t a, uint32_t b);</div>
-<div class="line"><a name="l00636"></a><span class="lineno">  636</span>&#160;</div>
-<div class="line"><a name="l00645"></a><span class="lineno">  645</span>&#160;int32_t <a class="code" href="group__math.html#gabd69b1aa30157a6d87658db53ece8f5a">ipow</a>(int32_t a, int32_t b, int32_t c);</div>
-<div class="line"><a name="l00646"></a><span class="lineno">  646</span>&#160;</div>
-<div class="line"><a name="l00655"></a><span class="lineno">  655</span>&#160;uint32_t <a class="code" href="group__math.html#ga5d986d8e22cce16cfd2bb0cef0ac111e">iexp</a>(int32_t a, int32_t b, int32_t c);</div>
-<div class="line"><a name="l00656"></a><span class="lineno">  656</span>&#160;</div>
-<div class="line"><a name="l00665"></a><span class="lineno">  665</span>&#160;int32_t <a class="code" href="group__math.html#gacca08245d3d1a190375a92d5c51b2a90">isin</a>(int32_t a, int32_t b, int32_t c);</div>
-<div class="line"><a name="l00666"></a><span class="lineno">  666</span>&#160;</div>
-<div class="line"><a name="l00675"></a><span class="lineno">  675</span>&#160;int32_t <a class="code" href="group__math.html#ga6aeece8bfb39a8499b44d67c8bebb716">icos</a>(int32_t a, int32_t b, int32_t c);</div>
-<div class="line"><a name="l00676"></a><span class="lineno">  676</span>&#160;</div>
-<div class="line"><a name="l00677"></a><span class="lineno">  677</span>&#160;<span class="comment">/* ---------------- String operations --------------------------------------- */</span></div>
-<div class="line"><a name="l00687"></a><span class="lineno">  687</span>&#160;int32_t <a class="code" href="group__stringops.html#ga5d46e3fbbec8277f894d998a9b0dfdbc">memstr</a>(<span class="keyword">const</span> uint8_t* haystack, int32_t haysize,</div>
-<div class="line"><a name="l00688"></a><span class="lineno">  688</span>&#160;               <span class="keyword">const</span> uint8_t* needle, int32_t needlesize);</div>
-<div class="line"><a name="l00689"></a><span class="lineno">  689</span>&#160;</div>
-<div class="line"><a name="l00698"></a><span class="lineno">  698</span>&#160;int32_t <a class="code" href="group__stringops.html#ga231265b2ef73573c38d51a385697ae57">hex2ui</a>(uint32_t hex1, uint32_t hex2);</div>
-<div class="line"><a name="l00699"></a><span class="lineno">  699</span>&#160;</div>
-<div class="line"><a name="l00707"></a><span class="lineno">  707</span>&#160;int32_t <a class="code" href="group__stringops.html#gaa07799442f1560666449446eac438ee4">atoi</a>(<span class="keyword">const</span> uint8_t* str, int32_t size);</div>
-<div class="line"><a name="l00708"></a><span class="lineno">  708</span>&#160;</div>
-<div class="line"><a name="l00717"></a><span class="lineno">  717</span>&#160;uint32_t <a class="code" href="group__debug.html#ga43707290a22915315c960422a88ba4d4">debug_print_str_start</a>(<span class="keyword">const</span> uint8_t *str, uint32_t len);</div>
-<div class="line"><a name="l00718"></a><span class="lineno">  718</span>&#160;</div>
-<div class="line"><a name="l00727"></a><span class="lineno">  727</span>&#160;uint32_t <a class="code" href="group__debug.html#ga02f173e084fc9a4b9eaf3017aa4243ba">debug_print_str_nonl</a>(<span class="keyword">const</span> uint8_t *str, uint32_t len);</div>
-<div class="line"><a name="l00728"></a><span class="lineno">  728</span>&#160;</div>
-<div class="line"><a name="l00736"></a><span class="lineno">  736</span>&#160;uint32_t <a class="code" href="group__stringops.html#ga2df1f1f4823085b4956f1bce3f5b059c">entropy_buffer</a>(uint8_t* buffer, int32_t size);</div>
-<div class="line"><a name="l00737"></a><span class="lineno">  737</span>&#160;</div>
-<div class="line"><a name="l00738"></a><span class="lineno">  738</span>&#160;<span class="comment">/* ------------------ Data Structures --------------------------------------- */</span></div>
-<div class="line"><a name="l00746"></a><span class="lineno">  746</span>&#160;int32_t <a class="code" href="group__adt.html#ga8350ff5a10c6d2b8aa5c9b20bd0b032f">map_new</a>(int32_t keysize, int32_t valuesize);</div>
-<div class="line"><a name="l00747"></a><span class="lineno">  747</span>&#160;</div>
-<div class="line"><a name="l00758"></a><span class="lineno">  758</span>&#160;int32_t <a class="code" href="group__adt.html#ga962d8bc4658ba7dd411c75d7561c2fee">map_addkey</a>(<span class="keyword">const</span> uint8_t *key, int32_t ksize, int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00759"></a><span class="lineno">  759</span>&#160;</div>
-<div class="line"><a name="l00769"></a><span class="lineno">  769</span>&#160;int32_t <a class="code" href="group__adt.html#gafdae99c4fa909e017962e8b869950005">map_setvalue</a>(<span class="keyword">const</span> uint8_t *value, int32_t vsize, int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00770"></a><span class="lineno">  770</span>&#160;</div>
-<div class="line"><a name="l00781"></a><span class="lineno">  781</span>&#160;int32_t <a class="code" href="group__adt.html#gaeadbaac505160a820fe766cdaf95aba6">map_remove</a>(<span class="keyword">const</span> uint8_t* key, int32_t ksize, int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00782"></a><span class="lineno">  782</span>&#160;</div>
-<div class="line"><a name="l00795"></a><span class="lineno">  795</span>&#160;int32_t <a class="code" href="group__adt.html#gac45a2c7ac861578b8001b2116eee10aa">map_find</a>(<span class="keyword">const</span> uint8_t* key, int32_t ksize, int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00796"></a><span class="lineno">  796</span>&#160;</div>
-<div class="line"><a name="l00803"></a><span class="lineno">  803</span>&#160;int32_t <a class="code" href="group__adt.html#gaac4176bebb0d4896ad64452bec023012">map_getvaluesize</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00804"></a><span class="lineno">  804</span>&#160;</div>
-<div class="line"><a name="l00812"></a><span class="lineno">  812</span>&#160;uint8_t* <a class="code" href="group__adt.html#ga6a8bbb58c0ccad537eec575949e5f9f7">map_getvalue</a>(int32_t <span class="keywordtype">id</span>, int32_t size);</div>
-<div class="line"><a name="l00813"></a><span class="lineno">  813</span>&#160;</div>
-<div class="line"><a name="l00824"></a><span class="lineno">  824</span>&#160;int32_t <a class="code" href="group__adt.html#ga2603885df2096dc840d887461c3b1aac">map_done</a>(int32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00825"></a><span class="lineno">  825</span>&#160;</div>
-<div class="line"><a name="l00826"></a><span class="lineno">  826</span>&#160;<span class="comment">/* -------------- File Operations ------------------------------------------- */</span></div>
-<div class="line"><a name="l00838"></a><span class="lineno">  838</span>&#160;int32_t <a class="code" href="group__fileops.html#gad7479f2fd346e59217f50726be9502a3">file_find_limit</a>(<span class="keyword">const</span> uint8_t *data, uint32_t len, int32_t maxpos);</div>
-<div class="line"><a name="l00839"></a><span class="lineno">  839</span>&#160;</div>
-<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160;<span class="comment">/* ------------- Engine Query ----------------------------------------------- */</span></div>
-<div class="line"><a name="l00847"></a><span class="lineno">  847</span>&#160;uint32_t <a class="code" href="group__engineq.html#gaddc54afadb3d660c92e4e350548086d8">engine_functionality_level</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00848"></a><span class="lineno">  848</span>&#160;</div>
-<div class="line"><a name="l00856"></a><span class="lineno">  856</span>&#160;uint32_t <a class="code" href="group__engineq.html#ga4fa59c900fefd4a4441fcc4b3e44830d">engine_dconf_level</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00857"></a><span class="lineno">  857</span>&#160;</div>
-<div class="line"><a name="l00863"></a><span class="lineno">  863</span>&#160;uint32_t <a class="code" href="group__engineq.html#ga0cd507ebdbadaa5899ca032cb5f69e3c">engine_scan_options</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00864"></a><span class="lineno">  864</span>&#160;</div>
-<div class="line"><a name="l00870"></a><span class="lineno">  870</span>&#160;uint32_t <a class="code" href="group__engineq.html#gafc1eab4e86797378b5c1e7186894c1a7">engine_db_options</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00871"></a><span class="lineno">  871</span>&#160;</div>
-<div class="line"><a name="l00872"></a><span class="lineno">  872</span>&#160;<span class="comment">/* ---------------- Scan Control -------------------------------------------- */</span></div>
-<div class="line"><a name="l00879"></a><span class="lineno">  879</span>&#160;int32_t <a class="code" href="group__scanc.html#ga0f6e898d3a55355835fccb1f6d15abc1">extract_set_container</a>(uint32_t container);</div>
-<div class="line"><a name="l00880"></a><span class="lineno">  880</span>&#160;</div>
-<div class="line"><a name="l00892"></a><span class="lineno">  892</span>&#160;int32_t <a class="code" href="group__scanc.html#ga86179c9beb10be3f66cb5cae9902fec3">input_switch</a>(int32_t extracted_file);</div>
-<div class="line"><a name="l00893"></a><span class="lineno">  893</span>&#160;</div>
-<div class="line"><a name="l00894"></a><span class="lineno">  894</span>&#160;<span class="comment">/* ---------------- END 0.96.1 APIs ------------------------------------- */</span></div>
-<div class="line"><a name="l00895"></a><span class="lineno">  895</span>&#160;<span class="comment">/* ---------------- BEGIN 0.96.2 APIs ----------------------------------- */</span></div>
-<div class="line"><a name="l00896"></a><span class="lineno">  896</span>&#160;</div>
-<div class="line"><a name="l00906"></a><span class="lineno">  906</span>&#160;uint32_t <a class="code" href="group__envdet.html#ga4e38f5731d8d7578399d6bcf97ec1a27">get_environment</a>(<span class="keyword">struct</span> cli_environment *env, uint32_t len);</div>
-<div class="line"><a name="l00907"></a><span class="lineno">  907</span>&#160;</div>
-<div class="line"><a name="l00919"></a><span class="lineno">  919</span>&#160;uint32_t <a class="code" href="group__envdet.html#ga1b9af8b47763bc3e2d0323a605209702">disable_bytecode_if</a>(<span class="keyword">const</span> int8_t *reason, uint32_t len, uint32_t cond);</div>
-<div class="line"><a name="l00920"></a><span class="lineno">  920</span>&#160;</div>
-<div class="line"><a name="l00932"></a><span class="lineno">  932</span>&#160;uint32_t <a class="code" href="group__envdet.html#gacccb9f64252a40f3857007f0e382f8eb">disable_jit_if</a>(<span class="keyword">const</span> int8_t* reason, uint32_t len, uint32_t cond);</div>
-<div class="line"><a name="l00933"></a><span class="lineno">  933</span>&#160;</div>
-<div class="line"><a name="l00945"></a><span class="lineno">  945</span>&#160;int32_t <a class="code" href="group__envdet.html#ga18a8ecdd5235c80782b7e3e1892553ef">version_compare</a>(<span class="keyword">const</span> uint8_t* lhs, uint32_t lhs_len,</div>
-<div class="line"><a name="l00946"></a><span class="lineno">  946</span>&#160;                    <span class="keyword">const</span> uint8_t* rhs, uint32_t rhs_len);</div>
-<div class="line"><a name="l00947"></a><span class="lineno">  947</span>&#160;</div>
-<div class="line"><a name="l00958"></a><span class="lineno">  958</span>&#160;uint32_t <a class="code" href="group__envdet.html#ga9b52373152ee8dd8fd45ea6b242e5698">check_platform</a>(uint32_t a, uint32_t b, uint32_t c);</div>
-<div class="line"><a name="l00959"></a><span class="lineno">  959</span>&#160;</div>
-<div class="line"><a name="l00960"></a><span class="lineno">  960</span>&#160;<span class="comment">/* --------------------- PDF APIs ----------------------------------- */</span></div>
-<div class="line"><a name="l00967"></a><span class="lineno">  967</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaca9074092cae6ed378ffdc5ba7cfc77e">pdf_get_obj_num</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00968"></a><span class="lineno">  968</span>&#160;</div>
-<div class="line"><a name="l00975"></a><span class="lineno">  975</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga854b697b5e662b79c5931a7864ce0709">pdf_get_flags</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00976"></a><span class="lineno">  976</span>&#160;</div>
-<div class="line"><a name="l00984"></a><span class="lineno">  984</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga1524216162135a13acfecc0cbc82ac03">pdf_set_flags</a>(int32_t flags);</div>
-<div class="line"><a name="l00985"></a><span class="lineno">  985</span>&#160;</div>
-<div class="line"><a name="l00993"></a><span class="lineno">  993</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga06f5560acc053270453250c387692068">pdf_lookupobj</a>(uint32_t <span class="keywordtype">id</span>);</div>
-<div class="line"><a name="l00994"></a><span class="lineno">  994</span>&#160;</div>
-<div class="line"><a name="l01001"></a><span class="lineno"> 1001</span>&#160;uint32_t <a class="code" href="group__pdfg.html#ga0270605365fe5bb2f721eefe6f703255">pdf_getobjsize</a>(int32_t objidx);</div>
-<div class="line"><a name="l01002"></a><span class="lineno"> 1002</span>&#160;</div>
-<div class="line"><a name="l01011"></a><span class="lineno"> 1011</span>&#160;<span class="comment">//uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);</span></div>
-<div class="line"><a name="l01012"></a><span class="lineno"> 1012</span>&#160;<span class="keyword">const</span> uint8_t *<a class="code" href="group__pdfg.html#ga4c8b0da8762409c1bfe3163d5c3713ff">pdf_getobj</a>(int32_t objidx, uint32_t amount);</div>
-<div class="line"><a name="l01013"></a><span class="lineno"> 1013</span>&#160;</div>
-<div class="line"><a name="l01021"></a><span class="lineno"> 1021</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaf6943177dc18c5d6012f1847810ebd4c">pdf_getobjid</a>(int32_t objidx);</div>
-<div class="line"><a name="l01022"></a><span class="lineno"> 1022</span>&#160;</div>
-<div class="line"><a name="l01030"></a><span class="lineno"> 1030</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga9845af73f396e2dea666da3360c9b1c9">pdf_getobjflags</a>(int32_t objidx);</div>
-<div class="line"><a name="l01031"></a><span class="lineno"> 1031</span>&#160;</div>
-<div class="line"><a name="l01042"></a><span class="lineno"> 1042</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga7b4b1a1e1e8e7e0a7734d6e3585f9bc2">pdf_setobjflags</a>(int32_t objidx, int32_t flags);</div>
-<div class="line"><a name="l01043"></a><span class="lineno"> 1043</span>&#160;</div>
-<div class="line"><a name="l01051"></a><span class="lineno"> 1051</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga4ecff9d01377ead41921e18747a59426">pdf_get_offset</a>(int32_t objidx);</div>
-<div class="line"><a name="l01052"></a><span class="lineno"> 1052</span>&#160;</div>
-<div class="line"><a name="l01059"></a><span class="lineno"> 1059</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaf7eb372ae4bc42a552e543ea2a306f5e">pdf_get_phase</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l01060"></a><span class="lineno"> 1060</span>&#160;</div>
-<div class="line"><a name="l01068"></a><span class="lineno"> 1068</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaaa88ff051b0da6314c9655da624bb0f5">pdf_get_dumpedobjid</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l01069"></a><span class="lineno"> 1069</span>&#160;</div>
-<div class="line"><a name="l01070"></a><span class="lineno"> 1070</span>&#160;<span class="comment">/* ----------------------------- Icon APIs -------------------------- */</span></div>
-<div class="line"><a name="l01083"></a><span class="lineno"> 1083</span>&#160;int32_t <a class="code" href="group__icon.html#ga8e0bc8430adb57c0808bbf916e49185f">matchicon</a>(<span class="keyword">const</span> uint8_t* group1, int32_t group1_len,</div>
-<div class="line"><a name="l01084"></a><span class="lineno"> 1084</span>&#160;                  <span class="keyword">const</span> uint8_t* group2, int32_t group2_len);</div>
-<div class="line"><a name="l01085"></a><span class="lineno"> 1085</span>&#160;<span class="comment">/* ---------------- END 0.96.2 APIs   ----------------------------------- */</span></div>
-<div class="line"><a name="l01086"></a><span class="lineno"> 1086</span>&#160;<span class="comment">/* ----------------- BEGIN 0.96.4 APIs ---------------------------------- */</span></div>
-<div class="line"><a name="l01094"></a><span class="lineno"> 1094</span>&#160;int32_t <a class="code" href="group__engineq.html#ga150727e2ce2b5ed7371e3a7689337894">running_on_jit</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l01095"></a><span class="lineno"> 1095</span>&#160;</div>
-<div class="line"><a name="l01104"></a><span class="lineno"> 1104</span>&#160;int32_t <a class="code" href="group__fileops.html#ga5cee98dc9edde5bfbc107cbd304a4209">get_file_reliability</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l01105"></a><span class="lineno"> 1105</span>&#160;</div>
-<div class="line"><a name="l01106"></a><span class="lineno"> 1106</span>&#160;<span class="comment">/* ----------------- END 0.96.4 APIs ---------------------------------- */</span></div>
-<div class="line"><a name="l01107"></a><span class="lineno"> 1107</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l01108"></a><span class="lineno"> 1108</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;uint32_t <a class="code" href="group__disasm.html#ga95e7d1048a56c98dec19335a6aa7afca">disasm_x86</a>(<span class="keyword">struct</span> <a class="code" href="struct_d_i_s_a_s_m___r_e_s_u_l_t.html">DISASM_RESULT</a>* result, uint32_t len);</div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;</div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;<span class="comment">/* tracing API, private */</span></div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;</div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;<span class="comment">/* a scope: lexical block, function, or compile unit */</span></div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;uint32_t trace_directory(<span class="keyword">const</span> uint8_t* directory, uint32_t dummy);</div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;uint32_t trace_scope(<span class="keyword">const</span> uint8_t* newscope, uint32_t scopeid);</div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;uint32_t trace_source(<span class="keyword">const</span> uint8_t* srcfile, uint32_t line);</div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;uint32_t trace_op(<span class="keyword">const</span> uint8_t* opname, uint32_t column);</div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;uint32_t trace_value(<span class="keyword">const</span> uint8_t* name, uint32_t v);</div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;uint32_t trace_ptr(<span class="keyword">const</span> uint8_t* ptr, uint32_t dummy);</div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;</div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;uint32_t <a class="code" href="group__pe.html#ga0d081f8f58263eb99d68690f1f9b2a81">pe_rawaddr</a>(uint32_t rva);</div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;</div>
+<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;int32_t <a class="code" href="group__fileops.html#ga56355a07d9fb739dd483dd756f7fe821">file_find</a>(<span class="keyword">const</span> uint8_t* data, uint32_t len);</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;</div>
+<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;int32_t <a class="code" href="group__fileops.html#ga1e192cd4fe94e68dbac5023a1e2481c9">file_byteat</a>(uint32_t offset);</div>
+<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;</div>
+<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;<span class="keywordtype">void</span>* <a class="code" href="group__adt.html#ga8704c31c2d7a73953f3c1c320447c24a">malloc</a>(uint32_t size);</div>
+<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;</div>
+<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;uint32_t <a class="code" href="bytecode__api_8h.html#abf709b9bcdfd2da159ec288df9dc7ad9">test2</a>(uint32_t a);</div>
+<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;</div>
+<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;int32_t <a class="code" href="group__pe.html#gae7e5e9cef42c34a52cfe814910a1e293">get_pe_section</a>(<span class="keyword">struct</span> <a class="code" href="structcli__exe__section.html">cli_exe_section</a> *section, uint32_t num);</div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;</div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;int32_t <a class="code" href="group__fileops.html#ga5c25c11f12899883af10f3ba75cfc5c5">fill_buffer</a>(uint8_t* buffer, uint32_t len, uint32_t filled,</div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;                    uint32_t cursor, uint32_t fill);</div>
+<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;</div>
+<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;int32_t <a class="code" href="group__scanc.html#gaed98502eb13f9e2209d9c6b1620eb17a">extract_new</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;</div>
+<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;int32_t <a class="code" href="group__fileops.html#ga50b84b15fbaf03aa39b41ef7ffb5243e">read_number</a>(uint32_t radix);</div>
+<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;</div>
+<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;int32_t <a class="code" href="group__adt.html#gab791b1626efae568e0fb62c36ce8aa74">hashset_new</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;</div>
+<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;int32_t <a class="code" href="group__adt.html#gadb42ee13e5883410846a392513d6866b">hashset_add</a>(int32_t hs, uint32_t key);</div>
+<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;</div>
+<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;int32_t <a class="code" href="group__adt.html#ga06c14cce8ec4cc839a02094547964a00">hashset_remove</a>(int32_t hs, uint32_t key);</div>
+<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;</div>
+<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;int32_t <a class="code" href="group__adt.html#ga0907920e08ec8e80f3ff829e8aaf58de">hashset_contains</a>(int32_t hs, uint32_t key);</div>
+<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160;</div>
+<div class="line"><a name="l00468"></a><span class="lineno">  468</span>&#160;int32_t <a class="code" href="group__adt.html#gabd5e701c80bf5346a72fb145834b865a">hashset_done</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00469"></a><span class="lineno">  469</span>&#160;</div>
+<div class="line"><a name="l00476"></a><span class="lineno">  476</span>&#160;int32_t <a class="code" href="group__adt.html#ga854fcc65ad8cc0578c55aea6bc88b193">hashset_empty</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00477"></a><span class="lineno">  477</span>&#160;</div>
+<div class="line"><a name="l00484"></a><span class="lineno">  484</span>&#160;int32_t  <a class="code" href="group__adt.html#gae755b425ff65feddef7b86092dcdeed7">buffer_pipe_new</a>(uint32_t size);</div>
+<div class="line"><a name="l00485"></a><span class="lineno">  485</span>&#160;</div>
+<div class="line"><a name="l00493"></a><span class="lineno">  493</span>&#160;int32_t  <a class="code" href="group__adt.html#gadccae1152247859c54706b7d1753b689">buffer_pipe_new_fromfile</a>(uint32_t pos);</div>
+<div class="line"><a name="l00494"></a><span class="lineno">  494</span>&#160;</div>
+<div class="line"><a name="l00501"></a><span class="lineno">  501</span>&#160;uint32_t <a class="code" href="group__adt.html#ga53de1d976b1536c5b6a0d5d31de201b2">buffer_pipe_read_avail</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00502"></a><span class="lineno">  502</span>&#160;</div>
+<div class="line"><a name="l00513"></a><span class="lineno">  513</span>&#160;<span class="comment">//uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);</span></div>
+<div class="line"><a name="l00514"></a><span class="lineno">  514</span>&#160;<span class="keyword">const</span> uint8_t *<a class="code" href="group__adt.html#ga54cd26b62a0d16082b8909b110d605b3">buffer_pipe_read_get</a>(int32_t <span class="keywordtype">id</span>, uint32_t amount);</div>
+<div class="line"><a name="l00515"></a><span class="lineno">  515</span>&#160;</div>
+<div class="line"><a name="l00523"></a><span class="lineno">  523</span>&#160;int32_t  <a class="code" href="group__adt.html#gae67b360d1ab3c9dc4ac9d0f90208f6fe">buffer_pipe_read_stopped</a>(int32_t <span class="keywordtype">id</span>, uint32_t amount);</div>
+<div class="line"><a name="l00524"></a><span class="lineno">  524</span>&#160;</div>
+<div class="line"><a name="l00531"></a><span class="lineno">  531</span>&#160;uint32_t <a class="code" href="group__adt.html#ga1b9d87fbb40620d92b57549e24b189e6">buffer_pipe_write_avail</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00532"></a><span class="lineno">  532</span>&#160;</div>
+<div class="line"><a name="l00543"></a><span class="lineno">  543</span>&#160;uint8_t *<a class="code" href="group__adt.html#ga8268aaabee12eed25ab561f678128ddd">buffer_pipe_write_get</a>(int32_t <span class="keywordtype">id</span>, uint32_t size);</div>
+<div class="line"><a name="l00544"></a><span class="lineno">  544</span>&#160;</div>
+<div class="line"><a name="l00552"></a><span class="lineno">  552</span>&#160;int32_t  <a class="code" href="group__adt.html#ga57b76f82f0fb9bdabaad6c3d98037e94">buffer_pipe_write_stopped</a>(int32_t <span class="keywordtype">id</span>, uint32_t amount);</div>
+<div class="line"><a name="l00553"></a><span class="lineno">  553</span>&#160;</div>
+<div class="line"><a name="l00563"></a><span class="lineno">  563</span>&#160;int32_t  <a class="code" href="group__adt.html#ga984890c1d3b68b99e68c2e6b1a7704d0">buffer_pipe_done</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00564"></a><span class="lineno">  564</span>&#160;</div>
+<div class="line"><a name="l00574"></a><span class="lineno">  574</span>&#160;int32_t <a class="code" href="group__adt.html#ga65eec3722a1e992e9e4104c037503fdc">inflate_init</a>(int32_t from_buffer, int32_t to_buffer, int32_t windowBits);</div>
+<div class="line"><a name="l00575"></a><span class="lineno">  575</span>&#160;</div>
+<div class="line"><a name="l00588"></a><span class="lineno">  588</span>&#160;int32_t <a class="code" href="group__adt.html#ga10ad344e58c26566defe1780b303f0a4">inflate_process</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00589"></a><span class="lineno">  589</span>&#160;</div>
+<div class="line"><a name="l00599"></a><span class="lineno">  599</span>&#160;int32_t <a class="code" href="group__adt.html#ga123c12ca76a5b736217b68fdb126066e">inflate_done</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00600"></a><span class="lineno">  600</span>&#160;</div>
+<div class="line"><a name="l00607"></a><span class="lineno">  607</span>&#160;int32_t <a class="code" href="group__scanc.html#gad7ea886d4274f1f389acf0d5cdc50b7d">bytecode_rt_error</a>(int32_t locationid);</div>
+<div class="line"><a name="l00608"></a><span class="lineno">  608</span>&#160;</div>
+<div class="line"><a name="l00618"></a><span class="lineno">  618</span>&#160;int32_t <a class="code" href="group__js.html#gafb97628e1638c524b0cf45190403553d">jsnorm_init</a>(int32_t from_buffer);</div>
+<div class="line"><a name="l00619"></a><span class="lineno">  619</span>&#160;</div>
+<div class="line"><a name="l00628"></a><span class="lineno">  628</span>&#160;int32_t <a class="code" href="group__js.html#ga5c0da722aa4ccb9618052c5a2361ed8e">jsnorm_process</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00629"></a><span class="lineno">  629</span>&#160;</div>
+<div class="line"><a name="l00636"></a><span class="lineno">  636</span>&#160;int32_t <a class="code" href="group__js.html#ga7445bceea42b0a4d1d841b2c8826db4a">jsnorm_done</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00637"></a><span class="lineno">  637</span>&#160;</div>
+<div class="line"><a name="l00638"></a><span class="lineno">  638</span>&#160;<span class="comment">/* ---------------- END 0.96 APIs (don&#39;t touch) --------------------------- */</span></div>
+<div class="line"><a name="l00639"></a><span class="lineno">  639</span>&#160;<span class="comment">/* ---------------- BEGIN 0.96.1 APIs ------------------------------------- */</span></div>
+<div class="line"><a name="l00640"></a><span class="lineno">  640</span>&#160;</div>
+<div class="line"><a name="l00641"></a><span class="lineno">  641</span>&#160;<span class="comment">/* ---------------- Math -------------------------------------------------- */</span></div>
+<div class="line"><a name="l00642"></a><span class="lineno">  642</span>&#160;</div>
+<div class="line"><a name="l00650"></a><span class="lineno">  650</span>&#160;int32_t <a class="code" href="group__math.html#ga59893a4520a13171c94d6ce63fce6c4b">ilog2</a>(uint32_t a, uint32_t b);</div>
+<div class="line"><a name="l00651"></a><span class="lineno">  651</span>&#160;</div>
+<div class="line"><a name="l00660"></a><span class="lineno">  660</span>&#160;int32_t <a class="code" href="group__math.html#gabd69b1aa30157a6d87658db53ece8f5a">ipow</a>(int32_t a, int32_t b, int32_t c);</div>
+<div class="line"><a name="l00661"></a><span class="lineno">  661</span>&#160;</div>
+<div class="line"><a name="l00670"></a><span class="lineno">  670</span>&#160;uint32_t <a class="code" href="group__math.html#ga5d986d8e22cce16cfd2bb0cef0ac111e">iexp</a>(int32_t a, int32_t b, int32_t c);</div>
+<div class="line"><a name="l00671"></a><span class="lineno">  671</span>&#160;</div>
+<div class="line"><a name="l00680"></a><span class="lineno">  680</span>&#160;int32_t <a class="code" href="group__math.html#gacca08245d3d1a190375a92d5c51b2a90">isin</a>(int32_t a, int32_t b, int32_t c);</div>
+<div class="line"><a name="l00681"></a><span class="lineno">  681</span>&#160;</div>
+<div class="line"><a name="l00690"></a><span class="lineno">  690</span>&#160;int32_t <a class="code" href="group__math.html#ga6aeece8bfb39a8499b44d67c8bebb716">icos</a>(int32_t a, int32_t b, int32_t c);</div>
+<div class="line"><a name="l00691"></a><span class="lineno">  691</span>&#160;</div>
+<div class="line"><a name="l00692"></a><span class="lineno">  692</span>&#160;<span class="comment">/* ---------------- String operations --------------------------------------- */</span></div>
+<div class="line"><a name="l00702"></a><span class="lineno">  702</span>&#160;int32_t <a class="code" href="group__stringops.html#ga5d46e3fbbec8277f894d998a9b0dfdbc">memstr</a>(<span class="keyword">const</span> uint8_t* haystack, int32_t haysize,</div>
+<div class="line"><a name="l00703"></a><span class="lineno">  703</span>&#160;               <span class="keyword">const</span> uint8_t* needle, int32_t needlesize);</div>
+<div class="line"><a name="l00704"></a><span class="lineno">  704</span>&#160;</div>
+<div class="line"><a name="l00713"></a><span class="lineno">  713</span>&#160;int32_t <a class="code" href="group__stringops.html#ga231265b2ef73573c38d51a385697ae57">hex2ui</a>(uint32_t hex1, uint32_t hex2);</div>
+<div class="line"><a name="l00714"></a><span class="lineno">  714</span>&#160;</div>
+<div class="line"><a name="l00722"></a><span class="lineno">  722</span>&#160;int32_t <a class="code" href="group__stringops.html#gaa07799442f1560666449446eac438ee4">atoi</a>(<span class="keyword">const</span> uint8_t* str, int32_t size);</div>
+<div class="line"><a name="l00723"></a><span class="lineno">  723</span>&#160;</div>
+<div class="line"><a name="l00732"></a><span class="lineno">  732</span>&#160;uint32_t <a class="code" href="group__debug.html#ga43707290a22915315c960422a88ba4d4">debug_print_str_start</a>(<span class="keyword">const</span> uint8_t *str, uint32_t len);</div>
+<div class="line"><a name="l00733"></a><span class="lineno">  733</span>&#160;</div>
+<div class="line"><a name="l00742"></a><span class="lineno">  742</span>&#160;uint32_t <a class="code" href="group__debug.html#ga02f173e084fc9a4b9eaf3017aa4243ba">debug_print_str_nonl</a>(<span class="keyword">const</span> uint8_t *str, uint32_t len);</div>
+<div class="line"><a name="l00743"></a><span class="lineno">  743</span>&#160;</div>
+<div class="line"><a name="l00751"></a><span class="lineno">  751</span>&#160;uint32_t <a class="code" href="group__stringops.html#ga2df1f1f4823085b4956f1bce3f5b059c">entropy_buffer</a>(uint8_t* buffer, int32_t size);</div>
+<div class="line"><a name="l00752"></a><span class="lineno">  752</span>&#160;</div>
+<div class="line"><a name="l00753"></a><span class="lineno">  753</span>&#160;<span class="comment">/* ------------------ Data Structures --------------------------------------- */</span></div>
+<div class="line"><a name="l00761"></a><span class="lineno">  761</span>&#160;int32_t <a class="code" href="group__adt.html#ga8350ff5a10c6d2b8aa5c9b20bd0b032f">map_new</a>(int32_t keysize, int32_t valuesize);</div>
+<div class="line"><a name="l00762"></a><span class="lineno">  762</span>&#160;</div>
+<div class="line"><a name="l00773"></a><span class="lineno">  773</span>&#160;int32_t <a class="code" href="group__adt.html#ga962d8bc4658ba7dd411c75d7561c2fee">map_addkey</a>(<span class="keyword">const</span> uint8_t *key, int32_t ksize, int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00774"></a><span class="lineno">  774</span>&#160;</div>
+<div class="line"><a name="l00784"></a><span class="lineno">  784</span>&#160;int32_t <a class="code" href="group__adt.html#gafdae99c4fa909e017962e8b869950005">map_setvalue</a>(<span class="keyword">const</span> uint8_t *value, int32_t vsize, int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00785"></a><span class="lineno">  785</span>&#160;</div>
+<div class="line"><a name="l00796"></a><span class="lineno">  796</span>&#160;int32_t <a class="code" href="group__adt.html#gaeadbaac505160a820fe766cdaf95aba6">map_remove</a>(<span class="keyword">const</span> uint8_t* key, int32_t ksize, int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00797"></a><span class="lineno">  797</span>&#160;</div>
+<div class="line"><a name="l00810"></a><span class="lineno">  810</span>&#160;int32_t <a class="code" href="group__adt.html#gac45a2c7ac861578b8001b2116eee10aa">map_find</a>(<span class="keyword">const</span> uint8_t* key, int32_t ksize, int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00811"></a><span class="lineno">  811</span>&#160;</div>
+<div class="line"><a name="l00818"></a><span class="lineno">  818</span>&#160;int32_t <a class="code" href="group__adt.html#gaac4176bebb0d4896ad64452bec023012">map_getvaluesize</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00819"></a><span class="lineno">  819</span>&#160;</div>
+<div class="line"><a name="l00827"></a><span class="lineno">  827</span>&#160;uint8_t* <a class="code" href="group__adt.html#ga6a8bbb58c0ccad537eec575949e5f9f7">map_getvalue</a>(int32_t <span class="keywordtype">id</span>, int32_t size);</div>
+<div class="line"><a name="l00828"></a><span class="lineno">  828</span>&#160;</div>
+<div class="line"><a name="l00839"></a><span class="lineno">  839</span>&#160;int32_t <a class="code" href="group__adt.html#ga2603885df2096dc840d887461c3b1aac">map_done</a>(int32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160;</div>
+<div class="line"><a name="l00841"></a><span class="lineno">  841</span>&#160;<span class="comment">/* -------------- File Operations ------------------------------------------- */</span></div>
+<div class="line"><a name="l00853"></a><span class="lineno">  853</span>&#160;int32_t <a class="code" href="group__fileops.html#gad7479f2fd346e59217f50726be9502a3">file_find_limit</a>(<span class="keyword">const</span> uint8_t *data, uint32_t len, int32_t maxpos);</div>
+<div class="line"><a name="l00854"></a><span class="lineno">  854</span>&#160;</div>
+<div class="line"><a name="l00855"></a><span class="lineno">  855</span>&#160;<span class="comment">/* ------------- Engine Query ----------------------------------------------- */</span></div>
+<div class="line"><a name="l00862"></a><span class="lineno">  862</span>&#160;uint32_t <a class="code" href="group__engineq.html#gaddc54afadb3d660c92e4e350548086d8">engine_functionality_level</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00863"></a><span class="lineno">  863</span>&#160;</div>
+<div class="line"><a name="l00871"></a><span class="lineno">  871</span>&#160;uint32_t <a class="code" href="group__engineq.html#ga4fa59c900fefd4a4441fcc4b3e44830d">engine_dconf_level</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00872"></a><span class="lineno">  872</span>&#160;</div>
+<div class="line"><a name="l00878"></a><span class="lineno">  878</span>&#160;uint32_t <a class="code" href="group__engineq.html#ga0cd507ebdbadaa5899ca032cb5f69e3c">engine_scan_options</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00879"></a><span class="lineno">  879</span>&#160;</div>
+<div class="line"><a name="l00885"></a><span class="lineno">  885</span>&#160;uint32_t <a class="code" href="group__engineq.html#gafc1eab4e86797378b5c1e7186894c1a7">engine_db_options</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00886"></a><span class="lineno">  886</span>&#160;</div>
+<div class="line"><a name="l00887"></a><span class="lineno">  887</span>&#160;<span class="comment">/* ---------------- Scan Control -------------------------------------------- */</span></div>
+<div class="line"><a name="l00894"></a><span class="lineno">  894</span>&#160;int32_t <a class="code" href="group__scanc.html#ga0f6e898d3a55355835fccb1f6d15abc1">extract_set_container</a>(uint32_t container);</div>
+<div class="line"><a name="l00895"></a><span class="lineno">  895</span>&#160;</div>
+<div class="line"><a name="l00907"></a><span class="lineno">  907</span>&#160;int32_t <a class="code" href="group__scanc.html#ga86179c9beb10be3f66cb5cae9902fec3">input_switch</a>(int32_t extracted_file);</div>
+<div class="line"><a name="l00908"></a><span class="lineno">  908</span>&#160;</div>
+<div class="line"><a name="l00909"></a><span class="lineno">  909</span>&#160;<span class="comment">/* ---------------- END 0.96.1 APIs ------------------------------------- */</span></div>
+<div class="line"><a name="l00910"></a><span class="lineno">  910</span>&#160;<span class="comment">/* ---------------- BEGIN 0.96.2 APIs ----------------------------------- */</span></div>
+<div class="line"><a name="l00911"></a><span class="lineno">  911</span>&#160;</div>
+<div class="line"><a name="l00921"></a><span class="lineno">  921</span>&#160;uint32_t <a class="code" href="group__envdet.html#ga4e38f5731d8d7578399d6bcf97ec1a27">get_environment</a>(<span class="keyword">struct</span> cli_environment *env, uint32_t len);</div>
+<div class="line"><a name="l00922"></a><span class="lineno">  922</span>&#160;</div>
+<div class="line"><a name="l00934"></a><span class="lineno">  934</span>&#160;uint32_t <a class="code" href="group__envdet.html#ga1b9af8b47763bc3e2d0323a605209702">disable_bytecode_if</a>(<span class="keyword">const</span> int8_t *reason, uint32_t len, uint32_t cond);</div>
+<div class="line"><a name="l00935"></a><span class="lineno">  935</span>&#160;</div>
+<div class="line"><a name="l00947"></a><span class="lineno">  947</span>&#160;uint32_t <a class="code" href="group__envdet.html#gacccb9f64252a40f3857007f0e382f8eb">disable_jit_if</a>(<span class="keyword">const</span> int8_t* reason, uint32_t len, uint32_t cond);</div>
+<div class="line"><a name="l00948"></a><span class="lineno">  948</span>&#160;</div>
+<div class="line"><a name="l00960"></a><span class="lineno">  960</span>&#160;int32_t <a class="code" href="group__envdet.html#ga18a8ecdd5235c80782b7e3e1892553ef">version_compare</a>(<span class="keyword">const</span> uint8_t* lhs, uint32_t lhs_len,</div>
+<div class="line"><a name="l00961"></a><span class="lineno">  961</span>&#160;                    <span class="keyword">const</span> uint8_t* rhs, uint32_t rhs_len);</div>
+<div class="line"><a name="l00962"></a><span class="lineno">  962</span>&#160;</div>
+<div class="line"><a name="l00973"></a><span class="lineno">  973</span>&#160;uint32_t <a class="code" href="group__envdet.html#ga9b52373152ee8dd8fd45ea6b242e5698">check_platform</a>(uint32_t a, uint32_t b, uint32_t c);</div>
+<div class="line"><a name="l00974"></a><span class="lineno">  974</span>&#160;</div>
+<div class="line"><a name="l00975"></a><span class="lineno">  975</span>&#160;<span class="comment">/* --------------------- PDF APIs ----------------------------------- */</span></div>
+<div class="line"><a name="l00982"></a><span class="lineno">  982</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaca9074092cae6ed378ffdc5ba7cfc77e">pdf_get_obj_num</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00983"></a><span class="lineno">  983</span>&#160;</div>
+<div class="line"><a name="l00990"></a><span class="lineno">  990</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga854b697b5e662b79c5931a7864ce0709">pdf_get_flags</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00991"></a><span class="lineno">  991</span>&#160;</div>
+<div class="line"><a name="l00999"></a><span class="lineno">  999</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga1524216162135a13acfecc0cbc82ac03">pdf_set_flags</a>(int32_t flags);</div>
+<div class="line"><a name="l01000"></a><span class="lineno"> 1000</span>&#160;</div>
+<div class="line"><a name="l01008"></a><span class="lineno"> 1008</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga06f5560acc053270453250c387692068">pdf_lookupobj</a>(uint32_t <span class="keywordtype">id</span>);</div>
+<div class="line"><a name="l01009"></a><span class="lineno"> 1009</span>&#160;</div>
+<div class="line"><a name="l01016"></a><span class="lineno"> 1016</span>&#160;uint32_t <a class="code" href="group__pdfg.html#ga0270605365fe5bb2f721eefe6f703255">pdf_getobjsize</a>(int32_t objidx);</div>
+<div class="line"><a name="l01017"></a><span class="lineno"> 1017</span>&#160;</div>
+<div class="line"><a name="l01026"></a><span class="lineno"> 1026</span>&#160;<span class="comment">//uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);</span></div>
+<div class="line"><a name="l01027"></a><span class="lineno"> 1027</span>&#160;<span class="keyword">const</span> uint8_t *<a class="code" href="group__pdfg.html#ga4c8b0da8762409c1bfe3163d5c3713ff">pdf_getobj</a>(int32_t objidx, uint32_t amount);</div>
+<div class="line"><a name="l01028"></a><span class="lineno"> 1028</span>&#160;</div>
+<div class="line"><a name="l01036"></a><span class="lineno"> 1036</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaf6943177dc18c5d6012f1847810ebd4c">pdf_getobjid</a>(int32_t objidx);</div>
+<div class="line"><a name="l01037"></a><span class="lineno"> 1037</span>&#160;</div>
+<div class="line"><a name="l01045"></a><span class="lineno"> 1045</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga9845af73f396e2dea666da3360c9b1c9">pdf_getobjflags</a>(int32_t objidx);</div>
+<div class="line"><a name="l01046"></a><span class="lineno"> 1046</span>&#160;</div>
+<div class="line"><a name="l01057"></a><span class="lineno"> 1057</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga7b4b1a1e1e8e7e0a7734d6e3585f9bc2">pdf_setobjflags</a>(int32_t objidx, int32_t flags);</div>
+<div class="line"><a name="l01058"></a><span class="lineno"> 1058</span>&#160;</div>
+<div class="line"><a name="l01066"></a><span class="lineno"> 1066</span>&#160;int32_t <a class="code" href="group__pdfg.html#ga4ecff9d01377ead41921e18747a59426">pdf_get_offset</a>(int32_t objidx);</div>
+<div class="line"><a name="l01067"></a><span class="lineno"> 1067</span>&#160;</div>
+<div class="line"><a name="l01074"></a><span class="lineno"> 1074</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaf7eb372ae4bc42a552e543ea2a306f5e">pdf_get_phase</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l01075"></a><span class="lineno"> 1075</span>&#160;</div>
+<div class="line"><a name="l01083"></a><span class="lineno"> 1083</span>&#160;int32_t <a class="code" href="group__pdfg.html#gaaa88ff051b0da6314c9655da624bb0f5">pdf_get_dumpedobjid</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l01084"></a><span class="lineno"> 1084</span>&#160;</div>
+<div class="line"><a name="l01085"></a><span class="lineno"> 1085</span>&#160;<span class="comment">/* ----------------------------- Icon APIs -------------------------- */</span></div>
+<div class="line"><a name="l01098"></a><span class="lineno"> 1098</span>&#160;int32_t <a class="code" href="group__icon.html#ga8e0bc8430adb57c0808bbf916e49185f">matchicon</a>(<span class="keyword">const</span> uint8_t* group1, int32_t group1_len,</div>
+<div class="line"><a name="l01099"></a><span class="lineno"> 1099</span>&#160;                  <span class="keyword">const</span> uint8_t* group2, int32_t group2_len);</div>
+<div class="line"><a name="l01100"></a><span class="lineno"> 1100</span>&#160;<span class="comment">/* ---------------- END 0.96.2 APIs   ----------------------------------- */</span></div>
+<div class="line"><a name="l01101"></a><span class="lineno"> 1101</span>&#160;<span class="comment">/* ----------------- BEGIN 0.96.4 APIs ---------------------------------- */</span></div>
+<div class="line"><a name="l01109"></a><span class="lineno"> 1109</span>&#160;int32_t <a class="code" href="group__engineq.html#ga150727e2ce2b5ed7371e3a7689337894">running_on_jit</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l01110"></a><span class="lineno"> 1110</span>&#160;</div>
+<div class="line"><a name="l01119"></a><span class="lineno"> 1119</span>&#160;int32_t <a class="code" href="group__fileops.html#ga5cee98dc9edde5bfbc107cbd304a4209">get_file_reliability</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l01120"></a><span class="lineno"> 1120</span>&#160;</div>
+<div class="line"><a name="l01121"></a><span class="lineno"> 1121</span>&#160;<span class="comment">/* ----------------- END 0.96.4 APIs ---------------------------------- */</span></div>
+<div class="line"><a name="l01122"></a><span class="lineno"> 1122</span>&#160;<span class="comment">/* ----------------- BEGIN 0.98.4 APIs -------------------------------- */</span></div>
+<div class="line"><a name="l01123"></a><span class="lineno"> 1123</span>&#160;<span class="comment">/* ----------------- JSON Parsing APIs -------------------------------- */</span></div>
+<div class="line"><a name="l01129"></a><span class="lineno"> 1129</span>&#160;int32_t <a class="code" href="group__json.html#gab590cf1a4d93ba3f25df38edd0e526c8">json_is_active</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l01130"></a><span class="lineno"> 1130</span>&#160;</div>
+<div class="line"><a name="l01141"></a><span class="lineno"> 1141</span>&#160;int32_t <a class="code" href="group__json.html#ga627d713e6c9baa49ee3ea13c9d18e34a">json_get_object</a>(<span class="keyword">const</span> int8_t* name, int32_t name_len, int32_t objid);</div>
+<div class="line"><a name="l01142"></a><span class="lineno"> 1142</span>&#160;</div>
+<div class="line"><a name="l01149"></a><span class="lineno"> 1149</span>&#160;int32_t <a class="code" href="group__json.html#gafa4a1feef05495ec9bae2eb79a7cb602">json_get_type</a>(int32_t objid);</div>
+<div class="line"><a name="l01150"></a><span class="lineno"> 1150</span>&#160;</div>
+<div class="line"><a name="l01158"></a><span class="lineno"> 1158</span>&#160;int32_t <a class="code" href="group__json.html#ga70d3420a0ed6282786354348e05c717b">json_get_array_length</a>(int32_t objid);</div>
+<div class="line"><a name="l01159"></a><span class="lineno"> 1159</span>&#160;</div>
+<div class="line"><a name="l01169"></a><span class="lineno"> 1169</span>&#160;int32_t <a class="code" href="group__json.html#ga51481f2d23e50f87ddd09abcb5374704">json_get_array_idx</a>(int32_t idx, int32_t objid);</div>
+<div class="line"><a name="l01170"></a><span class="lineno"> 1170</span>&#160;</div>
+<div class="line"><a name="l01178"></a><span class="lineno"> 1178</span>&#160;int32_t <a class="code" href="group__json.html#ga44d0e989cd137e91e9a2b35646ecc4d8">json_get_string_length</a>(int32_t objid);</div>
+<div class="line"><a name="l01179"></a><span class="lineno"> 1179</span>&#160;</div>
+<div class="line"><a name="l01191"></a><span class="lineno"> 1191</span>&#160;int32_t <a class="code" href="group__json.html#ga57e3593c4d5b17bf646c4991ca9c5b0b">json_get_string</a>(int8_t* str, int32_t str_len, int32_t objid);</div>
+<div class="line"><a name="l01192"></a><span class="lineno"> 1192</span>&#160;</div>
+<div class="line"><a name="l01198"></a><span class="lineno"> 1198</span>&#160;int32_t <a class="code" href="group__json.html#gaa111424d796fd5c69be5cabde9d55b01">json_get_boolean</a>(int32_t objid);</div>
+<div class="line"><a name="l01199"></a><span class="lineno"> 1199</span>&#160;</div>
+<div class="line"><a name="l01205"></a><span class="lineno"> 1205</span>&#160;int32_t <a class="code" href="group__json.html#ga73adebc2a9379f1625e64b3a9982cfa4">json_get_int</a>(int32_t objid);</div>
+<div class="line"><a name="l01206"></a><span class="lineno"> 1206</span>&#160;</div>
+<div class="line"><a name="l01207"></a><span class="lineno"> 1207</span>&#160;<span class="comment">//int64_t json_get_int64(int32_t objid);</span></div>
+<div class="line"><a name="l01208"></a><span class="lineno"> 1208</span>&#160;<span class="comment">/* bytecode does not support double type */</span></div>
+<div class="line"><a name="l01209"></a><span class="lineno"> 1209</span>&#160;<span class="comment">//double json_get_double(int32_t objid);</span></div>
+<div class="line"><a name="l01210"></a><span class="lineno"> 1210</span>&#160;</div>
+<div class="line"><a name="l01211"></a><span class="lineno"> 1211</span>&#160;<span class="comment">/* ----------------- END 0.98.4 APIs ---------------------------------- */</span></div>
+<div class="line"><a name="l01212"></a><span class="lineno"> 1212</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l01213"></a><span class="lineno"> 1213</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="group__debug_html_ga43707290a22915315c960422a88ba4d4"><div class="ttname"><a href="group__debug.html#ga43707290a22915315c960422a88ba4d4">debug_print_str_start</a></div><div class="ttdeci">uint32_t debug_print_str_start(const uint8_t *str, uint32_t len)</div></div>
-<div class="ttc" id="group__pdfg_html_gabf356e8393462916811603aaf950bf0a"><div class="ttname"><a href="group__pdfg.html#gabf356e8393462916811603aaf950bf0a">pdf_objflags</a></div><div class="ttdeci">pdf_objflags</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:150</div></div>
+<div class="ttc" id="group__pdfg_html_gabf356e8393462916811603aaf950bf0a"><div class="ttname"><a href="group__pdfg.html#gabf356e8393462916811603aaf950bf0a">pdf_objflags</a></div><div class="ttdeci">pdf_objflags</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:151</div></div>
 <div class="ttc" id="group__adt_html_gaeadbaac505160a820fe766cdaf95aba6"><div class="ttname"><a href="group__adt.html#gaeadbaac505160a820fe766cdaf95aba6">map_remove</a></div><div class="ttdeci">int32_t map_remove(const uint8_t *key, int32_t ksize, int32_t id)</div></div>
 <div class="ttc" id="group__config_html_gac2cd51dc61c1ddf642d596c7f73a6999"><div class="ttname"><a href="group__config.html#gac2cd51dc61c1ddf642d596c7f73a6999">FunctionalityLevels</a></div><div class="ttdeci">FunctionalityLevels</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:79</div></div>
 <div class="ttc" id="group__engineq_html_ga150727e2ce2b5ed7371e3a7689337894"><div class="ttname"><a href="group__engineq.html#ga150727e2ce2b5ed7371e3a7689337894">running_on_jit</a></div><div class="ttdeci">int32_t running_on_jit(void)</div></div>
-<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32">PDF_PHASE_POSTDUMP</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:113</div></div>
-<div class="ttc" id="group__fileops_html_ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05"><div class="ttname"><a href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05">SEEK_SET</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:238</div></div>
+<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a8b5369671512493af9518bcc8c6b2b32">PDF_PHASE_POSTDUMP</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:114</div></div>
+<div class="ttc" id="group__fileops_html_ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05"><div class="ttname"><a href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05">SEEK_SET</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:253</div></div>
+<div class="ttc" id="group__json_html_ga44d0e989cd137e91e9a2b35646ecc4d8"><div class="ttname"><a href="group__json.html#ga44d0e989cd137e91e9a2b35646ecc4d8">json_get_string_length</a></div><div class="ttdeci">int32_t json_get_string_length(int32_t objid)</div></div>
 <div class="ttc" id="group__pe_html_ga06fc87d81c62e9abb8790b6e5713c55bacb5d73f23c5c13bca1ae5fdfbaa22d43"><div class="ttname"><a href="group__pe.html#ga06fc87d81c62e9abb8790b6e5713c55bacb5d73f23c5c13bca1ae5fdfbaa22d43">PE_INVALID_RVA</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:72</div></div>
 <div class="ttc" id="group__config_html_ga108e33201873c25ef45b59b519f1ff91"><div class="ttname"><a href="group__config.html#ga108e33201873c25ef45b59b519f1ff91">BytecodeKind</a></div><div class="ttdeci">BytecodeKind</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:49</div></div>
+<div class="ttc" id="group__json_html_ga936375042c8c0e1e0b304f4a89bca395"><div class="ttname"><a href="group__json.html#ga936375042c8c0e1e0b304f4a89bca395">bc_json_type</a></div><div class="ttdeci">bc_json_type</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:183</div></div>
 <div class="ttc" id="group__envdet_html_gacccb9f64252a40f3857007f0e382f8eb"><div class="ttname"><a href="group__envdet.html#gacccb9f64252a40f3857007f0e382f8eb">disable_jit_if</a></div><div class="ttdeci">uint32_t disable_jit_if(const int8_t *reason, uint32_t len, uint32_t cond)</div></div>
 <div class="ttc" id="group__config_html_gga108e33201873c25ef45b59b519f1ff91aa6c849ba6dbd80a2af04a38eeea8d5c3"><div class="ttname"><a href="group__config.html#gga108e33201873c25ef45b59b519f1ff91aa6c849ba6dbd80a2af04a38eeea8d5c3">BC_LOGICAL</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:56</div></div>
 <div class="ttc" id="group__globals_html_ga35a0a4f1219a792c77b7207924c3c4ec"><div class="ttname"><a href="group__globals.html#ga35a0a4f1219a792c77b7207924c3c4ec">__clambc_match_counts</a></div><div class="ttdeci">const uint32_t __clambc_match_counts[64]</div><div class="ttdoc">This is a low-level variable, use the Macros in bytecode_local.h instead to access it...</div></div>
@@ -476,29 +514,34 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__adt_html_ga123c12ca76a5b736217b68fdb126066e"><div class="ttname"><a href="group__adt.html#ga123c12ca76a5b736217b68fdb126066e">inflate_done</a></div><div class="ttdeci">int32_t inflate_done(int32_t id)</div></div>
 <div class="ttc" id="group__config_html_gga108e33201873c25ef45b59b519f1ff91ae6b6910f9706526e49807a022b7125f1"><div class="ttname"><a href="group__config.html#gga108e33201873c25ef45b59b519f1ff91ae6b6910f9706526e49807a022b7125f1">BC_PE_UNPACKER</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:58</div></div>
 <div class="ttc" id="group__pdfg_html_ga1524216162135a13acfecc0cbc82ac03"><div class="ttname"><a href="group__pdfg.html#ga1524216162135a13acfecc0cbc82ac03">pdf_set_flags</a></div><div class="ttdeci">int32_t pdf_set_flags(int32_t flags)</div></div>
-<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033">PDF_PHASE_END</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:114</div></div>
+<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a86369da63f5adcb36bdda01aa4995033">PDF_PHASE_END</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:115</div></div>
 <div class="ttc" id="group__config_html_gga108e33201873c25ef45b59b519f1ff91aff84fbd05d167a1cf9e146d155ac90b7"><div class="ttname"><a href="group__config.html#gga108e33201873c25ef45b59b519f1ff91aff84fbd05d167a1cf9e146d155ac90b7">BC_GENERIC</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:51</div></div>
 <div class="ttc" id="group__envdet_html_ga9b52373152ee8dd8fd45ea6b242e5698"><div class="ttname"><a href="group__envdet.html#ga9b52373152ee8dd8fd45ea6b242e5698">check_platform</a></div><div class="ttdeci">uint32_t check_platform(uint32_t a, uint32_t b, uint32_t c)</div></div>
+<div class="ttc" id="group__json_html_ga70d3420a0ed6282786354348e05c717b"><div class="ttname"><a href="group__json.html#ga70d3420a0ed6282786354348e05c717b">json_get_array_length</a></div><div class="ttdeci">int32_t json_get_array_length(int32_t objid)</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a44067def566983f447c7f4eeaa0fe4c5"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a44067def566983f447c7f4eeaa0fe4c5">FUNC_LEVEL_096_2</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:85</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a06afec54f994f3bf159c908b388b80ab"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a06afec54f994f3bf159c908b388b80ab">FUNC_LEVEL_097_4</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:95</div></div>
-<div class="ttc" id="group__pdfg_html_ga5597245ed8666431babaa5371fe7e009"><div class="ttname"><a href="group__pdfg.html#ga5597245ed8666431babaa5371fe7e009">pdf_flag</a></div><div class="ttdeci">pdf_flag</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:122</div></div>
+<div class="ttc" id="group__pdfg_html_ga5597245ed8666431babaa5371fe7e009"><div class="ttname"><a href="group__pdfg.html#ga5597245ed8666431babaa5371fe7e009">pdf_flag</a></div><div class="ttdeci">pdf_flag</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:123</div></div>
 <div class="ttc" id="group__envdet_html_ga4e38f5731d8d7578399d6bcf97ec1a27"><div class="ttname"><a href="group__envdet.html#ga4e38f5731d8d7578399d6bcf97ec1a27">get_environment</a></div><div class="ttdeci">uint32_t get_environment(struct cli_environment *env, uint32_t len)</div></div>
 <div class="ttc" id="group__adt_html_gae67b360d1ab3c9dc4ac9d0f90208f6fe"><div class="ttname"><a href="group__adt.html#gae67b360d1ab3c9dc4ac9d0f90208f6fe">buffer_pipe_read_stopped</a></div><div class="ttdeci">int32_t buffer_pipe_read_stopped(int32_t id, uint32_t amount)</div></div>
-<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56">PDF_PHASE_PRE</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:115</div></div>
+<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45a24ede1bd978055eda313a291e2e3ed56">PDF_PHASE_PRE</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:116</div></div>
 <div class="ttc" id="group__disasm_html_ga95e7d1048a56c98dec19335a6aa7afca"><div class="ttname"><a href="group__disasm.html#ga95e7d1048a56c98dec19335a6aa7afca">disasm_x86</a></div><div class="ttdeci">uint32_t disasm_x86(struct DISASM_RESULT *result, uint32_t len)</div></div>
-<div class="ttc" id="group__fileops_html_ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63"><div class="ttname"><a href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63">SEEK_END</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:242</div></div>
+<div class="ttc" id="group__fileops_html_ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63"><div class="ttname"><a href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7a060e45245be703e272d7264bafcfdc63">SEEK_END</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:257</div></div>
 <div class="ttc" id="bytecode__api_8h_html_af445932f85a581e254806f034225ecf1"><div class="ttname"><a href="bytecode__api_8h.html#af445932f85a581e254806f034225ecf1">test1</a></div><div class="ttdeci">uint32_t test1(uint32_t a, uint32_t b)</div></div>
 <div class="ttc" id="group__pe_html_gae7e5e9cef42c34a52cfe814910a1e293"><div class="ttname"><a href="group__pe.html#gae7e5e9cef42c34a52cfe814910a1e293">get_pe_section</a></div><div class="ttdeci">int32_t get_pe_section(struct cli_exe_section *section, uint32_t num)</div></div>
 <div class="ttc" id="group__adt_html_gaac4176bebb0d4896ad64452bec023012"><div class="ttname"><a href="group__adt.html#gaac4176bebb0d4896ad64452bec023012">map_getvaluesize</a></div><div class="ttdeci">int32_t map_getvaluesize(int32_t id)</div></div>
 <div class="ttc" id="group__config_html_gga108e33201873c25ef45b59b519f1ff91a994c8f67c7dd938a35a6cf74d6ab8563"><div class="ttname"><a href="group__config.html#gga108e33201873c25ef45b59b519f1ff91a994c8f67c7dd938a35a6cf74d6ab8563">BC_STARTUP</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:53</div></div>
-<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa">FUNC_LEVEL_098_2</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:102</div></div>
+<div class="ttc" id="group__json_html_gab590cf1a4d93ba3f25df38edd0e526c8"><div class="ttname"><a href="group__json.html#gab590cf1a4d93ba3f25df38edd0e526c8">json_is_active</a></div><div class="ttdeci">int32_t json_is_active(void)</div></div>
+<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa">FUNC_LEVEL_098_2</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:101</div></div>
+<div class="ttc" id="group__json_html_ga57e3593c4d5b17bf646c4991ca9c5b0b"><div class="ttname"><a href="group__json.html#ga57e3593c4d5b17bf646c4991ca9c5b0b">json_get_string</a></div><div class="ttdeci">int32_t json_get_string(int8_t *str, int32_t str_len, int32_t objid)</div></div>
 <div class="ttc" id="group__adt_html_gadccae1152247859c54706b7d1753b689"><div class="ttname"><a href="group__adt.html#gadccae1152247859c54706b7d1753b689">buffer_pipe_new_fromfile</a></div><div class="ttdeci">int32_t buffer_pipe_new_fromfile(uint32_t pos)</div></div>
 <div class="ttc" id="group__math_html_ga59893a4520a13171c94d6ce63fce6c4b"><div class="ttname"><a href="group__math.html#ga59893a4520a13171c94d6ce63fce6c4b">ilog2</a></div><div class="ttdeci">int32_t ilog2(uint32_t a, uint32_t b)</div></div>
-<div class="ttc" id="group__globals_html_ga6eb3802e21949cfdf6b91570d3c62c99"><div class="ttname"><a href="group__globals.html#ga6eb3802e21949cfdf6b91570d3c62c99">__clambc_kind</a></div><div class="ttdeci">const uint16_t __clambc_kind</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:212</div></div>
+<div class="ttc" id="group__globals_html_ga6eb3802e21949cfdf6b91570d3c62c99"><div class="ttname"><a href="group__globals.html#ga6eb3802e21949cfdf6b91570d3c62c99">__clambc_kind</a></div><div class="ttdeci">const uint16_t __clambc_kind</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:227</div></div>
 <div class="ttc" id="group__scanc_html_gaed98502eb13f9e2209d9c6b1620eb17a"><div class="ttname"><a href="group__scanc.html#gaed98502eb13f9e2209d9c6b1620eb17a">extract_new</a></div><div class="ttdeci">int32_t extract_new(int32_t id)</div></div>
 <div class="ttc" id="group__pdfg_html_gaf6943177dc18c5d6012f1847810ebd4c"><div class="ttname"><a href="group__pdfg.html#gaf6943177dc18c5d6012f1847810ebd4c">pdf_getobjid</a></div><div class="ttdeci">int32_t pdf_getobjid(int32_t objidx)</div></div>
 <div class="ttc" id="group__adt_html_ga854fcc65ad8cc0578c55aea6bc88b193"><div class="ttname"><a href="group__adt.html#ga854fcc65ad8cc0578c55aea6bc88b193">hashset_empty</a></div><div class="ttdeci">int32_t hashset_empty(int32_t id)</div></div>
 <div class="ttc" id="group__scanc_html_ga86179c9beb10be3f66cb5cae9902fec3"><div class="ttname"><a href="group__scanc.html#ga86179c9beb10be3f66cb5cae9902fec3">input_switch</a></div><div class="ttdeci">int32_t input_switch(int32_t extracted_file)</div></div>
+<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a675dcb47376b5a0766215d942861d430"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a675dcb47376b5a0766215d942861d430">FUNC_LEVEL_098_3</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:102</div></div>
+<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a993969ab876ecf33012f31458a3720f4"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a993969ab876ecf33012f31458a3720f4">FUNC_LEVEL_098_4</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:103</div></div>
 <div class="ttc" id="group__stringops_html_gaa07799442f1560666449446eac438ee4"><div class="ttname"><a href="group__stringops.html#gaa07799442f1560666449446eac438ee4">atoi</a></div><div class="ttdeci">int32_t atoi(const uint8_t *str, int32_t size)</div></div>
 <div class="ttc" id="group__scanc_html_gad7ea886d4274f1f389acf0d5cdc50b7d"><div class="ttname"><a href="group__scanc.html#gad7ea886d4274f1f389acf0d5cdc50b7d">bytecode_rt_error</a></div><div class="ttdeci">int32_t bytecode_rt_error(int32_t locationid)</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a5d403f41a921c82da30772de0f917236"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a5d403f41a921c82da30772de0f917236">FUNC_LEVEL_097</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:91</div></div>
@@ -506,7 +549,7 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__fileops_html_ga56355a07d9fb739dd483dd756f7fe821"><div class="ttname"><a href="group__fileops.html#ga56355a07d9fb739dd483dd756f7fe821">file_find</a></div><div class="ttdeci">int32_t file_find(const uint8_t *data, uint32_t len)</div></div>
 <div class="ttc" id="group__fileops_html_ga1e192cd4fe94e68dbac5023a1e2481c9"><div class="ttname"><a href="group__fileops.html#ga1e192cd4fe94e68dbac5023a1e2481c9">file_byteat</a></div><div class="ttdeci">int32_t file_byteat(uint32_t offset)</div></div>
 <div class="ttc" id="group__config_html_gga108e33201873c25ef45b59b519f1ff91aa88e602b789225c6a4fd1c13c3de770a"><div class="ttname"><a href="group__config.html#gga108e33201873c25ef45b59b519f1ff91aa88e602b789225c6a4fd1c13c3de770a">BC_PE_ALL</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:63</div></div>
-<div class="ttc" id="structcli__exe__section_html"><div class="ttname"><a href="structcli__exe__section.html">cli_exe_section</a></div><div class="ttdef"><b>Definition:</b> bytecode_execs.h:40</div></div>
+<div class="ttc" id="structcli__exe__section_html"><div class="ttname"><a href="structcli__exe__section.html">cli_exe_section</a></div><div class="ttdef"><b>Definition:</b> bytecode_execs.h:39</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999adc681d49cf724cd321b27637c79e72d4"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999adc681d49cf724cd321b27637c79e72d4">FUNC_LEVEL_097_6</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:97</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a149225436086b51fdd98b4dede7292f2"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a149225436086b51fdd98b4dede7292f2">FUNC_LEVEL_096_4</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:88</div></div>
 <div class="ttc" id="group__adt_html_gac45a2c7ac861578b8001b2116eee10aa"><div class="ttname"><a href="group__adt.html#gac45a2c7ac861578b8001b2116eee10aa">map_find</a></div><div class="ttdeci">int32_t map_find(const uint8_t *key, int32_t ksize, int32_t id)</div></div>
@@ -514,7 +557,8 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__engineq_html_ga0cd507ebdbadaa5899ca032cb5f69e3c"><div class="ttname"><a href="group__engineq.html#ga0cd507ebdbadaa5899ca032cb5f69e3c">engine_scan_options</a></div><div class="ttdeci">uint32_t engine_scan_options(void)</div></div>
 <div class="ttc" id="group__math_html_ga6aeece8bfb39a8499b44d67c8bebb716"><div class="ttname"><a href="group__math.html#ga6aeece8bfb39a8499b44d67c8bebb716">icos</a></div><div class="ttdeci">int32_t icos(int32_t a, int32_t b, int32_t c)</div></div>
 <div class="ttc" id="group__stringops_html_ga5d46e3fbbec8277f894d998a9b0dfdbc"><div class="ttname"><a href="group__stringops.html#ga5d46e3fbbec8277f894d998a9b0dfdbc">memstr</a></div><div class="ttdeci">int32_t memstr(const uint8_t *haystack, int32_t haysize, const uint8_t *needle, int32_t needlesize)</div></div>
-<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9">PDF_PHASE_PARSED</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:112</div></div>
+<div class="ttc" id="group__json_html_ga51481f2d23e50f87ddd09abcb5374704"><div class="ttname"><a href="group__json.html#ga51481f2d23e50f87ddd09abcb5374704">json_get_array_idx</a></div><div class="ttdeci">int32_t json_get_array_idx(int32_t idx, int32_t objid)</div></div>
+<div class="ttc" id="group__pdfg_html_gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9"><div class="ttname"><a href="group__pdfg.html#gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9">PDF_PHASE_PARSED</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:113</div></div>
 <div class="ttc" id="group__adt_html_gadb42ee13e5883410846a392513d6866b"><div class="ttname"><a href="group__adt.html#gadb42ee13e5883410846a392513d6866b">hashset_add</a></div><div class="ttdeci">int32_t hashset_add(int32_t hs, uint32_t key)</div></div>
 <div class="ttc" id="group__fileops_html_ga5c25c11f12899883af10f3ba75cfc5c5"><div class="ttname"><a href="group__fileops.html#ga5c25c11f12899883af10f3ba75cfc5c5">fill_buffer</a></div><div class="ttdeci">int32_t fill_buffer(uint8_t *buffer, uint32_t len, uint32_t filled, uint32_t cursor, uint32_t fill)</div></div>
 <div class="ttc" id="group__engineq_html_gaddc54afadb3d660c92e4e350548086d8"><div class="ttname"><a href="group__engineq.html#gaddc54afadb3d660c92e4e350548086d8">engine_functionality_level</a></div><div class="ttdeci">uint32_t engine_functionality_level(void)</div></div>
@@ -523,9 +567,9 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__adt_html_ga0907920e08ec8e80f3ff829e8aaf58de"><div class="ttname"><a href="group__adt.html#ga0907920e08ec8e80f3ff829e8aaf58de">hashset_contains</a></div><div class="ttdeci">int32_t hashset_contains(int32_t hs, uint32_t key)</div></div>
 <div class="ttc" id="group__adt_html_ga8268aaabee12eed25ab561f678128ddd"><div class="ttname"><a href="group__adt.html#ga8268aaabee12eed25ab561f678128ddd">buffer_pipe_write_get</a></div><div class="ttdeci">uint8_t * buffer_pipe_write_get(int32_t id, uint32_t size)</div></div>
 <div class="ttc" id="group__js_html_gafb97628e1638c524b0cf45190403553d"><div class="ttname"><a href="group__js.html#gafb97628e1638c524b0cf45190403553d">jsnorm_init</a></div><div class="ttdeci">int32_t jsnorm_init(int32_t from_buffer)</div></div>
-<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999aaeeb84deb9d9af7c249baa4bf97269e3"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999aaeeb84deb9d9af7c249baa4bf97269e3">FUNC_LEVEL_098</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:100</div></div>
 <div class="ttc" id="group__globals_html_ga7a72f243ec3f5daf5a337e2fc86bc2ad"><div class="ttname"><a href="group__globals.html#ga7a72f243ec3f5daf5a337e2fc86bc2ad">__clambc_pedata</a></div><div class="ttdeci">const struct cli_pe_hook_data __clambc_pedata</div></div>
 <div class="ttc" id="group__pdfg_html_gaca9074092cae6ed378ffdc5ba7cfc77e"><div class="ttname"><a href="group__pdfg.html#gaca9074092cae6ed378ffdc5ba7cfc77e">pdf_get_obj_num</a></div><div class="ttdeci">int32_t pdf_get_obj_num(void)</div></div>
+<div class="ttc" id="group__json_html_gaa111424d796fd5c69be5cabde9d55b01"><div class="ttname"><a href="group__json.html#gaa111424d796fd5c69be5cabde9d55b01">json_get_boolean</a></div><div class="ttdeci">int32_t json_get_boolean(int32_t objid)</div></div>
 <div class="ttc" id="group__fileops_html_ga50b84b15fbaf03aa39b41ef7ffb5243e"><div class="ttname"><a href="group__fileops.html#ga50b84b15fbaf03aa39b41ef7ffb5243e">read_number</a></div><div class="ttdeci">int32_t read_number(uint32_t radix)</div></div>
 <div class="ttc" id="group__stringops_html_ga2df1f1f4823085b4956f1bce3f5b059c"><div class="ttname"><a href="group__stringops.html#ga2df1f1f4823085b4956f1bce3f5b059c">entropy_buffer</a></div><div class="ttdeci">uint32_t entropy_buffer(uint8_t *buffer, int32_t size)</div></div>
 <div class="ttc" id="group__adt_html_gab791b1626efae568e0fb62c36ce8aa74"><div class="ttname"><a href="group__adt.html#gab791b1626efae568e0fb62c36ce8aa74">hashset_new</a></div><div class="ttdeci">int32_t hashset_new(void)</div></div>
@@ -551,10 +595,11 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__pdfg_html_gaaa88ff051b0da6314c9655da624bb0f5"><div class="ttname"><a href="group__pdfg.html#gaaa88ff051b0da6314c9655da624bb0f5">pdf_get_dumpedobjid</a></div><div class="ttdeci">int32_t pdf_get_dumpedobjid(void)</div></div>
 <div class="ttc" id="group__adt_html_ga6a8bbb58c0ccad537eec575949e5f9f7"><div class="ttname"><a href="group__adt.html#ga6a8bbb58c0ccad537eec575949e5f9f7">map_getvalue</a></div><div class="ttdeci">uint8_t * map_getvalue(int32_t id, int32_t size)</div></div>
 <div class="ttc" id="group__adt_html_ga8704c31c2d7a73953f3c1c320447c24a"><div class="ttname"><a href="group__adt.html#ga8704c31c2d7a73953f3c1c320447c24a">malloc</a></div><div class="ttdeci">void * malloc(uint32_t size)</div></div>
+<div class="ttc" id="group__json_html_ga73adebc2a9379f1625e64b3a9982cfa4"><div class="ttname"><a href="group__json.html#ga73adebc2a9379f1625e64b3a9982cfa4">json_get_int</a></div><div class="ttdeci">int32_t json_get_int(int32_t objid)</div></div>
 <div class="ttc" id="group__adt_html_ga984890c1d3b68b99e68c2e6b1a7704d0"><div class="ttname"><a href="group__adt.html#ga984890c1d3b68b99e68c2e6b1a7704d0">buffer_pipe_done</a></div><div class="ttdeci">int32_t buffer_pipe_done(int32_t id)</div></div>
 <div class="ttc" id="group__scanc_html_ga0f6e898d3a55355835fccb1f6d15abc1"><div class="ttname"><a href="group__scanc.html#ga0f6e898d3a55355835fccb1f6d15abc1">extract_set_container</a></div><div class="ttdeci">int32_t extract_set_container(uint32_t container)</div></div>
 <div class="ttc" id="group__pe_html_ga0d081f8f58263eb99d68690f1f9b2a81"><div class="ttname"><a href="group__pe.html#ga0d081f8f58263eb99d68690f1f9b2a81">pe_rawaddr</a></div><div class="ttdeci">uint32_t pe_rawaddr(uint32_t rva)</div></div>
-<div class="ttc" id="struct_d_i_s_a_s_m___r_e_s_u_l_t_html"><div class="ttname"><a href="struct_d_i_s_a_s_m___r_e_s_u_l_t.html">DISASM_RESULT</a></div><div class="ttdef"><b>Definition:</b> bytecode_disasm.h:356</div></div>
+<div class="ttc" id="struct_d_i_s_a_s_m___r_e_s_u_l_t_html"><div class="ttname"><a href="struct_d_i_s_a_s_m___r_e_s_u_l_t.html">DISASM_RESULT</a></div><div class="ttdef"><b>Definition:</b> bytecode_disasm.h:357</div></div>
 <div class="ttc" id="group__pdfg_html_ga854b697b5e662b79c5931a7864ce0709"><div class="ttname"><a href="group__pdfg.html#ga854b697b5e662b79c5931a7864ce0709">pdf_get_flags</a></div><div class="ttdeci">int32_t pdf_get_flags(void)</div></div>
 <div class="ttc" id="group__globals_html_gab8d6c50474be3ba69906161a3e520ce7"><div class="ttname"><a href="group__globals.html#gab8d6c50474be3ba69906161a3e520ce7">__clambc_filesize</a></div><div class="ttdeci">const uint32_t __clambc_filesize[1]</div></div>
 <div class="ttc" id="group__pdfg_html_ga9845af73f396e2dea666da3360c9b1c9"><div class="ttname"><a href="group__pdfg.html#ga9845af73f396e2dea666da3360c9b1c9">pdf_getobjflags</a></div><div class="ttdeci">int32_t pdf_getobjflags(int32_t objidx)</div></div>
@@ -570,8 +615,8 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__config_html_gga108e33201873c25ef45b59b519f1ff91a7cefa34095598f11058815262b1613ab"><div class="ttname"><a href="group__config.html#gga108e33201873c25ef45b59b519f1ff91a7cefa34095598f11058815262b1613ab">BC_PDF</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:60</div></div>
 <div class="ttc" id="group__envdet_html_ga18a8ecdd5235c80782b7e3e1892553ef"><div class="ttname"><a href="group__envdet.html#ga18a8ecdd5235c80782b7e3e1892553ef">version_compare</a></div><div class="ttdeci">int32_t version_compare(const uint8_t *lhs, uint32_t lhs_len, const uint8_t *rhs, uint32_t rhs_len)</div></div>
 <div class="ttc" id="group__adt_html_gae755b425ff65feddef7b86092dcdeed7"><div class="ttname"><a href="group__adt.html#gae755b425ff65feddef7b86092dcdeed7">buffer_pipe_new</a></div><div class="ttdeci">int32_t buffer_pipe_new(uint32_t size)</div></div>
-<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29">FUNC_LEVEL_098_1</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:101</div></div>
-<div class="ttc" id="group__pdfg_html_ga8146b4e22199a811df993111bc8afc45"><div class="ttname"><a href="group__pdfg.html#ga8146b4e22199a811df993111bc8afc45">pdf_phase</a></div><div class="ttdeci">pdf_phase</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:110</div></div>
+<div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29">FUNC_LEVEL_098_1</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:100</div></div>
+<div class="ttc" id="group__pdfg_html_ga8146b4e22199a811df993111bc8afc45"><div class="ttname"><a href="group__pdfg.html#ga8146b4e22199a811df993111bc8afc45">pdf_phase</a></div><div class="ttdeci">pdf_phase</div><div class="ttdef"><b>Definition:</b> bytecode_api.h:111</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999adfc1171d1ee82e50df4867cf63e3f79e"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999adfc1171d1ee82e50df4867cf63e3f79e">FUNC_LEVEL_097_5</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:96</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a50c8294e9b8773beba1c2f88e089e5b9"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a50c8294e9b8773beba1c2f88e089e5b9">FUNC_LEVEL_097_7</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:98</div></div>
 <div class="ttc" id="group__fileops_html_ga5cee98dc9edde5bfbc107cbd304a4209"><div class="ttname"><a href="group__fileops.html#ga5cee98dc9edde5bfbc107cbd304a4209">get_file_reliability</a></div><div class="ttdeci">int32_t get_file_reliability(void)</div></div>
@@ -579,7 +624,7 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__engineq_html_gafc1eab4e86797378b5c1e7186894c1a7"><div class="ttname"><a href="group__engineq.html#gafc1eab4e86797378b5c1e7186894c1a7">engine_db_options</a></div><div class="ttdeci">uint32_t engine_db_options(void)</div></div>
 <div class="ttc" id="group__engineq_html_ga4fa59c900fefd4a4441fcc4b3e44830d"><div class="ttname"><a href="group__engineq.html#ga4fa59c900fefd4a4441fcc4b3e44830d">engine_dconf_level</a></div><div class="ttdeci">uint32_t engine_dconf_level(void)</div></div>
 <div class="ttc" id="group__adt_html_ga54cd26b62a0d16082b8909b110d605b3"><div class="ttname"><a href="group__adt.html#ga54cd26b62a0d16082b8909b110d605b3">buffer_pipe_read_get</a></div><div class="ttdeci">const uint8_t * buffer_pipe_read_get(int32_t id, uint32_t amount)</div></div>
-<div class="ttc" id="group__fileops_html_ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c"><div class="ttname"><a href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c">SEEK_CUR</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:240</div></div>
+<div class="ttc" id="group__fileops_html_ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c"><div class="ttname"><a href="group__fileops.html#ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c">SEEK_CUR</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:255</div></div>
 <div class="ttc" id="group__adt_html_ga53de1d976b1536c5b6a0d5d31de201b2"><div class="ttname"><a href="group__adt.html#ga53de1d976b1536c5b6a0d5d31de201b2">buffer_pipe_read_avail</a></div><div class="ttdeci">uint32_t buffer_pipe_read_avail(int32_t id)</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a53a37b4ba29dff3ac15ca9b06a45bd42"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a53a37b4ba29dff3ac15ca9b06a45bd42">FUNC_LEVEL_097_2</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:93</div></div>
 <div class="ttc" id="group__js_html_ga7445bceea42b0a4d1d841b2c8826db4a"><div class="ttname"><a href="group__js.html#ga7445bceea42b0a4d1d841b2c8826db4a">jsnorm_done</a></div><div class="ttdeci">int32_t jsnorm_done(int32_t id)</div></div>
@@ -591,6 +636,8 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div class="ttc" id="group__icon_html_ga8e0bc8430adb57c0808bbf916e49185f"><div class="ttname"><a href="group__icon.html#ga8e0bc8430adb57c0808bbf916e49185f">matchicon</a></div><div class="ttdeci">int32_t matchicon(const uint8_t *group1, int32_t group1_len, const uint8_t *group2, int32_t group2_len)</div></div>
 <div class="ttc" id="group__fileops_html_ga01d98e416d08e0eabd02d2e8aa56f28e"><div class="ttname"><a href="group__fileops.html#ga01d98e416d08e0eabd02d2e8aa56f28e">write</a></div><div class="ttdeci">int32_t write(uint8_t *data, int32_t size)</div></div>
 <div class="ttc" id="group__config_html_ggac2cd51dc61c1ddf642d596c7f73a6999a45b2c4de5c8066a7516e2620ed4e9827"><div class="ttname"><a href="group__config.html#ggac2cd51dc61c1ddf642d596c7f73a6999a45b2c4de5c8066a7516e2620ed4e9827">FUNC_LEVEL_096_5</a></div><div class="ttdef"><b>Definition:</b> bytecode_api.h:90</div></div>
+<div class="ttc" id="group__json_html_ga627d713e6c9baa49ee3ea13c9d18e34a"><div class="ttname"><a href="group__json.html#ga627d713e6c9baa49ee3ea13c9d18e34a">json_get_object</a></div><div class="ttdeci">int32_t json_get_object(const int8_t *name, int32_t name_len, int32_t objid)</div></div>
+<div class="ttc" id="group__json_html_gafa4a1feef05495ec9bae2eb79a7cb602"><div class="ttname"><a href="group__json.html#gafa4a1feef05495ec9bae2eb79a7cb602">json_get_type</a></div><div class="ttdeci">int32_t json_get_type(int32_t objid)</div></div>
 <div class="ttc" id="group__adt_html_ga1b9d87fbb40620d92b57549e24b189e6"><div class="ttname"><a href="group__adt.html#ga1b9d87fbb40620d92b57549e24b189e6">buffer_pipe_write_avail</a></div><div class="ttdeci">uint32_t buffer_pipe_write_avail(int32_t id)</div></div>
 <div class="ttc" id="group__math_html_gabd69b1aa30157a6d87658db53ece8f5a"><div class="ttname"><a href="group__math.html#gabd69b1aa30157a6d87658db53ece8f5a">ipow</a></div><div class="ttdeci">int32_t ipow(int32_t a, int32_t b, int32_t c)</div></div>
 </div><!-- fragment --></div><!-- contents -->
@@ -599,7 +646,7 @@ $(document).ready(function(){initNavTree('bytecode__api_8h_source.html','');});
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_f23e76d45abb05bb8be9313fc0fc31b4.html">clang</a></li><li class="navelem"><a class="el" href="dir_7b1842cde2799c2e75038e1f33e50e91.html">lib</a></li><li class="navelem"><a class="el" href="dir_035209567f6d902de08c549296942731.html">Headers</a></li><li class="navelem"><a class="el" href="bytecode__api_8h.html">bytecode_api.h</a></li>
-    <li class="footer">Generated on Tue Feb 25 2014 15:05:00 by
+    <li class="footer">Generated on Wed May 7 2014 14:19:22 by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

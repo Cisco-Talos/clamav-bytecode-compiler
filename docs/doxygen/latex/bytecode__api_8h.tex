@@ -36,10 +36,11 @@ enum \hyperlink{group__config_gac2cd51dc61c1ddf642d596c7f73a6999}{Functionality\
 \hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999adc681d49cf724cd321b27637c79e72d4}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-097\-\_\-6} = 67, 
 \hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999a50c8294e9b8773beba1c2f88e089e5b9}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-097\-\_\-7} = 68, 
 \hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999a89a2375f49e550652664e885a462069a}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-097\-\_\-8} = 69, 
-\hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999aaeeb84deb9d9af7c249baa4bf97269e3}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-098} = 74, 
-\\*
 \hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999ae5b0f38fa3f673c1289c53845e6a1f29}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-098\-\_\-1} = 76, 
-\hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-098\-\_\-2} = 78
+\\*
+\hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999a5e256c95f0ce97d99e823790b829ecfa}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-098\-\_\-2} = 77, 
+\hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999a675dcb47376b5a0766215d942861d430}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-098\-\_\-3} = 77, 
+\hyperlink{group__config_ggac2cd51dc61c1ddf642d596c7f73a6999a993969ab876ecf33012f31458a3720f4}{F\-U\-N\-C\-\_\-\-L\-E\-V\-E\-L\-\_\-098\-\_\-4} = 78
  \}
 \item 
 enum \hyperlink{group__pdfg_ga8146b4e22199a811df993111bc8afc45}{pdf\-\_\-phase} \{ , \hyperlink{group__pdfg_gga8146b4e22199a811df993111bc8afc45aa616ad300ea4dc8892bf7a911e16c1b9}{P\-D\-F\-\_\-\-P\-H\-A\-S\-E\-\_\-\-P\-A\-R\-S\-E\-D}, 
@@ -51,6 +52,8 @@ enum \hyperlink{group__pdfg_ga8146b4e22199a811df993111bc8afc45}{pdf\-\_\-phase} 
 enum \hyperlink{group__pdfg_ga5597245ed8666431babaa5371fe7e009}{pdf\-\_\-flag} 
 \item 
 enum \hyperlink{group__pdfg_gabf356e8393462916811603aaf950bf0a}{pdf\-\_\-objflags} 
+\item 
+enum \hyperlink{group__json_ga936375042c8c0e1e0b304f4a89bca395}{bc\-\_\-json\-\_\-type} 
 \item 
 enum \{ \hyperlink{group__fileops_ggadf764cbdea00d65edcd07bb9953ad2b7a7f53e3798ec48e79c0897ba5138f9b05}{S\-E\-E\-K\-\_\-\-S\-E\-T} =0, 
 \hyperlink{group__fileops_ggadf764cbdea00d65edcd07bb9953ad2b7af3091144c125782cf17bcd3eb84e454c}{S\-E\-E\-K\-\_\-\-C\-U\-R}, 
@@ -229,6 +232,24 @@ int32\-\_\-t \hyperlink{group__icon_ga8e0bc8430adb57c0808bbf916e49185f}{matchico
 int32\-\_\-t \hyperlink{group__engineq_ga150727e2ce2b5ed7371e3a7689337894}{running\-\_\-on\-\_\-jit} (void)
 \item 
 int32\-\_\-t \hyperlink{group__fileops_ga5cee98dc9edde5bfbc107cbd304a4209}{get\-\_\-file\-\_\-reliability} (void)
+\item 
+int32\-\_\-t \hyperlink{group__json_gab590cf1a4d93ba3f25df38edd0e526c8}{json\-\_\-is\-\_\-active} (void)
+\item 
+int32\-\_\-t \hyperlink{group__json_ga627d713e6c9baa49ee3ea13c9d18e34a}{json\-\_\-get\-\_\-object} (const int8\-\_\-t $\ast$name, int32\-\_\-t name\-\_\-len, int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_gafa4a1feef05495ec9bae2eb79a7cb602}{json\-\_\-get\-\_\-type} (int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_ga70d3420a0ed6282786354348e05c717b}{json\-\_\-get\-\_\-array\-\_\-length} (int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_ga51481f2d23e50f87ddd09abcb5374704}{json\-\_\-get\-\_\-array\-\_\-idx} (int32\-\_\-t idx, int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_ga44d0e989cd137e91e9a2b35646ecc4d8}{json\-\_\-get\-\_\-string\-\_\-length} (int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_ga57e3593c4d5b17bf646c4991ca9c5b0b}{json\-\_\-get\-\_\-string} (int8\-\_\-t $\ast$str, int32\-\_\-t str\-\_\-len, int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_gaa111424d796fd5c69be5cabde9d55b01}{json\-\_\-get\-\_\-boolean} (int32\-\_\-t objid)
+\item 
+int32\-\_\-t \hyperlink{group__json_ga73adebc2a9379f1625e64b3a9982cfa4}{json\-\_\-get\-\_\-int} (int32\-\_\-t objid)
 \end{DoxyCompactItemize}
 \subsubsection*{Variables}
 \begin{DoxyCompactItemize}
