@@ -1158,11 +1158,11 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned 
 
   /*JSON CHECK*/
   if (hasJSONUsage(M)) {
-      min_required = FUNC_LEVEL_098_4;
+      min_required = FUNC_LEVEL_098_5;
       target_required = 13;
       tarreq = "JSON reading API requires target type 13";
       msgreq = "JSON reading API requires minimum functionality level "
-          "of FUNC_LEVEL_098_4";
+          "of FUNC_LEVEL_098_5";
   }
   /*JSON CHECK*/
 
