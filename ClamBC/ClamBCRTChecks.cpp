@@ -1,9 +1,11 @@
 /*
  *  Compile LLVM bytecode to ClamAV bytecode.
  *
- *  Copyright (C) 2009-2010 Sourcefire, Inc.
+ *  Copyright (C) 2009-2013 Sourcefire, Inc.
+ *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates.
+ *  All rights reserved.
  *
- *  Authors: Török Edvin
+ *  Authors: Török Edvin, Kevin Lin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
