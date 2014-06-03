@@ -71,7 +71,7 @@ ClamBCModule::ClamBCModule(llvm::formatted_raw_ostream &o,
        I != E; ++I) {
     apiMap[*I] = id++;
   }
-  banMap["malloc"] = 0;
+  //banMap["malloc"] = 0;
 
   // Assign IDs to globals. Each global variable that is filled by libclamav
   // must be listed here.

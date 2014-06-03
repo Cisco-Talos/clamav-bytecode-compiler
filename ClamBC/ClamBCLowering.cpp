@@ -42,6 +42,7 @@
 #include "llvm/Intrinsics.h"
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/GetElementPtrTypeIterator.h"
 #include "llvm/Support/InstIterator.h"
@@ -68,6 +69,7 @@ private:
   bool final;
   void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
   void simplifyOperands(Function &F);
+  void downsizeIntrinsics(Function &F);
   void splitGEPZArray(Function &F);
   void fixupBitCasts(Function &F);
   void fixupGEPs(Function &F);
@@ -309,6 +311,134 @@ void ClamBCLowering::simplifyOperands(Function &F)
   }
 }
 
+void ClamBCLowering::downsizeIntrinsics(Function &F)
+{
+  LLVMContext &Context = F.getContext();
+  std::vector<Instruction *> InstDel;
+  Function *MemCpy32 = NULL, *MemSet32 = NULL, *MemMove32 = NULL;
+
+  /* TODO - search for pre-existing i32 memory intrinsics */
+  //MemCpy32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memcpy, args);
+  //MemSet32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memset, args);
+  //MemMove32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memmove, args);
+
+  for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
+    Instruction *II = &*I;
+    if (MemIntrinsic *MI = dyn_cast<MemIntrinsic>(II)) {
+
+        errs() << *MI << "\n";
+
+      StringRef FName = MI->getCalledFunction()->getName();
+
+      /* TODO - needs to modified for newer intrinsic naming scheme */
+      if (FName.equals("llvm.memcpy.i64") || FName.equals("llvm.memset.i64") ||
+          FName.equals("llvm.memmove.i64")) {
+        CallSite CS(MI);
+        std::vector<Value *> Ops;
+
+        Value *Len = CS.getArgument(2);
+        Value *NewLen = NULL;
+        if (ConstantInt *C = dyn_cast<ConstantInt>(Len)) {
+            NewLen = ConstantInt::get(Type::getInt32Ty(Context), 
+                                      C->getValue().getLimitedValue((1ULL<<32)-1));
+        }
+        else {
+          NewLen = new TruncInst(Len, Type::getInt32Ty(Context), "lvl_dwn", MI);
+        }
+
+        for (unsigned i = 0; i < CS.arg_size(); ++i) {
+          if (i == 2) {
+            Ops.push_back(NewLen);
+          }
+          else {
+            Ops.push_back(CS.getArgument(i));
+          }
+        }
+
+        CallInst *NMI = NULL;
+        if (FName.equals("llvm.memcpy.i64")) {
+            assert(Ops.size() == 4 && "malformed MemCpyInst has occurred!");
+
+            if (!MemCpy32) {
+              std::vector<const Type*> args;
+              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
+              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
+              args.push_back(Type::getInt32Ty(Context));
+              args.push_back(Type::getInt32Ty(Context));
+              //args.push_back(Type::getInt1Ty(Context)); // LLVM30+
+
+              FunctionType *FuncTy = FunctionType::get(Type::getVoidTy(Context),
+                                                       args, false);
+              MemCpy32 = Function::Create(FuncTy, GlobalValue::ExternalLinkage,
+                                                    "llvm.memcpy.i32", F.getParent());
+              MemCpy32->setDoesNotThrow();
+              MemCpy32->setDoesNotCapture(1, true);
+            }
+
+            NMI = CallInst::Create(MemCpy32, Ops.begin(), Ops.end(), MI->getName(), MI);
+        }
+        else if (FName.equals("llvm.memset.i64")) {
+            assert(Ops.size() == 4 && "malformed MemSetInst has occurred!");
+
+            if (!MemSet32) {
+              std::vector<const Type*> args;
+              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
+              args.push_back(Type::getInt8Ty(Context));
+              args.push_back(Type::getInt32Ty(Context));
+              args.push_back(Type::getInt32Ty(Context));
+              //args.push_back(Type::getInt1Ty(Context)); // LLVM30+
+
+              FunctionType *FuncTy = FunctionType::get(Type::getVoidTy(Context),
+                                                       args, false);
+              MemSet32 = Function::Create(FuncTy, GlobalValue::ExternalLinkage,
+                                                    "llvm.memset.i32", F.getParent());
+              MemSet32->setDoesNotThrow();
+              MemSet32->setDoesNotCapture(1, true);
+            }
+
+            NMI = CallInst::Create(MemSet32, Ops.begin(), Ops.end(), MI->getName(), MI);
+        }
+        else if (FName.equals("llvm.memmove.i64")) {
+            assert(Ops.size() == 4 && "malformed MemMoveInst has occurred!");
+
+            if (!MemMove32) {
+              std::vector<const Type*> args;
+              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
+              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
+              args.push_back(Type::getInt32Ty(Context));
+              args.push_back(Type::getInt32Ty(Context));
+              //args.push_back(Type::getInt1Ty(Context)); // LLVM30+
+
+              FunctionType *FuncTy = FunctionType::get(Type::getVoidTy(Context),
+                                                       args, false);
+              MemMove32 = Function::Create(FuncTy, GlobalValue::ExternalLinkage,
+                                                    "llvm.memmove.i32", F.getParent());
+              MemMove32->setDoesNotThrow();
+              MemMove32->setDoesNotCapture(1, true);
+            }
+
+            NMI = CallInst::Create(MemMove32, Ops.begin(), Ops.end(), MI->getName(), MI);
+        }
+        else {
+            /* impossible case */
+        }
+
+        if (NMI)
+          errs() << *NMI << "\n\n";
+        //replaceUses(MI, NMI, NULL); /* memory intrinsics return void */
+        InstDel.push_back(MI);
+      }
+      else {
+          errs() << "unhandled memory intrinsic: " << FName << "\n";
+      }
+    }
+  }
+
+  for (unsigned i = 0; i < InstDel.size(); ++i) {
+    InstDel[i]->eraseFromParent();
+  }  
+}
+
 void ClamBCLowering::fixupBitCasts(Function &F)
 {
   // bitcast of alloca doesn't work properly in libclamav,
@@ -475,6 +605,7 @@ bool ClamBCLowering::runOnModule(Module &M)
     lowerIntrinsics(0, *I);
     if (final) {
       simplifyOperands(*I);
+      downsizeIntrinsics(*I);
       fixupBitCasts(*I);
       fixupGEPs(*I);
       fixupPtrToInts(*I);
