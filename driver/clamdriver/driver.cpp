@@ -89,16 +89,21 @@ extern "C" const char* clambc_getversion(void);
 
 static void printVersion(raw_ostream &Err, bool printVer = true)
 {
-  Err << "ClamAV bytecode compiler version " << clambc_getversion() << ", running on " << HOST_OS 
-    << "\n  " << (LLVM_MULTITHREADED ? "multi-threading" : "")
-    << " build with "
+  Err << "ClamAV bytecode compiler version " << clambc_getversion() << ", running on " << HOST_OS << "\n  "\
+      << (LLVM_MULTITHREADED ? "multi-threaded" : "") << " build"
+#if _DEBUG || _GLIBCXX_DEBUG
+      << " with"
+#endif
 #ifdef _DEBUG
-    << " assertions"
+      << " assertions"
+#endif
+#if _DEBUG && _GLIBCXX_DEBUG
+      << " with"
 #endif
 #ifdef _GLIBCXX_DEBUG
-    << " expensive checks"
+      << " expensive checks"
 #endif
-    << ", using: \n";
+      << ", using: \n";
   if (printVer)
     cl::PrintVersionMessage();
 }
@@ -329,7 +334,7 @@ static int CompileSubprocess(const char **argv, int argc,
   FrontendOptions &FrontendOpts = Clang.getInvocation().getFrontendOpts();
   // Handle --version
   if (FrontendOpts.ShowVersion || versionOnly) {
-    printVersion(errs(), true);
+    printVersion(outs(), true);
     exit(0);
   }
 
