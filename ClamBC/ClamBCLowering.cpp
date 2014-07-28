@@ -326,7 +326,7 @@ void ClamBCLowering::downsizeIntrinsics(Function &F)
     Instruction *II = &*I;
     if (MemIntrinsic *MI = dyn_cast<MemIntrinsic>(II)) {
 
-        errs() << *MI << "\n";
+      //errs() << *MI << "\n";
 
       StringRef FName = MI->getCalledFunction()->getName();
 
@@ -423,8 +423,9 @@ void ClamBCLowering::downsizeIntrinsics(Function &F)
             /* impossible case */
         }
 
-        if (NMI)
-          errs() << *NMI << "\n\n";
+        if (!NMI)
+            errs() << "failed to generated lowered intrinsic instruction!\n";
+        //errs() << *NMI << "\n\n";
         //replaceUses(MI, NMI, NULL); /* memory intrinsics return void */
         InstDel.push_back(MI);
       }
