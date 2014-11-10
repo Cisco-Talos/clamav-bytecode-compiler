@@ -20,6 +20,7 @@
  *  MA 02110-1301, USA.
  */
 #include "llvm/System/DataTypes.h"
+#include "../clang/lib/Headers/bytecode_api.h"
 #include "clambc.h"
 #include "ClamBCModule.h"
 #include "ClamBCTargetMachine.h"
@@ -50,6 +51,7 @@
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
+
 using namespace llvm;
 
 static cl::opt<std::string> MapFile("clambc-map",cl::desc("Write compilation map"),
@@ -70,7 +72,7 @@ class ClamBCWriter : public FunctionPass, public InstVisitor<ClamBCWriter> {
   raw_ostream *MapOut;
   FunctionPass *Dumper;
   ClamBCRegAlloc *RA;
-  unsigned fid;
+  unsigned fid, minflvl;
   MetadataContext *TheMetadata;
   unsigned MDDbgKind;
   std::vector<unsigned> dbgInfo;
@@ -158,7 +160,7 @@ private :
 
   static const AllocaInst *isDirectAlloca(const Value *V) {
     const AllocaInst *AI = dyn_cast<AllocaInst>(V);
-    if (!AI) return false;
+    if (!AI) return 0;
     if (AI->isArrayAllocation())
       return 0;
     if (AI->getParent() != &AI->getParent()->getParent()->getEntryBlock())
@@ -460,6 +462,10 @@ private :
       break;
     case CmpInst::ICMP_SLE:
       opc = OP_BC_ICMP_SLE;
+      if (minflvl < FUNC_LEVEL_098_5)
+          stop("Instruction opcode 29 (signed less than or equal to) is "
+               "not supported clamav JIT on functionality levels prior to "
+               "FUNC_LEVEL_098_5", &I);
       break;
     case CmpInst::ICMP_SLT:
       opc = OP_BC_ICMP_SLT;
@@ -629,6 +635,20 @@ bool ClamBCWriter::doInitialization(Module &M) {
   TheModule = &M;
 
   TD = new TargetData(&M);
+
+  /* extract minimum flevel from lsig (used for BC_OP_ICMP_SLE check) */
+  NamedMDNode *Node = M.getNamedMetadata("clambc.logicalsignature");
+  std::string LogicalSignature = Node ?
+      cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
+  size_t flvl_start = LogicalSignature.find("Engine:") + 7;
+  size_t flvl_end   = LogicalSignature.find("-", flvl_start);
+  if ((flvl_start != std::string::npos) && (flvl_end != std::string::npos)) {
+      std::string flvl_str = LogicalSignature.substr(flvl_start, flvl_end-flvl_start);
+      minflvl = atoi(flvl_str.c_str());
+  }
+  else {
+      minflvl = 0;
+  }
 
   if (DumpDI)
     Dumper = createDbgInfoPrinterPass();
