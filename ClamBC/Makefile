@@ -13,7 +13,7 @@ DIRS = TargetInfo
 CPPFLAGS += -DCLAMBC_COMPILER
 include $(LEVEL)/Makefile.common
 #GIT_VERSION := $(shell cd $(LLVM_SRC_ROOT); git describe --always)
-GIT_VERSION = clambc-0.98.5beta
+GIT_VERSION = clambc-0.98.5rc1
 .PHONY: $(ObjDir)/version.o
 $(ObjDir)/version.o: version.c
 	$(Echo) "Compiling $(<F) for $(BuildMode) build" $(PIC_FLAG)
