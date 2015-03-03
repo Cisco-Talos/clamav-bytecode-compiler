@@ -1203,9 +1203,9 @@ struct DIS_arg {
     enum DIS_ACCESS access_type;/**< type of access */
     enum DIS_SIZE access_size;/**< size of access */
     union {
-	struct DIS_mem_arg mem;/**< memory operand */
-	enum X86REGS reg;/**< register operand */
-	uint64_t other;/**< other operand */
+	struct DIS_mem_arg mem;/**< memory operand - member of union 'u' */
+	enum X86REGS reg;/**< register operand - member of union 'u' */
+	uint64_t other;/**< other operand - member of union 'u' */
     } u;
 };
 
