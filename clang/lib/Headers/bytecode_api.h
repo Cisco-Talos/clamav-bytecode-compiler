@@ -61,6 +61,9 @@ enum BytecodeKind {
     /** specifies a PE hook, executes at a predetermined point in PE parsing for PE files,
       * both packed and unpacked files */
     BC_PE_ALL,
+    /** specifies a PRECLASS hook, executes at the end of file property collection and
+      * operates on the original file targeted for property collection */
+    BC_PRECLASS,
     _BC_LAST_HOOK
 };
 
@@ -97,12 +100,13 @@ enum FunctionalityLevels {
     FUNC_LEVEL_097_6     = 67, /**< LibClamAV release 0.97.6 */
     FUNC_LEVEL_097_7     = 68, /**< LibClamAV release 0.97.7 */
     FUNC_LEVEL_097_8     = 69, /**< LibClamAV release 0.97.8 */
-    FUNC_LEVEL_098_1     = 76, /**< LibClamAV release 0.98.2 */ /*last syncing to clamav*/
+    FUNC_LEVEL_098_1     = 76, /**< LibClamAV release 0.98.1 */ /*last syncing to clamav*/
     FUNC_LEVEL_098_2     = 77, /**< LibClamAV release 0.98.2 */
     FUNC_LEVEL_098_3     = 77, /**< LibClamAV release 0.98.3 */
     FUNC_LEVEL_098_4     = 77, /**< LibClamAV release 0.98.4 */
     FUNC_LEVEL_098_5     = 79, /**< LibClamAV release 0.98.5: JSON reading API requires this minimum level */
     FUNC_LEVEL_098_6     = 79, /**< LibClamAV release 0.98.6 */
+    FUNC_LEVEL_098_7     = 80, /**< LibClamAV release 0.98.7: BC_PRECLASS bytecodes require minimum level */
     FUNC_LEVEL_100       = 100 /*future release candidate*/
 };
 

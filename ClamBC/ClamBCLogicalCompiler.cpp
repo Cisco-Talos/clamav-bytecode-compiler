@@ -1139,6 +1139,11 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned 
     msgreq = "Using 0.96.3 hook requires FUNC_LEVEL_096_2_dev at least";
   }
 
+  if (kind >= BC_PRECLASS) {
+    min_required = FUNC_LEVEL_098_7;
+    msgreq = "Using 0.98.7 hook requires FUNC_LEVEL_098_7 at least";
+  }
+
   size_t pos = 0;
   while ((pos = ref.find_first_of("=><", pos)) != StringRef::npos) {
     pos++;

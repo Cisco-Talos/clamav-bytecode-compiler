@@ -138,6 +138,14 @@ typedef struct signature {
 
 /**
 \group_config
+ * Make the current bytecode a PRECLASS hook.
+ * @details Bytecode will be called once the logical signature trigger matches 
+ * (or always if there is none), and if you have access to all PRECLASS information.
+ */
+#define PRECLASS_HOOK_DECLARE const uint16_t __clambc_kind = BC_PRECLASS;
+
+/**
+\group_config
  * Marks the beginning of the subsignature name declaration section.
  */
 #define SIGNATURES_DECL_BEGIN \
