@@ -1139,11 +1139,6 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned 
     msgreq = "Using 0.96.3 hook requires FUNC_LEVEL_096_2_dev at least";
   }
 
-  if (kind >= BC_PRECLASS) {
-    min_required = FUNC_LEVEL_098_7;
-    msgreq = "Using 0.98.7 hook requires FUNC_LEVEL_098_7 at least";
-  }
-
   size_t pos = 0;
   while ((pos = ref.find_first_of("=><", pos)) != StringRef::npos) {
     pos++;
@@ -1164,12 +1159,15 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned 
   /*JSON CHECK*/
   if (hasJSONUsage(M)) {
       min_required = FUNC_LEVEL_098_5;
-      target_required = 13;
-      tarreq = "JSON reading API requires target type 13";
       msgreq = "JSON reading API requires minimum functionality level "
           "of FUNC_LEVEL_098_5";
   }
   /*JSON CHECK*/
+
+  if (kind >= BC_PRECLASS) {
+    min_required = FUNC_LEVEL_098_7;
+    msgreq = "Using 0.98.7 hook requires FUNC_LEVEL_098_7 at least";
+  }
 
   if (target_required && (target != target_required)) {
       printDiagnostic(tarreq, M);
