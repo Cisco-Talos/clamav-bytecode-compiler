@@ -146,9 +146,19 @@ static int printICE(int Res, const char **Argv, raw_ostream &Err,
   if (insidebugreport)
     return 2;
 
-  sys::Path Tmp("bugreport-preprocessed");
-  sys::Path TmpErr("bugreport-tmperr");
-  sys::Path TmpOut("bugreport.tar");
+  std::string prefix, prepath, tmperr, tarpath;
+  prefix = getTmpDir();
+  if (prefix.empty()) {
+      Err << "Cannot open locate location to store temporary files\n";
+      return 117;
+  }
+  tmperr = prefix + "/bugreport-preprocessed";
+  prepath = prefix + "/bugreport-tmperr";
+  tarpath = prefix + "/bugreport.tar";
+
+  sys::Path Tmp(prepath);
+  sys::Path TmpErr(tmperr);
+  sys::Path TmpOut(tarpath);
   std::string ErrMsg;
   ErrMsg.clear();
   if (Tmp.createTemporaryFileOnDisk(true, &ErrMsg) ||
