@@ -108,6 +108,21 @@ static void printVersion(raw_ostream &Err, bool printVer = true)
     cl::PrintVersionMessage();
 }
 
+static std::string getTmpDir()
+{
+  char *tmpstr;
+  std::string tmpfix;
+
+  if ((tmpstr = getenv("TMPDIR")))
+    tmpfix = tmpstr;
+  else if ((tmpstr = getenv("TMP")))
+    tmpfix = tmpstr;
+  else
+    tmpfix = sys::Path::GetTemporaryDirectory().str();
+
+  return tmpfix;
+}
+
 static int printICE(int Res, const char **Argv, raw_ostream &Err,
                     bool insidebugreport,
                     int argc, const char **argv, const sys::Path* orig_err)
@@ -449,7 +464,8 @@ static int CompileSubprocess(const char **argv, int argc,
       Clang.getDiagnostics().Report(clang::diag::err_drv_unable_to_make_temp) << Err2;
       return 1;
     }
-    sys::Path P(sys::Path(FinalOutput).getBasename());
+    sys::Path P = sys::Path(FinalOutput);
+    P.eraseSuffix();
     P.appendSuffix("tmp.bc");
     FrontendOpts.OutputFile = P.str();
     tmpfd = Clang.createOutputFile(P.str(), Err2, true);
@@ -471,8 +487,14 @@ static int CompileSubprocess(const char **argv, int argc,
   // Parse LLVM commandline args
   cl::ParseCommandLineOptions(llvmArgs.size(), &llvmArgs[0]);
 
+  std::string re2cpath = getTmpDir();
+  if (re2cpath.empty()) {
+    llvm::errs()<< "Failed to create temporary file for re2c-out!\n";
+    return 2;
+  }
+  re2cpath += "/clambc-compiler-re2c-out";
 
-  sys::Path TmpRe2C("clambc-compiler-re2c-out");
+  sys::Path TmpRe2C(re2cpath);
   if (!FrontendOpts.Inputs.empty()) {
     char re2c_args[] = "--no-generation-date";
     char re2c_o[] = "-o";
@@ -562,7 +584,14 @@ int CompileFile(int argc, const char **argv, const sys::Path* out,
   sys::Path empty;
   const sys::Path* orig_err = err;
   if (!err) {
-    sys::Path *newerr = new sys::Path("clambc-compiler-stderr");
+    std::string errpath = getTmpDir();
+    if (errpath.empty()) {
+      Err << "Failed to create temporary file for stderr!\n";
+      return 2;
+    }
+    errpath += "/clambc-compiler-stderr";
+
+    sys::Path *newerr = new sys::Path(errpath);
     ErrMsg.clear();
     if (newerr->createTemporaryFileOnDisk(true, &ErrMsg)) {
       Err << "Failed to create temporary file for stderr!\n";
