@@ -333,6 +333,20 @@ private:
       Value* op0 = mapValue(I.getOperand(0));
       Value* op1 = mapValue(I.getOperand(1));
 
+      /*
+       * bb#11515: Structure pointers are translated to uint8_t* pointers
+       * but constants are kept to their original type so a type
+       * conversion may be necessary on a icmp inst with a constant
+       */
+      if (op0->getType() != op1->getType()) {
+          if (isa<Constant>(op0))
+              op0 = makeCast(op0, op1->getType());
+          else if (isa<Constant>(op1))
+              op1 = makeCast(op1, op0->getType());
+
+          /* if neither can be casted, CreateICmp will throw an assertion */
+      }
+
       VMap[&I] = Builder->CreateICmp(I.getPredicate(),
 				     op0, op1, I.getName());
   }
