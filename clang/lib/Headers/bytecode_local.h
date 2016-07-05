@@ -1242,6 +1242,7 @@ DisassembleAt(struct DIS_fixed* result, uint32_t offset, uint32_t len)
 {
     struct DISASM_RESULT res;
     unsigned i;
+    memset(&res, 0, sizeof(struct DISASM_RESULT));
     seek(offset, SEEK_SET);
     offset = disasm_x86(&res, len < sizeof(res) ? len : sizeof(res));
     result->x86_opcode = (enum X86OPS) cli_readint16(&res.real_op);
