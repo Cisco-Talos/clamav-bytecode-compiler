@@ -1232,10 +1232,10 @@ struct DIS_fixed {
 /**
 \group_disasm
  * Disassembles one X86 instruction starting at the specified offset.
- * @param[out] result disassembly result
+ * @param[out] result disassembly result, memset to 0 on error
  * @param[in] offset start disassembling from this offset, in the current file
  * @param[in] len max amount of bytes to disassemble
- * @return offset where disassembly ended
+ * @return offset where disassembly ended, -1 on error
  */
 static force_inline uint32_t
 DisassembleAt(struct DIS_fixed* result, uint32_t offset, uint32_t len)
