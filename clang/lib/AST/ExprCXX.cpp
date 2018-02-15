@@ -647,7 +647,7 @@ CXXDependentScopeMemberExpr::Create(ASTContext &C,
   if (TemplateArgs)
     size += ExplicitTemplateArgumentList::sizeFor(*TemplateArgs);
 
-  void *Mem = C.Allocate(size, llvm::alignof<CXXDependentScopeMemberExpr>());
+  void *Mem = C.Allocate(size, llvm::alignOf<CXXDependentScopeMemberExpr>());
   return new (Mem) CXXDependentScopeMemberExpr(C, Base, BaseType,
                                                IsArrow, OperatorLoc,
                                                Qualifier, QualifierRange,
@@ -698,7 +698,7 @@ UnresolvedMemberExpr::Create(ASTContext &C, bool Dependent,
   if (TemplateArgs)
     size += ExplicitTemplateArgumentList::sizeFor(*TemplateArgs);
 
-  void *Mem = C.Allocate(size, llvm::alignof<UnresolvedMemberExpr>());
+  void *Mem = C.Allocate(size, llvm::alignOf<UnresolvedMemberExpr>());
   return new (Mem) UnresolvedMemberExpr(
                              Dependent ? C.DependentTy : C.OverloadTy,
                              Dependent, HasUnresolvedUsing, Base, BaseType,
