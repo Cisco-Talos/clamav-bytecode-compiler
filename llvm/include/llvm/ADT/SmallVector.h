@@ -19,6 +19,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <memory>
 
 #ifdef _MSC_VER

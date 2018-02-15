@@ -15,6 +15,7 @@
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <cctype>
 using namespace llvm;
 
 //===----------------------------------------------------------------------===//

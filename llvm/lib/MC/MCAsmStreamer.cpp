@@ -22,6 +22,7 @@
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/FormattedStream.h"
+#include <cctype>
 using namespace llvm;
 
 namespace {

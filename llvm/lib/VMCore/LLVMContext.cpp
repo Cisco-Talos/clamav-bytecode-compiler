@@ -18,6 +18,7 @@
 #include "llvm/Instruction.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "LLVMContextImpl.h"
+#include <cctype>
 using namespace llvm;
 
 static ManagedStatic<LLVMContext> GlobalContext;

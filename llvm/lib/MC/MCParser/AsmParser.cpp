@@ -26,6 +26,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetAsmParser.h"
+#include <cctype>
 using namespace llvm;
 
 
