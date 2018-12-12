@@ -19,6 +19,10 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/System/DynamicLibrary.h"
 #include "llvm/Config/config.h"
+
+#define _LARGEFILE64_SOURCE     /* See feature_test_macros(7) */
+#include <sys/types.h>
+#include <unistd.h>
 using namespace llvm;
 
 // AtExitHandlers - List of functions to call when the program exits,
