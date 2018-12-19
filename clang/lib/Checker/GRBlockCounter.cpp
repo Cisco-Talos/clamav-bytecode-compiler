@@ -44,11 +44,11 @@ GRBlockCounter::Factory::~Factory() {
 
 GRBlockCounter
 GRBlockCounter::Factory::IncrementCount(GRBlockCounter BC, unsigned BlockID) {
-  return GRBlockCounter(GetFactory(F).Add(GetMap(BC.Data), BlockID,
+  return GRBlockCounter(GetFactory(F).add(GetMap(BC.Data), BlockID,
                                         BC.getNumVisited(BlockID)+1).getRoot());
 }
 
 GRBlockCounter
 GRBlockCounter::Factory::GetEmptyCounter() {
-  return GRBlockCounter(GetFactory(F).GetEmptyMap().getRoot());
+  return GRBlockCounter(GetFactory(F).getEmptyMap().getRoot());
 }

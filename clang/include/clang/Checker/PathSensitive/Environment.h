@@ -83,7 +83,7 @@ public:
   ~EnvironmentManager() {}
 
   Environment getInitialEnvironment() {
-    return Environment(F.GetEmptyMap());
+    return Environment(F.getEmptyMap());
   }
 
   Environment BindExpr(Environment Env, const Stmt *S, SVal V,

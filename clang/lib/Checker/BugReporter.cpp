@@ -1341,7 +1341,7 @@ void BugReporter::FlushReports() {
   }
 
   // Remove all references to the BugType objects.
-  BugTypes = F.GetEmptySet();
+  BugTypes = F.getEmptySet();
 }
 
 //===----------------------------------------------------------------------===//
@@ -1626,7 +1626,7 @@ void GRBugReporter::GeneratePathDiagnostic(PathDiagnostic& PD,
 }
 
 void BugReporter::Register(BugType *BT) {
-  BugTypes = F.Add(BugTypes, BT);
+  BugTypes = F.add(BugTypes, BT);
 }
 
 void BugReporter::EmitReport(BugReport* R) {

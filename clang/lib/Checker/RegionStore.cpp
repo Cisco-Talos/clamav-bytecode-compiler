@@ -163,11 +163,11 @@ public:
     Map::iterator I = M.find(Parent);
 
     if (I == M.end()) {
-      M.insert(std::make_pair(Parent, F.Add(F.GetEmptySet(), SubRegion)));
+      M.insert(std::make_pair(Parent, F.add(F.getEmptySet(), SubRegion)));
       return true;
     }
 
-    I->second = F.Add(I->second, SubRegion);
+    I->second = F.add(I->second, SubRegion);
     return false;
   }
 
@@ -243,7 +243,7 @@ public:
   SVal EvalBinOp(BinaryOperator::Opcode Op,Loc L, NonLoc R, QualType resultTy);
 
   Store getInitialStore(const LocationContext *InitLoc) {
-    return RBFactory.GetEmptyMap().getRoot();
+    return RBFactory.getEmptyMap().getRoot();
   }
 
   //===-------------------------------------------------------------------===//
@@ -266,20 +266,21 @@ public:   // Made public for helper classes.
   void RemoveSubRegionBindings(RegionBindings &B, const MemRegion *R,
                                RegionStoreSubRegionMap &M);
 
-  RegionBindings Add(RegionBindings B, BindingKey K, SVal V);
+  RegionBindings addBinding(RegionBindings B, BindingKey K, SVal V);
 
-  RegionBindings Add(RegionBindings B, const MemRegion *R,
+  RegionBindings addBinding(RegionBindings B, const MemRegion *R,
                      BindingKey::Kind k, SVal V);
   
-  const SVal *Lookup(RegionBindings B, BindingKey K);
-  const SVal *Lookup(RegionBindings B, const MemRegion *R, BindingKey::Kind k);
+  const SVal *lookup(RegionBindings B, BindingKey K);
+  const SVal *lookup(RegionBindings B, const MemRegion *R, BindingKey::Kind k);
 
-  RegionBindings Remove(RegionBindings B, BindingKey K);
-  RegionBindings Remove(RegionBindings B, const MemRegion *R,
+  RegionBindings removeBinding(RegionBindings B, BindingKey K);
+  RegionBindings removeBinding(RegionBindings B, const MemRegion *R,
                         BindingKey::Kind k);
   
-  RegionBindings Remove(RegionBindings B, const MemRegion *R) {
-    return Remove(Remove(B, R, BindingKey::Direct), R, BindingKey::Default);
+  RegionBindings removeBinding(RegionBindings B, const MemRegion *R) {
+    return removeBinding(removeBinding(B, R, BindingKey::Direct), R,
+                        BindingKey::Default);
   }    
 
   Store Remove(Store store, BindingKey K);
@@ -461,7 +462,7 @@ void RegionStoreManager::RemoveSubRegionBindings(RegionBindings &B,
          I != E; ++I)
       RemoveSubRegionBindings(B, *I, M);
   
-  B = Remove(B, R);
+  B = removeBinding(B, R);
 }
 
 namespace {
@@ -589,10 +590,10 @@ Store InvalidateRegionsWorker::InvalidateRegions(Store store,
       BindingKey K = *I;
       
       // Get the old binding.  Is it a region?  If so, add it to the worklist.
-      if (const SVal *V = RM.Lookup(B, K))
+      if (const SVal *V = RM.lookup(B, K))
         VisitBinding(*V);
 
-      B = RM.Remove(B, K);
+      B = RM.removeBinding(B, K);
     }
     
     // Now inspect the base region.
@@ -620,9 +621,9 @@ Store InvalidateRegionsWorker::InvalidateRegions(Store store,
     if (isa<AllocaRegion>(baseR) || isa<SymbolicRegion>(baseR)) {
       // Invalidate the region by setting its default value to
       // conjured symbol. The type of the symbol is irrelavant.
-      DefinedOrUnknownSVal V = ValMgr.getConjuredSymbolVal(baseR, Ex, Ctx.IntTy,
-                                                           Count);
-      B = RM.Add(B, baseR, BindingKey::Default, V);
+      DefinedOrUnknownSVal V =
+        ValMgr.getConjuredSymbolVal(baseR, Ex, Ctx.IntTy, Count);
+      B = RM.addBinding(B, baseR, BindingKey::Default, V);
       continue;
     }
     
@@ -637,7 +638,7 @@ Store InvalidateRegionsWorker::InvalidateRegions(Store store,
       const RecordDecl *RD = RT->getDecl()->getDefinition();      
       // No record definition.  There is nothing we can do.
       if (!RD) {
-        B = RM.Remove(B, baseR);
+        B = RM.removeBinding(B, baseR);
         continue;
       }
     
@@ -645,7 +646,7 @@ Store InvalidateRegionsWorker::InvalidateRegions(Store store,
       // conjured symbol. The type of the symbol is irrelavant.
       DefinedOrUnknownSVal V = ValMgr.getConjuredSymbolVal(baseR, Ex, Ctx.IntTy,
                                                            Count);
-      B = RM.Add(B, baseR, BindingKey::Default, V);
+      B = RM.addBinding(B, baseR, BindingKey::Default, V);
       continue;
     }    
 
@@ -653,13 +654,13 @@ Store InvalidateRegionsWorker::InvalidateRegions(Store store,
       // Set the default value of the array to conjured symbol.
       DefinedOrUnknownSVal V =
         ValMgr.getConjuredSymbolVal(baseR, Ex, AT->getElementType(), Count);
-      B = RM.Add(B, baseR, BindingKey::Default, V);
+      B = RM.addBinding(B, baseR, BindingKey::Default, V);
       continue;
     }
       
     DefinedOrUnknownSVal V = ValMgr.getConjuredSymbolVal(baseR, Ex, T, Count);
     assert(SymbolManager::canSymbolicate(T) || V.isUnknown());
-    B = RM.Add(B, baseR, BindingKey::Direct, V);
+    B = RM.addBinding(B, baseR, BindingKey::Direct, V);
   }
 
   // Create a new state with the updated bindings.
@@ -902,7 +903,7 @@ SVal RegionStoreManager::EvalBinOp(BinaryOperator::Opcode Op, Loc L, NonLoc R,
 
 Optional<SVal> RegionStoreManager::getDirectBinding(RegionBindings B, 
                                                  const MemRegion *R) {
-  if (const SVal *V = Lookup(B, R, BindingKey::Direct))
+  if (const SVal *V = lookup(B, R, BindingKey::Direct))
     return *V;  
 
   return Optional<SVal>();
@@ -915,7 +916,7 @@ Optional<SVal> RegionStoreManager::getDefaultBinding(RegionBindings B,
       if (TR->getValueType(getContext())->isUnionType())
         return UnknownVal();
 
-  if (const SVal *V = Lookup(B, R, BindingKey::Default))
+  if (const SVal *V = lookup(B, R, BindingKey::Default))
     return *V;
 
   return Optional<SVal>();
@@ -1052,7 +1053,7 @@ SVal RegionStoreManager::Retrieve(Store store, Loc L, QualType T) {
   }
 
   RegionBindings B = GetRegionBindings(store);
-  const SVal *V = Lookup(B, R, BindingKey::Direct);
+  const SVal *V = lookup(B, R, BindingKey::Direct);
 
   // Check if the region has a binding.
   if (V)
@@ -1356,7 +1357,7 @@ SVal RegionStoreManager::RetrieveArray(Store store, const TypedRegion * R) {
 Store RegionStoreManager::Remove(Store store, Loc L) {
   if (isa<loc::MemRegionVal>(L))
     if (const MemRegion* R = cast<loc::MemRegionVal>(L).getRegion())
-      return Remove(GetRegionBindings(store), R).getRoot();
+      return removeBinding(GetRegionBindings(store), R).getRoot();
 
   return store;
 }
@@ -1414,7 +1415,7 @@ Store RegionStoreManager::Bind(Store store, Loc L, SVal V) {
 
   // Perform the binding.
   RegionBindings B = GetRegionBindings(store);
-  return Add(B, R, BindingKey::Direct, V).getRoot();
+  return addBinding(B, R, BindingKey::Direct, V).getRoot();
 }
 
 Store RegionStoreManager::BindDecl(Store store, const VarRegion *VR, 
@@ -1458,7 +1459,7 @@ Store RegionStoreManager::setImplicitDefaultValue(Store store,
     return store;
   }
 
-  return Add(B, R, BindingKey::Default, V).getRoot();
+  return addBinding(B, R, BindingKey::Default, V).getRoot();
 }
   
 Store RegionStoreManager::BindArray(Store store, const TypedRegion* R, 
@@ -1587,7 +1588,7 @@ Store RegionStoreManager::BindStruct(Store store, const TypedRegion* R,
   // There may be fewer values in the initialize list than the fields of struct.
   if (FI != FE) {
     RegionBindings B = GetRegionBindings(store);
-    B = Add(B, R, BindingKey::Default, ValMgr.makeIntVal(0, false));
+    B = addBinding(B, R, BindingKey::Default, ValMgr.makeIntVal(0, false));
     store = B.getRoot();
   }
 
@@ -1601,7 +1602,7 @@ Store RegionStoreManager::KillStruct(Store store, const TypedRegion* R) {
   RemoveSubRegionBindings(B, R, *SubRegions);
 
   // Set the default value of the struct region to "unknown".
-  return Add(B, R, BindingKey::Default, UnknownVal()).getRoot();
+  return addBinding(B, R, BindingKey::Default, UnknownVal()).getRoot();
 }
 
 Store RegionStoreManager::CopyLazyBindings(nonloc::LazyCompoundVal V,
@@ -1618,7 +1619,7 @@ Store RegionStoreManager::CopyLazyBindings(nonloc::LazyCompoundVal V,
 
   // Now copy the bindings.  This amounts to just binding 'V' to 'R'.  This
   // results in a zero-copy algorithm.
-  return Add(B, R, BindingKey::Direct, V).getRoot();
+  return addBinding(B, R, BindingKey::Direct, V).getRoot();
 }
 
 //===----------------------------------------------------------------------===//
@@ -1639,37 +1640,41 @@ BindingKey BindingKey::Make(const MemRegion *R, Kind k) {
   return BindingKey(R, 0, k);
 }
 
-RegionBindings RegionStoreManager::Add(RegionBindings B, BindingKey K, SVal V) {
-  return RBFactory.Add(B, K, V);
+RegionBindings RegionStoreManager::addBinding(RegionBindings B, BindingKey K,
+                                              SVal V) {
+  return RBFactory.add(B, K, V);
 }
 
-RegionBindings RegionStoreManager::Add(RegionBindings B, const MemRegion *R,
+RegionBindings RegionStoreManager::addBinding(RegionBindings B,
+                                       const MemRegion *R,
                                        BindingKey::Kind k, SVal V) {
-  return Add(B, BindingKey::Make(R, k), V);
+  return addBinding(B, BindingKey::Make(R, k), V);
 }
 
-const SVal *RegionStoreManager::Lookup(RegionBindings B, BindingKey K) {
+const SVal *RegionStoreManager::lookup(RegionBindings B, BindingKey K) {
   return B.lookup(K);
 }
 
-const SVal *RegionStoreManager::Lookup(RegionBindings B,
+const SVal *RegionStoreManager::lookup(RegionBindings B,
                                        const MemRegion *R,
                                        BindingKey::Kind k) {
-  return Lookup(B, BindingKey::Make(R, k));
+  return lookup(B, BindingKey::Make(R, k));
 }
 
-RegionBindings RegionStoreManager::Remove(RegionBindings B, BindingKey K) {
-  return RBFactory.Remove(B, K);
+RegionBindings RegionStoreManager::removeBinding(RegionBindings B,
+                                                 BindingKey K) {
+  return RBFactory.remove(B, K);
 }
 
-RegionBindings RegionStoreManager::Remove(RegionBindings B, const MemRegion *R,
-                                          BindingKey::Kind k){
-  return Remove(B, BindingKey::Make(R, k));
+RegionBindings RegionStoreManager::removeBinding(RegionBindings B,
+                                                 const MemRegion *R,
+                                                 BindingKey::Kind k) {
+  return removeBinding(B, BindingKey::Make(R, k));
 }
 
 Store RegionStoreManager::Remove(Store store, BindingKey K) {
   RegionBindings B = GetRegionBindings(store);
-  return Remove(B, K).getRoot();
+  return removeBinding(B, K).getRoot();
 }
 
 //===----------------------------------------------------------------------===//

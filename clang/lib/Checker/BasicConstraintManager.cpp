@@ -221,10 +221,10 @@ const GRState* BasicConstraintManager::AddNE(const GRState* state, SymbolRef sym
 
   // First, retrieve the NE-set associated with the given symbol.
   ConstNotEqTy::data_type* T = state->get<ConstNotEq>(sym);
-  GRState::IntSetTy S = T ? *T : ISetFactory.GetEmptySet();
+  GRState::IntSetTy S = T ? *T : ISetFactory.getEmptySet();
 
   // Now add V to the NE set.
-  S = ISetFactory.Add(S, &V);
+  S = ISetFactory.add(S, &V);
 
   // Create a new state with the old binding replaced.
   return state->set<ConstNotEq>(sym, S);
@@ -265,7 +265,8 @@ BasicConstraintManager::RemoveDeadBindings(const GRState* state,
 
   for (ConstEqTy::iterator I = CE.begin(), E = CE.end(); I!=E; ++I) {
     SymbolRef sym = I.getKey();
-    if (SymReaper.maybeDead(sym)) CE = CEFactory.Remove(CE, sym);
+    if (SymReaper.maybeDead(sym))
+      CE = CEFactory.remove(CE, sym);
   }
   state = state->set<ConstEq>(CE);
 
@@ -274,7 +275,8 @@ BasicConstraintManager::RemoveDeadBindings(const GRState* state,
 
   for (ConstNotEqTy::iterator I = CNE.begin(), E = CNE.end(); I != E; ++I) {
     SymbolRef sym = I.getKey();
-    if (SymReaper.maybeDead(sym)) CNE = CNEFactory.Remove(CNE, sym);
+    if (SymReaper.maybeDead(sym))
+      CNE = CNEFactory.remove(CNE, sym);
   }
 
   return state->set<ConstNotEq>(CNE);

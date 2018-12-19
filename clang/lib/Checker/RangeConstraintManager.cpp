@@ -83,7 +83,7 @@ public:
   typedef PrimRangeSet::iterator iterator;
 
   RangeSet(PrimRangeSet RS) : ranges(RS) {}
-  RangeSet(Factory& F) : ranges(F.GetEmptySet()) {}
+  RangeSet(Factory& F) : ranges(F.getEmptySet()) {}
 
   iterator begin() const { return ranges.begin(); }
   iterator end() const { return ranges.end(); }
@@ -92,7 +92,7 @@ public:
 
   /// Construct a new RangeSet representing '{ [from, to] }'.
   RangeSet(Factory &F, const llvm::APSInt &from, const llvm::APSInt &to)
-    : ranges(F.Add(F.GetEmptySet(), Range(from, to))) {}
+    : ranges(F.add(F.getEmptySet(), Range(from, to))) {}
 
   /// Profile - Generates a hash profile of this RangeSet for use
   ///  by FoldingSet.
@@ -127,12 +127,12 @@ public:
     for (iterator i = begin(), e = end(); i != e; ++i) {
       if (i->Includes(V)) {
         // Remove the old range.
-        newRanges = F.Remove(newRanges, *i);
+        newRanges = F.remove(newRanges, *i);
         // Split the old range into possibly one or two ranges.
         if (V != i->From())
-          newRanges = F.Add(newRanges, Range(i->From(), BV.Sub1(V)));
+          newRanges = F.add(newRanges, Range(i->From(), BV.Sub1(V)));
         if (V != i->To())
-          newRanges = F.Add(newRanges, Range(BV.Add1(V), i->To()));
+          newRanges = F.add(newRanges, Range(BV.Add1(V), i->To()));
         // All of the ranges are non-overlapping, so we can stop.
         break;
       }
@@ -144,56 +144,56 @@ public:
   /// AddNE - Create a new RangeSet with the additional constraint that the
   ///  value be less than V.
   RangeSet AddLT(BasicValueFactory &BV, Factory &F, const llvm::APSInt &V) {
-    PrimRangeSet newRanges = F.GetEmptySet();
+    PrimRangeSet newRanges = F.getEmptySet();
 
     for (iterator i = begin(), e = end() ; i != e ; ++i) {
       if (i->Includes(V) && i->From() < V)
-        newRanges = F.Add(newRanges, Range(i->From(), BV.Sub1(V)));
+        newRanges = F.add(newRanges, Range(i->From(), BV.Sub1(V)));
       else if (i->To() < V)
-        newRanges = F.Add(newRanges, *i);
+        newRanges = F.add(newRanges, *i);
     }
 
     return newRanges;
   }
 
   RangeSet AddLE(BasicValueFactory &BV, Factory &F, const llvm::APSInt &V) {
-    PrimRangeSet newRanges = F.GetEmptySet();
+    PrimRangeSet newRanges = F.getEmptySet();
 
     for (iterator i = begin(), e = end(); i != e; ++i) {
       // Strictly we should test for includes *V + 1, but no harm is
       // done by this formulation
       if (i->Includes(V))
-        newRanges = F.Add(newRanges, Range(i->From(), V));
+        newRanges = F.add(newRanges, Range(i->From(), V));
       else if (i->To() <= V)
-        newRanges = F.Add(newRanges, *i);
+        newRanges = F.add(newRanges, *i);
     }
 
     return newRanges;
   }
 
   RangeSet AddGT(BasicValueFactory &BV, Factory &F, const llvm::APSInt &V) {
-    PrimRangeSet newRanges = F.GetEmptySet();
+    PrimRangeSet newRanges = F.getEmptySet();
 
     for (PrimRangeSet::iterator i = begin(), e = end(); i != e; ++i) {
       if (i->Includes(V) && i->To() > V)
-        newRanges = F.Add(newRanges, Range(BV.Add1(V), i->To()));
+        newRanges = F.add(newRanges, Range(BV.Add1(V), i->To()));
       else if (i->From() > V)
-        newRanges = F.Add(newRanges, *i);
+        newRanges = F.add(newRanges, *i);
     }
 
     return newRanges;
   }
 
   RangeSet AddGE(BasicValueFactory &BV, Factory &F, const llvm::APSInt &V) {
-    PrimRangeSet newRanges = F.GetEmptySet();
+    PrimRangeSet newRanges = F.getEmptySet();
 
     for (PrimRangeSet::iterator i = begin(), e = end(); i != e; ++i) {
       // Strictly we should test for includes *V - 1, but no harm is
       // done by this formulation
       if (i->Includes(V))
-        newRanges = F.Add(newRanges, Range(V, i->To()));
+        newRanges = F.add(newRanges, Range(V, i->To()));
       else if (i->From() >= V)
-        newRanges = F.Add(newRanges, *i);
+        newRanges = F.add(newRanges, *i);
     }
 
     return newRanges;
@@ -297,7 +297,7 @@ RangeConstraintManager::RemoveDeadBindings(const GRState* state,
   for (ConstraintRangeTy::iterator I = CR.begin(), E = CR.end(); I != E; ++I) {
     SymbolRef sym = I.getKey();
     if (SymReaper.maybeDead(sym))
-      CR = CRFactory.Remove(CR, sym);
+      CR = CRFactory.remove(CR, sym);
   }
 
   return state->set<ConstraintRange>(CR);

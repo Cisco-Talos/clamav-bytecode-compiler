@@ -228,8 +228,8 @@ Store BasicStoreManager::Bind(Store store, Loc loc, SVal V) {
 
   BindingsTy B = GetBindings(store);
   return V.isUnknown()
-    ? VBFactory.Remove(B, R).getRoot()
-    : VBFactory.Add(B, R, V).getRoot();
+    ? VBFactory.remove(B, R).getRoot()
+    : VBFactory.add(B, R, V).getRoot();
 }
 
 Store BasicStoreManager::Remove(Store store, Loc loc) {
@@ -240,7 +240,7 @@ Store BasicStoreManager::Remove(Store store, Loc loc) {
       if (!(isa<VarRegion>(R) || isa<ObjCIvarRegion>(R)))
         return store;
 
-      return VBFactory.Remove(GetBindings(store), R).getRoot();
+      return VBFactory.remove(GetBindings(store), R).getRoot();
     }
     default:
       assert ("Remove for given Loc type not yet implemented.");
@@ -362,7 +362,7 @@ Store BasicStoreManager::getInitialStore(const LocationContext *InitLoc) {
   // any VarDecl whose value originally comes from outside the function.
   typedef LiveVariables::AnalysisDataTy LVDataTy;
   LVDataTy& D = InitLoc->getLiveVariables()->getAnalysisData();
-  Store St = VBFactory.GetEmptyMap().getRoot();
+  Store St = VBFactory.getEmptyMap().getRoot();
 
   for (LVDataTy::decl_iterator I=D.begin_decl(), E=D.end_decl(); I != E; ++I) {
     NamedDecl* ND = const_cast<NamedDecl*>(I->first);

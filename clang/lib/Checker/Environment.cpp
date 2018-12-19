@@ -78,12 +78,12 @@ Environment EnvironmentManager::BindExpr(Environment Env, const Stmt *S,
 
   if (V.isUnknown()) {
     if (Invalidate)
-      return Environment(F.Remove(Env.ExprBindings, S));
+      return Environment(F.remove(Env.ExprBindings, S));
     else
       return Env;
   }
 
-  return Environment(F.Add(Env.ExprBindings, S, V));
+  return Environment(F.add(Env.ExprBindings, S, V));
 }
 
 namespace {
@@ -130,7 +130,7 @@ EnvironmentManager::RemoveDeadBindings(Environment Env, const Stmt *S,
 
     if (SymReaper.isLive(S, BlkExpr)) {
       // Copy the binding to the new map.
-      NewEnv.ExprBindings = F.Add(NewEnv.ExprBindings, BlkExpr, X);
+      NewEnv.ExprBindings = F.add(NewEnv.ExprBindings, BlkExpr, X);
 
       // If the block expr's value is a memory region, then mark that region.
       if (isa<loc::MemRegionVal>(X)) {
@@ -157,7 +157,7 @@ EnvironmentManager::RemoveDeadBindings(Environment Env, const Stmt *S,
     // beginning of itself, but we need its UndefinedVal to determine its
     // SVal.
     if (X.isUndef() && cast<UndefinedVal>(X).getData())
-      NewEnv.ExprBindings = F.Add(NewEnv.ExprBindings, BlkExpr, X);
+      NewEnv.ExprBindings = F.add(NewEnv.ExprBindings, BlkExpr, X);
   }
 
   return NewEnv;

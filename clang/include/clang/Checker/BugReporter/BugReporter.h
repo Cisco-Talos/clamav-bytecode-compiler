@@ -278,10 +278,10 @@ private:
   void FlushReport(BugReportEquivClass& EQ);
 
 protected:
-  BugReporter(BugReporterData& d, Kind k) : BugTypes(F.GetEmptySet()), kind(k), D(d) {}
+  BugReporter(BugReporterData& d, Kind k) : BugTypes(F.getEmptySet()), kind(k), D(d) {}
 
 public:
-  BugReporter(BugReporterData& d) : BugTypes(F.GetEmptySet()), kind(BaseBRKind), D(d) {}
+  BugReporter(BugReporterData& d) : BugTypes(F.getEmptySet()), kind(BaseBRKind), D(d) {}
   virtual ~BugReporter();
 
   void FlushReports();

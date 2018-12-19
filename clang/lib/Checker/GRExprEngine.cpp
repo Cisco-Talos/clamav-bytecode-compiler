@@ -112,7 +112,7 @@ class MappedBatchAuditor : public GRSimpleAPICheck {
 
 public:
   MappedBatchAuditor(llvm::BumpPtrAllocator& Alloc) :
-    F(Alloc), AllStmts(F.GetEmptyList()) {}
+    F(Alloc), AllStmts(F.getEmptyList()) {}
 
   virtual ~MappedBatchAuditor() {
     llvm::DenseSet<GRSimpleAPICheck*> AlreadyVisited;
@@ -134,12 +134,12 @@ public:
     assert (A && "Check cannot be null.");
     void* key = reinterpret_cast<void*>((uintptr_t) C);
     MapTy::iterator I = M.find(key);
-    M[key] = F.Concat(A, I == M.end() ? F.GetEmptyList() : I->second);
+    M[key] = F.concat(A, I == M.end() ? F.getEmptyList() : I->second);
   }
 
   void AddCheck(GRSimpleAPICheck *A) {
     assert (A && "Check cannot be null.");
-    AllStmts = F.Concat(A, AllStmts);
+    AllStmts = F.concat(A, AllStmts);
   }
 
   virtual bool Audit(ExplodedNode* N, GRStateManager& VMgr) {

@@ -434,7 +434,7 @@ public:
 
   /// setArg - Set the argument effect on the argument specified by idx.
   void setArgEffect(ArgEffects::Factory& AF, unsigned idx, ArgEffect E) {
-    Args = AF.Add(Args, idx, E);
+    Args = AF.add(Args, idx, E);
   }
 
   /// getRetEffect - Returns the effect on the return value of the call.
@@ -798,7 +798,7 @@ private:
   }
 
   void addPanicSummary(const char* Cls, ...) {
-    RetainSummary* Summ = getPersistentSummary(AF.GetEmptyMap(),
+    RetainSummary* Summ = getPersistentSummary(AF.getEmptyMap(),
                                                RetEffect::MakeNoRet(),
                                                DoNothing,  DoNothing, true);
     va_list argp;
@@ -812,12 +812,12 @@ public:
   RetainSummaryManager(ASTContext& ctx, bool gcenabled)
    : Ctx(ctx),
      CFDictionaryCreateII(&ctx.Idents.get("CFDictionaryCreate")),
-     GCEnabled(gcenabled), AF(BPAlloc), ScratchArgs(AF.GetEmptyMap()),
+     GCEnabled(gcenabled), AF(BPAlloc), ScratchArgs(AF.getEmptyMap()),
      ObjCAllocRetE(gcenabled ? RetEffect::MakeGCNotOwned()
                              : RetEffect::MakeOwned(RetEffect::ObjC, true)),
      ObjCInitRetE(gcenabled ? RetEffect::MakeGCNotOwned()
                             : RetEffect::MakeOwnedWhenTrackedReceiver()),
-     DefaultSummary(AF.GetEmptyMap() /* per-argument effects (none) */,
+     DefaultSummary(AF.getEmptyMap() /* per-argument effects (none) */,
                     RetEffect::MakeNoRet() /* return effect */,
                     MayEscape, /* default argument effect */
                     DoNothing /* receiver effect */),
@@ -904,7 +904,7 @@ RetainSummaryManager::~RetainSummaryManager() {}
 
 ArgEffects RetainSummaryManager::getArgEffects() {
   ArgEffects AE = ScratchArgs;
-  ScratchArgs = AF.GetEmptyMap();
+  ScratchArgs = AF.getEmptyMap();
   return AE;
 }
 
@@ -990,13 +990,13 @@ RetainSummary* RetainSummaryManager::getSummary(FunctionDecl* FD) {
       // FIXES: <rdar://problem/6326900>
       // This should be addressed using a API table.  This strcmp is also
       // a little gross, but there is no need to super optimize here.
-      ScratchArgs = AF.Add(ScratchArgs, 1, DecRef);
+      ScratchArgs = AF.add(ScratchArgs, 1, DecRef);
       S = getPersistentSummary(RetEffect::MakeNoRet(), DoNothing, DoNothing);
     } else if (FName == "IOServiceAddNotification" ||
                FName == "IOServiceAddMatchingNotification") {
       // Part of <rdar://problem/6961230>. (IOKit)
       // This should be addressed using a API table.
-      ScratchArgs = AF.Add(ScratchArgs, 2, DecRef);
+      ScratchArgs = AF.add(ScratchArgs, 2, DecRef);
       S = getPersistentSummary(RetEffect::MakeNoRet(), DoNothing, DoNothing);
     } else if (FName == "CVPixelBufferCreateWithBytes") {
       // FIXES: <rdar://problem/7283567>
@@ -1005,14 +1005,14 @@ RetainSummary* RetainSummaryManager::getSummary(FunctionDecl* FD) {
       // a callback and doing full IPA to make sure this is done correctly.
       // FIXME: This function has an out parameter that returns an
       // allocated object.
-      ScratchArgs = AF.Add(ScratchArgs, 7, StopTracking);
+      ScratchArgs = AF.add(ScratchArgs, 7, StopTracking);
       S = getPersistentSummary(RetEffect::MakeNoRet(), DoNothing, DoNothing);
     } else if (FName == "CGBitmapContextCreateWithData") {
       // FIXES: <rdar://problem/7358899>
       // Eventually this can be improved by recognizing that 'releaseInfo'
       // passed to CGBitmapContextCreateWithData is released via
       // a callback and doing full IPA to make sure this is done correctly.
-      ScratchArgs = AF.Add(ScratchArgs, 8, StopTracking);
+      ScratchArgs = AF.add(ScratchArgs, 8, StopTracking);
       S = getPersistentSummary(RetEffect::MakeOwned(RetEffect::CF, true),
                                DoNothing, DoNothing);
     } else if (FName == "CVPixelBufferCreateWithPlanarBytes") {
@@ -1021,7 +1021,7 @@ RetainSummary* RetainSummaryManager::getSummary(FunctionDecl* FD) {
       // buffer passed to CVPixelBufferCreateWithPlanarBytes is released
       // via a callback and doing full IPA to make sure this is done
       // correctly.
-      ScratchArgs = AF.Add(ScratchArgs, 12, StopTracking);
+      ScratchArgs = AF.add(ScratchArgs, 12, StopTracking);
       S = getPersistentSummary(RetEffect::MakeNoRet(), DoNothing, DoNothing);
     }
 
@@ -1152,19 +1152,19 @@ RetainSummaryManager::getUnarySummary(const FunctionType* FT,
 
   switch (func) {
     case cfretain: {
-      ScratchArgs = AF.Add(ScratchArgs, 0, IncRef);
+      ScratchArgs = AF.add(ScratchArgs, 0, IncRef);
       return getPersistentSummary(RetEffect::MakeAlias(0),
                                   DoNothing, DoNothing);
     }
 
     case cfrelease: {
-      ScratchArgs = AF.Add(ScratchArgs, 0, DecRef);
+      ScratchArgs = AF.add(ScratchArgs, 0, DecRef);
       return getPersistentSummary(RetEffect::MakeNoRet(),
                                   DoNothing, DoNothing);
     }
 
     case cfmakecollectable: {
-      ScratchArgs = AF.Add(ScratchArgs, 0, MakeCollectable);
+      ScratchArgs = AF.add(ScratchArgs, 0, MakeCollectable);
       return getPersistentSummary(RetEffect::MakeAlias(0),DoNothing, DoNothing);
     }
 
@@ -1178,8 +1178,8 @@ RetainSummary* RetainSummaryManager::getCFSummaryCreateRule(FunctionDecl* FD) {
   assert (ScratchArgs.isEmpty());
 
   if (FD->getIdentifier() == CFDictionaryCreateII) {
-    ScratchArgs = AF.Add(ScratchArgs, 1, DoNothingByRef);
-    ScratchArgs = AF.Add(ScratchArgs, 2, DoNothingByRef);
+    ScratchArgs = AF.add(ScratchArgs, 1, DoNothingByRef);
+    ScratchArgs = AF.add(ScratchArgs, 2, DoNothingByRef);
   }
 
   return getPersistentSummary(RetEffect::MakeOwned(RetEffect::CF, true));
@@ -1284,7 +1284,7 @@ RetainSummaryManager::getCommonMethodSummary(const ObjCMethodDecl* MD,
       if (ParmVarDecl *PD = *I) {
         QualType Ty = Ctx.getCanonicalType(PD->getType());
         if (Ty.getLocalUnqualifiedType() == Ctx.VoidPtrTy)
-          ScratchArgs = AF.Add(ScratchArgs, i, StopTracking);
+          ScratchArgs = AF.add(ScratchArgs, i, StopTracking);
       }
   }
 
@@ -1446,7 +1446,7 @@ void RetainSummaryManager::InitializeClassMethodSummaries() {
                 getPersistentSummary(RetEffect::MakeNotOwned(RetEffect::ObjC)));
 
   // Create the [NSAutoreleasePool addObject:] summary.
-  ScratchArgs = AF.Add(ScratchArgs, 0, Autorelease);
+  ScratchArgs = AF.add(ScratchArgs, 0, Autorelease);
   addClassMethSummary("NSAutoreleasePool", "addObject",
                       getPersistentSummary(RetEffect::MakeNoRet(),
                                            DoNothing, Autorelease));
@@ -1641,10 +1641,10 @@ static const GRState * SendAutorelease(const GRState *state,
 
   if (cnts) {
     const unsigned *cnt = (*cnts).lookup(sym);
-    newCnts = F.Add(*cnts, sym, cnt ? *cnt  + 1 : 1);
+    newCnts = F.add(*cnts, sym, cnt ? *cnt  + 1 : 1);
   }
   else
-    newCnts = F.Add(F.GetEmptyMap(), sym, 1);
+    newCnts = F.add(F.getEmptyMap(), sym, 1);
 
   return state->set<AutoreleasePoolContents>(pool, newCnts);
 }
@@ -3030,7 +3030,7 @@ const GRState* CFRefCount::EvalAssume(const GRState *state,
     // If this is the case, stop tracking the symbol.
     if (state->getSymVal(I.getKey())) {
       changed = true;
-      B = RefBFactory.Remove(B, I.getKey());
+      B = RefBFactory.remove(B, I.getKey());
     }
   }
 
@@ -3360,7 +3360,7 @@ void CFRefCount::EvalDeadSymbols(ExplodedNodeSet& Dst,
   RefBindings::Factory& F = state->get_context<RefBindings>();
 
   for (SymbolReaper::dead_iterator I = SymReaper.dead_begin(),
-       E = SymReaper.dead_end(); I!=E; ++I) B = F.Remove(B, *I);
+       E = SymReaper.dead_end(); I!=E; ++I) B = F.remove(B, *I);
 
   state = state->set<RefBindings>(B);
   Builder.MakeNode(Dst, S, Pred, state);

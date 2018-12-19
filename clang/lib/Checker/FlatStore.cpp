@@ -36,7 +36,7 @@ public:
                             const LocationContext *LC, SVal v);
 
   Store getInitialStore(const LocationContext *InitLoc) {
-    return RBFactory.GetEmptyMap().getRoot();
+    return RBFactory.getEmptyMap().getRoot();
   }
 
   SubRegionMap *getSubRegionMap(Store store) {
@@ -83,7 +83,7 @@ SVal FlatStoreManager::Retrieve(Store store, Loc L, QualType T) {
   RegionBindings B = getRegionBindings(store);
   const BindingVal *BV = B.lookup(R);
   if (BV) {
-    const SVal *V = BVFactory.Lookup(*BV, I);
+    const SVal *V = BVFactory.lookup(*BV, I);
     if (V)
       return *V;
     else
@@ -105,13 +105,13 @@ Store FlatStoreManager::Bind(Store store, Loc L, SVal val) {
   RegionBindings B = getRegionBindings(store);
   const BindingVal *V = B.lookup(R);
 
-  BindingVal BV = BVFactory.GetEmptyMap();
+  BindingVal BV = BVFactory.getEmptyMap();
   if (V)
     BV = *V;
 
   Interval I = RegionToInterval(R);
-  BV = BVFactory.Add(BV, I, val);
-  B = RBFactory.Add(B, R, BV);
+  BV = BVFactory.add(BV, I, val);
+  B = RBFactory.add(B, R, BV);
   return B.getRoot();
 }
 
