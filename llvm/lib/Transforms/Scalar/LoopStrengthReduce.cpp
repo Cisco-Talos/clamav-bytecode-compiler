@@ -968,7 +968,7 @@ void LSRUse::print(raw_ostream &OS) const {
   for (SmallVectorImpl<int64_t>::const_iterator I = Offsets.begin(),
        E = Offsets.end(); I != E; ++I) {
     OS << *I;
-    if (next(I) != E)
+    if (llvm::next(I) != E)
       OS << ',';
   }
   OS << '}';
@@ -1736,7 +1736,7 @@ void LSRInstance::CollectInterestingTypesAndFactors() {
   for (SmallSetVector<const SCEV *, 4>::const_iterator
        I = Strides.begin(), E = Strides.end(); I != E; ++I)
     for (SmallSetVector<const SCEV *, 4>::const_iterator NewStrideIter =
-         next(I); NewStrideIter != E; ++NewStrideIter) {
+         llvm::next(I); NewStrideIter != E; ++NewStrideIter) {
       const SCEV *OldStride = *I;
       const SCEV *NewStride = *NewStrideIter;
 
@@ -2817,7 +2817,7 @@ Value *LSRInstance::Expand(const LSRFixup &LF,
       }
       if (IDom == Inst->getParent() &&
           (!BetterPos || DT.dominates(BetterPos, Inst)))
-        BetterPos = next(BasicBlock::iterator(Inst));
+        BetterPos = llvm::next(BasicBlock::iterator(Inst));
     }
     if (!AllDominate)
       break;

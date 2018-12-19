@@ -2732,7 +2732,7 @@ const SCEV *ScalarEvolution::createNodeForGEP(GEPOperator *GEP) {
     return getUnknown(GEP);
   const SCEV *TotalOffset = getIntegerSCEV(0, IntPtrTy);
   gep_type_iterator GTI = gep_type_begin(GEP);
-  for (GetElementPtrInst::op_iterator I = next(GEP->op_begin()),
+  for (GetElementPtrInst::op_iterator I = llvm::next(GEP->op_begin()),
                                       E = GEP->op_end();
        I != E; ++I) {
     Value *Index = *I;

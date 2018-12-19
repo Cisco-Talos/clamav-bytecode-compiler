@@ -231,7 +231,7 @@ void TypePrinting::CalcTypeName(const Type *Ty,
     for (StructType::element_iterator I = STy->element_begin(),
          E = STy->element_end(); I != E; ++I) {
       CalcTypeName(*I, TypeStack, OS);
-      if (next(I) != STy->element_end())
+      if (llvm::next(I) != STy->element_end())
         OS << ',';
       OS << ' ';
     }
@@ -246,7 +246,7 @@ void TypePrinting::CalcTypeName(const Type *Ty,
     for (StructType::element_iterator I = UTy->element_begin(),
          E = UTy->element_end(); I != E; ++I) {
       CalcTypeName(*I, TypeStack, OS);
-      if (next(I) != UTy->element_end())
+      if (llvm::next(I) != UTy->element_end())
         OS << ',';
       OS << ' ';
     }
