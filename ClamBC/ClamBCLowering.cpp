@@ -317,10 +317,12 @@ void ClamBCLowering::downsizeIntrinsics(Function &F)
   std::vector<Instruction *> InstDel;
   Function *MemCpy32 = NULL, *MemSet32 = NULL, *MemMove32 = NULL;
 
-  /* TODO - search for pre-existing i32 memory intrinsics */
-  //MemCpy32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memcpy, args);
-  //MemSet32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memset, args);
-  //MemMove32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memmove, args);
+  const Type* MemCpyArgs [] = { Type::getInt32Ty(Context) };
+  MemCpy32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memcpy, MemCpyArgs, 1);
+  const Type* MemSetArgs [] = { Type::getInt32Ty(Context) };
+  MemSet32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memset, MemSetArgs, 1);
+  const Type* MemMoveArgs [] = { Type::getInt32Ty(Context) };
+  MemMove32 = Intrinsic::getDeclaration(F.getParent(), Intrinsic::memmove, MemMoveArgs, 1);
 
   for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
     Instruction *II = &*I;
@@ -359,63 +361,15 @@ void ClamBCLowering::downsizeIntrinsics(Function &F)
         if (FName.equals("llvm.memcpy.i64")) {
             assert(Ops.size() == 4 && "malformed MemCpyInst has occurred!");
 
-            if (!MemCpy32) {
-              std::vector<const Type*> args;
-              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
-              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
-              args.push_back(Type::getInt32Ty(Context));
-              args.push_back(Type::getInt32Ty(Context));
-              //args.push_back(Type::getInt1Ty(Context)); // LLVM30+
-
-              FunctionType *FuncTy = FunctionType::get(Type::getVoidTy(Context),
-                                                       args, false);
-              MemCpy32 = Function::Create(FuncTy, GlobalValue::ExternalLinkage,
-                                                    "llvm.memcpy.i32", F.getParent());
-              MemCpy32->setDoesNotThrow();
-              MemCpy32->setDoesNotCapture(1, true);
-            }
-
             NMI = CallInst::Create(MemCpy32, Ops.begin(), Ops.end(), MI->getName(), MI);
         }
         else if (FName.equals("llvm.memset.i64")) {
             assert(Ops.size() == 4 && "malformed MemSetInst has occurred!");
 
-            if (!MemSet32) {
-              std::vector<const Type*> args;
-              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
-              args.push_back(Type::getInt8Ty(Context));
-              args.push_back(Type::getInt32Ty(Context));
-              args.push_back(Type::getInt32Ty(Context));
-              //args.push_back(Type::getInt1Ty(Context)); // LLVM30+
-
-              FunctionType *FuncTy = FunctionType::get(Type::getVoidTy(Context),
-                                                       args, false);
-              MemSet32 = Function::Create(FuncTy, GlobalValue::ExternalLinkage,
-                                                    "llvm.memset.i32", F.getParent());
-              MemSet32->setDoesNotThrow();
-              MemSet32->setDoesNotCapture(1, true);
-            }
-
             NMI = CallInst::Create(MemSet32, Ops.begin(), Ops.end(), MI->getName(), MI);
         }
         else if (FName.equals("llvm.memmove.i64")) {
             assert(Ops.size() == 4 && "malformed MemMoveInst has occurred!");
-
-            if (!MemMove32) {
-              std::vector<const Type*> args;
-              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
-              args.push_back(PointerType::getUnqual(Type::getInt8Ty(Context)));
-              args.push_back(Type::getInt32Ty(Context));
-              args.push_back(Type::getInt32Ty(Context));
-              //args.push_back(Type::getInt1Ty(Context)); // LLVM30+
-
-              FunctionType *FuncTy = FunctionType::get(Type::getVoidTy(Context),
-                                                       args, false);
-              MemMove32 = Function::Create(FuncTy, GlobalValue::ExternalLinkage,
-                                                    "llvm.memmove.i32", F.getParent());
-              MemMove32->setDoesNotThrow();
-              MemMove32->setDoesNotCapture(1, true);
-            }
 
             NMI = CallInst::Create(MemMove32, Ops.begin(), Ops.end(), MI->getName(), MI);
         }
