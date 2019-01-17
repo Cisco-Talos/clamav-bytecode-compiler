@@ -383,6 +383,10 @@ void ClamBCLowering::downsizeIntrinsics(Function &F)
         //replaceUses(MI, NMI, NULL); /* memory intrinsics return void */
         InstDel.push_back(MI);
       }
+      else if (FName.equals("llvm.memcpy.i32") || FName.equals("llvm.memset.i32") ||
+          FName.equals("llvm.memmove.i32")) {
+          /* Nothing to do */
+      }
       else {
           errs() << "unhandled memory intrinsic: " << FName << "\n";
       }
