@@ -10,6 +10,7 @@ http://llvm.org/docs/GettingStarted.html#brokengcc
 
 $ mkdir obj
 $ cd obj
+$ export CXXFLAGS=-std=gnu++98
 $ ../llvm/configure --enable-optimized --enable-targets=host-only --disable-bindings --prefix=/usr/local/clamav
 $ make clambc-only -j4
 $ make install-clambc -j8
@@ -18,6 +19,7 @@ For building and running tests:
 -------------------------------
 $ mkdir obj
 $ cd obj
+$ export CXXFLAGS=-std=gnu++98
 $ ../llvm/configure --enable-optimized --enable-targets=host-only --disable-bindings --prefix=/usr/local/clamav
 $ make clambc-only -j4
 $ make -j4
