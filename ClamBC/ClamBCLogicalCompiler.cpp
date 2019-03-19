@@ -1359,7 +1359,7 @@ bool ClamBCLogicalCompiler::validateVirusName(const std::string& name,
 
 static bool isUnpacker(unsigned kind)
 {
-  return kind == BC_PE_UNPACKER;
+  return kind == BC_PE_UNPACKER || kind == BC_ELF_UNPACKER;
 }
 
 bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)

@@ -146,6 +146,12 @@ typedef struct signature {
 
 /**
 \group_config
+ * Lie \p PE_UNPACKER_DECLARE, but for ELF files.
+ */
+#define ELF_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_ELF_UNPACKER;
+
+/**
+\group_config
  * Marks the beginning of the subsignature name declaration section.
  */
 #define SIGNATURES_DECL_BEGIN \
