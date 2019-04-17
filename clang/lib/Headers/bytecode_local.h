@@ -146,9 +146,15 @@ typedef struct signature {
 
 /**
 \group_config
- * Lie \p PE_UNPACKER_DECLARE, but for ELF files.
+ * Like \p PE_UNPACKER_DECLARE, but for ELF files.
  */
 #define ELF_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_ELF_UNPACKER;
+
+/**
+\group_config
+ * Like \p PE_UNPACKER_DECLARE, but for Mach-O files.
+ */
+#define MACHO_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_MACHO_UNPACKER;
 
 /**
 \group_config
