@@ -31,12 +31,12 @@ struct DenseMapInfo {
 template<typename T>
 struct DenseMapInfo<T*> {
   static inline T* getEmptyKey() {
-    intptr_t Val = -1;
+    uintptr_t Val = static_cast<uintptr_t>(-1);
     Val <<= PointerLikeTypeTraits<T*>::NumLowBitsAvailable;
     return reinterpret_cast<T*>(Val);
   }
   static inline T* getTombstoneKey() {
-    intptr_t Val = -2;
+    uintptr_t Val = static_cast<uintptr_t>(-2);
     Val <<= PointerLikeTypeTraits<T*>::NumLowBitsAvailable;
     return reinterpret_cast<T*>(Val);
   }

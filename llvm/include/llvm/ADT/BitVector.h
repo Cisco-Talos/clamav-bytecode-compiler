@@ -51,14 +51,14 @@ public:
 
     reference& operator=(bool t) {
       if (t)
-        *WordRef |= 1L << BitPos;
+        *WordRef |= BitWord(1) << BitPos;
       else
-        *WordRef &= ~(1L << BitPos);
+        *WordRef &= ~(BitWord(1) << BitPos);
       return *this;
     }
 
     operator bool() const {
-      return ((*WordRef) & (1L << BitPos)) ? true : false;
+      return ((*WordRef) & (BitWord(1) << BitPos)) ? true : false;
     }
   };
 
@@ -153,7 +153,7 @@ public:
     unsigned BitPos = Prev % BITWORD_SIZE;
     BitWord Copy = Bits[WordPos];
     // Mask off previous bits.
-    Copy &= ~0L << BitPos;
+    Copy &= ~0UL << BitPos;
 
     if (Copy != 0) {
       if (sizeof(BitWord) == 4)
@@ -216,7 +216,7 @@ public:
   }
 
   BitVector &set(unsigned Idx) {
-    Bits[Idx / BITWORD_SIZE] |= 1L << (Idx % BITWORD_SIZE);
+    Bits[Idx / BITWORD_SIZE] |= BitWord(1) << (Idx % BITWORD_SIZE);
     return *this;
   }
 
@@ -226,7 +226,7 @@ public:
   }
 
   BitVector &reset(unsigned Idx) {
-    Bits[Idx / BITWORD_SIZE] &= ~(1L << (Idx % BITWORD_SIZE));
+    Bits[Idx / BITWORD_SIZE] &= ~(BitWord(1) << (Idx % BITWORD_SIZE));
     return *this;
   }
 
@@ -238,7 +238,7 @@ public:
   }
 
   BitVector &flip(unsigned Idx) {
-    Bits[Idx / BITWORD_SIZE] ^= 1L << (Idx % BITWORD_SIZE);
+    Bits[Idx / BITWORD_SIZE] ^= BitWord(1) << (Idx % BITWORD_SIZE);
     return *this;
   }
 
@@ -255,7 +255,7 @@ public:
 
   bool operator[](unsigned Idx) const {
     assert (Idx < Size && "Out-of-bounds Bit access.");
-    BitWord Mask = 1L << (Idx % BITWORD_SIZE);
+    BitWord Mask = BitWord(1) << (Idx % BITWORD_SIZE);
     return (Bits[Idx / BITWORD_SIZE] & Mask) != 0;
   }
 
@@ -367,8 +367,11 @@ private:
     //  Then set any stray high bits of the last used word.
     unsigned ExtraBits = Size % BITWORD_SIZE;
     if (ExtraBits) {
-      Bits[UsedWords-1] &= ~(~0L << ExtraBits);
-      Bits[UsedWords-1] |= (0 - (BitWord)t) << ExtraBits;
+      BitWord ExtraBitMask = ~0UL << ExtraBits;
+      if (t)
+        Bits[UsedWords-1] |= ExtraBitMask;
+      else
+        Bits[UsedWords-1] &= ~ExtraBitMask;
     }
   }
 
