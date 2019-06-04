@@ -42,530 +42,549 @@
 
 using namespace llvm;
 
-class ClamBCRebuild : public FunctionPass, public InstVisitor<ClamBCRebuild> {
-public:
-  static char ID;
-  explicit ClamBCRebuild() : FunctionPass(&ID) {}
-  virtual const char *getPassName() const { return "ClamAV Bytecode Backend Rebuilder"; }
+class ClamBCRebuild : public FunctionPass, public InstVisitor<ClamBCRebuild>
+{
+  public:
+    static char ID;
+    explicit ClamBCRebuild()
+        : FunctionPass(&ID) {}
+    virtual const char *getPassName() const
+    {
+        return "ClamAV Bytecode Backend Rebuilder";
+    }
 
-  void getAnalysisUsage(AnalysisUsage &AU) const {
-      AU.addRequired<TargetData>();
-      AU.addRequired<ScalarEvolution>();
-  }
+    void getAnalysisUsage(AnalysisUsage &AU) const
+    {
+        AU.addRequired<TargetData>();
+        AU.addRequired<ScalarEvolution>();
+    }
 
-  bool doInitialization(Module &M) {
-      FMap.clear();
-      FMapRev.clear();
-      Context = &M.getContext();
-      i8Ty = Type::getInt8Ty(*Context);
-      i8pTy = PointerType::getUnqual(i8Ty);
-      TD = new TargetData(&M);
+    bool doInitialization(Module &M)
+    {
+        FMap.clear();
+        FMapRev.clear();
+        Context = &M.getContext();
+        i8Ty    = Type::getInt8Ty(*Context);
+        i8pTy   = PointerType::getUnqual(i8Ty);
+        TD      = new TargetData(&M);
 
-      for (Module::iterator I=M.begin(),E=M.end(); I != E; ++I) {
-	  Function *F = &*I;
-	  if (F->isDeclaration())
-	      continue;
-	  functions.push_back(F);
-      }
-      for (std::vector<Function*>::iterator I=functions.begin(),
-	   E=functions.end(); I != E; ++I) {
-	  Function *F;
-	  FMap[*I] = F = createFunction(*I, &M);
-	  FMapRev[F] = *I;
-	  BasicBlock *BB = BasicBlock::Create(*Context, "dummy", F, 0);
-	  new UnreachableInst(*Context, BB);
-      }
-      return true;
-  }
+        for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+            Function *F = &*I;
+            if (F->isDeclaration())
+                continue;
+            functions.push_back(F);
+        }
+        for (std::vector<Function *>::iterator I = functions.begin(),
+                                               E = functions.end();
+             I != E; ++I) {
+            Function *F;
+            FMap[*I] = F   = createFunction(*I, &M);
+            FMapRev[F]     = *I;
+            BasicBlock *BB = BasicBlock::Create(*Context, "dummy", F, 0);
+            new UnreachableInst(*Context, BB);
+        }
+        return true;
+    }
 
-  bool doFinalization(Module &M)
-  {
-      for (std::vector<Function*>::iterator I=functions.begin(),
-	   E=functions.end(); I != E; ++I) {
-	  Function *F = *I;
-	  F->deleteBody();
-      }
-      for (std::vector<Function*>::iterator I=functions.begin(),
-	   E=functions.end(); I != E; ++I) {
-	  Function *F = *I;
-	  F->eraseFromParent();
-      }
-      return true;
-  }
+    bool doFinalization(Module &M)
+    {
+        for (std::vector<Function *>::iterator I = functions.begin(),
+                                               E = functions.end();
+             I != E; ++I) {
+            Function *F = *I;
+            F->deleteBody();
+        }
+        for (std::vector<Function *>::iterator I = functions.begin(),
+                                               E = functions.end();
+             I != E; ++I) {
+            Function *F = *I;
+            F->eraseFromParent();
+        }
+        return true;
+    }
 
-  bool runOnFunction(Function &NF)
-  {
-      Function *F = FMapRev[&NF];
-      if (!F)
-	  return false;
-      NF.getEntryBlock().eraseFromParent();
-      VMap.clear();
-      CastMap.clear();
-      BBMap.clear();
-      visitedBB.clear();
-      TargetFolder TF(TD);
-      Builder = new IRBuilder<true,TargetFolder>(*Context, TF);
+    bool runOnFunction(Function &NF)
+    {
+        Function *F = FMapRev[&NF];
+        if (!F)
+            return false;
+        NF.getEntryBlock().eraseFromParent();
+        VMap.clear();
+        CastMap.clear();
+        BBMap.clear();
+        visitedBB.clear();
+        TargetFolder TF(TD);
+        Builder = new IRBuilder<true, TargetFolder>(*Context, TF);
 
-      SE = &getAnalysis<ScalarEvolution>();
-      Expander = new SCEVExpander(*SE);
-      visitFunction(F, &NF);
-      for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
-	  BasicBlock *BB = &*I;
-	  BBMap[BB] = BasicBlock::Create(BB->getContext(), BB->getName(), &NF, 0);
-      }
-      for (Function::iterator I=F->begin(),E=F->end(); I != E; ++I) {
-	  runOnBasicBlock(&*I);
-      }
-      //phase 2: map PHI operands now
-      for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
-	 if (PHINode *N = dyn_cast<PHINode>(&*I)) {
-	     PHINode *PN = dyn_cast<PHINode>(VMap[N]);
-	     assert(PN);
-	     PN->reserveOperandSpace(N->getNumIncomingValues());
-	     for (unsigned i=0;i<N->getNumIncomingValues();i++) {
-		 Value *V = mapPHIValue(N->getIncomingValue(i));
-		 BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
-		 PN->addIncoming(V, BB);
-	     }
-	     assert(PN->getNumIncomingValues() > 0);
-	 }
-      }
-      //phase 3: map GEPs, SCEVs need fully built function (including PHIs)
-      for (inst_iterator I=inst_begin(F),E=inst_end(F); I != E; ++I) {
-	  if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(&*I))
-	     rebuildGEP(G);
-      }
-      delete Expander;
-      delete Builder;
-      return true;
-  }
+        SE       = &getAnalysis<ScalarEvolution>();
+        Expander = new SCEVExpander(*SE);
+        visitFunction(F, &NF);
+        for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
+            BasicBlock *BB = &*I;
+            BBMap[BB]      = BasicBlock::Create(BB->getContext(), BB->getName(), &NF, 0);
+        }
+        for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
+            runOnBasicBlock(&*I);
+        }
+        //phase 2: map PHI operands now
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
+            if (PHINode *N = dyn_cast<PHINode>(&*I)) {
+                PHINode *PN = dyn_cast<PHINode>(VMap[N]);
+                assert(PN);
+                PN->reserveOperandSpace(N->getNumIncomingValues());
+                for (unsigned i = 0; i < N->getNumIncomingValues(); i++) {
+                    Value *V       = mapPHIValue(N->getIncomingValue(i));
+                    BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
+                    PN->addIncoming(V, BB);
+                }
+                assert(PN->getNumIncomingValues() > 0);
+            }
+        }
+        //phase 3: map GEPs, SCEVs need fully built function (including PHIs)
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
+            if (GetElementPtrInst *G = dyn_cast<GetElementPtrInst>(&*I))
+                rebuildGEP(G);
+        }
+        delete Expander;
+        delete Builder;
+        return true;
+    }
 
-private:
-  typedef DenseMap<const Function*, Function*> FMapTy;
-  typedef DenseMap<const BasicBlock*, BasicBlock*> BBMapTy;
-  typedef DenseMap<const Value*, Value*> ValueMapTy;
-  typedef SmallVector<std::pair<const Value*, int64_t>,4 > IndicesVectorTy;
+  private:
+    typedef DenseMap<const Function *, Function *> FMapTy;
+    typedef DenseMap<const BasicBlock *, BasicBlock *> BBMapTy;
+    typedef DenseMap<const Value *, Value *> ValueMapTy;
+    typedef SmallVector<std::pair<const Value *, int64_t>, 4> IndicesVectorTy;
 
-  std::vector<Function*> functions;
-  FMapTy FMap;
-  FMapTy FMapRev;
-  BBMapTy BBMap;
-  ValueMapTy VMap;
-  DenseMap<std::pair<const Value*, const Type*>, Value*> CastMap;
-  TargetData *TD;
-  ScalarEvolution *SE;
-  const Type *i8Ty;
-  const Type *i8pTy;
-  FunctionPassManager *FPM;
-  LLVMContext *Context;
-  DenseSet<const BasicBlock*> visitedBB;
-  IRBuilder<true,TargetFolder> *Builder;
-  SCEVExpander *Expander;
+    std::vector<Function *> functions;
+    FMapTy FMap;
+    FMapTy FMapRev;
+    BBMapTy BBMap;
+    ValueMapTy VMap;
+    DenseMap<std::pair<const Value *, const Type *>, Value *> CastMap;
+    TargetData *TD;
+    ScalarEvolution *SE;
+    const Type *i8Ty;
+    const Type *i8pTy;
+    FunctionPassManager *FPM;
+    LLVMContext *Context;
+    DenseSet<const BasicBlock *> visitedBB;
+    IRBuilder<true, TargetFolder> *Builder;
+    SCEVExpander *Expander;
 
+    void stop(const std::string &Msg, const llvm::Instruction *I)
+    {
+        ClamBCModule::stop(Msg, I);
+    }
+    friend class InstVisitor<ClamBCRebuild>;
 
-  void stop(const std::string &Msg, const llvm::Instruction *I) {
-    ClamBCModule::stop(Msg, I);
-  }
-  friend class InstVisitor<ClamBCRebuild>;
+    const Type *getInnerElementType(const CompositeType *CTy)
+    {
+        const Type *ETy;
+        // get pointer to first element
+        do {
+            assert(CTy->indexValid(0u));
+            ETy = CTy->getTypeAtIndex(0u);
+            CTy = dyn_cast<CompositeType>(ETy);
+        } while (CTy);
+        assert(ETy->isIntegerTy());
+        return ETy;
+    }
 
-  const Type *getInnerElementType(const CompositeType *CTy)
-  {
-      const Type *ETy;
-      // get pointer to first element
-      do {
-	  assert(CTy->indexValid(0u));
-	  ETy = CTy->getTypeAtIndex(0u);
-	  CTy = dyn_cast<CompositeType>(ETy);
-      } while (CTy);
-      assert(ETy->isIntegerTy());
-      return ETy;
-  }
+    const Type *rebuildType(const Type *Ty, bool i8only = false)
+    {
+        assert(Ty);
+        if (!i8only && Ty->isIntegerTy())
+            return Ty;
+        if (isa<PointerType>(Ty))
+            return i8pTy;
+        if (Ty->isVoidTy() || Ty == i8Ty)
+            return Ty;
+        unsigned bytes = TD->getTypeAllocSize(Ty);
+        return ArrayType::get(i8Ty, bytes);
+    }
 
-  const Type *rebuildType(const Type *Ty, bool i8only = false)
-  {
-      assert(Ty);
-      if (!i8only && Ty->isIntegerTy())
-	  return Ty;
-      if (isa<PointerType>(Ty))
-	  return i8pTy;
-      if (Ty->isVoidTy() || Ty == i8Ty)
-	  return Ty;
-      unsigned bytes = TD->getTypeAllocSize(Ty);
-      return ArrayType::get(i8Ty, bytes);
-  }
+    ConstantInt *u32const(uint32_t n)
+    {
+        return ConstantInt::get(Type::getInt32Ty(*Context), n);
+    }
 
-  ConstantInt *u32const(uint32_t n)
-  {
-      return ConstantInt::get(Type::getInt32Ty(*Context), n);
-  }
+    ConstantInt *i32const(int32_t n)
+    {
+        return ConstantInt::get(Type::getInt32Ty(*Context), n, true);
+    }
 
-  ConstantInt *i32const(int32_t n)
-  {
-      return ConstantInt::get(Type::getInt32Ty(*Context), n, true);
-  }
+    void visitAllocaInst(AllocaInst &AI)
+    {
+        if (!isa<ConstantInt>(AI.getArraySize()))
+            stop("VLA not supported", &AI);
+        uint32_t n     = cast<ConstantInt>(AI.getArraySize())->getZExtValue();
+        const Type *Ty = rebuildType(AI.getAllocatedType(), true);
+        if (const ArrayType *ATy = dyn_cast<ArrayType>(Ty)) {
+            Ty = ATy->getElementType();
+            //TODO: check for overflow
+            n *= ATy->getNumElements();
+        }
+        if (n != 1)
+            Ty = ArrayType::get(Ty, n);
+        Instruction *I = Builder->CreateAlloca(Ty, 0, AI.getName());
+        VMap[&AI]      = I;
+    }
 
-  void visitAllocaInst(AllocaInst &AI) {
-      if (!isa<ConstantInt>(AI.getArraySize()))
-	  stop("VLA not supported", &AI);
-      uint32_t n = cast<ConstantInt>(AI.getArraySize())->getZExtValue();
-      const Type *Ty = rebuildType(AI.getAllocatedType(), true);
-      if (const ArrayType *ATy = dyn_cast<ArrayType>(Ty)) {
-	  Ty = ATy->getElementType();
-	  //TODO: check for overflow
-	  n *= ATy->getNumElements();
-      }
-      if (n != 1)
-	  Ty = ArrayType::get(Ty, n);
-      Instruction *I = Builder->CreateAlloca(Ty, 0, AI.getName());
-      VMap[&AI] = I;
-  }
+    Constant *mapConstant(Constant *C)
+    {
+        //TODO: compute any gep exprs here
+        return C;
+    }
 
-  Constant *mapConstant(Constant *C)
-  {
-      //TODO: compute any gep exprs here
-      return C;
-  }
+    Value *mapValue(Value *V)
+    {
+        if (Constant *C = dyn_cast<Constant>(V))
+            return mapConstant(C);
+        if (isa<MDNode>(V))
+            return V;
+        Value *NV = VMap[V];
+        if (!NV) {
+            Instruction *I    = cast<Instruction>(V);
+            BasicBlock *NowBB = Builder->GetInsertBlock();
+            BasicBlock *IBB   = I->getParent();
+            assert(IBB != NowBB);
 
-  Value *mapValue(Value *V)
-  {
-      if (Constant *C = dyn_cast<Constant>(V))
-	  return mapConstant(C);
-      if (isa<MDNode>(V))
-	  return V;
-      Value *NV = VMap[V];
-      if (!NV) {
-	  Instruction *I = cast<Instruction>(V);
-	  BasicBlock *NowBB = Builder->GetInsertBlock();
-	  BasicBlock *IBB = I->getParent();
-	  assert(IBB != NowBB);
+            runOnBasicBlock(IBB);
+            Builder->SetInsertPoint(NowBB);
 
-	  runOnBasicBlock(IBB);
-	  Builder->SetInsertPoint(NowBB);
+            NV = VMap[V];
+        }
+        if (!NV) {
+            errs() << "not remapped: " << *V << "\n";
+        }
+        assert(NV);
+        return NV;
+    }
 
-	  NV = VMap[V];
-      }
-      if (!NV) {
-	  errs() << "not remapped: " << *V << "\n";
-      }
-      assert(NV);
-      return NV;
-  }
+    Value *makeCast(Value *V, const Type *Ty)
+    {
+        if (V->getType() == Ty)
+            return V;
+        Instruction *I = dyn_cast<Instruction>(V);
+        if (!I)
+            return Builder->CreatePointerCast(V, Ty, "rbcastc");
+        std::pair<const Value *, const Type *> pair(V, Ty);
+        Value *R = CastMap[pair];
+        if (!R) {
+            BasicBlock *thisBB         = Builder->GetInsertBlock();
+            BasicBlock::iterator thisP = Builder->GetInsertPoint();
+            BasicBlock *targetBB       = I->getParent();
+            if (thisBB != targetBB) {
+                BasicBlock::iterator IP = I;
+                ++IP;
+                while (isa<AllocaInst>(IP)) ++IP;
+                Builder->SetInsertPoint(targetBB, IP);
+            }
+            CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcastp");
+            if (thisBB != targetBB)
+                Builder->SetInsertPoint(thisBB, thisP);
+        }
+        return R;
+    }
 
-  Value *makeCast(Value *V, const Type *Ty)
-  {
-      if (V->getType() == Ty)
-	  return V;
-      Instruction *I = dyn_cast<Instruction>(V);
-      if (!I)
-	  return Builder->CreatePointerCast(V, Ty, "rbcastc");
-      std::pair<const Value*, const Type*> pair(V, Ty);
-      Value *R = CastMap[pair];
-      if (!R) {
-	  BasicBlock *thisBB = Builder->GetInsertBlock();
-	  BasicBlock::iterator thisP = Builder->GetInsertPoint();
-	  BasicBlock *targetBB = I->getParent();
-	  if (thisBB != targetBB) {
-	      BasicBlock::iterator IP = I;
-	      ++IP;
-	      while (isa<AllocaInst>(IP)) ++IP;
-	      Builder->SetInsertPoint(targetBB, IP);
-	  }
-	  CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcastp");
-	  if (thisBB != targetBB)
-	      Builder->SetInsertPoint(thisBB, thisP);
-      }
-      return R;
-  }
+    Value *mapPointer(Value *P, const Type *Ty)
+    {
+        Value *PV = mapValue(P);
+        if (PV->getType() == Ty && !isa<AllocaInst>(PV)) {
+            assert(!isa<AllocaInst>(PV) ||
+                   cast<PointerType>(Ty)->getElementType()->isIntegerTy());
+            return PV;
+        }
+        PV = PV->stripPointerCasts();
+        if (isa<AllocaInst>(PV))
+            PV = makeCast(PV, i8pTy);
+        return makeCast(PV, Ty);
+    }
 
-  Value *mapPointer(Value *P, const Type *Ty)
-  {
-      Value *PV = mapValue(P);
-      if (PV->getType() == Ty && !isa<AllocaInst>(PV)) {
-	  assert(!isa<AllocaInst>(PV) ||
-		 cast<PointerType>(Ty)->getElementType()->isIntegerTy());
-	  return PV;
-      }
-      PV = PV->stripPointerCasts();
-      if (isa<AllocaInst>(PV))
-	  PV = makeCast(PV, i8pTy);
-      return makeCast(PV, Ty);
-  }
+    BasicBlock *mapBlock(const BasicBlock *BB)
+    {
+        BasicBlock *NBB = BBMap[BB];
+        assert(NBB);
+        return NBB;
+    }
 
-  BasicBlock *mapBlock(const BasicBlock *BB)
-  {
-      BasicBlock *NBB =  BBMap[BB];
-      assert(NBB);
-      return NBB;
-  }
+    void visitReturnInst(ReturnInst &I)
+    {
+        Value *V = I.getReturnValue();
+        if (!V)
+            Builder->CreateRetVoid();
+        else
+            Builder->CreateRet(mapValue(V));
+    }
 
-  void visitReturnInst(ReturnInst &I) {
-      Value *V = I.getReturnValue();
-      if (!V)
-	  Builder->CreateRetVoid();
-      else
-	  Builder->CreateRet(mapValue(V));
-  }
+    void visitBranchInst(BranchInst &I)
+    {
+        if (I.isConditional()) {
+            Builder->CreateCondBr(mapValue(I.getCondition()),
+                                  mapBlock(I.getSuccessor(0)),
+                                  mapBlock(I.getSuccessor(1)));
+        } else
+            Builder->CreateBr(mapBlock(I.getSuccessor(0)));
+    }
 
-  void visitBranchInst(BranchInst &I) {
-      if (I.isConditional()) {
-	  Builder->CreateCondBr(mapValue(I.getCondition()),
-				mapBlock(I.getSuccessor(0)),
-				mapBlock(I.getSuccessor(1)));
-      } else
-	  Builder->CreateBr(mapBlock(I.getSuccessor(0)));
-  }
+    void visitSwitchInst(SwitchInst &I)
+    {
+        SwitchInst *SI = Builder->CreateSwitch(mapValue(I.getCondition()),
+                                               mapBlock(I.getDefaultDest()),
+                                               I.getNumCases());
+        for (unsigned i = 1; i < I.getNumCases(); i++) {
+            BasicBlock *BB = mapBlock(I.getSuccessor(i));
+            SI->addCase(I.getCaseValue(i), BB);
+        }
+    }
 
-  void visitSwitchInst(SwitchInst &I) {
-      SwitchInst *SI = Builder->CreateSwitch(mapValue(I.getCondition()),
-					     mapBlock(I.getDefaultDest()),
-					     I.getNumCases());
-      for (unsigned i=1;i<I.getNumCases();i++) {
-	  BasicBlock *BB = mapBlock(I.getSuccessor(i));
-	  SI->addCase(I.getCaseValue(i), BB);
-      }
-  }
+    void visitUnreachableInst(UnreachableInst &I)
+    {
+        Builder->CreateUnreachable();
+    }
 
-  void visitUnreachableInst(UnreachableInst &I) {
-      Builder->CreateUnreachable();
-  }
+    void visitICmpInst(ICmpInst &I)
+    {
+        Value *op0 = mapValue(I.getOperand(0));
+        Value *op1 = mapValue(I.getOperand(1));
 
-  void visitICmpInst(ICmpInst &I) {
-      Value* op0 = mapValue(I.getOperand(0));
-      Value* op1 = mapValue(I.getOperand(1));
-
-      /*
+        /*
        * bb#11515: Structure pointers are translated to uint8_t* pointers
        * but constants are kept to their original type so a type
        * conversion may be necessary on a icmp inst with a constant
        */
-      if (op0->getType() != op1->getType()) {
-          if (isa<Constant>(op0))
-              op0 = makeCast(op0, op1->getType());
-          else if (isa<Constant>(op1))
-              op1 = makeCast(op1, op0->getType());
+        if (op0->getType() != op1->getType()) {
+            if (isa<Constant>(op0))
+                op0 = makeCast(op0, op1->getType());
+            else if (isa<Constant>(op1))
+                op1 = makeCast(op1, op0->getType());
 
-          /* if neither can be casted, CreateICmp will throw an assertion */
-      }
+            /* if neither can be casted, CreateICmp will throw an assertion */
+        }
 
-      VMap[&I] = Builder->CreateICmp(I.getPredicate(),
-				     op0, op1, I.getName());
-  }
-
-  void visitLoadInst(LoadInst &I) {
-      Value *P = I.getPointerOperand();
-      VMap[&I] = Builder->CreateLoad(mapPointer(P, P->getType()),
-				     I.getName());
-  }
-
-  void visitStoreInst(StoreInst &I) {
-      Value *P = I.getPointerOperand();
-      Builder->CreateStore(mapValue(I.getOperand(0)),
-			   mapPointer(P, P->getType()));
-  }
-
-  void visitGetElementPtrInst(GetElementPtrInst &II)
-  {
-      if (II.hasAllZeroIndices()) {
-	  //just a bitcast
-	  VMap[&II] = mapPointer(II.getOperand(0), rebuildType(II.getType()));
-	  return;
-      }
-      // will replace this later once the entire function is built,
-      // needed because we use SCEVs
-      Value *P = mapPointer(II.getOperand(0), II.getOperand(0)->getType());
-      std::vector<Value*> idxs;
-      for (GetElementPtrInst::op_iterator I=II.idx_begin(),E=II.idx_end();
-	   I != E; ++I) {
-	  idxs.push_back(mapValue(*I));
-      }
-      if (II.isInBounds())
-	  P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
-      else
-	  P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
-      VMap[&II] = makeCast(P, rebuildType(II.getType()));;
-  }
-
-  void rebuildGEP(GetElementPtrInst *II)
-  {
-      Instruction *Old = dyn_cast<Instruction>(VMap[II]);
-      if (!Old)
-	  return;
-      Old = cast<Instruction>(Old->stripPointerCasts());
-      if (!isa<GetElementPtrInst>(Old)) {
-	  Old = cast<Instruction>(makeCast(Old, i8pTy));
-	  VMap[II] = Old;
-	  return;
-      }
-      int64_t BaseOffs;
-      IndicesVectorTy VarIndices;
-      const Type *i32Ty = Type::getInt32Ty(*Context);
-
-      Value *P = const_cast<Value*>(DecomposeGEPExpression(II, BaseOffs, VarIndices, TD));
-      P = mapValue(P)->stripPointerCasts();
-      //const PointerType *PTy = cast<PointerType>(P->getType());
-      bool inbounds = II->isInBounds();
-      Builder->SetInsertPoint(Old->getParent(), Old);
-
-      P = makeCast(P, i8pTy);
-      if (inbounds)
-	  P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.base8");
-      else
-	  P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
-      const SCEV *Zero = SE->getIntegerSCEV(0, i32Ty);
-      const SCEV *S = Zero;
-      BasicBlock *thisBB = Old->getParent();
-      Instruction *IP = thisBB->getFirstNonPHI();
-      for (IndicesVectorTy::iterator I=VarIndices.begin(),E=VarIndices.end();
-	   I != E; ++I) {
-	  int64_t m = I->second;
-	  int32_t m2 = m;
-	  assert((int64_t)m2 == m);
-	  Value *V = const_cast<Value*>(I->first);
-	  V = mapValue(V);
-	  if (Instruction *IV = dyn_cast<Instruction>(V)) {
-	      unsigned i = IV - IV->getParent()->begin();
-	      unsigned ip = IP - thisBB->begin();
-	      if (IV->getParent() == thisBB &&
-		  i > ip)
-		  IP = IV;
-	  }
-	  const SCEV *SV = SE->getSCEV(V);
-	  SV = SE->getTruncateOrZeroExtend(SV, i32Ty);
-	  const SCEV *mulc = SE->getIntegerSCEV(m2, i32Ty);
-	  S = SE->getAddExpr(S, SE->getMulExpr(SV, mulc, false, true),
-			     false, true);
-      }
-      if (S != Zero) {
-	  Value *SC = Expander->expandCodeFor(S, i32Ty, Old);
-	  Builder->SetInsertPoint(Old->getParent(), Old);//move to end of BB
-	  if (inbounds)
-	      P = Builder->CreateInBoundsGEP(P, SC);
-	  else
-	      P = Builder->CreateGEP(P, SC);
-      }
-      P = makeCast(P, Old->getType());
-      Old->replaceAllUsesWith(P);
-      VMap[II] = P;
-  }
-
-
-  Value *mapPHIValue(Value *V)
-  {
-      Value *NV;
-      if (isa<PHINode>(V)) {
-	  NV = VMap[V];
-	  if (!NV) // break recursion
-	      VMap[V] = NV = Builder->CreatePHI(V->getType());
-	  return NV;
-      }
-      return mapValue(V);
-  }
-
-  void visitPHINode(PHINode &I)
-  {
-      VMap[&I] = Builder->CreatePHI(I.getType());
-      //2nd phase will map the operands
-  }
-
-  void visitCastInst(CastInst &I)
-  {
-      VMap[&I] = Builder->CreateCast(I.getOpcode(),
-				     mapValue(I.getOperand(0)),
-				     rebuildType(I.getType()),
-				     I.getName());
-  }
-
-  void visitSelectInst(SelectInst &I)
-  {
-      VMap[&I] = Builder->CreateSelect(mapValue(I.getCondition()),
-				       mapValue(I.getTrueValue()),
-				       mapValue(I.getFalseValue()),
-				       I.getName());
-  }
-
-  void visitCallInst(CallInst &I)
-  {
-      Function *F = I.getCalledFunction();
-      //APIcall, types preserved, no mapping of F for declarations
-      if (!F->isDeclaration()) {
-	  F = FMap[F];
-	  assert(F);
-      }
-      const FunctionType *FTy = F->getFunctionType();
-
-      // Variable argument functions NOT allowed
-      assert(!FTy->isVarArg());
-
-      std::vector<Value*> params;
-      for (unsigned i=0;i<FTy->getNumParams();i++) {
-	  Value *V = mapValue(I.getOperand(i+1));
-	  const Type *Ty = FTy->getParamType(i);
-	  if (V->getType() != Ty) {
-	      // CompositeType, FunctionType, IntegerType; not all are handled TODO
-	      if (Ty->isIntegerTy())
-		  V = Builder->CreateBitCast(V, Ty);
-	      else if (Ty->isPointerTy()) // A CompositeType
-		  V = Builder->CreatePointerCast(V, Ty);
-	      else {
-		  stop("Type conversion unhandled in ClamAV Bytecode Backend Rebuilder", &I);
-	      }
-	  }
-	  params.push_back(V);
-      }
-
-      VMap[&I] = Builder->CreateCall(F, params.begin(), params.end(), I.getName());
-  }
-
-  void visitBinaryOperator(BinaryOperator &I)
-  {
-      VMap[&I] = Builder->CreateBinOp(I.getOpcode(),
-				      mapValue(I.getOperand(0)),
-				      mapValue(I.getOperand(1)),
-				      I.getName());
-  }
-
-  void visitInstruction(Instruction &I) {
-    stop("ClamAV bytecode backend rebuilder does not know about ", &I);
-  }
-
-  void runOnBasicBlock(BasicBlock *BB)
-  {
-      BasicBlock *NBB = BBMap[BB];
-      assert(NBB);
-      if (visitedBB.count(BB))
-	  return;
-      Builder->SetInsertPoint(NBB);
-      visitedBB.insert(BB);
-      visit(BB);
-  }
-
-  void visitFunction(Function *F, Function *NF)
-  {
-    //VMap[&F] = &NF;
-    assert(!F->isVarArg() || !NF->isVarArg());
-    Function::arg_iterator FAI = F->arg_begin(), FAIE = F->arg_end();
-    Function::arg_iterator NFAI = NF->arg_begin();
-    for (;FAI != FAIE; ++FAI, ++NFAI) {
-      VMap[&*FAI] = &*NFAI;
+        VMap[&I] = Builder->CreateICmp(I.getPredicate(),
+                                       op0, op1, I.getName());
     }
-  }
 
-  Function* createFunction(Function *F, Module *M)
-  {
-      unsigned i;
-      std::vector<const Type*> params;
-      const FunctionType *FTy = F->getFunctionType();
-      assert(!F->isVarArg());
-      for (i=0;i<FTy->getNumParams();i++) {
-	  params.push_back(rebuildType(FTy->getParamType(i)));
-      }
+    void visitLoadInst(LoadInst &I)
+    {
+        Value *P = I.getPointerOperand();
+        VMap[&I] = Builder->CreateLoad(mapPointer(P, P->getType()),
+                                       I.getName());
+    }
 
-      FTy = FunctionType::get(rebuildType(FTy->getReturnType()), params, false);
-      std::string Name = F->getName().str();
-      F->setName("");
+    void visitStoreInst(StoreInst &I)
+    {
+        Value *P = I.getPointerOperand();
+        Builder->CreateStore(mapValue(I.getOperand(0)),
+                             mapPointer(P, P->getType()));
+    }
 
-      return Function::Create(FTy, F->getLinkage(), Name, M);
-  }
+    void visitGetElementPtrInst(GetElementPtrInst &II)
+    {
+        if (II.hasAllZeroIndices()) {
+            //just a bitcast
+            VMap[&II] = mapPointer(II.getOperand(0), rebuildType(II.getType()));
+            return;
+        }
+        // will replace this later once the entire function is built,
+        // needed because we use SCEVs
+        Value *P = mapPointer(II.getOperand(0), II.getOperand(0)->getType());
+        std::vector<Value *> idxs;
+        for (GetElementPtrInst::op_iterator I = II.idx_begin(), E = II.idx_end();
+             I != E; ++I) {
+            idxs.push_back(mapValue(*I));
+        }
+        if (II.isInBounds())
+            P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
+        else
+            P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
+        VMap[&II] = makeCast(P, rebuildType(II.getType()));
+        ;
+    }
+
+    void rebuildGEP(GetElementPtrInst *II)
+    {
+        Instruction *Old = dyn_cast<Instruction>(VMap[II]);
+        if (!Old)
+            return;
+        Old = cast<Instruction>(Old->stripPointerCasts());
+        if (!isa<GetElementPtrInst>(Old)) {
+            Old      = cast<Instruction>(makeCast(Old, i8pTy));
+            VMap[II] = Old;
+            return;
+        }
+        int64_t BaseOffs;
+        IndicesVectorTy VarIndices;
+        const Type *i32Ty = Type::getInt32Ty(*Context);
+
+        Value *P = const_cast<Value *>(DecomposeGEPExpression(II, BaseOffs, VarIndices, TD));
+        P        = mapValue(P)->stripPointerCasts();
+        //const PointerType *PTy = cast<PointerType>(P->getType());
+        bool inbounds = II->isInBounds();
+        Builder->SetInsertPoint(Old->getParent(), Old);
+
+        P = makeCast(P, i8pTy);
+        if (inbounds)
+            P = Builder->CreateConstInBoundsGEP1_64(P, BaseOffs, "rb.base8");
+        else
+            P = Builder->CreateConstGEP1_64(P, BaseOffs, "rb.base8");
+        const SCEV *Zero   = SE->getIntegerSCEV(0, i32Ty);
+        const SCEV *S      = Zero;
+        BasicBlock *thisBB = Old->getParent();
+        Instruction *IP    = thisBB->getFirstNonPHI();
+        for (IndicesVectorTy::iterator I = VarIndices.begin(), E = VarIndices.end();
+             I != E; ++I) {
+            int64_t m  = I->second;
+            int32_t m2 = m;
+            assert((int64_t)m2 == m);
+            Value *V = const_cast<Value *>(I->first);
+            V        = mapValue(V);
+            if (Instruction *IV = dyn_cast<Instruction>(V)) {
+                unsigned i  = IV - IV->getParent()->begin();
+                unsigned ip = IP - thisBB->begin();
+                if (IV->getParent() == thisBB &&
+                    i > ip)
+                    IP = IV;
+            }
+            const SCEV *SV   = SE->getSCEV(V);
+            SV               = SE->getTruncateOrZeroExtend(SV, i32Ty);
+            const SCEV *mulc = SE->getIntegerSCEV(m2, i32Ty);
+            S                = SE->getAddExpr(S, SE->getMulExpr(SV, mulc, false, true),
+                               false, true);
+        }
+        if (S != Zero) {
+            Value *SC = Expander->expandCodeFor(S, i32Ty, Old);
+            Builder->SetInsertPoint(Old->getParent(), Old); //move to end of BB
+            if (inbounds)
+                P = Builder->CreateInBoundsGEP(P, SC);
+            else
+                P = Builder->CreateGEP(P, SC);
+        }
+        P = makeCast(P, Old->getType());
+        Old->replaceAllUsesWith(P);
+        VMap[II] = P;
+    }
+
+    Value *mapPHIValue(Value *V)
+    {
+        Value *NV;
+        if (isa<PHINode>(V)) {
+            NV = VMap[V];
+            if (!NV) // break recursion
+                VMap[V] = NV = Builder->CreatePHI(V->getType());
+            return NV;
+        }
+        return mapValue(V);
+    }
+
+    void visitPHINode(PHINode &I)
+    {
+        VMap[&I] = Builder->CreatePHI(I.getType());
+        //2nd phase will map the operands
+    }
+
+    void visitCastInst(CastInst &I)
+    {
+        VMap[&I] = Builder->CreateCast(I.getOpcode(),
+                                       mapValue(I.getOperand(0)),
+                                       rebuildType(I.getType()),
+                                       I.getName());
+    }
+
+    void visitSelectInst(SelectInst &I)
+    {
+        VMap[&I] = Builder->CreateSelect(mapValue(I.getCondition()),
+                                         mapValue(I.getTrueValue()),
+                                         mapValue(I.getFalseValue()),
+                                         I.getName());
+    }
+
+    void visitCallInst(CallInst &I)
+    {
+        Function *F = I.getCalledFunction();
+        //APIcall, types preserved, no mapping of F for declarations
+        if (!F->isDeclaration()) {
+            F = FMap[F];
+            assert(F);
+        }
+        const FunctionType *FTy = F->getFunctionType();
+
+        // Variable argument functions NOT allowed
+        assert(!FTy->isVarArg());
+
+        std::vector<Value *> params;
+        for (unsigned i = 0; i < FTy->getNumParams(); i++) {
+            Value *V       = mapValue(I.getOperand(i + 1));
+            const Type *Ty = FTy->getParamType(i);
+            if (V->getType() != Ty) {
+                // CompositeType, FunctionType, IntegerType; not all are handled TODO
+                if (Ty->isIntegerTy())
+                    V = Builder->CreateBitCast(V, Ty);
+                else if (Ty->isPointerTy()) // A CompositeType
+                    V = Builder->CreatePointerCast(V, Ty);
+                else {
+                    stop("Type conversion unhandled in ClamAV Bytecode Backend Rebuilder", &I);
+                }
+            }
+            params.push_back(V);
+        }
+
+        VMap[&I] = Builder->CreateCall(F, params.begin(), params.end(), I.getName());
+    }
+
+    void visitBinaryOperator(BinaryOperator &I)
+    {
+        VMap[&I] = Builder->CreateBinOp(I.getOpcode(),
+                                        mapValue(I.getOperand(0)),
+                                        mapValue(I.getOperand(1)),
+                                        I.getName());
+    }
+
+    void visitInstruction(Instruction &I)
+    {
+        stop("ClamAV bytecode backend rebuilder does not know about ", &I);
+    }
+
+    void runOnBasicBlock(BasicBlock *BB)
+    {
+        BasicBlock *NBB = BBMap[BB];
+        assert(NBB);
+        if (visitedBB.count(BB))
+            return;
+        Builder->SetInsertPoint(NBB);
+        visitedBB.insert(BB);
+        visit(BB);
+    }
+
+    void visitFunction(Function *F, Function *NF)
+    {
+        //VMap[&F] = &NF;
+        assert(!F->isVarArg() || !NF->isVarArg());
+        Function::arg_iterator FAI = F->arg_begin(), FAIE = F->arg_end();
+        Function::arg_iterator NFAI = NF->arg_begin();
+        for (; FAI != FAIE; ++FAI, ++NFAI) {
+            VMap[&*FAI] = &*NFAI;
+        }
+    }
+
+    Function *createFunction(Function *F, Module *M)
+    {
+        unsigned i;
+        std::vector<const Type *> params;
+        const FunctionType *FTy = F->getFunctionType();
+        assert(!F->isVarArg());
+        for (i = 0; i < FTy->getNumParams(); i++) {
+            params.push_back(rebuildType(FTy->getParamType(i)));
+        }
+
+        FTy              = FunctionType::get(rebuildType(FTy->getReturnType()), params, false);
+        std::string Name = F->getName().str();
+        F->setName("");
+
+        return Function::Create(FTy, F->getLinkage(), Name, M);
+    }
 };
 char ClamBCRebuild::ID = 0;
 

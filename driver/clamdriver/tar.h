@@ -21,7 +21,6 @@
 #ifndef __TAR_H
 #define __TAR_H
 
-
 int tar_addfile(int fd, const char *file);
 
 #endif
