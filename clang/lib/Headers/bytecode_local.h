@@ -40,7 +40,7 @@
  * @fn debug(const char * str)
  * Prints \p str to clamscan's --debug output.
  * @overload
- * @param[in] str null terminated string 
+ * @param[in] str null terminated string
  */
 static force_inline void overloadable_func debug(const char *str)
 {
@@ -52,7 +52,7 @@ static force_inline void overloadable_func debug(const char *str)
  * @fn debug(const uint8_t* str)
  * Prints \p str to clamscan's --debug output.
  * @overload
- * @param[in] str null terminated string 
+ * @param[in] str null terminated string
  */
 static force_inline void overloadable_func debug(const uint8_t *str)
 {
@@ -64,7 +64,7 @@ static force_inline void overloadable_func debug(const uint8_t *str)
  * @fn debug(uint32_t a)
  * Prints \p a integer to clamscan's --debug output.
  * @overload
- * @param[in] a integer 
+ * @param[in] a integer
  */
 static force_inline void overloadable_func debug(uint32_t a)
 {
@@ -111,8 +111,8 @@ typedef struct signature {
 
 /**
 \group_config
- * Make the current bytecode a PDF hook. 
- * @details Having a logical signature doesn't make sense here, since the logical 
+ * Make the current bytecode a PDF hook.
+ * @details Having a logical signature doesn't make sense here, since the logical
  * signature is evaluated AFTER these hooks run.
  * @details This hook is called several times, use pdf_get_phase() to find out in which
  * phase you got called.
@@ -128,9 +128,9 @@ typedef struct signature {
 /**
 \group_config
  * Make the current bytecode a PE hook.
- * @details Bytecode will be called once the logical signature trigger matches 
+ * @details Bytecode will be called once the logical signature trigger matches
  * (or always if there is none), and if you have access to all the PE information.
- * By default you only have access to execs.h information, and not to PE field 
+ * By default you only have access to execs.h information, and not to PE field
  * information (even for PE files).
  */
 #define PE_HOOK_DECLARE const uint16_t __clambc_kind = BC_PE_ALL;
@@ -138,7 +138,7 @@ typedef struct signature {
 /**
 \group_config
  * Make the current bytecode a PRECLASS hook.
- * @details Bytecode will be called once the logical signature trigger matches 
+ * @details Bytecode will be called once the logical signature trigger matches
  * (or always if there is none), and if you have access to all PRECLASS information.
  */
 #define PRECLASS_HOOK_DECLARE const uint16_t __clambc_kind = BC_PRECLASS;
@@ -192,7 +192,7 @@ typedef struct signature {
 
 /**
 \group_config
- * Define IconGroup1 for logical signature. 
+ * Define IconGroup1 for logical signature.
  * @details See logical signature documentation for what it is.
  */
 #define ICONGROUP1(group) const char *const __IconGroup1 = (group);
@@ -206,7 +206,7 @@ typedef struct signature {
 
 /**
 \group_config
- * Define the minimum engine functionality level required for this 
+ * Define the minimum engine functionality level required for this
  * bytecode/logical signature.
  * @details Engines older than this will skip loading the bytecode.
  * You can use the #FunctionalityLevels enumeration here.
@@ -215,7 +215,7 @@ typedef struct signature {
 
 /**
 \group_config
- * Define the maximum engine functionality level required for this 
+ * Define the maximum engine functionality level required for this
  * bytecode/logical signature.
  * @details Engines newer than this will skip loading the bytecode.
  * You can use the #FunctionalityLevels enumeration here.
@@ -228,8 +228,8 @@ typedef struct signature {
 
 /**
 \group_config
- * Marks the beginning of subsignature pattern definitions. 
- * @sa SIGNATURES_DECL_BEGIN 
+ * Marks the beginning of subsignature pattern definitions.
+ * @sa SIGNATURES_DECL_BEGIN
  */
 /* some other macro may use __COUNTER__, so we need to subtract its current\
  * value to obtain zero-based indices */
@@ -529,7 +529,7 @@ static force_inline bool hasExeInfo(void)
 }
 
 /**
-\group_pe 
+\group_pe
  * Returns whether PE information is available
  * @return true if PE information is available (in PE hooks)
  */
@@ -569,7 +569,7 @@ static force_inline uint8_t getPEMajorLinkerVersion(void)
 /**
 \group_pe
  * Returns MinorLinkerVersion for this PE file.
- * @return PE MinorLinkerVersion or 0 if not in PE hook 
+ * @return PE MinorLinkerVersion or 0 if not in PE hook
  */
 static force_inline uint8_t getPEMinorLinkerVersion(void)
 {
@@ -588,8 +588,8 @@ static force_inline uint32_t getPESizeOfCode(void)
 
 /**
 \group_pe
- * Return the PE SizeofInitializedData. 
- * @return PE SizeOfInitializeData or 0 if not in PE hook 
+ * Return the PE SizeofInitializedData.
+ * @return PE SizeOfInitializeData or 0 if not in PE hook
  */
 static force_inline uint32_t getPESizeOfInitializedData(void)
 {
@@ -629,7 +629,7 @@ static force_inline uint32_t getPEBaseOfData(void)
 /**
 \group_pe
  * Return the PE ImageBase as 64-bit integer.
- * @return PE ImageBase as 64-bit int, or 0 if not in PE hook 
+ * @return PE ImageBase as 64-bit int, or 0 if not in PE hook
  */
 static force_inline uint64_t getPEImageBase(void)
 {
@@ -747,7 +747,7 @@ static force_inline uint32_t getPESizeOfHeaders(void)
 
 /**
 \group_pe
- * Return the PE CheckSum. 
+ * Return the PE CheckSum.
  * @return PE CheckSum, or 0 if not in PE hook
  */
 static force_inline uint32_t getPECheckSum(void)
@@ -913,8 +913,8 @@ static force_inline bool getPEisDLL()
 static force_inline uint32_t getPEDataDirRVA(unsigned n)
 {
     NEED_PE_INFO;
-    struct pe_image_data_dir *p   = &__clambc_pedata.opt64.DataDirectory[n];
-    struct pe_image_data_dir *p32 = &__clambc_pedata.opt32.DataDirectory[n];
+    struct pe_image_data_dir *p   = &__clambc_pedata.opt64_dirs[n];
+    struct pe_image_data_dir *p32 = &__clambc_pedata.opt32_dirs[n];
     return n < 16 ? le32_to_host(isPE64() ? p->VirtualAddress : p32->VirtualAddress)
                   : 0;
 }
@@ -928,7 +928,7 @@ static force_inline uint32_t getPEDataDirRVA(unsigned n)
 static force_inline uint32_t getPEDataDirSize(unsigned n)
 {
     NEED_PE_INFO;
-    return n < 16 ? le32_to_host(isPE64() ? __clambc_pedata.opt64.DataDirectory[n].Size : __clambc_pedata.opt32.DataDirectory[n].Size)
+    return n < 16 ? le32_to_host(isPE64() ? __clambc_pedata.opt64_dirs[n].Size : __clambc_pedata.opt32_dirs[n].Size)
                   : 0;
 }
 
@@ -959,7 +959,7 @@ static uint32_t getPELFANew(void)
  * Read name of requested PE section.
  * @param[out] name name of PE section
  * @param[in] n PE section requested
- * @return 0 if successful, 
+ * @return 0 if successful,
  * @return <0 otherwise
  */
 static force_inline int readPESectionName(unsigned char name[8], unsigned n)
@@ -1119,7 +1119,7 @@ void *memset(void *src, int c, uintptr_t n) __attribute__((nothrow)) __attribute
 
 /**
 \group_string
- * [LLVM Intrinsic] Copies data between overlapping buffers, from 
+ * [LLVM Intrinsic] Copies data between overlapping buffers, from
  * \p src to \p dst to length \p n.
  * @param[out] dst destination buffer
  * @param[in] src source buffer
@@ -1131,7 +1131,7 @@ void *memmove(void *dst, const void *src, uintptr_t n)
 /**
 \group_string
  * [LLVM Intrinsic] Copies data between two non-overlapping buffers,
- * from \p src to \p dst to length \p n. 
+ * from \p src to \p dst to length \p n.
  * @param[out] dst destination buffer
  * @param[in] src source buffer
  * @param[in] n amount of bytes to copy
@@ -1140,13 +1140,13 @@ void *memcpy(void *restrict dst, const void *restrict src, uintptr_t n)
     __attribute__((__nothrow__)) __attribute__((__nonnull__(1, 2)));
 
 /**
-\group_string 
+\group_string
  * [LLVM Intrinsic] Compares two memory buffers, \p s1 and \p s2 to length \p n.
  * @param[in] s1 buffer one
  * @param[in] s2 buffer two
  * @param[in] n amount of bytes to copy
- * @return an integer less than, equal to, or greater than zero if the first 
- * \p n bytes of \p s1 are found, respectively, to be less than, to match, 
+ * @return an integer less than, equal to, or greater than zero if the first
+ * \p n bytes of \p s1 are found, respectively, to be less than, to match,
  * or be greater than the first \p n bytes of \p s2.*/
 int memcmp(const void *s1, const void *s2, uint32_t n)
     __attribute__((__nothrow__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
