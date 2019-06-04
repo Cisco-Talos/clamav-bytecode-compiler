@@ -219,7 +219,7 @@ public:
       ConstantRange ltRange = ConstantRange::makeICmpRegion(CmpInst::ICMP_UGT, Cmp);
       ltRange = ltRange.subtract(APInt(32, Node->op0));
       Node = Node->children[0];
-      // a in [min, max] -> 
+      // a in [min, max] ->
       // (a > min || a == min) && (a == max || a < max)
       uint32_t min = ltRange.getUnsignedMin().getLimitedValue(~0u);
       uint32_t max = ltRange.getUnsignedMax().getLimitedValue(~0u);
@@ -293,7 +293,7 @@ public:
       nodes.push_back(getEQ(Op->children[0], Op->op0));
       return getOr(nodes);
     case LOG_NOT:
-      // !!a -> a 
+      // !!a -> a
       return Op->children[0];
     case LOG_TRUE:
       return getFalse(Op->Set);
@@ -565,7 +565,7 @@ bool SpeculativeExecution::runOnFunction(Function &F)
         for (User::op_iterator OI=J->op_begin(), OE=J->op_end();OI != OE;++OI){
           if (Instruction *I = dyn_cast<Instruction>(OI)) {
             if (I->getParent() == BB) {
-              DEBUG(errs() << "Can't speculatively execute " << 
+              DEBUG(errs() << "Can't speculatively execute " <<
                     *J << " due to " << *I << "\n");
               safe = false;
               break;
@@ -1084,7 +1084,7 @@ bool validateNDB(const char *S, Module *M, Value *Signatures)
   }
   return valid;
 }
-static const char *json_api_funcs[] = {"json_is_active", "json_get_object", "json_get_type", 
+static const char *json_api_funcs[] = {"json_is_active", "json_get_object", "json_get_type",
                                        "json_get_array_length", "json_get_array_idx",
                                        "json_get_string_length", "json_get_string",
                                        "json_get_boolean", "json_get_int"};

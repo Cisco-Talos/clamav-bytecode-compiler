@@ -4,20 +4,39 @@ CLAMAV_TEST=$CLAMAV_PATH/unit_tests/input/
 HEADERS_DIR=clang/lib/Headers
 
 # Sync libclamav -> compiler
-cp -v $CLAMAV_PATH/libclamav/bcfeatures.h clang/lib/Headers/bcfeatures.h
-cp -v $CLAMAV_PATH/libclamav/execs.h clang/lib/Headers/bytecode_execs.h.tmp
 cp -v $CLAMAV_PATH/libclamav/pe.h clang/lib/Headers/bytecode_pe.h.tmp
-cp -v $CLAMAV_PATH/libclamav/disasm-common.h clang/lib/Headers/bytecode_disasm.h.tmp
-cp -v $CLAMAV_PATH/libclamav/bytecode_detect.h clang/lib/Headers/bytecode_detect.h
+sed -i 's/^#include "clamav.h"//' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i 's/^#include "others.h"//' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i 's/^#include "fmap.h"//' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i 's/^#include "bcfeatures.h"//' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i 's/^#include "pe_structs.h"/#include "bytecode_pe_structs.h"/' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i 's/^#include "execs.h"//' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i 's/^int cli_scanpe.*/#endif/' clang/lib/Headers/bytecode_pe.h.tmp
+sed -i '/^enum {*/,$d' clang/lib/Headers/bytecode_pe.h.tmp
+
+cp -v $CLAMAV_PATH/libclamav/pe_structs.h clang/lib/Headers/bytecode_pe_structs.h.tmp
+sed -i 's/#include "clamav.h"//' clang/lib/Headers/bytecode_pe_structs.h.tmp
+sed -i 's/#define WIN_.*//' clang/lib/Headers/bytecode_pe_structs.h.tmp
+
+cp -v $CLAMAV_PATH/libclamav/bcfeatures.h clang/lib/Headers/bcfeatures.h
+
+cp -v $CLAMAV_PATH/libclamav/execs.h clang/lib/Headers/bytecode_execs.h.tmp
 sed -i '/^.*vinfo;/d' clang/lib/Headers/bytecode_execs.h.tmp
-sed -i 's/#include "cltypes.h"//' clang/lib/Headers/bytecode_execs.h.tmp
+sed -i 's/#include "clamav-types.h"//' clang/lib/Headers/bytecode_execs.h.tmp
 sed -i 's/#include "hashtab.h"//' clang/lib/Headers/bytecode_execs.h.tmp
-sed -i '/^#include .*/d' clang/lib/Headers/bytecode_pe.h.tmp
-sed -i '/^.*int.* cli_.*/d' clang/lib/Headers/bytecode_pe.h.tmp
-sed -i '/^.*void.* cli_.*/d' clang/lib/Headers/bytecode_detect.h
 sed -i 's/#include <sys\/types.h>//' clang/lib/Headers/bytecode_execs.h.tmp
-for i in clang/lib/Headers/bytecode_{pe,execs,disasm}.h.tmp; do
-    sed -r -i '/^[/ ][*][ /]/d' $i
+sed -i 's/#include "pe_structs.h"//' clang/lib/Headers/bytecode_execs.h.tmp
+
+sed -i 's/^\/\*\* Executable file information$/#endif/' clang/lib/Headers/bytecode_execs.h.tmp
+sed -i '/^struct cli_exe_info {$/,$d' clang/lib/Headers/bytecode_execs.h.tmp
+
+cp -v $CLAMAV_PATH/libclamav/disasm-common.h clang/lib/Headers/bytecode_disasm.h.tmp
+
+cp -v $CLAMAV_PATH/libclamav/bytecode_detect.h clang/lib/Headers/bytecode_detect.h
+sed -i '/^.*void.* cli_.*/d' clang/lib/Headers/bytecode_detect.h
+
+for i in clang/lib/Headers/bytecode_{pe,pe_structs,execs,disasm}.h.tmp; do
+    sed -r -i '/^[/ ][*][ /*]/d' $i
     sed -r -i '/^[/ ][*]$/d' $i
 done
 
@@ -49,7 +68,7 @@ cat >header.tmp <<EOH
  * SUCH DAMAGE.
  */
 EOH
-for i in clang/lib/Headers/bytecode_{pe,execs,disasm}.h; do
+for i in clang/lib/Headers/bytecode_{pe,pe_structs,execs,disasm}.h; do
     cp header.tmp $i;
     cat $i.tmp >>$i;
     rm $i.tmp

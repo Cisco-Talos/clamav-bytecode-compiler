@@ -1,9 +1,8 @@
 /*
  *  Compile LLVM bytecode to ClamAV bytecode.
  *
+ *  Copyright (C) 2013-2019 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
  *  Copyright (C) 2009-2013 Sourcefire, Inc.
- *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates.
- *  All rights reserved.
  *
  *  Authors: Török Edvin, Kevin Lin
  *
@@ -202,7 +201,7 @@ namespace {
 
       if (!valid) {
         DEBUG(F.dump());
-        ClamBCModule::stop("Verification found errors!", &F);	
+        ClamBCModule::stop("Verification found errors!", &F);
         // replace function with call to abort
         std::vector<const Type*>args;
         FunctionType* abrtTy = FunctionType::get(
@@ -337,7 +336,7 @@ namespace {
             // Houston, the impossible has become possible
             printDiagnostic("Idx is outside of Function parameters", F);
             break;
-          } 
+          }
         }
         // retrieve value ptr of argument of F at Idx
         Val = &(*It);
@@ -573,7 +572,7 @@ namespace {
         errs() << " ] does not dominate" << *I << "\n";
         return false;
       }
-      if (isa<Instruction>(LimitV) && 
+      if (isa<Instruction>(LimitV) &&
           !DT->dominates(cast<Instruction>(LimitV)->getParent(),I->getParent())) {
         printLocation(I, true);
         errs() << "basic block with limit [" << LimitV->getName();
@@ -594,8 +593,8 @@ namespace {
       DT->changeImmediateDominator(AbrtBB, DomBB);
       return true;
     }
-   
-    static void MakeCompatible(ScalarEvolution *SE, const SCEV*& LHS, const SCEV*& RHS) 
+
+    static void MakeCompatible(ScalarEvolution *SE, const SCEV*& LHS, const SCEV*& RHS)
     {
       if (const SCEVZeroExtendExpr *ZL = dyn_cast<SCEVZeroExtendExpr>(LHS))
         LHS = ZL->getOperand();
@@ -733,7 +732,7 @@ namespace {
 
       bool valid = true;
       SLen = SE->getAddExpr(OffsetP, SLen);
-      // check that offset + slen <= limit; 
+      // check that offset + slen <= limit;
       // umax(offset+slen, limit) == limit is a sufficient (but not necessary
       // condition)
       const SCEV *MaxL = SE->getUMaxExpr(SLen, Limit);

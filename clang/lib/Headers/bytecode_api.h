@@ -1,7 +1,7 @@
 /*
+ *  Copyright (C) 2013-2019 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
  *  Copyright (C) 2009-2013 Sourcefire, Inc.
- *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates.
- *  All rights reserved.
+
  *  Authors: Török Edvin, Kevin Lin
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,18 +42,32 @@ struct cli_exe_section;
 struct DISASM_RESULT;
 #endif
 
+#ifdef __CLAMBC__
+enum {
+    /**
+     * \group_pe
+     * Invalid RVA specified
+     */
+    PE_INVALID_RVA = 0xFFFFFFFF
+};
+#endif
+
+#ifndef __CLAMBC__
+#define PE_INVALID_RVA 0xFFFFFFFF
+#endif
+
 /**
 \group_config
- * Specifies the bytecode type and how ClamAV executes it 
+ * Specifies the bytecode type and how ClamAV executes it
  */
 enum BytecodeKind {
     /** generic bytecode, not tied a specific hook */
-    BC_GENERIC=0,
+    BC_GENERIC = 0,
     /** triggered at startup, only one is allowed per ClamAV startup */
-    BC_STARTUP=1,
-    _BC_START_HOOKS=256,
+    BC_STARTUP      = 1,
+    _BC_START_HOOKS = 256,
     /** executed on a logical trigger */
-    BC_LOGICAL=256,
+    BC_LOGICAL = 256,
     /** specifies a PE unpacker, executed on PE files on a logical trigger */
     BC_PE_UNPACKER,
     /** specifies a PDF hook, executes at a predetermined point of PDF parsing for PDF files */
@@ -71,14 +85,6 @@ enum BytecodeKind {
     _BC_LAST_HOOK
 };
 
-enum {
-  /**
-\group_pe
-   * Invalid RVA specified
-   */
-  PE_INVALID_RVA = 0xFFFFFFFF
-};
-
 /**
 \group_config
  * LibClamAV functionality level constants
@@ -92,33 +98,33 @@ enum FunctionalityLevels {
     FUNC_LEVEL_096_2     = 54, /**< LibClamAV release 0.96.2: PDF Hooks require this minimum level */
     FUNC_LEVEL_096_2_dev = 55,
     FUNC_LEVEL_096_3     = 55, /**< LibClamAV release 0.96.3: BC_PE_ALL bytecodes require this minimum level */
-    FUNC_LEVEL_096_4     = 56, /**< LibClamAV release 0.96.4: minimum recommended engine version, older versions 
-                                * have quadratic load time */
+    FUNC_LEVEL_096_4     = 56, /**< LibClamAV release 0.96.4: minimum recommended engine version, older versions have quadratic load time */
     FUNC_LEVEL_096_5     = 58, /**< LibClamAV release 0.96.5 */
-    FUNC_LEVEL_097       = 60, /**< LibClamAV release 0.97.0: older bytecodes may incorrectly use 57 */
-    FUNC_LEVEL_097_1     = 61, /**< LibClamAV release 0.97.1 */
-    FUNC_LEVEL_097_2     = 62, /**< LibClamAV release 0.97.2 */
-    FUNC_LEVEL_097_3     = 63, /**< LibClamAV release 0.97.3 */ /*last bcc changes as former team resigns*/
-    FUNC_LEVEL_097_4     = 64, /**< LibClamAV release 0.97.4 */
-    FUNC_LEVEL_097_5     = 65, /**< LibClamAV release 0.97.5 */
-    FUNC_LEVEL_097_6     = 67, /**< LibClamAV release 0.97.6 */
-    FUNC_LEVEL_097_7     = 68, /**< LibClamAV release 0.97.7 */
-    FUNC_LEVEL_097_8     = 69, /**< LibClamAV release 0.97.8 */
 
-    FUNC_LEVEL_098       = 74, /**< LibClamAV release 0.98.0 */
-    FUNC_LEVEL_098_1     = 76, /**< LibClamAV release 0.98.1 */ /*last syncing to clamav*/
-    FUNC_LEVEL_098_2     = 77, /**< LibClamAV release 0.98.2 */
-    FUNC_LEVEL_098_3     = 77, /**< LibClamAV release 0.98.3 */
-    FUNC_LEVEL_098_4     = 77, /**< LibClamAV release 0.98.4 */
-    FUNC_LEVEL_098_5     = 79, /**< LibClamAV release 0.98.5: JSON reading API requires this minimum level */
-    FUNC_LEVEL_098_6     = 79, /**< LibClamAV release 0.98.6 */
-    FUNC_LEVEL_098_7     = 80, /**< LibClamAV release 0.98.7: BC_PRECLASS bytecodes require minimum level */
+    FUNC_LEVEL_097   = 60, /**< LibClamAV release 0.97.0: older bytecodes may incorrectly use 57 */
+    FUNC_LEVEL_097_1 = 61, /**< LibClamAV release 0.97.1 */
+    FUNC_LEVEL_097_2 = 62, /**< LibClamAV release 0.97.2 */
+    FUNC_LEVEL_097_3 = 63, /**< LibClamAV release 0.97.3: last bcc changes as former team resigns*/
+    FUNC_LEVEL_097_4 = 64, /**< LibClamAV release 0.97.4 */
+    FUNC_LEVEL_097_5 = 65, /**< LibClamAV release 0.97.5 */
+    FUNC_LEVEL_097_6 = 67, /**< LibClamAV release 0.97.6 */
+    FUNC_LEVEL_097_7 = 68, /**< LibClamAV release 0.97.7 */
+    FUNC_LEVEL_097_8 = 69, /**< LibClamAV release 0.97.8 */
 
-    FUNC_LEVEL_099       = 81, /**< LibClamAV release 0.99.0 */
-    FUNC_LEVEL_099_1     = 82, /**< LibClamAV release 0.99.1 */
-    FUNC_LEVEL_099_2     = 82, /**< LibClamAV release 0.99.2 */ /* not a typo, the FLEVEL did not change */
-    FUNC_LEVEL_099_3     = 84, /**< LibClamAV release 0.99.3 */
-    FUNC_LEVEL_099_4     = 85, /**< LibClamAV release 0.99.4 */
+    FUNC_LEVEL_098   = 74, /**< LibClamAV release 0.98.0 */
+    FUNC_LEVEL_098_1 = 76, /**< LibClamAV release 0.98.1: last syncing to clamav*/
+    FUNC_LEVEL_098_2 = 77, /**< LibClamAV release 0.98.2 */
+    FUNC_LEVEL_098_3 = 77, /**< LibClamAV release 0.98.3 */
+    FUNC_LEVEL_098_4 = 77, /**< LibClamAV release 0.98.4 */
+    FUNC_LEVEL_098_5 = 79, /**< LibClamAV release 0.98.5: JSON reading API requires this minimum level */
+    FUNC_LEVEL_098_6 = 79, /**< LibClamAV release 0.98.6 */
+    FUNC_LEVEL_098_7 = 80, /**< LibClamAV release 0.98.7: BC_PRECLASS bytecodes require minimum level */
+
+    FUNC_LEVEL_099   = 81, /**< LibClamAV release 0.99.0 */
+    FUNC_LEVEL_099_1 = 82, /**< LibClamAV release 0.99.1 */
+    FUNC_LEVEL_099_2 = 82, /**< LibClamAV release 0.99.2: not a typo, the FLEVEL did not change */
+    FUNC_LEVEL_099_3 = 84, /**< LibClamAV release 0.99.3 */
+    FUNC_LEVEL_099_4 = 85, /**< LibClamAV release 0.99.4 */
 
     FUNC_LEVEL_0100_BETA = 90, /**< LibClamAV release 0.100.0-BETA */
     FUNC_LEVEL_0100      = 91, /**< LibClamAV release 0.100.0 */
@@ -139,39 +145,39 @@ enum FunctionalityLevels {
  * Phase of PDF parsing used for PDF Hooks
  */
 enum pdf_phase {
-    PDF_PHASE_NONE,     /**< not a PDF */
-    PDF_PHASE_PARSED,   /**< after parsing a PDF, object flags can be set etc. */
-    PDF_PHASE_POSTDUMP, /**< after an obj was dumped and scanned */
-    PDF_PHASE_END,      /**< after the pdf scan finished */
-    PDF_PHASE_PRE       /**< before pdf is parsed at all */
+    PDF_PHASE_NONE,     /* not a PDF */
+    PDF_PHASE_PARSED,   /* after parsing a PDF, object flags can be set etc. */
+    PDF_PHASE_POSTDUMP, /* after an obj was dumped and scanned */
+    PDF_PHASE_END,      /* after the pdf scan finished */
+    PDF_PHASE_PRE       /* before pdf is parsed at all */
 };
 
 /**
 \group_pdf
- * PDF flags 
+ * PDF flags
  */
 enum pdf_flag {
-    BAD_PDF_VERSION=0,      /**< */
-    BAD_PDF_HEADERPOS,      /**< */
-    BAD_PDF_TRAILER,        /**< */
-    BAD_PDF_TOOMANYOBJS,    /**< */
-    BAD_STREAM_FILTERS,     /**< */
-    BAD_FLATE,              /**< */
-    BAD_FLATESTART,         /**< */
-    BAD_STREAMSTART,        /**< */
-    BAD_ASCIIDECODE,        /**< */
-    BAD_INDOBJ,             /**< */
-    UNTERMINATED_OBJ_DICT,  /**< */
-    ESCAPED_COMMON_PDFNAME, /**< */
-    HEX_JAVASCRIPT,         /**< */
-    UNKNOWN_FILTER,         /**< */
-    MANY_FILTERS,           /**< */
-    HAS_OPENACTION,         /**< */
-    BAD_STREAMLEN,          /**< */
-    ENCRYPTED_PDF,          /**< */
-    LINEARIZED_PDF,         /**< */ /* not bad, just as flag */
-    DECRYPTABLE_PDF,        /**< */
-    HAS_LAUNCHACTION        /**< */
+    BAD_PDF_VERSION = 0,    /* */
+    BAD_PDF_HEADERPOS,      /* */
+    BAD_PDF_TRAILER,        /* */
+    BAD_PDF_TOOMANYOBJS,    /* */
+    BAD_STREAM_FILTERS,     /* */
+    BAD_FLATE,              /* */
+    BAD_FLATESTART,         /* */
+    BAD_STREAMSTART,        /* */
+    BAD_ASCIIDECODE,        /* */
+    BAD_INDOBJ,             /* */
+    UNTERMINATED_OBJ_DICT,  /* */
+    ESCAPED_COMMON_PDFNAME, /* */
+    HEX_JAVASCRIPT,         /* */
+    UNKNOWN_FILTER,         /* */
+    MANY_FILTERS,           /* */
+    HAS_OPENACTION,         /* */
+    BAD_STREAMLEN,          /* */
+    ENCRYPTED_PDF,          /* */
+    LINEARIZED_PDF,         /* not bad, just as flag */
+    DECRYPTABLE_PDF,        /* */
+    HAS_LAUNCHACTION        /* */
 };
 
 /**
@@ -179,31 +185,31 @@ enum pdf_flag {
  * PDF obj flags
  */
 enum pdf_objflags {
-    OBJ_STREAM=0,        /**< */
-    OBJ_DICT,            /**< */
-    OBJ_EMBEDDED_FILE,   /**< */
-    OBJ_FILTER_AH,       /**< */
-    OBJ_FILTER_A85,      /**< */
-    OBJ_FILTER_FLATE,    /**< */
-    OBJ_FILTER_LZW,      /**< */
-    OBJ_FILTER_RL,       /**< */
-    OBJ_FILTER_FAX,      /**< */
-    OBJ_FILTER_JBIG2,    /**< */
-    OBJ_FILTER_DCT,      /**< */
-    OBJ_FILTER_JPX,      /**< */
-    OBJ_FILTER_CRYPT,    /**< */
-    OBJ_FILTER_UNKNOWN,  /**< */
-    OBJ_JAVASCRIPT,      /**< */
-    OBJ_OPENACTION,      /**< */
-    OBJ_HASFILTERS,      /**< */
-    OBJ_SIGNED,          /**< */
-    OBJ_IMAGE,           /**< */
-    OBJ_TRUNCATED,       /**< */
-    OBJ_FORCEDUMP,       /**< */
-    OBJ_FILTER_STANDARD, /**< */
-    OBJ_LAUNCHACTION,    /**< */
-    OBJ_PAGE,            /**< */
-    OBJ_CONTENTS         /**< */
+    OBJ_STREAM = 0,      /* */
+    OBJ_DICT,            /* */
+    OBJ_EMBEDDED_FILE,   /* */
+    OBJ_FILTER_AH,       /* */
+    OBJ_FILTER_A85,      /* */
+    OBJ_FILTER_FLATE,    /* */
+    OBJ_FILTER_LZW,      /* */
+    OBJ_FILTER_RL,       /* */
+    OBJ_FILTER_FAX,      /* */
+    OBJ_FILTER_JBIG2,    /* */
+    OBJ_FILTER_DCT,      /* */
+    OBJ_FILTER_JPX,      /* */
+    OBJ_FILTER_CRYPT,    /* */
+    OBJ_FILTER_UNKNOWN,  /* */
+    OBJ_JAVASCRIPT,      /* */
+    OBJ_OPENACTION,      /* */
+    OBJ_HASFILTERS,      /* */
+    OBJ_SIGNED,          /* */
+    OBJ_IMAGE,           /* */
+    OBJ_TRUNCATED,       /* */
+    OBJ_FORCEDUMP,       /* */
+    OBJ_FILTER_STANDARD, /* */
+    OBJ_LAUNCHACTION,    /* */
+    OBJ_PAGE,            /* */
+    OBJ_CONTENTS         /* */
 };
 
 /**
@@ -211,14 +217,56 @@ enum pdf_objflags {
  * JSON types
  */
 enum bc_json_type {
-    JSON_TYPE_NULL=0,    /**< */
-    JSON_TYPE_BOOLEAN,   /**< */
-    JSON_TYPE_DOUBLE,    /**< */
-    JSON_TYPE_INT,       /**< */
-    JSON_TYPE_OBJECT,    /**< */
-    JSON_TYPE_ARRAY,     /**< */
-    JSON_TYPE_STRING     /**< */
+    JSON_TYPE_NULL = 0, /* */
+    JSON_TYPE_BOOLEAN,  /* */
+    JSON_TYPE_DOUBLE,   /* */
+    JSON_TYPE_INT,      /* */
+    JSON_TYPE_OBJECT,   /* */
+    JSON_TYPE_ARRAY,    /* */
+    JSON_TYPE_STRING    /* */
 };
+
+/**
+\group_engine
+ * Scan option flag values for engine_scan_options(). *DEPRECATED*
+ */
+// clang-format off
+enum {
+   CL_SCAN_RAW                      = 0x0,
+   CL_SCAN_ARCHIVE                  = 0x1,
+   CL_SCAN_MAIL                     = 0x2,
+   CL_SCAN_OLE2                     = 0x4,
+   CL_SCAN_BLOCKENCRYPTED           = 0x8,
+   CL_SCAN_HTML                     = 0x10,
+   CL_SCAN_PE                       = 0x20,
+   CL_SCAN_BLOCKBROKEN              = 0x40,
+   CL_SCAN_MAILURL                  = 0x80,  /* deprecated circa 2009 */
+   CL_SCAN_BLOCKMAX                 = 0x100,
+   CL_SCAN_ALGORITHMIC              = 0x200,
+  // UNUSED                         = 0x400,
+   CL_SCAN_PHISHING_BLOCKSSL        = 0x800, /* ssl mismatches, not ssl by itself*/
+   CL_SCAN_PHISHING_BLOCKCLOAK      = 0x1000,
+   CL_SCAN_ELF                      = 0x2000,
+   CL_SCAN_PDF                      = 0x4000,
+   CL_SCAN_STRUCTURED               = 0x8000,
+   CL_SCAN_STRUCTURED_SSN_NORMAL    = 0x10000,
+   CL_SCAN_STRUCTURED_SSN_STRIPPED  = 0x20000,
+   CL_SCAN_PARTIAL_MESSAGE          = 0x40000,
+   CL_SCAN_HEURISTIC_PRECEDENCE     = 0x80000,
+   CL_SCAN_BLOCKMACROS              = 0x100000,
+   CL_SCAN_ALLMATCHES               = 0x200000,
+   CL_SCAN_SWF                      = 0x400000,
+   CL_SCAN_PARTITION_INTXN          = 0x800000,
+   CL_SCAN_XMLDOCS                  = 0x1000000,
+   CL_SCAN_HWP3                     = 0x2000000,
+  // UNUSED                         = 0x4000000,
+  // UNUSED                         = 0x8000000,
+   CL_SCAN_FILE_PROPERTIES          = 0x10000000,
+  // UNUSED                         = 0x20000000,
+   CL_SCAN_PERFORMANCE_INFO         = 0x40000000, /* Collect performance timings */
+   CL_SCAN_INTERNAL_COLLECT_SHA     = 0x80000000 /* Enables hash output in sha-collect builds - for internal use only */
+};
+// clang-format on
 
 #ifdef __CLAMBC__
 
@@ -246,7 +294,7 @@ extern const uint32_t __clambc_match_offsets[64];
 extern const struct cli_pe_hook_data __clambc_pedata;
 /**
 \group_globals
- * File size (max 4G). 
+ * File size (max 4G).
  */
 extern const uint32_t __clambc_filesize[1];
 
@@ -273,14 +321,14 @@ uint32_t test1(uint32_t a, uint32_t b);
  * @param[out] data pointer to buffer where data is read into
  * @return amount read.
  */
-int32_t read(uint8_t *data, int32_t size);
+int32_t read(uint8_t* data, int32_t size);
 
 /**
 \group_file
  */
 enum {
     /**set file position to specified absolute position */
-    SEEK_SET=0,
+    SEEK_SET = 0,
     /**set file position relative to current position */
     SEEK_CUR,
     /**set file position relative to file end*/
@@ -297,7 +345,7 @@ enum {
  * byte
  * @return amount of bytes successfully written
  */
-int32_t write(uint8_t *data, int32_t size);
+int32_t write(uint8_t* data, int32_t size);
 
 /**
 \group_file
@@ -316,7 +364,7 @@ int32_t seek(int32_t pos, uint32_t whence);
  * @param[in] len length of the virusname
  * @return 0
  */
-uint32_t setvirusname(const uint8_t *name, uint32_t len);
+uint32_t setvirusname(const uint8_t* name, uint32_t len);
 
 /**
 \group_debug
@@ -325,7 +373,7 @@ uint32_t setvirusname(const uint8_t *name, uint32_t len);
  * @param[in] len length of message to print
  * @return 0
  */
-uint32_t debug_print_str(const uint8_t *str, uint32_t len);
+uint32_t debug_print_str(const uint8_t* str, uint32_t len);
 
 /**
 \group_debug
@@ -345,7 +393,7 @@ uint32_t debug_print_uint(uint32_t a);
  *  @return 0 for success
  *
  * You can use lseek to disassemble starting from a different location.
- * This is a low-level API, the result is in ClamAV type-8 signature format 
+ * This is a low-level API, the result is in ClamAV type-8 signature format
  * (64 bytes/instruction).
  *  \sa DisassembleAt
  */
@@ -390,7 +438,7 @@ int32_t file_find(const uint8_t* data, uint32_t len);
 int32_t file_byteat(uint32_t offset);
 
 /**
-\group_adt 
+\group_adt
  * Allocates memory. Currently this memory is freed automatically on exit
  * from the bytecode, and there is no way to free it sooner.
  * @param[in] size amount of memory to allocate in bytes
@@ -413,7 +461,7 @@ uint32_t test2(uint32_t a);
  * @return  0 - success
  * @return -1 - failure
  */
-int32_t get_pe_section(struct cli_exe_section *section, uint32_t num);
+int32_t get_pe_section(struct cli_exe_section* section, uint32_t num);
 
 /**
 \group_file
@@ -441,7 +489,7 @@ int32_t fill_buffer(uint8_t* buffer, uint32_t len, uint32_t filled,
 int32_t extract_new(int32_t id);
 
 /**
-\group_file 
+\group_file
   * Reads a number in the specified radix starting from the current position.
   * Non-numeric characters are ignored.
   * @param[in] radix 10 or 16
@@ -480,7 +528,7 @@ int32_t hashset_remove(int32_t hs, uint32_t key);
  * @param[in] hs ID of hashset (from hashset_new)
  * @param[in] key the key to lookup
  * @return 1 if found
- * @return 0 if not found 
+ * @return 0 if not found
  * @return <0 on invalid hashset ID
  */
 int32_t hashset_contains(int32_t hs, uint32_t key);
@@ -511,7 +559,7 @@ int32_t hashset_empty(int32_t id);
  * @param[in] size size of buffer
  * @return ID of newly created buffer_pipe
  */
-int32_t  buffer_pipe_new(uint32_t size);
+int32_t buffer_pipe_new(uint32_t size);
 
 /**
   \group_adt
@@ -520,7 +568,7 @@ int32_t  buffer_pipe_new(uint32_t size);
   * @param[in] pos starting position of pipe input in current file
   * @return ID of newly created buffer_pipe
   */
-int32_t  buffer_pipe_new_fromfile(uint32_t pos);
+int32_t buffer_pipe_new_fromfile(uint32_t pos);
 
 /**
 \group_adt
@@ -541,7 +589,7 @@ uint32_t buffer_pipe_read_avail(int32_t id);
   * specified amount
   */
 //uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);
-const uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);
+const uint8_t* buffer_pipe_read_get(int32_t id, uint32_t amount);
 
 /**
 \group_adt
@@ -550,7 +598,7 @@ const uint8_t *buffer_pipe_read_get(int32_t id, uint32_t amount);
   * @param[in] amount amount of bytes to move read cursor
   * @return 0 on success
   */
-int32_t  buffer_pipe_read_stopped(int32_t id, uint32_t amount);
+int32_t buffer_pipe_read_stopped(int32_t id, uint32_t amount);
 
 /**
 \group_adt
@@ -570,7 +618,7 @@ uint32_t buffer_pipe_write_avail(int32_t id);
   * @return pointer to write buffer, or NULL if requested amount
   * is more than what is available in the buffer
   */
-uint8_t *buffer_pipe_write_get(int32_t id, uint32_t size);
+uint8_t* buffer_pipe_write_get(int32_t id, uint32_t size);
 
 /**
 \group_adt
@@ -579,7 +627,7 @@ uint8_t *buffer_pipe_write_get(int32_t id, uint32_t size);
   * @param[in] amount amount of bytes to move write cursor
   * @return 0 on success
   */
-int32_t  buffer_pipe_write_stopped(int32_t id, uint32_t amount);
+int32_t buffer_pipe_write_stopped(int32_t id, uint32_t amount);
 
 /**
 \group_adt
@@ -590,7 +638,7 @@ int32_t  buffer_pipe_write_stopped(int32_t id, uint32_t amount);
   * @param[in] id ID of buffer_pipe
   * @return 0 on success
   */
-int32_t  buffer_pipe_done(int32_t id);
+int32_t buffer_pipe_done(int32_t id);
 
 /**
 \group_adt
@@ -640,8 +688,8 @@ int32_t bytecode_rt_error(int32_t locationid);
 \group_js
   * Initializes JS normalizer for reading 'from_buffer'.
   * Normalized JS will be written to a single tempfile,
-  * one normalized JS per line, and automatically scanned 
-  * when the bytecode finishes execution. 
+  * one normalized JS per line, and automatically scanned
+  * when the bytecode finishes execution.
   * @param[in] from_buffer ID of buffer_pipe to read javascript from
   * @return ID of JS normalizer, <0 on failure
   */
@@ -673,7 +721,7 @@ int32_t jsnorm_done(int32_t id);
 /**
 \group_math
   * Returns 2^26*log2(a/b)
-  * @param[in] a input 
+  * @param[in] a input
   * @param[in] b input
   * @return 2^26*log2(a/b)
   */
@@ -759,7 +807,7 @@ int32_t atoi(const uint8_t* str, int32_t size);
   * @param[in] len length of \p str
   * @return 0
   */
-uint32_t debug_print_str_start(const uint8_t *str, uint32_t len);
+uint32_t debug_print_str_start(const uint8_t* str, uint32_t len);
 
 /**
 \group_debug
@@ -769,7 +817,7 @@ uint32_t debug_print_str_start(const uint8_t *str, uint32_t len);
   * @param[in] len length of \p str
   * @return 0
   */
-uint32_t debug_print_str_nonl(const uint8_t *str, uint32_t len);
+uint32_t debug_print_str_nonl(const uint8_t* str, uint32_t len);
 
 /**
 \group_string
@@ -800,7 +848,7 @@ int32_t map_new(int32_t keysize, int32_t valuesize);
   * @return 1 - if key didn't exist before
   * @return <0 - if ksize doesn't match keysize specified at table creation
   */
-int32_t map_addkey(const uint8_t *key, int32_t ksize, int32_t id);
+int32_t map_addkey(const uint8_t* key, int32_t ksize, int32_t id);
 
 /**
 \group_adt
@@ -811,7 +859,7 @@ int32_t map_addkey(const uint8_t *key, int32_t ksize, int32_t id);
   * @return 0 - if update was successful
   * @return <0 - if there is no last key
   */
-int32_t map_setvalue(const uint8_t *value, int32_t vsize, int32_t id);
+int32_t map_setvalue(const uint8_t* value, int32_t vsize, int32_t id);
 
 /**
 \group_adt
@@ -827,7 +875,7 @@ int32_t map_remove(const uint8_t* key, int32_t ksize, int32_t id);
 
 /**
 \group_adt
-  * Looks up key in map. 
+  * Looks up key in map.
   * The map remember the last looked up key (so you can retrieve the
   * value).
   * @param[in] id id of map
@@ -875,12 +923,12 @@ int32_t map_done(int32_t id);
   * specified position.
   * @param[in] data the sequence of bytes to look for
   * @param[in] len length of \p data, cannot be more than 1024
-  * @param[in] maxpos maximum position to look for a match, 
+  * @param[in] maxpos maximum position to look for a match,
   * note that this is 1 byte after the end of last possible match:
   * match_pos + \p len < \p maxpos
-  * @return offset in the current file if match is found, -1 otherwise 
+  * @return offset in the current file if match is found, -1 otherwise
   */
-int32_t file_find_limit(const uint8_t *data, uint32_t len, int32_t maxpos);
+int32_t file_find_limit(const uint8_t* data, uint32_t len, int32_t maxpos);
 
 /* ------------- Engine Query ----------------------------------------------- */
 /**
@@ -902,8 +950,8 @@ uint32_t engine_dconf_level(void);
 
 /**
 \group_engine
-  * Returns the current engine's scan options.
-  * @return CL_SCAN* flags 
+  * Returns the current engine's scan options. **DEPRECATED**
+  * @return CL_SCAN* flags
   */
 uint32_t engine_scan_options(void);
 
@@ -948,7 +996,7 @@ int32_t input_switch(int32_t extracted_file);
   * @param[in] len - size of \p env
   * @return 0
   */
-uint32_t get_environment(struct cli_environment *env, uint32_t len);
+uint32_t get_environment(struct cli_environment* env, uint32_t len);
 
 /**
 \group_env
@@ -961,7 +1009,7 @@ uint32_t get_environment(struct cli_environment *env, uint32_t len);
   * @return 1 - JIT disabled
   * @return 2 - fully disabled
   */
-uint32_t disable_bytecode_if(const int8_t *reason, uint32_t len, uint32_t cond);
+uint32_t disable_bytecode_if(const int8_t* reason, uint32_t len, uint32_t cond);
 
 /**
 \group_env
@@ -988,7 +1036,7 @@ uint32_t disable_jit_if(const int8_t* reason, uint32_t len, uint32_t cond);
   * @return 1 - lhs > rhs
   */
 int32_t version_compare(const uint8_t* lhs, uint32_t lhs_len,
-                    const uint8_t* rhs, uint32_t rhs_len);
+                        const uint8_t* rhs, uint32_t rhs_len);
 
 /**
 \group_env
@@ -1005,7 +1053,7 @@ uint32_t check_platform(uint32_t a, uint32_t b, uint32_t c);
 /* --------------------- PDF APIs ----------------------------------- */
 /**
 \group_pdf
- * Return number of pdf objects 
+ * Return number of pdf objects
  * @return -1 - if not called from PDF hook
  * @return >=0 - number of PDF objects
 */
@@ -1054,7 +1102,7 @@ uint32_t pdf_getobjsize(int32_t objidx);
  * @return NULL - invalid objidx/amount
  * @return pointer - pointer to original object */
 //uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);
-const uint8_t *pdf_getobj(int32_t objidx, uint32_t amount);
+const uint8_t* pdf_getobj(int32_t objidx, uint32_t amount);
 
 /**
 \group_pdf
@@ -1114,7 +1162,7 @@ int32_t pdf_get_dumpedobjid(void);
 
 /* ----------------------------- Icon APIs -------------------------- */
 /**
-\group_icon 
+\group_icon
  * Attempts to match current executable's icon against the specified icon
  * groups.
  * @param[in] group1 - same as GROUP1 in LDB signatures
@@ -1209,7 +1257,7 @@ int32_t json_get_string_length(int32_t objid);
 
 /**
 \group_json
- * @return number of characters transferred (capped by str_len), 
+ * @return number of characters transferred (capped by str_len),
  *         including terminating null-character
  * @return -1 if an error has occurred
  * @return -2 if object is not JSON_TYPE_STRING
@@ -1239,5 +1287,49 @@ int32_t json_get_int(int32_t objid);
 //double json_get_double(int32_t objid);
 
 /* ----------------- END 0.98.4 APIs ---------------------------------- */
+/* ----------------- BEGIN 0.101.0 APIs ------------------------------- */
+/* ----------------- Scan Options APIs -------------------------------- */
+/**
+\group_engine
+  * Check if any given scan option is enabled.
+  * Returns non-zero if the following named options are set:
+  *
+  * "general allmatch"                - all-match mode is enabled
+  * "general collect metadata"        - --gen-json is enabled
+  * "general heuristics"              - --gen-json is enabled
+  *
+  * "parse archive"                   - archive parsing is enabled
+  * "parse pdf"                       - pdf parsing is enabled
+  * "parse swf"                       - swf parsing is enabled
+  * "parse hwp3"                      - hwp3 parsing is enabled
+  * "parse xmldocs"                   - xmldocs parsing is enabled
+  * "parse mail"                      - mail parsing is enabled
+  * "parse ole2"                      - ole2 parsing is enabled
+  * "parse html"                      - html parsing is enabled
+  * "parse pe"                        - pe parsing is enabled
+  *
+  * "heuristic precedence"            - heuristic signatures are set to take precedence
+  * "heuristic broken"                - broken pe heuristic is enabled
+  * "heuristic exceeds max"           - heuristic for when max settings are exceeded is enabled
+  * "heuristic phishing ssl mismatch" - phishing ssl mismatch heuristic is enabled
+  * "heuristic phishing cloak"        - phishing cloak heuristic is enabled
+  * "heuristic macros"                - macros heuristic is enabled
+  * "heuristic encrypted"             - encrypted heuristic is enabled
+  * "heuristic partition intxn"       - macpartition intxnros heuristic is enabled
+  * "heuristic structured"            - structured heuristic is enabled
+  * "heuristic structured ssn normal" - structured ssn normal heuristic is enabled
+  * "heuristic structured ssn stripped" - structured ssn stripped heuristic is enabled
+  *
+  * "mail partial message"            - parsing of partial mail messages is enabled
+  *
+  * "dev collect sha"                 - --dev-collect-hashes is enabled
+  * "dev collect performance info"    - --dev-performance is enabled
+  *
+  * @param[in] scan_options enum value for desired scan option category.
+  * @return CL_SCAN_<OPTION>_* flags
+  */
+uint32_t engine_scan_options_ex(const uint8_t* option_name, uint32_t name_len);
+
+/* ----------------- END 0.101 APIs ---------------------------------- */
 #endif
 #endif

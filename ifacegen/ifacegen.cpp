@@ -168,7 +168,7 @@ public:
       params.push_back(Type::getInt32Ty(C));
       params.push_back(Type::getInt32Ty(C));
       Api4Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
-      
+
       params.clear();
       Api5Ty = FunctionType::get(Type::getInt32Ty(C), params, false);
 
@@ -1066,40 +1066,44 @@ void Parser::printApiCalls(raw_ostream &Out, const std::string& Type,
 
 void Parser::outputHeader(raw_ostream &Out, const std::string HeaderName)
 {
-  Out << "/*\n *  ClamAV bytecode internal API\n";
-  Out << " *  This is an automatically generated file!\n *\n";
-  Out << " *  Copyright (C) 2009-2013 Sourcefire, Inc.\n"
-    << " *  Copyright (C) 2014 Cisco Systems, Inc. and/or its affiliates."
-    << " *  All rights reserved.\n *\n"
-    << " * Redistribution and use in source and binary forms, with or without\n"
-    << " * modification, are permitted provided that the following conditions\n"
-    << " * are met:\n"
-    << " * 1. Redistributions of source code must retain the above copyright\n"
-    << " *    notice, this list of conditions and the following disclaimer.\n"
-    << " * 2. Redistributions in binary form must reproduce the above copyright\n"
-    << " *    notice, this list of conditions and the following disclaimer in the\n"
-    << " *    documentation and/or other materials provided with the distribution.\n"
-    << " *\n * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND\n"
-    << " * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n"
-    << " * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\n"
-    << " * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE\n"
-    << " * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n"
-    << " * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS\n"
-    << " * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\n"
-    << " * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT\n"
-    << " * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY\n"
-    << " * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF\n"
-    << " * SUCH DAMAGE\n */\n";
+  Out << "/*\n"
+      << " *  ClamAV bytecode internal API\n";
+  Out << " *  This is an automatically generated file!\n"
+      << " *\n";
+  Out << " *  Copyright (C) 2013-2019 Cisco Systems, Inc. and/or its affiliates. All rights reserved.\n"
+      << " *  Copyright (C) 2009-2013 Sourcefire, Inc.\n"
+      << " *\n"
+      << " * Redistribution and use in source and binary forms, with or without\n"
+      << " * modification, are permitted provided that the following conditions\n"
+      << " * are met:\n"
+      << " * 1. Redistributions of source code must retain the above copyright\n"
+      << " *    notice, this list of conditions and the following disclaimer.\n"
+      << " * 2. Redistributions in binary form must reproduce the above copyright\n"
+      << " *    notice, this list of conditions and the following disclaimer in the\n"
+      << " *    documentation and/or other materials provided with the distribution.\n"
+      << " *\n"
+      << " * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND\n"
+      << " * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n"
+      << " * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\n"
+      << " * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE\n"
+      << " * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n"
+      << " * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS\n"
+      << " * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\n"
+      << " * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT\n"
+      << " * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY\n"
+      << " * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF\n"
+      << " * SUCH DAMAGE\n"
+      << " */\n";
   if (HeaderName.empty())
-    Out << "#include \"cltypes.h\"\n#include \"type_desc.h\"\n"
-      << "#include \"bytecode_api.h\"\n"
-      << "#include \"bytecode_api_impl.h\"\n"
-      << "#include \"bytecode_priv.h\"\n"
-      << "#include <stdlib.h>\n"
-      << "\n";
+    Out << "#include \"clamav-types.h\"\n#include \"type_desc.h\"\n"
+        << "#include \"bytecode_api.h\"\n"
+        << "#include \"bytecode_api_impl.h\"\n"
+        << "#include \"bytecode_priv.h\"\n"
+        << "#include <stdlib.h>\n"
+        << "\n";
   else
     Out << "#ifndef " << UppercaseString(HeaderName) << "_H\n"
-      << "#define " << UppercaseString(HeaderName) << "_H\n\n";
+        << "#define " << UppercaseString(HeaderName) << "_H\n\n";
 }
 
 void Parser::outputTypename(raw_ostream &Out, const Type *Ty, unsigned TypeFlag, bool after)
@@ -1277,7 +1281,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
   OutImpl << "#endif\n";
 
   // Output globals
-  OutHooks << "struct cli_bc_hooks {\n"; 
+  OutHooks << "struct cli_bc_hooks {\n";
   Out << "const struct cli_apiglobal cli_globals[] = {\n";
   Out << clamav::globals_begin << "\n";
   for (GlobalMapTy::iterator I=globals.begin(), E=globals.end();
@@ -1420,6 +1424,8 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
       Out << ",\n";
   }
   Out << "\n" << clamav::apicall_end << "\n};\n";
+  Out << "const unsigned cli_numapicalls=sizeof(cli_apicalls)/sizeof(cli_apicalls[0]);\n\n";
+
   printApiCalls(Out, "cli_apicall_int2", apicalls[0], 0);
   printApiCalls(Out, "cli_apicall_pointer", apicalls[1], 1);
   printApiCalls(Out, "cli_apicall_int1", apicalls[2], 2);
