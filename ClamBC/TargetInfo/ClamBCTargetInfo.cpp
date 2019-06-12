@@ -25,14 +25,16 @@
 using namespace llvm;
 Target TheClamBCTarget;
 
-static unsigned ClamBC_TripleMatchQuality(const std::string &TT) {
-  if (TT == "clambc-generic-generic")
-    return 20;
-  return 0;
+static unsigned ClamBC_TripleMatchQuality(const std::string &TT)
+{
+    if (TT == "clambc-generic-generic")
+        return 20;
+    return 0;
 }
 
-extern "C" void LLVMInitializeClamBCTargetInfo() { 
-  TargetRegistry::RegisterTarget(TheClamBCTarget, "clambc", 
-                                 "ClamAV bytecode backend",
-                                 ClamBC_TripleMatchQuality, false);
+extern "C" void LLVMInitializeClamBCTargetInfo()
+{
+    TargetRegistry::RegisterTarget(TheClamBCTarget, "clambc",
+                                   "ClamAV bytecode backend",
+                                   ClamBC_TripleMatchQuality, false);
 }

@@ -25,31 +25,34 @@
 #include "llvm/LLVMContext.h"
 #include "llvm/Support/Compiler.h"
 
-namespace clamav {
-static unsigned ATTRIBUTE_USED initTypeIDs(llvm::DenseMap<const llvm::Type*, unsigned>
-                            &typeIDs, llvm::LLVMContext &C) {
-  unsigned tid;
-  // Void is typeid 0
-  typeIDs[llvm::Type::getVoidTy(C)] = 0;
+namespace clamav
+{
+static unsigned ATTRIBUTE_USED initTypeIDs(llvm::DenseMap<const llvm::Type *, unsigned>
+                                               &typeIDs,
+                                           llvm::LLVMContext &C)
+{
+    unsigned tid;
+    // Void is typeid 0
+    typeIDs[llvm::Type::getVoidTy(C)] = 0;
 
-  // Type IDs 1 - 64 are i1 - i64.
-  // Although we currently support only i1, i8, i16, i32, and i64 we reserve
-  // typeIDs for arbitrary width integers.
-  for (tid=1;tid<=64;tid++) {
-    typeIDs[llvm::IntegerType::get(C, tid)] = tid;
-  }
+    // Type IDs 1 - 64 are i1 - i64.
+    // Although we currently support only i1, i8, i16, i32, and i64 we reserve
+    // typeIDs for arbitrary width integers.
+    for (tid = 1; tid <= 64; tid++) {
+        typeIDs[llvm::IntegerType::get(C, tid)] = tid;
+    }
 
-  // More reserved Type IDs:
-  // 65 - i8*, 66 - i16*, 67 - i32*, 68 - i64*
-  typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(C))] = tid++;
-  typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt16Ty(C))] = tid++;
-  typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(C))] = tid++;
-  typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt64Ty(C))] = tid++;
-  return tid;
+    // More reserved Type IDs:
+    // 65 - i8*, 66 - i16*, 67 - i32*, 68 - i64*
+    typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(C))]  = tid++;
+    typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt16Ty(C))] = tid++;
+    typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt32Ty(C))] = tid++;
+    typeIDs[llvm::PointerType::getUnqual(llvm::Type::getInt64Ty(C))] = tid++;
+    return tid;
 }
 
-static ATTRIBUTE_USED const char *apicall_begin="/* Bytecode APIcalls BEGIN */";
-static ATTRIBUTE_USED const char *apicall_end="/* Bytecode APIcalls END */";
-static ATTRIBUTE_USED const char *globals_begin="/* Bytecode globals BEGIN */";
-static ATTRIBUTE_USED const char *globals_end="/* Bytecode globals END */";
-}
+static ATTRIBUTE_USED const char *apicall_begin = "/* Bytecode APIcalls BEGIN */";
+static ATTRIBUTE_USED const char *apicall_end   = "/* Bytecode APIcalls END */";
+static ATTRIBUTE_USED const char *globals_begin = "/* Bytecode globals BEGIN */";
+static ATTRIBUTE_USED const char *globals_end   = "/* Bytecode globals END */";
+} // namespace clamav

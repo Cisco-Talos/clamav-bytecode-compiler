@@ -89,6 +89,7 @@
 #define BC_FEATURES_H 
 #define EBOUNDS(x) 
 #define __PE_H 
+#define __PE_STRUCTS_H 
 #define DISASM_BC_H 
 #define BYTECODE_DETECT_H 
 #define __STDBOOL_H 
@@ -96,6 +97,7 @@
 #define true 1
 #define false 0
 #define __bool_true_false_are_defined 1
+#define NULL (void *)0x0
 #define force_inline inline __attribute__((always_inline))
 #define overloadable_func __attribute__((overloadable))
 #define VIRUSNAME_PREFIX(name) const char __clambc_virusname_prefix[] = name;
@@ -104,33 +106,38 @@
 #define PDF_HOOK_DECLARE const uint16_t __clambc_kind = BC_PDF;
 #define BYTECODE_ABORT_HOOK 0xcea5e
 #define PE_HOOK_DECLARE const uint16_t __clambc_kind = BC_PE_ALL;
+#define PRECLASS_HOOK_DECLARE const uint16_t __clambc_kind = BC_PRECLASS;
+#define ELF_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_ELF_UNPACKER;
+#define MACHO_UNPACKER_DECLARE const uint16_t __clambc_kind = BC_MACHO_UNPACKER;
 #define SIGNATURES_DECL_BEGIN struct __Signatures {
 #define DECLARE_SIGNATURE(name) const char *name##_sig; __Signature name;
-#define SIGNATURES_DECL_END };
+#define SIGNATURES_DECL_END } ;
 #define TARGET(tgt) const unsigned short __Target = (tgt);
 #define COPYRIGHT(c) const char *const __Copyright = (c);
 #define ICONGROUP1(group) const char *const __IconGroup1 = (group);
 #define ICONGROUP2(group) const char *const __IconGroup2 = (group);
 #define FUNCTIONALITY_LEVEL_MIN(m) const unsigned short __FuncMin = (m);
 #define FUNCTIONALITY_LEVEL_MAX(m) const unsigned short __FuncMax = (m);
-#define LDB_ADDATTRIBUTES(x) const char * __ldb_rawattrs = (x);
-#define SIGNATURES_DEF_BEGIN static const unsigned __signature_bias = __COUNTER__+1;const struct __Signatures Signatures = {
+#define LDB_ADDATTRIBUTES(x) const char *__ldb_rawattrs = (x);
+#define CONTAINER(x) const char *__ldb_container = (x);
+#define SIGNATURES_DEF_BEGIN static const unsigned __signature_bias = __COUNTER__ + 1; const struct __Signatures Signatures = {
 #define DEFINE_SIGNATURE(name,hex) .name##_sig = (hex), .name = {__COUNTER__ - __signature_bias},
-#define SIGNATURES_END };
-#define NEED_PE_INFO { if (!hasPEInfo()) __fail_missing_PE_HOOK_DECLARE__or__PE_UNPACKER_DECLARE();}
+#define SIGNATURES_END } ;
+#define SIGNATURES_DEF_END } ;
+#define NEED_PE_INFO { if (!hasPEInfo()) __fail_missing_PE_HOOK_DECLARE__or__PE_UNPACKER_DECLARE(); }
 #define RE2C_BSIZE 1024
 #define YYCTYPE unsigned char
 #define YYCURSOR re2c_scur
 #define YYLIMIT re2c_slim
 #define YYMARKER re2c_smrk
 #define YYCONTEXT re2c_sctx
-#define YYFILL(n) { RE2C_FILLBUFFER(n); if (re2c_sres <= 0) break;}
+#define YYFILL(n) { RE2C_FILLBUFFER(n); if (re2c_sres <= 0) break; }
 #define REGEX_SCANNER unsigned char *re2c_scur, *re2c_stok, *re2c_smrk, *re2c_sctx, *re2c_slim; int re2c_sres; int32_t re2c_stokstart; unsigned char re2c_sbuffer[RE2C_BSIZE]; re2c_scur = re2c_slim = re2c_smrk = re2c_sctx = &re2c_sbuffer[0]; re2c_sres = 0; RE2C_FILLBUFFER(0);
 #define REGEX_POS (-(re2c_slim - re2c_scur) + seek(0, SEEK_CUR))
-#define REGEX_LOOP_BEGIN do { re2c_stok = re2c_scur; re2c_stokstart = REGEX_POS;} while (0);
+#define REGEX_LOOP_BEGIN do { re2c_stok = re2c_scur; re2c_stokstart = REGEX_POS; } while (0);
 #define REGEX_RESULT (re2c_sres)
-#define RE2C_DEBUG_PRINT do { char buf[81]; uint32_t here = seek(0, SEEK_CUR); uint32_t d = re2c_slim - re2c_scur; uint32_t end = here - d; unsigned len = end - re2c_stokstart; if (len > 80) { unsigned skipped = len - 74; seek(re2c_stokstart, SEEK_SET); if (read(buf, 37) == 37) break; memcpy(buf+37, "[...]", 5); seek(end-37, SEEK_SET); if (read(buf, 37) != 37) break; buf[80] = '\0'; } else { seek(re2c_stokstart, SEEK_SET); if (read(buf, len) != len) break; buf[len] = '\0'; } buf[80] = '\0'; debug_print_str(buf, 0); seek(here, SEEK_SET);} while (0)
+#define RE2C_DEBUG_PRINT do { char buf[81]; uint32_t here = seek(0, SEEK_CUR); uint32_t d = re2c_slim - re2c_scur; uint32_t end = here - d; unsigned len = end - re2c_stokstart; if (len > 80) { unsigned skipped = len - 74; seek(re2c_stokstart, SEEK_SET); if (read(buf, 37) == 37) break; memcpy(buf + 37, "[...]", 5); seek(end - 37, SEEK_SET); if (read(buf, 37) != 37) break; buf[80] = '\0'; } else { seek(re2c_stokstart, SEEK_SET); if (read(buf, len) != len) break; buf[len] = '\0'; } buf[80] = '\0'; debug_print_str(buf, 0); seek(here, SEEK_SET); } while (0)
 #define DEBUG_PRINT_REGEX_MATCH RE2C_DEBUG_PRINT
-#define BUFFER_FILL(buf,cursor,need,limit) do { (limit) = fill_buffer((buf), sizeof((buf)), (limit), (cursor), (need));} while (0);
-#define BUFFER_ENSURE(buf,cursor,need,limit) do { if ((cursor) + (need) >= (limit)) { BUFFER_FILL(buf, cursor, need, limit) (cursor) = 0; }} while (0);
-#define RE2C_FILLBUFFER(need) do { uint32_t cursor = re2c_stok - &re2c_sbuffer[0]; int32_t limit = re2c_slim - &re2c_sbuffer[0]; limit = fill_buffer(re2c_sbuffer, sizeof(re2c_sbuffer), limit, (cursor), (need)); if (!limit) { re2c_sres = 0; } else if (limit <= (need)) { re2c_sres = -1; } else { uint32_t curoff = re2c_scur - re2c_stok; uint32_t mrkoff = re2c_smrk - re2c_stok; uint32_t ctxoff = re2c_sctx - re2c_stok; re2c_slim = &re2c_sbuffer[0] + limit; re2c_stok = &re2c_sbuffer[0]; re2c_scur = &re2c_sbuffer[0] + curoff; re2c_smrk = &re2c_sbuffer[0] + mrkoff; re2c_sctx = &re2c_sbuffer[0] + ctxoff; re2c_sres = limit; }} while (0);
+#define BUFFER_FILL(buf,cursor,need,limit) do { (limit) = fill_buffer((buf), sizeof((buf)), (limit), (cursor), (need)); } while (0);
+#define BUFFER_ENSURE(buf,cursor,need,limit) do { if ((cursor) + (need) >= (limit)) { BUFFER_FILL(buf, cursor, need, limit) (cursor) = 0; } } while (0);
+#define RE2C_FILLBUFFER(need) do { uint32_t cursor = re2c_stok - &re2c_sbuffer[0]; int32_t limit = re2c_slim - &re2c_sbuffer[0]; limit = fill_buffer(re2c_sbuffer, sizeof(re2c_sbuffer), limit, (cursor), (need)); if (!limit) { re2c_sres = 0; } else if (limit <= (need)) { re2c_sres = -1; } else { uint32_t curoff = re2c_scur - re2c_stok; uint32_t mrkoff = re2c_smrk - re2c_stok; uint32_t ctxoff = re2c_sctx - re2c_stok; re2c_slim = &re2c_sbuffer[0] + limit; re2c_stok = &re2c_sbuffer[0]; re2c_scur = &re2c_sbuffer[0] + curoff; re2c_smrk = &re2c_sbuffer[0] + mrkoff; re2c_sctx = &re2c_sbuffer[0] + ctxoff; re2c_sres = limit; } } while (0);

@@ -23,13 +23,14 @@
 #define CLAMBC_DIAGNOSTICS_H
 #include <string>
 
-namespace llvm {
-  class Module;
-  class Function;
-  class Instruction;
-  class Value;
-  class Twine;
-}
+namespace llvm
+{
+class Module;
+class Function;
+class Instruction;
+class Value;
+class Twine;
+} // namespace llvm
 
 // Print instruction location, falls back to printing function location,
 // (and LLVM instruction if specified).
@@ -39,43 +40,41 @@ void printLocation(const llvm::Instruction *I, bool fallback);
 // Optionally print the location of declaration, and fallback to printing the
 // full LLVM value.
 // If fallback is not specified just the LLVM value's name is printed.
-void printValue(const llvm::Value *V, bool printLocation=false,
-                bool fallback=false);
+void printValue(const llvm::Value *V, bool printLocation = false,
+                bool fallback = false);
 
 // Prints a diagnostic error about the specified module.
-void printDiagnostic(const llvm::Twine& Msg, const llvm::Module *F,
-                     bool internal=false);
+void printDiagnostic(const llvm::Twine &Msg, const llvm::Module *F,
+                     bool internal = false);
 
 // Prints a diagnostic error about the specified function.
-void printDiagnostic(const llvm::Twine& Msg, const llvm::Function *F,
-                     bool internal=false);
+void printDiagnostic(const llvm::Twine &Msg, const llvm::Function *F,
+                     bool internal = false);
 
 // Prints a diagnostic error about the specified instruction.
-void printDiagnostic(const llvm::Twine& Msg, const llvm::Instruction *I,
-                     bool internal=false);
+void printDiagnostic(const llvm::Twine &Msg, const llvm::Instruction *I,
+                     bool internal = false);
 
 // Prints a diagnostic error about the specified value (can be an instruction).
 void printDiagnosticValue(const llvm::Twine &Msg, const llvm::Module *M,
                           const llvm::Value *V,
-                          bool internal=false);
-
+                          bool internal = false);
 
 // Prints a diagnostic warning about the specified module.
-void printWarning(const llvm::Twine& Msg, const llvm::Module *F,
-                     bool internal=false);
+void printWarning(const llvm::Twine &Msg, const llvm::Module *F,
+                  bool internal = false);
 
 // Prints a diagnostic warning about the specified function.
-void printWarning(const llvm::Twine& Msg, const llvm::Function *F,
-                     bool internal=false);
+void printWarning(const llvm::Twine &Msg, const llvm::Function *F,
+                  bool internal = false);
 
 // Prints a diagnostic warnini about the specified instruction.
-void printWarning(const llvm::Twine& Msg, const llvm::Instruction *I,
-                     bool internal=false);
+void printWarning(const llvm::Twine &Msg, const llvm::Instruction *I,
+                  bool internal = false);
 
 // Prints a diagnostic warning about the specified value (can be an instruction).
 void printWarningValue(const llvm::Twine &Msg, const llvm::Module *M,
-                          const llvm::Value *V,
-                          bool internal=false);
-
+                       const llvm::Value *V,
+                       bool internal = false);
 
 #endif

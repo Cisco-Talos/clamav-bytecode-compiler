@@ -1,4 +1,4 @@
 const char *clambc_getversion(void)
 {
-  return GIT_VERSION;
+    return GIT_VERSION;
 }

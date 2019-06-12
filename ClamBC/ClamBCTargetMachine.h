@@ -26,20 +26,27 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetData.h"
 
-namespace llvm {
+namespace llvm
+{
 
 struct ClamBCTargetMachine : public TargetMachine {
-  ClamBCTargetMachine(const Target &T, const std::string &TT, const std::string &FS)
-    : TargetMachine(T) {}
+    ClamBCTargetMachine(const Target &T, const std::string &TT, const std::string &FS)
+        : TargetMachine(T) {}
 
-  virtual bool WantsWholeFile() const { return true; }
-  virtual bool addPassesToEmitWholeFile(PassManager &PM, 
-                                        formatted_raw_ostream &Out,
-                                        CodeGenFileType FileType,
-                                        CodeGenOpt::Level OptLevel,
-                                        bool DisableVerify=false);
+    virtual bool WantsWholeFile() const
+    {
+        return true;
+    }
+    virtual bool addPassesToEmitWholeFile(PassManager &PM,
+                                          formatted_raw_ostream &Out,
+                                          CodeGenFileType FileType,
+                                          CodeGenOpt::Level OptLevel,
+                                          bool DisableVerify = false);
 
-  virtual const TargetData *getTargetData() const { return 0; }
+    virtual const TargetData *getTargetData() const
+    {
+        return 0;
+    }
 };
-} // End llvm namespace
+} // namespace llvm
 #endif
