@@ -215,7 +215,7 @@ class Parser
     const unsigned char *TokStart;
     const unsigned char *LastTokStart;
     std::vector<const unsigned char *> Ifs;
-    std::vector<std::vector<const unsigned char *>> Ifstack;
+    std::vector<std::vector<const unsigned char *> > Ifstack;
     StringMap<unsigned> ignoreMacros;
     LLVMContext &C;
     std::string CurString;
@@ -230,7 +230,7 @@ class Parser
     std::set<std::string> functionNames;
     std::set<std::string> globalNames;
 
-    typedef std::vector<std::pair<std::string, struct FunctionProto>> FunctionListTy;
+    typedef std::vector<std::pair<std::string, struct FunctionProto> > FunctionListTy;
     typedef StringMap<const Type *> GlobalMapTy;
     GlobalMapTy globals;
     FunctionListTy functions;

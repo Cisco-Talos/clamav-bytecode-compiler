@@ -429,7 +429,7 @@ class LogicalNode : public FoldingSetNode
     {
         assert(!V.empty());
         LogicalNode N(V[0]->Set, LOG_AND);
-        typedef DenseMap<LogicalNode *, SmallVector<LogicalNode *, 2>> LogicalMap;
+        typedef DenseMap<LogicalNode *, SmallVector<LogicalNode *, 2> > LogicalMap;
         // There can be multiple addcounts/addmatchs with same subexpression
         // but different =X,Y modifier, so we need a map of vector.
         LogicalMap adds;
