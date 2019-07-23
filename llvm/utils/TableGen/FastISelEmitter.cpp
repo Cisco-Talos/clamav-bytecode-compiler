@@ -357,7 +357,7 @@ void FastISelMap::CollectPatterns(CodeGenDAGPatterns &CGP) {
     InstructionMemo Memo = {
       Pattern.getDstPattern()->getOperator()->getName(),
       DstRC,
-      SubRegNo,
+      (unsigned char)SubRegNo,
       PhysRegInputs
     };
     assert(!SimplePatterns[Operands][OpcodeName][VT][RetVT].count(PredicateCheck) &&
