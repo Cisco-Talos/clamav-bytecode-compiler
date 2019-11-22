@@ -81,8 +81,9 @@ class PtrVerifier : public FunctionPass
         // Bytecode was already verified and had stack protector applied.
         // We get called again because ALL bytecode functions loaded are part of
         // the same module.
-        if (F.hasFnAttr(Attribute::StackProtectReq))
+        if (F.hasFnAttr(Attribute::StackProtectReq)) {
             return false;
+        }
 #endif
 
         DEBUG(F.dump());
@@ -430,7 +431,20 @@ class PtrVerifier : public FunctionPass
                     B    = ConstantInt::get(newPN->getType(), 0);
                     DEBUG(dbgs() << "bounds not found while solving phi node: " << *Inc
                                  << "\n");
+                } else if (newPN->getType() != B->getType()){
+
+                    // Find the branch instruction in the incoming block, and put the cast there. 
+                    BasicBlock::iterator it = PN->getIncomingBlock(i)->end();
+                    it--;
+
+                    /*
+                     * aragusa: We should probably be checking for other types of casts, but I think
+                     * it makes more sense to focus on upgrading to llvm 9, and then looking at that, 
+                     * at least until we have a ticket requesting it for this version.
+                     */
+                    B = CastInst::CreateIntegerCast(B, newPN->getType(), false, "cast", it);
                 }
+
                 newPN->addIncoming(B, PN->getIncomingBlock(i));
             }
             if (!good)
@@ -449,6 +463,16 @@ class PtrVerifier : public FunctionPass
                 return BoundsMap[Base] = NewSI;
             }
         }
+
+        //Check for BitCastInst
+        if (isa<BitCastInst>(Base)){
+            BitCastInst * bci = dyn_cast<BitCastInst>(Base); 
+            assert (nullptr != bci && "HOW DID THIS HAPPEN???");
+            Value * v = bci->getOperand(0);
+            return getPointerBounds(v);
+        }
+        // aragusa: We should probably be checking for GetElementPtrInst, ZExtInst, SExtInst, ..., but for now, it 
+        // probably makes sense to focus on upgrading to llvm 9, and then looking at that.
 
         const Type *Ty;
         Value *V = PT->computeAllocationCountValue(Base, Ty);
@@ -483,6 +507,7 @@ class PtrVerifier : public FunctionPass
                 V              = new ZExtInst(V, I64Ty, "", I);
             }
         }
+
         return BoundsMap[Base] = V;
     }
 
