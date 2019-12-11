@@ -148,7 +148,9 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
     PM.add(createInternalizePass(exports));
     PM.add(createGlobalDCEPass());
     PM.add(createInstructionCombiningPass());
+    PM.add(createClamBCTrace());
     PM.add(createClamBCRebuild()); /* instcombine would undo the transform, must be after */
+    //The ClamBCRebuild pass removes debug info
     PM.add(createDeadTypeEliminationPass());
     if (DumpIR)
         PM.add(createBitcodeWriterPass(outs()));
@@ -158,10 +160,9 @@ bool ClamBCTargetMachine::addPassesToEmitWholeFile(PassManager &PM,
     PM.add(createLowerSwitchPass());
     PM.add(createClamBCVerifier(false));
     PM.add(createVerifierPass());
-    PM.add(createStripDebugDeclarePass());
+    PM.add(createStripDebugDeclarePass()); //Needs to be after the ClamBCTrace pass
     PM.add(createGEPSplitterPass());
     PM.add(createClamBCLowering(true));
-    PM.add(createClamBCTrace());
     PM.add(createDeadCodeEliminationPass());
     PM.add(module);
     PM.add(createVerifierPass());
