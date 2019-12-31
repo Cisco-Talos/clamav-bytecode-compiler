@@ -278,7 +278,7 @@ class ClamBCRebuild : public FunctionPass, public InstVisitor<ClamBCRebuild>
             if (thisBB != targetBB) {
                 BasicBlock::iterator IP = I;
                 ++IP;
-                while (isa<AllocaInst>(IP)) ++IP;
+                while (isa<AllocaInst>(IP) || isa<PHINode>(IP)) ++IP;
                 Builder->SetInsertPoint(targetBB, IP);
             }
             CastMap[pair] = R = Builder->CreatePointerCast(V, Ty, "rbcastp");
