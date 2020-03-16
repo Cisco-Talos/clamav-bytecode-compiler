@@ -134,6 +134,16 @@ class ClamBCRebuild : public FunctionPass, public InstVisitor<ClamBCRebuild>
                 PN->reserveOperandSpace(N->getNumIncomingValues());
                 for (unsigned i = 0; i < N->getNumIncomingValues(); i++) {
                     Value *V       = mapPHIValue(N->getIncomingValue(i));
+                    if (V->getType() != PN->getType()){
+                        /*aragusa: We should probably be checking for zext's and stuff, but
+                         * upgrading llvm to version 9 is a higher priority.
+                         */
+                        if (CastInst * ci = dyn_cast<CastInst>(V)){
+                            if (ci->getOperand(0)->getType() == PN->getType()){
+                                V = ci->getOperand(0);
+                            }
+                        }
+                    }
                     BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
                     PN->addIncoming(V, BB);
                 }

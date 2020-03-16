@@ -120,8 +120,9 @@ class ClamBCWriter : public FunctionPass, public InstVisitor<ClamBCWriter>
         dbgInfo.clear();
         anyDbg = false;
 
-        if (F.hasAvailableExternallyLinkage())
+        if (F.hasAvailableExternallyLinkage()){
             return false;
+        }
         fid++;
         assert(OModule->getFunctionID(&F) == fid);
         RA = &getAnalysis<ClamBCRegAlloc>();
