@@ -37,6 +37,7 @@
 #include "llvm/System/Signals.h"
 #include <cstring>
 #include <map>
+#include <ctime>
 using namespace llvm;
 
 static cl::opt<std::string>
@@ -219,7 +220,7 @@ class Parser
     StringMap<unsigned> ignoreMacros;
     LLVMContext &C;
     std::string CurString;
-    uint64_t CurNumber;
+    int64_t CurNumber;
     unsigned TypeFlags;
     int BufferID;
     SmallVector<unsigned, 2> TypeFlagsList;
@@ -260,15 +261,23 @@ class Parser
         return tok::Error;
     }
 
-    uint64_t LexNumber()
+    int64_t LexNumber()
     {
         uint64_t n             = 0;
         const unsigned char *p = TokStart;
+        bool negative = false;
+        if (*p == '-') {
+            negative = true;
+            p++;
+        }
         while (isdigit(*p)) {
             n = n * 10 + (*p - '0');
             p++;
         }
         TokStart = p;
+        if (negative) {
+            n *= -1;
+        }
         return n;
     }
 
@@ -457,7 +466,7 @@ class Parser
                 return kind;
             }
 
-            if (isdigit(*p)) {
+            if (isdigit(*p) || *p == '-') {
                 CurNumber = LexNumber();
                 return tok::Number;
             }
@@ -1074,11 +1083,18 @@ void Parser::printApiCalls(raw_ostream &Out, const std::string &Type,
 
 void Parser::outputHeader(raw_ostream &Out, const std::string HeaderName)
 {
+    time_t rawtime;
+    struct tm *tm;
+
+    time(&rawtime);
+    tm = gmtime(&rawtime);
+
     Out << "/*\n"
         << " *  ClamAV bytecode internal API\n";
     Out << " *  This is an automatically generated file!\n"
         << " *\n";
-    Out << " *  Copyright (C) 2013-2019 Cisco Systems, Inc. and/or its affiliates. All rights reserved.\n"
+    Out << " *  Copyright (C) 2013-" << (1900 + tm->tm_year)
+        << " Cisco Systems, Inc. and/or its affiliates. All rights reserved.\n"
         << " *  Copyright (C) 2009-2013 Sourcefire, Inc.\n"
         << " *\n"
         << " * Redistribution and use in source and binary forms, with or without\n"
@@ -1177,7 +1193,7 @@ bool Parser::output(raw_ostream &Out, raw_ostream &OutImpl, raw_ostream &OutHook
         typeNames[I->second] = I->first;
     }
 
-    FunctionListTy apicalls[10];
+    FunctionListTy apicalls[11];
     for (FunctionListTy::iterator I = functions.begin(), E = functions.end();
          I != E; ++I) {
 
