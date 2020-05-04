@@ -128,3 +128,31 @@ you'll need to add debug statements in the bytecode to print interesting values.
 \end{itemize}
 
 
+\subsection{Dumping bytecode}
+The ClamAV bytecode can be dumped with:
+\begin{verbatim}
+clambc --printbcir your_signature.cbc 
+\end{verbatim}
+
+As the LLVM bytecode might be more readable than the ClamAV bytecode, you can
+also dump the LLVM bytecode during compilation:
+\begin{verbatim}
+clambc-compiler -o signature.cbc signature.c -- -clambc-dumpir > signature.bc
+llvm-dis < signature.bc | less
+\end{verbatim}
+
+As your local LLVM version might differ from the one used by clambc-compiler,
+make sure to use the llvm-dis tool compiled and installed by the ClamAV
+bytecode compiler to disassemble the LLVM bytecode.
+
+\subsection{Tracing}
+Bytecode can be compiled with trace information, so that the (corresponding)
+LLVM code is printed during the execution. To compile with trace support, use:
+\begin{verbatim}
+clambc-compiler -g -o signature.cbc signature.c -- -clambc-trace
+\end{verbatim}
+
+Then run the bytecode signature with tracing enabled:
+\begin{verbatim}
+clambc --trace=7 --input=malicious_file signature.cbc
+\end{verbatim}
