@@ -1,3 +1,93 @@
+# CMake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# C Prerequisites
+*.d
+
+# C Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# C Linker output
+*.ilk
+*.map
+*.exp
+
+# C Precompiled Headers
+*.gch
+*.pch
+
+# C Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# C Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# C Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# C Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Editor save files
+*~
+
+# Vim Swap
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Vim Session
+Session.vim
+
+# Vim Temporary
+.netrwhist
+*~
+# Vim Auto-generated tag files
+tags
+# Vim Persistent undo
+[._]*.un~
+
+# VScode config
 .vscode
-examples/out
-obj
+
+# Build directories
+/examples/out
+/obj
+/build

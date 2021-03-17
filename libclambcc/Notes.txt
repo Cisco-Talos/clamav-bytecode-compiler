@@ -1,0 +1,30 @@
+
+#setup notes
+sudo apt install clang-8
+sudo apt install llvm-8
+sudo ln -s /usr/bin/clang /usr/bin/clang-8
+sudo apt install ninja-build
+
+#build
+mkdir build
+cd build
+cmake -G Ninja ..
+ninja
+
+
+
+ClamBCTargetMachine.cpp has where a lot of the passes are added.
+
+DataLayout
+e-p:64:8:8-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64:a0:0:64
+Data layout is separated by '-'s.
+e = Little Endian
+p:64:8:8 = 64-bit pointer, abi is 8 bit, preferred alignment is 8 bit.
+i1:8:8 = 1-bit integer, abi is 8 bit, preferred alignment is 8 bit.
+i8:8:8 = 8-bit integer, abi is 8 bit, preferred alignment is 8 bit.
+i16:16:16 = 16-bit integer, abi is 16 bit, preferred alignment is 16 bit.
+i32:32:32 = 32-bit integer, abi is 32 bit, preferred alignment is 32 bit.
+i64:64:64 = 64-bit integer, abi is 64 bit, preferred alignment is 64 bit.
+
+Don't want to specify the 32-bit triple, unless we fix the headers to properly define 64-bit types.
+
