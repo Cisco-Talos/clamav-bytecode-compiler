@@ -1,9 +1,10 @@
 #!/bin/bash -e
-CLAMAV_PATH=../../clamav-devel/
+CLAMAV_PATH=../clamav-devel/
 CLAMAV_TEST=$CLAMAV_PATH/unit_tests/input/
 HEADERS_DIR=clang/lib/Headers
 
 # Sync libclamav -> compiler
+cp -v $CLAMAV_PATH/libclamav/bytecode_api.h clang/lib/Headers/bytecode_api.h
 cp -v $CLAMAV_PATH/libclamav/pe.h clang/lib/Headers/bytecode_pe.h.tmp
 sed -i 's/^#include "clamav.h"//' clang/lib/Headers/bytecode_pe.h.tmp
 sed -i 's/^#include "others.h"//' clang/lib/Headers/bytecode_pe.h.tmp
