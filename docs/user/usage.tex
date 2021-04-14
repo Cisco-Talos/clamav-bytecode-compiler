@@ -93,7 +93,7 @@ as string or integer depending on parameter type:
 
 See \prettyref{prg:debugapi} for an example.
 \begin{program}
-\lstinputlisting{../../examples/in/debug.o1.c}
+\lstinputlisting{../../test/examples/in/debug.o1.c}
 \caption{Example of using debug APIs}
 \label{prg:debugapi}
 \end{program}
@@ -131,7 +131,7 @@ you'll need to add debug statements in the bytecode to print interesting values.
 \subsection{Dumping bytecode}
 The ClamAV bytecode can be dumped with:
 \begin{verbatim}
-clambc --printbcir your_signature.cbc 
+clambc --printbcir your_signature.cbc
 \end{verbatim}
 
 As the LLVM bytecode might be more readable than the ClamAV bytecode, you can

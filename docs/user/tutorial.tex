@@ -10,7 +10,7 @@
 \section[Writing logical signatures]{Writing logical signature bytecodes}
 \footnote{See \prettyref{sec:lsigs} for more details about logical signatures in
 bytecode.}
-Logical signatures can be used as triggers for executing bytecode. 
+Logical signatures can be used as triggers for executing bytecode.
 However, instead of describing a logical signature as a \verb+.ldb+ pattern, you use (simple) C code which is later
 translated to a \verb+.ldb+-style logical signature by the ClamAV Bytecode Compiler.
 
@@ -101,7 +101,7 @@ declarations, and definitions as variable assignments, since that what they are 
 The order in which you declare the signatures is the order in which they appear in the generated
 logical signature.
 
-You can use any name for the patterns that is a valid record field name in C, 
+You can use any name for the patterns that is a valid record field name in C,
 and doesn't conflict with anything else declared.
 
 After using the above macros, the global variable \verb+Signatures+ will have two new fields:
@@ -138,7 +138,7 @@ The simplest logical signature is like a \verb+.ndb+ signature: a virus name, si
 
 The code for this is shown in \prettyref{prg:singlesig}
 \begin{program}
-\lstinputlisting{../../examples/in/lsig_simple.o1.c}
+\lstinputlisting{../../test/examples/in/lsig_simple.o1.c}
 \caption{Single subsignature example}
 \label{prg:singlesig}
 \end{program}
@@ -159,7 +159,7 @@ Here you see the following new features used:
 \footnote{In case of a duplicate virusname the
 prefix is appended a unique number by the SI}
 \begin{itemize}
- \item Multiple virusnames returned from a single bytecode (with common prefix) 
+ \item Multiple virusnames returned from a single bytecode (with common prefix)
  \item Multiple subsignatures, each with a name of your choice
  \item A pattern with an anchor (\verb|EP+0:aabb|)
  \item More subsignatures defined than used in the logical expression
@@ -182,14 +182,14 @@ Also notice that comments can be used freely: they are ignored by the compiler. 
 (start comment with \verb+//+, automatically ended by newline).
 
 \begin{program}
-\lstinputlisting{../../examples/in/lsig.o1.c}
+\lstinputlisting{../../test/examples/in/lsig.o1.c}
 \caption{Multiple subsignatures}
 \label{prg:multisig}
 \end{program}
 
 \subsection{W32.Polipos.A detector rewritten as bytecode}
 \subsection{Virut detector in bytecode}
-\section{Writing regular expressions in bytecode} 
+\section{Writing regular expressions in bytecode}
 ClamAV only supports a limited set of regular expressions in \verb+.ndb format+ : wildcards.
 The bytecode compiler allows you to compile fully generic regular expressions to bytecode directly.
 When libclamav loads the bytecode, it will compile to native code (if using the JIT), so it should offer quite good performance.
@@ -208,7 +208,7 @@ Lets start with a simple example, to match this POSIX regular expression:
 
 See \prettyref{prg:reg1} \footnote{This omits the virusname, and logical signature declarations}.
 \begin{program}
-\lstinputlisting{../../examples/in/reg1.o1.c}
+\lstinputlisting{../../test/examples/in/reg1.o1.c}
 \caption{Simple regular expression example}
  \label{prg:reg1}
 \end{program}
@@ -224,7 +224,7 @@ reading byte-by-byte, it is using a buffer to speed things up} and tries to matc
  \item \verb+ANY = [^];+ This declares a regular expression named \verb+ANY+ that matches any byte.
  \item \verb+"eval("[a-zA-Z_][a-zA-Z_0-9]*".unescape" {+ This is the actual regular expression.
 \begin{description}
- \item \verb+"eval("+ This matches the literal string \verb+eval(+. 
+ \item \verb+"eval("+ This matches the literal string \verb+eval(+.
 Literals have to be placed in double quotes \verb+"+ here, unlike in POSIX regular expressions or PCRE.
 If you want case-insensitive matching, you can use \verb+'+.
  \item \verb+[a-zA-Z_]+ This is a character class, it matches any lowercase, uppercase or \verb+_+ characters.
@@ -238,7 +238,7 @@ the regular expression matcher uses a buffer, using just \verb+seek(0, SEEK_CUR)
 not the current position during regular expression matching. You have to use the \verb+REGEX_POS+ macro to get the correct position.
  \item \verb+debug(...)+ Shows a debug message about what was found and where. This is extremely helpful when you start writing regular expressions, and
 nothing works: you can determine whether your regular expression matched at all, and if it matched where you thought it would.
-There is also a \verb+DEBUG_PRINT_MATCH+ that prints the entire matched string to the debug output. 
+There is also a \verb+DEBUG_PRINT_MATCH+ that prints the entire matched string to the debug output.
 Of course before publishing the bytecode you might want to turn off these debug messages.
  \item \verb+}+ closes the \emph{action} block for this regular expression
  \item \verb+ANY { continue; }+ If none of the regular expressions matched so far, just keep running the matcher, at the next byte
