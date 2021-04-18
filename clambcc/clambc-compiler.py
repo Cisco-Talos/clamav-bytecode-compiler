@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import shutil
-import re
-import subprocess
-
 from optparse import OptionParser
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
 
 COMPILED_BYTECODE_FILE_EXTENSION = "cbc"
 LINKED_BYTECODE_FILE_EXTENSION = "linked.ll"
@@ -25,9 +25,24 @@ COMMON_WARNING_OPTIONS = "-Wno-backslash-newline-escape \
 TMPDIR=".__clambc_tmp"
 CLANG_VERSION=8
 
-INCDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "include")
-SHARED_OBJ_DIR = os.path.join( os.path.dirname( os.path.realpath(__file__) ) , "..", "lib")
-SHARED_OBJ_FILE = os.path.join( SHARED_OBJ_DIR, "libclambcc.so")
+INCDIR = Path(__file__).parent / '..' / 'include'
+
+# Check for libclambcc.so at a location relative to this script first.
+FOUND_SHARED_OBJ = False
+
+SHARED_OBJ_DIR = Path(__file__).parent / '..' / 'lib'
+if (SHARED_OBJ_DIR / 'libclambcc.so').exists():
+    SHARED_OBJ_FILE = SHARED_OBJ_DIR / 'libclambcc.so'
+    FOUND_SHARED_OBJ = True
+
+elif 'LD_LIBRARY_PATH' in os.environ:
+    # Use LD_LIBRARY_PATH to try to find it.
+    ld_library_paths = os.environ['LD_LIBRARY_PATH'].strip(' :').split(':')
+    for lib_path in ld_library_paths:
+        if (Path(lib_path) / 'libclambcc.so').exists():
+            SHARED_OBJ_FILE = Path(lib_path) / 'libclambcc.so'
+            FOUND_SHARED_OBJ = True
+            break
 
 VERBOSE=False
 
@@ -572,6 +587,7 @@ def main():
         sys.exit(-1)
 
     parser = ClamBCCOptionParser()
+    parser.add_option("-V", "--version", dest="version", action="store_true", default=False)
     parser.add_option("-o", "--outfile", dest="outfile", default=None)
     parser.add_option("--save-tempfiles", dest="save", action="store_true", default=False)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False)
@@ -580,20 +596,25 @@ def main():
 #                    signature as an executable for debugging (NOT IMPLEMENTED)")
     parser.add_option("-I", action="append", dest="includes", default=None)
     parser.add_option("-D", action="append", dest="defines", default=None)
-    parser.add_option("--disable-common-warnings", dest="disableCommonWarnings", 
-            action="store_true", default=False, 
+    parser.add_option("--disable-common-warnings", dest="disableCommonWarnings",
+            action="store_true", default=False,
             help=f"{COMMON_WARNING_OPTIONS} (Found in some bytecode signatures).")
 #    parser.add_option("--standard-compiler", dest="standardCompiler", action="store_true", default=False,
 #            help="This is if you want to build a normal c program as an executable to test the compiler.")
     (options, args) = parser.parse_args()
+
+    if options.version:
+        #TODO: determine the version by calling into libclambcc.so
+        print('ClamBC-Compiler 0.103.1')
+        sys.exit(0)
 
     options.genexe = False
     options.standardCompiler = False
 
     options.passthroughOptions = " ".join(parser.getPassthrough())
 
-    if not os.path.isfile(SHARED_OBJ_FILE ):
-        die(f"{SHARED_OBJ_FILE} not found.  See instructions for building", 2)
+    if not FOUND_SHARED_OBJ:
+        die(f"libclambcc.so not found.  See instructions for building", 2)
 
     if 0 == len(args):
         dieNoInputFile()
@@ -676,6 +697,3 @@ def main():
 if '__main__' == __name__:
 
     main()
-
-
-

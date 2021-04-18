@@ -102,6 +102,8 @@ if(ENABLE_TESTS)
     else()
         set(Python3_TEST_PACKAGE "pytest;-v")
     endif()
+
+    find_package(ClamAV REQUIRED)
 endif()
 
 find_package(Clang 8 REQUIRED)
@@ -220,7 +222,7 @@ include(CTest)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 if(ENABLE_TESTS)
     # Tests to verify compiler works as intended and that signatures behave as intended.
-    # add_subdirectory( test )
+    add_subdirectory( test )
 endif()
 
 if(WIN32)
@@ -264,5 +266,8 @@ if(ENABLE_TESTS)
 message(STATUS "${C}Test Dependencies${e} --
 ${b}        Feature Test Framework:${e}
 ${_}            python3         ${e}${Python3_EXECUTABLE}
-${_}                            ${e}${Python3_TEST_PACKAGE}")
+${_}                            ${e}${Python3_TEST_PACKAGE}
+${_}            clamav          ${e}${ClamAV_VERSION}
+${_}                clamscan:   ${e}${clamscan_EXECUTABLE}
+${_}                bc-headers: ${e}${clambc_headers_DIRECTORY}")
 endif()
