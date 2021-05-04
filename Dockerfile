@@ -24,6 +24,7 @@ RUN apt-get update -y && \
         cmake \
         make \
         clang-8 \
+        clamav \
     && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install pytest && \
@@ -35,7 +36,8 @@ RUN apt-get update -y && \
         -D ENABLE_EXAMPLES=OFF \
     && \
     make DESTDIR="/clambc" -j$(($(nproc) - 1)) && \
-    make DESTDIR="/clambc" install
+    make DESTDIR="/clambc" install && \
+    ctest -V || echo "Continuing with failed tests!"
 
 FROM registry.hub.docker.com/library/ubuntu:20.04
 
