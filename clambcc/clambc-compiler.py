@@ -308,6 +308,9 @@ def getOutputString(linked, ignore):
             if ((1 == iteration) and (fileName.endswith(".h"))):
                 continue
 
+            if not os.path.isfile(fileName):
+                continue
+
             f = open(fileName)
             lines = f.readlines()
             f.close()
