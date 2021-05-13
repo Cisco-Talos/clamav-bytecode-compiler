@@ -46,7 +46,6 @@ class ClamBCRemoveUndefs : public ModulePass
     {
         Function *pFunc = BB->getParent();
 
-        //BasicBlock abrt = std::find(pFunc, aborts.begin(), aborts.end());
         auto iter = aborts.find(pFunc);
         if (aborts.end() != iter) {
             return iter->second;
@@ -54,7 +53,6 @@ class ClamBCRemoveUndefs : public ModulePass
 
         FunctionType *abrtTy = FunctionType::get(
             Type::getVoidTy(BB->getContext()), false);
-        //args.push_back(Type::getInt32Ty(BB->getContext()));
         FunctionType *rterrTy = FunctionType::get(
             Type::getInt32Ty(BB->getContext()),
             {Type::getInt32Ty(BB->getContext())}, false);
@@ -63,8 +61,6 @@ class ClamBCRemoveUndefs : public ModulePass
         Constant *func_rterr =
             BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
         BasicBlock *abort = BasicBlock::Create(BB->getContext(), "rterr.trig", BB->getParent());
-        //                 PHINode * PN     = PHINode::Create(Type::getInt32Ty(BB->getContext()), 0, "ClamBCRTChecks_abort",
-        //                         abort);
         Constant *PN = ConstantInt::get(Type::getInt32Ty(BB->getContext()), 99);
         if (MDDbgKind) {
             CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", abort);
@@ -124,6 +120,34 @@ class ClamBCRemoveUndefs : public ModulePass
 
         delLst.push_back(term);
         bChanged = true;
+
+    }
+
+    virtual bool isSamePointer(Value * ptr1, Value * ptr2, std::set<llvm::Value *> &visited) {
+
+        if (visited.end() != std::find(visited.begin(), visited.end(), ptr1)) {
+            return false;
+        }
+        visited.insert(ptr1);
+
+        if (ptr1 == ptr2){
+            return true;
+        }
+
+        if (User * pu = llvm::dyn_cast<User>(ptr1)){
+
+            for (size_t i = 0; i < pu->getNumOperands(); i++){
+                if (isSamePointer(pu->getOperand(i), ptr2, visited)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    virtual bool isSamePointer(Value * ptr1, Value * ptr2) {
+        std::set<llvm::Value *> visited;
+        return isSamePointer(ptr1, ptr2, visited);
     }
 
     virtual void insertChecks(Value *ptr, Value *size)
@@ -135,7 +159,9 @@ class ClamBCRemoveUndefs : public ModulePass
 
         for (auto i : insts) {
             if (GetElementPtrInst *pgepi = llvm::dyn_cast<GetElementPtrInst>(i)) {
-                insertChecks(pgepi, size);
+                if (isSamePointer(pgepi->getPointerOperand(), ptr)){
+                    insertChecks(pgepi, size);
+                }
             }
         }
     }
