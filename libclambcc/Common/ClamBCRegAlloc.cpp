@@ -60,22 +60,14 @@ void ClamBCRegAlloc::handlePHI(PHINode *PN)
     unsigned MDDbgKind = PN->getContext().getMDKindID("dbg");
     if (MDDbgKind) {
         if (MDNode *Dbg = PN->getMetadata(MDDbgKind)) {
-#if 0
-            builder.SetCurrentDebugLocation(Dbg);
-#else
             DebugLoc dl(Dbg);
             builder.SetCurrentDebugLocation(dl);
-#endif
         }
     }
     for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
         BasicBlock *BB = PN->getIncomingBlock(i);
         Value *V       = PN->getIncomingValue(i);
-#if 0
-        builder.SetInsertPoint(BB, BB->getTerminator());
-#else
         builder.SetInsertPoint(BB->getTerminator());
-#endif
         Instruction *I = builder.CreateStore(V, AI);
         builder.SetInstDebugLocation(I);
     }
@@ -143,9 +135,10 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
                 const PointerType *SPTy, *DPTy;
                 while ((SPTy = dyn_cast<PointerType>(SrcTy))) {
                     DPTy = dyn_cast<PointerType>(DstTy);
-                    if (!DPTy)
+                    if (!DPTy) {
                         ClamBCStop("Cast from pointer to non-pointer element",
                                    BCI);
+                    }
                     SrcTy = SPTy->getElementType();
                     DstTy = DPTy->getElementType();
                 }
@@ -166,13 +159,6 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
                 ValueMap[II] = getValueID(II->getOperand(0));
                 continue;
             }
-#if 0
-      if (isa<PtrToIntInst>(BC)) {
-        // sub ptrtoint, ptrtoint is supported
-        SkipMap.insert(II);
-        continue;
-      }
-#endif
         }
         if (II->hasOneUse()) {
             // single-use store to alloca -> store directly to alloca
@@ -265,17 +251,7 @@ unsigned ClamBCRegAlloc::buildReverseMap(std::vector<const Value *> &reverseMap)
 
 void ClamBCRegAlloc::getAnalysisUsage(AnalysisUsage &AU) const
 {
-    //AU.addRequired<LiveValues>();
     AU.addRequired<DominatorTreeWrapperPass>();
-
-#if 0
-  // We promise not to introduce anything that is unsafe.
-  // If the verifier accepted the bytecode so far, we don't break it.
-  // This is needed because we can't rerun the verifier: it can only 
-  // analyze bytecode in SSA form, and we intentionally break SSA form here 
-  // (we eliminate PHIs).
-  AU.addPreservedID(ClamBCVerifierID);
-#endif
 
     // Preserve the CFG, we only eliminate PHIs, and introduce some
     // loads/stores.

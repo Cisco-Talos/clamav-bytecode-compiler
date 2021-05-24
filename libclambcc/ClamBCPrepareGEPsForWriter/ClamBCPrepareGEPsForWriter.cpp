@@ -110,14 +110,8 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
             }
 
             if (StructType *pst = llvm::dyn_cast<StructType>(pt)) {
-
-                for (size_t i = 0; i < pst->getNumElements(); i++) {
-                    size += getTypeSize(pst->getTypeAtIndex(i));
-                }
-
-                if (size) {
-                    return size;
-                }
+                const StructLayout * psl = pMod->getDataLayout().getStructLayout(pst);
+                return psl->getSizeInBits();
             }
 
             assert(0 && "Size has not been computed");
@@ -138,11 +132,11 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
             if (StructType * pst = llvm::dyn_cast<StructType>(pt)){
                 assert((idx <= pst->getNumElements()) && "Idx too high");
 
-                for (uint64_t i = 0; i < idx; i++) {
-                    Type *pt     = pst->getElementType(i);
-                    int64_t size = getTypeSizeInBytes(pt);
-                    cnt += size;
-                }
+                const StructLayout * psl = pMod->getDataLayout().getStructLayout(pst);
+                assert (psl && "Could not get layout");
+
+                cnt = psl->getElementOffsetInBits(idx)/8;
+
             } else if (ArrayType * pat = llvm::dyn_cast<ArrayType>(pt)){
                 assert((idx <= pat->getNumElements()) && "Idx too high");
                 cnt = idx * getTypeSizeInBytes(pat->getElementType());
@@ -208,7 +202,6 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
                 if ( ConstantInt * ciIdx = llvm::dyn_cast<ConstantInt>(vIdx)){
 
                     uint64_t val = computeOffsetInBytes(currType, ciIdx);
-                    //ConstantInt * ciAddend = ConstantInt::get(ciIdx->getType(), val);
                     ciAddend = ConstantInt::get(ciIdx->getType(), val);
 
                     Type * tmp = findTypeAtIndex(currType, ciIdx);
@@ -322,6 +315,13 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
             pgepi->eraseFromParent();
         }
 
+        virtual Value* stripBitCasts(Value * pInst){
+            if (BitCastInst * pbci = llvm::dyn_cast<BitCastInst>(pInst)){
+                return stripBitCasts(pbci->getOperand(0));
+            }
+
+            return pInst;
+        }
 
         virtual void processGEPI(GetElementPtrInst * pgepi){
 
@@ -329,7 +329,8 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
 
             Value * vPtr = pgepi->getPointerOperand();
             if (BitCastInst * pbci = llvm::dyn_cast<BitCastInst>(vPtr)){
-                vPtr = GetUnderlyingObject(pbci, pMod->getDataLayout());
+                vPtr = stripBitCasts(pbci);
+
                 Type * ptrType = vPtr->getType()->getPointerElementType();
 
                 if (ArrayType * pat = llvm::dyn_cast<ArrayType>(ptrType)){
@@ -338,21 +339,17 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
                     assert (0 && "ClamBCLowering did not do it's job");
                 }
 
-
                 Type * gepiDstType = pbci->getType()->getPointerElementType();
                 if (StructType * pst = llvm::dyn_cast<StructType>(gepiDstType)){
                     processGEPI(pgepi, pbci, vPtr, pst);
                 } else if (ArrayType * pat = llvm::dyn_cast<ArrayType>(gepiDstType)){
                     processGEPI(pgepi, pbci, vPtr, pat);
-                } else {
-                    DEBUGERR << *gepiDstType << "<END>\n";
                 }
 
             } else {
                 assert (0 && "FIGURE OUT IF I NEED TO DO ANYTHING HERE?");
             }
         }
-
 
         virtual void convertArrayStructGEPIsToI8(Function * pFunc){
             std::vector<GetElementPtrInst * > gepis;
