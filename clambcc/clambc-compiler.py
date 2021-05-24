@@ -694,6 +694,8 @@ def main():
         shutil.rmtree(TMPDIR)
 
     if res:
+        if os.path.exists(outFile):
+            os.remove(outFile)
         sys.exit(1)
 
 
