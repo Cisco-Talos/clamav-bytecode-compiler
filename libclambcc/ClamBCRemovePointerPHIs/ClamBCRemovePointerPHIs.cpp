@@ -88,13 +88,14 @@ class ClambcRemovePointerPHIs : public FunctionPass
         return pRet;
     }
 
-    bool phiIsDependent(GetElementPtrInst *pgepi, PHINode *phiNode)
+    /*Returns true if phiNode is a dependent instruction of pVal.*/
+    bool phiIsDependent(Value *pVal, PHINode *phiNode)
     {
 
         std::set<llvm::Instruction *> insts;
         std::set<llvm::GlobalVariable *> globs;
 
-        getDependentValues(pgepi, insts, globs);
+        getDependentValues(pVal, insts, globs);
 
         for (auto i : insts) {
             if (phiNode == i) {
@@ -195,10 +196,17 @@ class ClambcRemovePointerPHIs : public FunctionPass
 
         for (size_t i = 0; i < pn->getNumIncomingValues(); i++) {
             Value *incoming = getOrigValue(pn->getIncomingValue(i));
-            if (GetElementPtrInst *p = llvm::dyn_cast<GetElementPtrInst>(pn->getIncomingValue(i))) {
-                //Need to fix the index to be whatever the index is for the GetElementPtrInst here
-                for (auto idx = p->idx_begin(), idxe = p->idx_end(); idx != idxe; idx++) {
 
+            //If this value is dependent on the phi node, then it cannot
+            //be what the PHINode was initialized to the first time the
+            //block was entered, which is what we are looking for.
+            if (not (phiIsDependent(incoming, pn))){
+                continue;
+            }
+
+            if (GetElementPtrInst *p = llvm::dyn_cast<GetElementPtrInst>(pn->getIncomingValue(i))) {
+                //Replace initValue with the index operand of the GetElementPtrInst here.
+                for (auto idx = p->idx_begin(), idxe = p->idx_end(); idx != idxe; idx++) {
                     initValue = llvm::cast<Value>(idx);
                 }
                 if (initValue->getType() != pType) {
@@ -238,15 +246,14 @@ class ClambcRemovePointerPHIs : public FunctionPass
                     BasicBlock *pred = findPredecessor(idxNode->getParent(), pgepi->getParent(), omitNodes);
                     assert(pred && "Could not find predecessor");
                     idxNode->addIncoming(add, pred);
-                    //delLst.push_back(pgepi);
 
-                    Instruction *gepiNew = GetElementPtrInst::Create(nullptr, pBasePtr, add, "ClamBCRemovePointerPHIs_gepi_", pgepi);
-                    if (pgepi->getType() != gepiNew->getType()) {
-                        gepiNew = CastInst::CreatePointerCast(gepiNew, pgepi->getType(), "ClamBCRemovePointerPHIs_cast_", pgepi);
+                    Instruction *gepiNew2 = gepiNew;
+                    if (pgepi->getType() != gepiNew2->getType()) {
+                        gepiNew2 = CastInst::CreatePointerCast(gepiNew2, pgepi->getType(), "ClamBCRemovePointerPHIs_cast_", pgepi);
+                        newInsts.push_back(gepiNew2);
                     }
-                    newInsts.push_back(gepiNew);
 
-                    pgepi->replaceAllUsesWith(gepiNew);
+                    pgepi->replaceAllUsesWith(gepiNew2);
                 }
             }
         }
@@ -263,13 +270,10 @@ class ClambcRemovePointerPHIs : public FunctionPass
 
             for (size_t j = 0; j < newInsts.size(); j++) {
                 Instruction *pJ = newInsts[j];
-                if (pUser->getParent() == pJ->getParent()) { //same basic block
-
-                    for (size_t k = 0; k < pUser->getNumOperands(); k++) {
-                        if (pUser->getOperand(k) == pn) {
-                            pUser->setOperand(k, pJ);
-                            break;
-                        }
+                for (size_t k = 0; k < pUser->getNumOperands(); k++) {
+                    if (pUser->getOperand(k) == pn) {
+                        pUser->setOperand(k, pJ);
+                        break;
                     }
                 }
             }
