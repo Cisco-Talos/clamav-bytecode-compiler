@@ -345,9 +345,6 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
                 } else if (ArrayType * pat = llvm::dyn_cast<ArrayType>(gepiDstType)){
                     processGEPI(pgepi, pbci, vPtr, pat);
                 }
-
-            } else {
-                assert (0 && "FIGURE OUT IF I NEED TO DO ANYTHING HERE?");
             }
         }
 

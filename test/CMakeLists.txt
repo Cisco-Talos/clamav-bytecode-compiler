@@ -52,6 +52,10 @@ add_test(NAME clambcc-compile-tests COMMAND ${Python3_EXECUTABLE} -m;${Python3_T
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set_property(TEST clambcc-compile-tests PROPERTY ENVIRONMENT ${ENVIRONMENT})
 
+add_test(NAME clambcc-runtime-test COMMAND ${Python3_EXECUTABLE} -m;${Python3_TEST_PACKAGE};02_basic_runtime_test.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+set_property(TEST clambcc-runtime-test PROPERTY ENVIRONMENT ${ENVIRONMENT})
+
 if(WIN32)
     #
     # Prepare a test install, with all our DLL dependencies co-located with our EXEs and DLLs

@@ -37,7 +37,7 @@ RUN apt-get update -y && \
     && \
     make DESTDIR="/clambc" -j$(($(nproc) - 1)) && \
     make DESTDIR="/clambc" install && \
-    ctest -V || echo "Continuing with failed tests!"
+    ctest -V
 
 FROM registry.hub.docker.com/library/ubuntu:20.04
 
