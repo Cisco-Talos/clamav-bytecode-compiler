@@ -571,6 +571,12 @@ void ClamBCAnalyzer::populateAPIMap()
     apiMap["json_get_boolean"]           = id++;
     apiMap["json_get_int"]               = id++;
     apiMap["engine_scan_options_ex"]     = id++;
+    apiMap["lzma_init"]                  = id++;
+    apiMap["lzma_process"]               = id++;
+    apiMap["lzma_done"]                  = id++;
+    apiMap["bzip2_init"]                 = id++;
+    apiMap["bzip2_process"]              = id++;
+    apiMap["bzip2_done"]                 = id++;
 }
 
 void ClamBCAnalyzer::getAnalysisUsage(AnalysisUsage &AU) const
