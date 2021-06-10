@@ -27,6 +27,8 @@ target_sources(clambcc_obj
         ClamBCRemovePointerPHIs/ClamBCRemovePointerPHIs.cpp
         ClamBCConvertIntrinsics/ClamBCConvertIntrinsics.cpp
         ClamBCRemoveUndefs/ClamBCRemoveUndefs.cpp
+        ClamBCPreserveABIs/ClamBCPreserveABIs.cpp
+        ClamBCExtendPHIsTo64Bit/ClamBCExtendPHIsTo64Bit.cpp
 )
 
 target_include_directories(clambcc_obj

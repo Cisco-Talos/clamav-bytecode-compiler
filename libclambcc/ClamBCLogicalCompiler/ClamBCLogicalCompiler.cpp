@@ -688,72 +688,80 @@ class LogicalCompiler
         return true;
     }
 
-
-    class LogicalPHIHelper {
-        public:
-
-        LogicalPHIHelper (BranchInst * bi, bool isTrue) {
-            pBranchInst = bi;
-            pBasicBlock = bi->getParent();
+    class LogicalPHIHelper
+    {
+      public:
+        LogicalPHIHelper(BranchInst *bi, bool isTrue)
+        {
+            pBranchInst  = bi;
+            pBasicBlock  = bi->getParent();
             this->isTrue = isTrue;
         }
 
-        LogicalPHIHelper(LogicalPHIHelper * lph){
+        LogicalPHIHelper(LogicalPHIHelper *lph)
+        {
             this->pBasicBlock = lph->pBasicBlock;
             this->pBranchInst = lph->pBranchInst;
-            this->isTrue = lph->isTrue;
+            this->isTrue      = lph->isTrue;
         }
 
-        virtual ~LogicalPHIHelper(){}
+        virtual ~LogicalPHIHelper() {}
 
-        BranchInst * getBranchInst() { return pBranchInst; } 
+        BranchInst *getBranchInst()
+        {
+            return pBranchInst;
+        }
 
-        BasicBlock * getBasicBlock() { return pBasicBlock; } 
+        BasicBlock *getBasicBlock()
+        {
+            return pBasicBlock;
+        }
 
-        bool getIsTrue() {
+        bool getIsTrue()
+        {
             return isTrue;
         }
 
-        Value * getCondition(){
-            if (pBranchInst->isConditional()){
+        Value *getCondition()
+        {
+            if (pBranchInst->isConditional()) {
                 return pBranchInst->getCondition();
             }
             return nullptr;
         }
 
-        protected:
-        BasicBlock * pBasicBlock;
+      protected:
+        BasicBlock *pBasicBlock;
 
-        BranchInst * pBranchInst;
+        BranchInst *pBranchInst;
 
         bool isTrue;
-
     };
 
-
     /*Generate all paths from the 'curr' to 'end' and store them in routes.*/
-    void populateRoutes(BasicBlock * curr, BasicBlock * end, std::vector<std::vector<LogicalPHIHelper*>> & routes, size_t idx){
+    void populateRoutes(BasicBlock *curr, BasicBlock *end, std::vector<std::vector<LogicalPHIHelper *>> &routes, size_t idx)
+    {
 
-        if (curr == end){
+        if (curr == end) {
             return;
         }
 
-        for (size_t i = 0; i < routes[idx].size(); i++){
-            if (routes[idx][i]->getBranchInst() == curr->getTerminator()){
-                return ;
+        for (size_t i = 0; i < routes[idx].size(); i++) {
+            if (routes[idx][i]->getBranchInst() == curr->getTerminator()) {
+                return;
             }
         }
 
-        if (BranchInst * bi = llvm::dyn_cast<BranchInst>(curr->getTerminator())){
-            if (bi->isConditional()){
+        if (BranchInst *bi = llvm::dyn_cast<BranchInst>(curr->getTerminator())) {
+            if (bi->isConditional()) {
                 //copy the route, so that there are separate paths for the true
                 //and false condition.
-                std::vector<LogicalPHIHelper*> route;
-                for (size_t i = 0; i < routes[idx].size(); i++){
+                std::vector<LogicalPHIHelper *> route;
+                for (size_t i = 0; i < routes[idx].size(); i++) {
                     route.push_back(new LogicalPHIHelper(routes[idx][i]));
                 }
                 routes.push_back(route);
-                size_t falseIdx = routes.size()-1;
+                size_t falseIdx = routes.size() - 1;
 
                 routes[idx].push_back(new LogicalPHIHelper(bi, true));
                 routes[falseIdx].push_back(new LogicalPHIHelper(bi, false));
@@ -765,36 +773,35 @@ class LogicalCompiler
                 routes[idx].push_back(new LogicalPHIHelper(bi, true));
                 populateRoutes(bi->getSuccessor(0), end, routes, idx);
             }
-
         }
-
     }
 
-
     /* Find all routes from the entry BasicBlock that end with 'pBasicBlock' */
-    std::vector<size_t>  findRoute(BasicBlock * pBasicBlock, std::vector<std::vector<LogicalPHIHelper*>> & routes){
+    std::vector<size_t> findRoute(BasicBlock *pBasicBlock, std::vector<std::vector<LogicalPHIHelper *>> &routes)
+    {
         std::vector<size_t> ret;
-        for (size_t i = 0; i < routes.size(); i++){
-            size_t lastIdx = routes[i].size()-1;
-            if (routes[i][lastIdx]->getBasicBlock() == pBasicBlock){
+        for (size_t i = 0; i < routes.size(); i++) {
+            size_t lastIdx = routes[i].size() - 1;
+            if (routes[i][lastIdx]->getBasicBlock() == pBasicBlock) {
                 ret.push_back(i);
             }
         }
         return ret;
     }
 
-    LogicalNode * getLogicalNode(std::vector<LogicalPHIHelper*> & route){
-        LogicalNode * ret = nullptr;
+    LogicalNode *getLogicalNode(std::vector<LogicalPHIHelper *> &route)
+    {
+        LogicalNode *ret = nullptr;
 
-        for (size_t i = 0; i < route.size(); i++){
-            Value * vCond = route[i]->getCondition();
-            if (vCond){
-                LogicalNode * ln = Map.find(vCond)->second;
-                if (not route[i]->getIsTrue()){
+        for (size_t i = 0; i < route.size(); i++) {
+            Value *vCond = route[i]->getCondition();
+            if (vCond) {
+                LogicalNode *ln = Map.find(vCond)->second;
+                if (not route[i]->getIsTrue()) {
                     ln = LogicalNode::getNot(ln);
                 }
 
-                if (nullptr == ret){
+                if (nullptr == ret) {
                     ret = ln;
                 } else {
                     ret = LogicalNode::getAnd(ret, ln);
@@ -803,7 +810,6 @@ class LogicalCompiler
         }
 
         return ret;
-
     }
 
     /*
@@ -864,35 +870,35 @@ class LogicalCompiler
         (%or.cond1 AND (NOT %cmp.i35) AND %cmp.i47 AND (NOT %or.cond)) OR (%cmp.i41 AND (NOT %cmp.i47) AND (NOT %or.cond))
      *
      */
-    void processPHI(PHINode * pn){
-        BasicBlock * phiBlock = pn->getParent();
-        BasicBlock * startBlock = llvm::cast<BasicBlock>(pn->getParent()->getParent()->begin());
+    void processPHI(PHINode *pn)
+    {
+        BasicBlock *phiBlock   = pn->getParent();
+        BasicBlock *startBlock = llvm::cast<BasicBlock>(pn->getParent()->getParent()->begin());
 
-        std::vector<std::vector<LogicalPHIHelper*>> routes;
+        std::vector<std::vector<LogicalPHIHelper *>> routes;
         std::vector<LogicalPHIHelper *> route;
         routes.push_back(route);
         populateRoutes(startBlock, phiBlock, routes, 0);
 
-        LogicalNode * ln = nullptr;
+        LogicalNode *ln = nullptr;
 
-        for (size_t i = 0; i < pn->getNumIncomingValues(); i++){
-            Value * vIncoming = pn->getIncomingValue(i);
-            ConstantInt * pci = llvm::dyn_cast<ConstantInt>(vIncoming);
-            if (pci){
-                if (pci->isZero()){
+        for (size_t i = 0; i < pn->getNumIncomingValues(); i++) {
+            Value *vIncoming = pn->getIncomingValue(i);
+            ConstantInt *pci = llvm::dyn_cast<ConstantInt>(vIncoming);
+            if (pci) {
+                if (pci->isZero()) {
                     continue;
                 }
-
             }
             std::vector<size_t> idxs = findRoute(pn->getIncomingBlock(i), routes);
             for (size_t j = 0; j < idxs.size(); j++) {
-                size_t idx = idxs[j];
-                LogicalNode * tmp = getLogicalNode(routes[idx]);
-                if (nullptr == pci){ //Then this isn't a constant
-                    LogicalNode * l = Map.find(vIncoming)->second;
-                    tmp = LogicalNode::getAnd(tmp, l);
+                size_t idx       = idxs[j];
+                LogicalNode *tmp = getLogicalNode(routes[idx]);
+                if (nullptr == pci) { //Then this isn't a constant
+                    LogicalNode *l = Map.find(vIncoming)->second;
+                    tmp            = LogicalNode::getAnd(tmp, l);
                 }
-                if (nullptr == ln){
+                if (nullptr == ln) {
                     ln = tmp;
                 } else {
                     ln = LogicalNode::getOr(ln, tmp);
@@ -901,9 +907,9 @@ class LogicalCompiler
         }
         Map[pn] = ln;
 
-        for (size_t i = 0; i < routes.size(); i++){
-            for (size_t j = 0; j < routes[i].size(); j++){
-                delete(routes[i][j]);
+        for (size_t i = 0; i < routes.size(); i++) {
+            for (size_t j = 0; j < routes[i].size(); j++) {
+                delete (routes[i][j]);
             }
         }
     }
@@ -1672,7 +1678,6 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
     return Valid;
 }
 
-
 bool ClamBCLogicalCompiler::runOnModule(Module &M)
 {
     bool Valid       = true;
@@ -1680,10 +1685,7 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
     virusnames       = "";
     pMod             = &M;
 
-
     //dumpPHIGraphs();
-
-
 
     // Handle virusname
     unsigned kind          = 0;

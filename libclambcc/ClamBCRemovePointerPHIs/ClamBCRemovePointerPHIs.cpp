@@ -200,7 +200,7 @@ class ClambcRemovePointerPHIs : public FunctionPass
             //If this value is dependent on the phi node, then it cannot
             //be what the PHINode was initialized to the first time the
             //block was entered, which is what we are looking for.
-            if (not (phiIsDependent(incoming, pn))){
+            if (not(phiIsDependent(incoming, pn))) {
                 continue;
             }
 
