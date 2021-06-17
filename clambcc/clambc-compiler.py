@@ -435,72 +435,92 @@ def optimize(inFile, outFile, sigFile, inputSourceFile, standardCompiler):
         internalizeAPIList += ",main"
 
     #TODO: Modify ClamBCRemoveUndefs to not require mem2reg to be run before it.
-    cmd = f'opt-{CLANG_VERSION} \
-            -S \
-            -verify-each \
-            -load "{SHARED_OBJ_FILE}" \
-            {inFile} \
-            -o {outFile} \
-            -mem2reg \
-            -clambc-remove-undefs \
-            -O3 \
-            -clambc-remove-pointer-phis \
-            -dce \
-            -disable-loop-vectorization \
-            -disable-slp-vectorization \
-            -globaldce \
-            -strip-dead-prototypes \
-            -constmerge \
-            -mem2reg \
-            -always-inline \
-            -globalopt \
-            -lowerswitch \
-            -lowerinvoke  \
-            -globalopt \
-            -simplifycfg \
-            -indvars \
-            -constprop \
-            -clambc-lowering-notfinal \
-            -lowerswitch \
-            -clambc-verifier \
-            -clambc-lowering-notfinal \
-            -dce \
-            -simplifycfg \
-            -mem2reg \
-            -clambc-lcompiler \
-            -internalize -internalize-public-api-list="{internalizeAPIList}" \
-            -globaldce \
-            -instcombine \
-            -clambc-rebuild \
-            -verify \
-            -simplifycfg \
-            -dce \
-            -lowerswitch  \
-            -clambc-verifier \
-            -verify \
-            -strip-debug-declare \
-            -clambc-gepsplitter-placeholder \
-            -clambc-lowering-final \
-            -clambc-trace \
-            -dce \
-            -clambc-module \
-            -verify \
-            -globalopt \
-            -remove-selects \
-            -clambc-outline-endianness-calls \
-            -clambc-change-malloc-arg-size \
-            -globalopt \
-            -clambc-prepare-geps-for-writer \
-            -globalopt \
-            -clambc-convert-intrinsics \
-            -clambc-writer \
-            -clambc-writer-input-source={inputSourceFile} \
-            -clambc-sigfile={sigFile} \
-            '
+    cmd = (f'opt-{CLANG_VERSION}'
+          f' -S'
+          f' -verify-each'
+          f' -load "{SHARED_OBJ_FILE}"'
+          f' {inFile}'
+          f' -o {outFile}'
+          f' -mem2reg'
+          f' -clambc-remove-undefs' #add pointer bounds checking.
+          f' -clambc-preserve-abis' #add fake function calls that use all of
+                                   #the arguments so that O3 doesn't change 
+                                   #the argument lists
+          f' -O3'
+          f' -clambc-preserve-abis' #remove fake function calls because O3 has already run
+          f' -clambc-remove-pointer-phis'
+          f' -dce'
+          f' -disable-loop-vectorization'
+          f' -disable-slp-vectorization'
+          f' -globaldce'
+          f' -strip-dead-prototypes'
+          f' -constmerge'
+          f' -mem2reg'
+          f' -always-inline'
+          f' -globalopt'
+          f' -lowerswitch'
+          f' -lowerinvoke'
+          f' -globalopt'
+          f' -simplifycfg'
+          f' -indvars'
+          f' -constprop'
+          f' -clambc-lowering-notfinal' # perform lowering pass
+          f' -lowerswitch'
+          f' -clambc-verifier'
+          f' -clambc-lowering-notfinal'  # perform lowering pass
+          f' -dce'
+          f' -simplifycfg'
+          f' -mem2reg'
+          f' -clambc-lcompiler' #compile the logical_trigger function to a
+                               #logical signature.
+          f' -internalize -internalize-public-api-list="{internalizeAPIList}"' 
+          f' -globaldce'
+          f' -instcombine'
+          f' -clambc-rebuild'
+          f' -verify'
+          f' -simplifycfg'
+          f' -dce'
+          f' -lowerswitch'
+          f' -clambc-verifier'
+          f' -verify'
+          f' -strip-debug-declare'
+          f' -clambc-gepsplitter-placeholder'
+          f' -clambc-lowering-final'
+          f' -clambc-trace'
+          f' -dce'
+          f' -clambc-module'
+          f' -verify'
+          f' -globalopt'
+          f' -remove-selects'
+          f' -clambc-outline-endianness-calls' #outline the endianness calls
+                                              #because otherwise the call
+                                              #is replaced with a constant
+                                              #that is based on where the
+                                              #signature was compiled, and
+                                              #won't always be accurate.
+          f' -clambc-change-malloc-arg-size'   #make sure we always use the
+                                              #64-bit malloc.
+          f' -globalopt'
+          f' -clambc-extend-phis-to-64bit' #make all integer phi nodes 64-bit
+                                          #because the llvm runtime inserts a
+                                          #cast after phi nodes without
+                                          #verifying that there is not
+                                          #another phi node after it.
+          f' -clambc-prepare-geps-for-writer' #format gep indexes to not not
+                                             #have more than 2, because
+                                             #otherwise the writer gets
+                                             #unhappy.
+          f' -globalopt'
+          f' -clambc-convert-intrinsics'   #convert all memset intrinsics to
+                                          #the 32-bit instead of the 64-bit
+                                          #intrinsic
+          f' -clambc-writer'               #write the bytecode
+          f' -clambc-writer-input-source={inputSourceFile}'
+          f' -clambc-sigfile={sigFile}'
+          )
 
     if standardCompiler:
-        cmd += f"-clambc-standard-compiler \
-                "
+        cmd += f" -clambc-standard-compiler"
     return run(cmd)
 
 

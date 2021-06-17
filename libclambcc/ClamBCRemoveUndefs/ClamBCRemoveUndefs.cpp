@@ -61,7 +61,7 @@ class ClamBCRemoveUndefs : public ModulePass
         Constant *func_rterr =
             BB->getParent()->getParent()->getOrInsertFunction("bytecode_rt_error", rterrTy);
         BasicBlock *abort = BasicBlock::Create(BB->getContext(), "rterr.trig", BB->getParent());
-        Constant *PN = ConstantInt::get(Type::getInt32Ty(BB->getContext()), 99);
+        Constant *PN      = ConstantInt::get(Type::getInt32Ty(BB->getContext()), 99);
         if (MDDbgKind) {
             CallInst *RtErrCall = CallInst::Create(func_rterr, PN, "", abort);
             RtErrCall->setCallingConv(CallingConv::C);
@@ -120,24 +120,24 @@ class ClamBCRemoveUndefs : public ModulePass
 
         delLst.push_back(term);
         bChanged = true;
-
     }
 
-    virtual bool isSamePointer(Value * ptr1, Value * ptr2, std::set<llvm::Value *> &visited) {
+    virtual bool isSamePointer(Value *ptr1, Value *ptr2, std::set<llvm::Value *> &visited)
+    {
 
         if (visited.end() != std::find(visited.begin(), visited.end(), ptr1)) {
             return false;
         }
         visited.insert(ptr1);
 
-        if (ptr1 == ptr2){
+        if (ptr1 == ptr2) {
             return true;
         }
 
-        if (User * pu = llvm::dyn_cast<User>(ptr1)){
+        if (User *pu = llvm::dyn_cast<User>(ptr1)) {
 
-            for (size_t i = 0; i < pu->getNumOperands(); i++){
-                if (isSamePointer(pu->getOperand(i), ptr2, visited)){
+            for (size_t i = 0; i < pu->getNumOperands(); i++) {
+                if (isSamePointer(pu->getOperand(i), ptr2, visited)) {
                     return true;
                 }
             }
@@ -145,7 +145,8 @@ class ClamBCRemoveUndefs : public ModulePass
         return false;
     }
 
-    virtual bool isSamePointer(Value * ptr1, Value * ptr2) {
+    virtual bool isSamePointer(Value *ptr1, Value *ptr2)
+    {
         std::set<llvm::Value *> visited;
         return isSamePointer(ptr1, ptr2, visited);
     }
@@ -159,7 +160,7 @@ class ClamBCRemoveUndefs : public ModulePass
 
         for (auto i : insts) {
             if (GetElementPtrInst *pgepi = llvm::dyn_cast<GetElementPtrInst>(i)) {
-                if (isSamePointer(pgepi->getPointerOperand(), ptr)){
+                if (isSamePointer(pgepi->getPointerOperand(), ptr)) {
                     insertChecks(pgepi, size);
                 }
             }
