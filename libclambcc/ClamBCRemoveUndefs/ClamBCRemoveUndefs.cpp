@@ -98,30 +98,55 @@ class ClamBCRemoveUndefs : public ModulePass
     virtual void insertChecks(GetElementPtrInst *pgepi, Value *vsize)
     {
 
-        Value *pIdx = pgepi->getOperand(pgepi->getNumOperands() - 1);
+        std::set<llvm::Instruction *> insts;
+        std::set<llvm::GlobalVariable *> globs;
+        getDependentValues(pgepi, insts, globs);
 
-        BasicBlock *old     = pgepi->getParent();
-        BasicBlock *abortBB = getAbortBB(0, old);
-        BasicBlock *pSplit  = old->splitBasicBlock(pgepi, "ClamBCRemoveUndefs_");
-
-        Instruction *term = old->getTerminator();
-
-        Type *pTargetType = getTargetType(pIdx, vsize);
-        if (pIdx->getType() != pTargetType) {
-            pIdx = CastInst::CreateZExtOrBitCast(pIdx, pTargetType, "ClamBCRemoveUndefs_", term);
+        /*Make sure that a pointer is actually accessed (loaded or written to)
+         * before adding runtime checks.*/
+        bool bPtrUsed = false;
+        for (auto i : insts) {
+            if (LoadInst *li = llvm::dyn_cast<LoadInst>(i)) {
+                if (isSamePointer(pgepi, li->getPointerOperand())) {
+                    bPtrUsed = true;
+                    break;
+                }
+            } else if (StoreInst *si = llvm::dyn_cast<StoreInst>(i)) {
+                if (isSamePointer(pgepi, si->getPointerOperand())) {
+                    bPtrUsed = true;
+                    break;
+                }
+            }
         }
 
-        if (vsize->getType() != pTargetType) {
-            vsize = CastInst::CreateZExtOrBitCast(vsize, pTargetType, "ClamBCRemoveUndefs_", term);
+        if (bPtrUsed) {
+
+            Value *pIdx = pgepi->getOperand(pgepi->getNumOperands() - 1);
+
+            BasicBlock *old     = pgepi->getParent();
+            BasicBlock *abortBB = getAbortBB(0, old);
+            BasicBlock *pSplit  = old->splitBasicBlock(pgepi, "ClamBCRemoveUndefs_");
+
+            Instruction *term = old->getTerminator();
+
+            Type *pTargetType = getTargetType(pIdx, vsize);
+            if (pIdx->getType() != pTargetType) {
+                pIdx = CastInst::CreateZExtOrBitCast(pIdx, pTargetType, "ClamBCRemoveUndefs_", term);
+            }
+
+            if (vsize->getType() != pTargetType) {
+                vsize = CastInst::CreateZExtOrBitCast(vsize, pTargetType, "ClamBCRemoveUndefs_", term);
+            }
+
+            Value *cond = new ICmpInst(term, ICmpInst::ICMP_UGE, pIdx, vsize);
+            BranchInst::Create(abortBB, pSplit, cond, term);
+
+            delLst.push_back(term);
+            bChanged = true;
         }
-
-        Value *cond = new ICmpInst(term, ICmpInst::ICMP_UGE, pIdx, vsize);
-        BranchInst::Create(abortBB, pSplit, cond, term);
-
-        delLst.push_back(term);
-        bChanged = true;
     }
 
+    /*Returns true if ptr1 and ptr2 reference the same pointer.*/
     virtual bool isSamePointer(Value *ptr1, Value *ptr2, std::set<llvm::Value *> &visited)
     {
 
