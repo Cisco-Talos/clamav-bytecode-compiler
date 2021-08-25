@@ -38,8 +38,15 @@ elseif (NOT LLVM_CONFIG_EXECUTABLE)
   # find llvm-config, prefer the one with a version suffix, e.g. llvm-config-3.5
   # note: FreeBSD installs llvm-config as llvm-config35 and so on
   # note: on some distributions, only 'llvm-config' is shipped, so let's always try to fallback on that
-  string(REPLACE "." "" LLVM_FIND_VERSION_CONCAT ${LLVM_FIND_VERSION})
-  find_program(LLVM_CONFIG_EXECUTABLE NAMES llvm-config-${LLVM_FIND_VERSION} llvm-config${LLVM_FIND_VERSION_CONCAT} llvm-config DOC "llvm-config executable")
+  string(REPLACE "." "" LLVM_FIND_VERSION_CONCAT_PREFIX ${LLVM_FIND_VERSION})
+  list (APPEND LLVM_FIND_VERSION_CONCAT llvm-config${LLVM_FIND_VERSION_CONCAT_PREFIX})
+
+  foreach (i RANGE 0 9)
+    list (APPEND LLVM_FIND_VERSION_CONCAT llvm-config${LLVM_FIND_VERSION_CONCAT_PREFIX}${i})
+  endforeach()
+  message ("my list issssssss ${LLVM_FIND_VERSION_CONCAT}")
+
+  find_program(LLVM_CONFIG_EXECUTABLE NAMES llvm-config-${LLVM_FIND_VERSION} ${LLVM_FIND_VERSION_CONCAT} llvm-config DOC "llvm-config executable")
 
   # other distributions don't ship llvm-config, but only some llvm-config-VERSION binary
   # try to deduce installed LLVM version by looking up llvm-nm in PATH and *then* find llvm-config-VERSION via that
@@ -110,6 +117,15 @@ if (LLVM_FOUND)
     OUTPUT_VARIABLE LLVM_LIBS
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
+
+  execute_process(
+    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libdir
+    OUTPUT_VARIABLE LLVM_LIB_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  #execute_process stores results in a string, and we need a list.
+  string (REGEX MATCHALL "${LLVM_LIB_DIR}[^ ]*" LLVM_LIBS ${LLVM_LIBS})
 
   execute_process(
     COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix

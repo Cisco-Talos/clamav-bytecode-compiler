@@ -106,7 +106,6 @@ if(ENABLE_TESTS)
     find_package(ClamAV REQUIRED)
 endif()
 
-find_package(Clang 8 REQUIRED)
 find_package(LLVM 8 REQUIRED)
 
 # Do not disable assertions based on CMAKE_BUILD_TYPE.

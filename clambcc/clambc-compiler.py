@@ -8,6 +8,26 @@ import shutil
 import subprocess
 import sys
 
+
+#These are the list of supported versions
+#consider changing this to start at 8 and go up to 99.  That will cover us
+#from having to update this when new versions come out.
+CLANG_LLVM_KNOWN_VERSIONS = [8, 9, 10, 11, 12]
+
+#This is the min clang/llvm version this has been tested with.
+MIN_CLANG_LLVM_VERSION = 8
+
+
+CLANG_NAME = "clang"
+LLVM_NAME = "opt"
+
+
+PREFERRED_CLANG_LLVM_VERSION = 8
+PREFERRED_CLANG_LLVM_VERSION = 8
+
+CLANG_BINARY_ARG = "--clang-binary"
+OPT_BINARY_ARG = "--opt-binary"
+
 COMPILED_BYTECODE_FILE_EXTENSION = "cbc"
 LINKED_BYTECODE_FILE_EXTENSION = "linked.ll"
 OPTIMIZED_BYTECODE_FILE_EXTENSION = "optimized.ll"
@@ -23,7 +43,6 @@ COMMON_WARNING_OPTIONS = "-Wno-backslash-newline-escape \
 "
 
 TMPDIR=".__clambc_tmp"
-CLANG_VERSION=8
 
 INCDIR = Path(__file__).parent / '..' / 'include'
 
@@ -46,14 +65,53 @@ elif 'LD_LIBRARY_PATH' in os.environ:
 
 VERBOSE=False
 
+#Set of build tools needed on the system.
+class ClangLLVM():
+    def getLinkFromOpt(self, opt):
+        dirName = os.path.dirname(opt)
+        baseName = re.sub("opt", "llvm-link", os.path.basename(opt))
+        self.link = os.path.join(dirName, baseName)
+
+    def __init__(self, clangBinary, optBinary):
+        self.clang = clangBinary
+        self.opt = optBinary
+        self.link = None
+        self.getLinkFromOpt(self.opt)
+
+    def getClang(self):
+        return self.clang
+
+    def getOpt(self):
+        return self.opt
+
+    def getLLVMLink(self):
+        return self.link
+
+    def validate(self):
+        optVersion = findVersion(self.opt)
+        clangVersion = findVersion(self.clang)
+        llvmLinkVersion = findVersion(self.link)
+
+        if optVersion == -1:
+            print("error: unable to get version information for opt", file=sys.stderr)
+
+        if optVersion != clangVersion:
+            print("error: versions of opt and clang must match", file=sys.stderr)
+
+        if optVersion != llvmLinkVersion:
+            print("error: versions of opt and llvm-link must match", file=sys.stderr)
+
+        return True
+
+
 def run(cmd):
     if VERBOSE:
-        print (cmd)
+        print(cmd)
     return os.system(cmd)
 
 
 def die(msg, exitStatus):
-    print (msg, file=sys.stderr)
+    print(msg, file=sys.stderr)
     sys.exit(exitStatus)
 
 
@@ -61,12 +119,12 @@ def dieNoInputFile():
     die("No input file", 1)
 
 def getNameNewExtension(fName, newExtension):
-    idx = fName.rfind(".")
-    if -1 == idx:
-        ret = "%s.%s" % (fName, newExtension)
-    else:
-        ret = "%s.%s" % (fName[0:idx], newExtension)
+    newName = fName
+    idx = newName.rfind(".")
+    if -1 != idx:
+        newName = newName[0:idx]
 
+    ret = f"{newName}.{newExtension}"
     return ret
 
 def getOutfile(options, args):
@@ -99,7 +157,7 @@ def getIrFile(fileName, debugBuild):
     return outFile
 
 #The 'noBytecodeOptions' is to be used if we are building a "normal" executable (for unit tests).
-def compileFile(fileName, debugBuild, standardCompiler, options):
+def compileFile(clangLLVM, fileName, debugBuild, standardCompiler, options):
 
     outFile = getIrFile(fileName, debugBuild)
 
@@ -113,7 +171,7 @@ def compileFile(fileName, debugBuild, standardCompiler, options):
         for d in options.defines:
             defines += f"-D{d} "
 
-    cmd = f"clang-{CLANG_VERSION} \
+    cmd = f"{clangLLVM.getClang()} \
             -S \
             -fno-discard-value-names \
             --language=c \
@@ -148,9 +206,9 @@ def compileFile(fileName, debugBuild, standardCompiler, options):
     return run(cmd)
 
 
-def compileFiles(args, debugBuild, standardCompiler, options):
+def compileFiles(clangLLVM, args, debugBuild, standardCompiler, options):
     for a in args:
-        exitStat = compileFile(a, debugBuild, standardCompiler, options)
+        exitStat = compileFile(clangLLVM, a, debugBuild, standardCompiler, options)
         if exitStat:
             return exitStat
 
@@ -161,21 +219,24 @@ def getLinkedFileName(outputFileName):
     if -1 == idx:
         die("getLinkedFileName called with invalid input", 2)
 
-    return ("%s%s" % (os.path.join(TMPDIR, outputFileName[0:idx]), LINKED_BYTECODE_FILE_EXTENSION))
+    outFileNoExtension = os.path.join(TMPDIR, outputFileName[0:idx])
+    return f"{outFileNoExtension}{LINKED_BYTECODE_FILE_EXTENSION}"
 
 def getOptimizedFileName(outputFileName):
     idx = outputFileName.find(COMPILED_BYTECODE_FILE_EXTENSION)
     if -1 == idx:
         die("getOptimizedFileName called with invalid input", 2)
 
-    return ("%s%s" % (os.path.join(TMPDIR, outputFileName[0:idx]), OPTIMIZED_BYTECODE_FILE_EXTENSION))
+    outFileNoExtension = os.path.join(TMPDIR, outputFileName[0:idx])
+    return f"{outFileNoExtension}{OPTIMIZED_BYTECODE_FILE_EXTENSION}"
 
 def getInputSourceFileName(outputFileName):
     idx = outputFileName.find(COMPILED_BYTECODE_FILE_EXTENSION)
     if -1 == idx:
         die("getInputSourceFileName called with invalid input", 2)
 
-    return ("%s%s" % (os.path.join(TMPDIR, outputFileName[0:idx]), OPEN_SOURCE_GENERATED_EXTENSION))
+    outFileNoExtension = os.path.join(TMPDIR, outputFileName[0:idx])
+    return f"{outFileNoExtension}{OPEN_SOURCE_GENERATED_EXTENSION}"
 
 #Takes as input the linked bitcode file from llvm-link.
 def getOptimizedTmpFileName(linkedFile):
@@ -183,35 +244,23 @@ def getOptimizedTmpFileName(linkedFile):
     if -1 == idx:
         die("getLinkedFileName called with invalid input", 2)
 
-    return ("%s%s" % (linkedFile[0:idx], OPTIMIZED_TMP_BYTECODE_FILE_EXTENSION ))
+    return f"{linkedFile[0:idx]}{OPTIMIZED_TMP_BYTECODE_FILE_EXTENSION}"
 
-def linkIRFiles(linkedFile, irFiles):
+def linkIRFiles(clangLLVM, linkedFile, irFiles):
     inFiles = " ".join(irFiles)
-    cmd = f"llvm-link-{CLANG_VERSION} -S -o {linkedFile} {inFiles}"
+    cmd = f"{clangLLVM.getLLVMLink()} -S -o {linkedFile} {inFiles}"
 
     return run(cmd)
 
 
-def linkFiles(linkedFile, args, debugBuild):
-
-#    #Begin WORKAROUND
-#    print ("TEMPORARILY REMOVING SUPPORT FOR LLVM-LINK.  Just want to see if the signatures work as expected.")
-#    cmd = f"cp {getIrFile(args[0])} {linkedFile}"
-#    run(cmd)
-#    return
-#    #End WORKAROUND
-
+def linkFiles(clangLLVM, linkedFile, args, debugBuild):
 
     lst = []
     for f in args:
         ir = getIrFile(f, debugBuild)
         lst.append(ir)
 
-    return linkIRFiles(linkedFile, lst)
-
-
-
-#####BEGIN
+    return linkIRFiles(clangLLVM, linkedFile, lst)
 
 
 class IRFile():
@@ -281,7 +330,7 @@ def generateIgnoreList(optimized, linked):
         val = 0
         linkedKey = linked.getKeyFromFile(optimized.files[key])
         if not linkedKey:
-            print ("HOW DID THIS HAPPEN?")
+            print("HOW DID THIS HAPPEN?")
             import pdb ; pdb.set_trace()
 
         if not linkedKey in linked.globalValues.keys():
@@ -377,10 +426,10 @@ def getOutputString(linked, ignore):
     return out
 
 
-def createOptimizedTmpFile(linkedFile):
+def createOptimizedTmpFile(clangLLVM, linkedFile):
     name = getOptimizedTmpFileName (linkedFile)
 
-    cmd = f"opt-{CLANG_VERSION} \
+    cmd = f"{clangLLVM.getOpt()} \
             -S \
             {linkedFile} \
             -o {name} \
@@ -395,8 +444,8 @@ def createOptimizedTmpFile(linkedFile):
     return name
 
 
-def createInputSourceFile(name, args, options):
-    res = compileFiles(args, True, False, options)
+def createInputSourceFile(clangLLVM, name, args, options):
+    res = compileFiles(clangLLVM, args, True, False, options)
 
     idx = name.find( OPEN_SOURCE_GENERATED_EXTENSION )
     if -1 == idx:
@@ -404,10 +453,10 @@ def createInputSourceFile(name, args, options):
 
     if not res:
         linkedFile = f"{name[0:idx]}debug.{LINKED_BYTECODE_FILE_EXTENSION}"
-        res = linkFiles(linkedFile, args, True)
+        res = linkFiles(clangLLVM, linkedFile, args, True)
 
     if not res:
-        optimizedTmpFile = createOptimizedTmpFile(linkedFile)
+        optimizedTmpFile = createOptimizedTmpFile(clangLLVM, linkedFile)
         if None == optimizedTmpFile:
             res = -1
 
@@ -428,14 +477,14 @@ def createInputSourceFile(name, args, options):
     return res
 
 
-def optimize(inFile, outFile, sigFile, inputSourceFile, standardCompiler):
+def optimize(clangLLVM, inFile, outFile, sigFile, inputSourceFile, standardCompiler):
 
     internalizeAPIList = "_Z10entrypointv,entrypoint,__clambc_kind,__clambc_virusname_prefix,__clambc_virusnames,__clambc_filesize,__clambc_match_counts,__clambc_match_offsets,__clambc_pedata"
     if standardCompiler:
         internalizeAPIList += ",main"
 
     #TODO: Modify ClamBCRemoveUndefs to not require mem2reg to be run before it.
-    cmd = (f'opt-{CLANG_VERSION}'
+    cmd = (f'{clangLLVM.getOpt()} '
           f' -S'
           f' -verify-each'
           f' -load "{SHARED_OBJ_FILE}"'
@@ -564,18 +613,118 @@ def fixFileSize(optimizedFile) :
         f.close()
 
 
+def findVersion(progName):
+    ret = -1
+    try :
+        sp = subprocess.Popen([progName, "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        err = sp.communicate()
+        m = re.search("version\s*([0-9]*)\.", str(err))
+        if m:
+            ret = int(m.group(1))
+    except FileNotFoundError:
+        pass
 
-def verifyClangInstallation():
-    exes = ["clang", "opt"]
-    for exe in exes:
+    return ret
+
+
+def genList(prog, maj):
+
+    ret = [f"{prog}-{maj}"]
+    for i in range(0, 10):
+        ret.append(f"{prog}{maj}{9-i}")
+
+    return ret
+
+
+def findProgram(progName, progVersion, strictVersion):
+    ret = None
+
+    progList = []
+    progList.extend(genList(progName, progVersion))
+
+    if not strictVersion:
+        for i in CLANG_LLVM_KNOWN_VERSIONS:
+            if i == progVersion:
+                continue
+            progList.extend(genList(progName, i))
+
+    for c in progList:
         try:
-            exe = f"{exe}-{CLANG_VERSION}"
-            subprocess.run([exe, "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run([c, "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return c
         except FileNotFoundError:
-            print (f"{exe} must be installed and in your path.", file=sys.stderr)
-            return 1
+            pass
 
-    return 0
+    version = findVersion(progName)
+    if  version == progVersion:
+        return progName
+
+    if not strictVersion:
+        if version >= MIN_CLANG_LLVM_VERSION:
+            return progName
+    else:
+        print(f"error: {progName} requested version not found", file=sys.stderr)
+
+
+
+    return ret
+
+
+def findClangLLVM(options):
+    cl = None
+
+    if (((None == options.clangBinary) and (None != options.optBinary)) 
+            or ((None != options.clangBinary) and (None == options.optBinary))):
+        print(f"error: if '{CLANG_BINARY_ARG} is present, then {OPT_BINARY_ARG} must also be present", out=sys.stderr)
+        sys.exit(1)
+
+
+    if None != options.clangBinary:
+        cl = ClangLLVM(options.clangBinary, options.optBinary)
+    else:
+
+        clangVersion = options.clangVersion
+        llvmVersion = options.llvmVersion
+        strictClang = True
+        strictLLVM = True
+
+        if None == clangVersion:
+            clangVersion = PREFERRED_CLANG_LLVM_VERSION
+            strictClang = False
+        else:
+            if not clangVersion.isnumeric():
+                print(f"error: {CLANG_VERSION_ARG} must be passed an integer type")
+                sys.exit(1)
+            clangVersion = int(clangVersion)
+
+
+        if None == options.llvmVersion:
+            llvmVersion = PREFERRED_CLANG_LLVM_VERSION
+            strictLLVM = False
+
+        else:
+            if not llvmVersion.isnumeric():
+                print(f"error: {LLVM_VERSION_ARG} must be passed an integer type")
+                sys.exit(1)
+            llvmVersion = int(llvmVersion)
+
+
+        clang = findProgram(CLANG_NAME, clangVersion, strictClang)
+        if None == clang:
+            print(f"{CLANG_NAME} must be installed and in your path.", file=sys.stderr)
+
+        opt = findProgram(LLVM_NAME, llvmVersion, strictLLVM)
+        if None == opt:
+            print(f"{LLVM_NAME} must be installed and in your path.", file=sys.stderr)
+
+        if (clang and opt):
+            cl = ClangLLVM(clang, opt)
+
+    if cl:
+        if not cl.validate():
+            cl = None
+
+    return cl
 
 
 
@@ -604,16 +753,24 @@ class ClamBCCOptionParser (OptionParser):
     def getPassthrough(self):
         return self.passthrough
 
-def main():
 
-    if verifyClangInstallation():
-        sys.exit(-1)
+
+def main():
 
     parser = ClamBCCOptionParser()
     parser.add_option("-V", "--version", dest="version", action="store_true", default=False)
     parser.add_option("-o", "--outfile", dest="outfile", default=None)
     parser.add_option("--save-tempfiles", dest="save", action="store_true", default=False)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False)
+
+    #parser.add_option("--clang-version", dest="clangVersion", default=PREFERRED_CLANG_LLVM_VERSION)
+    #parser.add_option("--llvm-version", dest="llvmVersion", default=PREFERRED_CLANG_LLVM_VERSION)
+    parser.add_option("--clang-version", dest="clangVersion")
+    parser.add_option("--llvm-version", dest="llvmVersion")
+
+    parser.add_option(CLANG_BINARY_ARG, dest="clangBinary", help="Path to clang binary")
+    parser.add_option(OPT_BINARY_ARG, dest="optBinary", help="Path to opt binary")
+
 #    parser.add_option("--generate-exe", dest="genexe", action="store_true",
 #            default=False, help="This is if you want to build a correctly formatted bytecode \
 #                    signature as an executable for debugging (NOT IMPLEMENTED)")
@@ -630,6 +787,11 @@ def main():
         #TODO: determine the version by calling into libclambcc.so
         print('ClamBC-Compiler 0.103.1')
         sys.exit(0)
+
+
+    clangLLVM = findClangLLVM(options)
+    if None == clangLLVM:
+        sys.exit(1)
 
     options.genexe = False
     options.standardCompiler = False
@@ -667,11 +829,11 @@ def main():
 #        inFile = os.path.join(os.path.dirname(__file__), 'clambc-compiler-main.c')
 #        args.append(inFile)
 #
-    res = compileFiles(args, False, bCompiler, options)
+    res = compileFiles(clangLLVM, args, False, bCompiler, options)
 
     if not res:
         linkedFile = getLinkedFileName(outFile)
-        res = linkFiles(linkedFile, args, False)
+        res = linkFiles(clangLLVM, linkedFile, args, False)
 
     if not res:
         inputSourceFile = getInputSourceFileName(outFile)
@@ -679,21 +841,21 @@ def main():
             f = open(inputSourceFile, "w")
             f.close()
         else:
-            res = createInputSourceFile(inputSourceFile, args, options)
+            res = createInputSourceFile(clangLLVM, inputSourceFile, args, options)
 
     if not res:
         optimizedFile = getOptimizedFileName(outFile)
         outFile = getOutfile(options, args)
-        res = optimize(linkedFile, optimizedFile, outFile, inputSourceFile, bCompiler)
+        res = optimize(clangLLVM, linkedFile, optimizedFile, outFile, inputSourceFile, bCompiler)
 
     if not res:
         if options.genexe:
 
             #Add the 'main' and all the stuff that clam provides (TODO: make this configurable by the user)
             mainFile = os.path.join(os.path.dirname(__file__), 'clambc-compiler-main.c')
-            res = compileFile(mainFile, False, False, options)
+            res = compileFile(clangLLVM, mainFile, False, False, options)
             if res:
-                print ("Build FAILED")
+                print("Build FAILED")
                 import pdb ; pdb.set_trace()
 
             if not res:
@@ -702,7 +864,7 @@ def main():
                 fixFileSize(optimizedFile)
                 fixFileSize(mainIRFile)
 
-                res = linkIRFiles(optimizedFile, [optimizedFile, mainIRFile])
+                res = linkIRFiles(clangLLVM, optimizedFile, [optimizedFile, mainIRFile])
 
             bCompiler = True
 
