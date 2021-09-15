@@ -1,17 +1,22 @@
 properties(
     [
         disableConcurrentBuilds(),
+        buildDiscarder(logRotator(
+            artifactDaysToKeepStr: '15',
+            artifactNumToKeepStr: '15',
+            daysToKeepStr: '30',
+            numToKeepStr: '20')),
         parameters(
             [
-                string(name: 'BCC_BRANCH',
-                       defaultValue: "${env.BRANCH_NAME}",
-                       description: 'bcc branch to test against'),
                 string(name: 'VERSION',
                        defaultValue: '1.0',
                        description: 'bcc version string'),
                 string(name: 'FRAMEWORK_BRANCH',
                        defaultValue: '0.104',
                        description: 'test-framework branch'),
+                string(name: 'BCC_BRANCH',
+                       defaultValue: "${env.BRANCH_NAME}",
+                       description: 'bcc branch to test against'),
                 string(name: 'TESTS_BRANCH',
                        defaultValue: 'master',
                        description: 'tests branch'),
@@ -23,7 +28,7 @@ properties(
                        description: 'test-bcc branch for building  bcc'),
                 string(name: 'SHARED_LIB_BRANCH',
                        defaultValue: 'bcc-shared-lib',
-                       description: 'tests-jenkins-shared-libraries branch')
+                       description: 'tests-jenkins-shared-libraries branch'),
                 string(name: 'TEST_PIPELINE_PATH',
                        defaultValue: 'bcc/test_bcc/',
                        description: 'path for test pipelines'),
