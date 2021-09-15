@@ -19,11 +19,15 @@ properties(
                        defaultValue: 'master',
                        description: 'test-bcc branch for building  bcc'),
                 string(name: 'TEST_PIPELINE',
-                       defaultValue: 'test-bcc',
+                       defaultValue: 'tests',
                        description: 'test-bcc branch for building  bcc'),
                 string(name: 'SHARED_LIB_BRANCH',
                        defaultValue: 'bcc-shared-lib',
                        description: 'tests-jenkins-shared-libraries branch')
+                string(name: 'TEST_PIPELINE_PATH',
+                       defaultValue: 'bcc/test_bcc/',
+                       description: 'path for test pipelines'),
+
             ]
         )
     ]
@@ -33,7 +37,7 @@ def buildResult
 
 node('master') {
     stage('Build-BCC') {
-        buildResult = build(job: "test-bcc/${params.BUILD_PIPELINE}",
+        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.BUILD_PIPELINE}",
             propagate: true,
             wait: true,
             parameters: [
@@ -43,11 +47,11 @@ node('master') {
                 [$class: 'StringParameterValue', name: 'SHARED_LIB_BRANCH', value: "${params.SHARED_LIB_BRANCH}"]
             ]
         )
-        echo "test-bcc/${params.BUILD_PIPELINE} #${buildResult.number} succeeded."
+        echo "${params.TEST_PIPELINE_PATH}${params.BUILD_PIPELINE} #${buildResult.number} succeeded."
     }
 
     stage('Test-BCC') {
-        buildResult = build(job: "test-bcc/${params.TEST_PIPELINE}",
+        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.TEST_PIPELINE}",
             propagate: true,
             wait: true,
             parameters: [
@@ -57,6 +61,6 @@ node('master') {
                 [$class: 'StringParameterValue', name: 'SHARED_LIB_BRANCH', value: "${params.SHARED_LIB_BRANCH}"]
             ]
         )
-        echo "test-bcc/${params.TEST_PIPELINE} #${buildResult.number} succeeded."
+        echo "${params.TEST_PIPELINE_PATH}/${params.TEST_PIPELINE} #${buildResult.number} succeeded."
     }
 }
