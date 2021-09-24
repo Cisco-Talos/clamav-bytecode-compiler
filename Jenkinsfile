@@ -14,15 +14,9 @@ properties(
                 string(name: 'FRAMEWORK_BRANCH',
                        defaultValue: '0.104',
                        description: 'test-framework branch'),
-                string(name: 'BCC_BRANCH',
-                       defaultValue: "${env.BRANCH_NAME}",
-                       description: 'bcc branch to test against'),
                 string(name: 'BUILD_BRANCH',
                        defaultValue: 'master',
                        description: 'test-bcc branch for building  bcc'),
-                string(name: 'BUILD_PIPELINE',
-                       defaultValue: 'master',
-                       description: 'test-bcc pipeline for building  bcc'),
                 string(name: 'TEST_PIPELINE',
                        defaultValue: 'tests',
                        description: 'test-bcc pipeline for testing  bcc'),
@@ -30,7 +24,7 @@ properties(
                        defaultValue: 'tests',
                        description: 'test-bcc branch for testing  bcc'),
                 string(name: 'SHARED_LIB_BRANCH',
-                       defaultValue: 'bcc-shared-lib',
+                       defaultValue: 'master',
                        description: 'tests-jenkins-shared-libraries branch'),
                 string(name: 'TEST_PIPELINE_PATH',
                        defaultValue: 'bcc/test_bcc/',
@@ -45,22 +39,30 @@ def buildResult
 
 node('master') {
     stage('Build-BCC') {
-        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.BUILD_PIPELINE}",
+        dir("bcc") {
+            checkout scm
+            sh "tar -zcvf bcc_source.tar.gz ."
+        }
+
+        archiveArtifacts artifacts: 'bcc/bcc_source.tar.gz'
+
+        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.BUILD_BRANCH}",
             propagate: true,
             wait: true,
             parameters: [
-                [$class: 'StringParameterValue', name: 'TARGET_BRANCH', value: "${params.BCC_BRANCH}"],
+                [$class: 'StringParameterValue', name: 'BUILD_JOB_NAME', value: "${JOB_NAME}"],
+                [$class: 'StringParameterValue', name: 'BUILD_JOB_NUMBER', value: "${BUILD_NUMBER}"],
                 [$class: 'StringParameterValue', name: 'BUILD_BRANCH', value: "${params.BUILD_BRANCH}"],
                 [$class: 'StringParameterValue', name: 'FRAMEWORK_BRANCH', value: "${params.FRAMEWORK_BRANCH}"],
                 [$class: 'StringParameterValue', name: 'VERSION', value: "${params.VERSION}"],
                 [$class: 'StringParameterValue', name: 'SHARED_LIB_BRANCH', value: "${params.SHARED_LIB_BRANCH}"]
             ]
         )
-        echo "${params.TEST_PIPELINE_PATH}${params.BUILD_PIPELINE} #${buildResult.number} succeeded."
+        echo "${params.TEST_PIPELINE_PATH}${params.BUILD_BRANCH} #${buildResult.number} succeeded."
     }
 
     stage('Test-BCC') {
-        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.TEST_PIPELINE}",
+        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.TESTS_BRANCH}",
             propagate: true,
             wait: true,
             parameters: [
@@ -70,6 +72,6 @@ node('master') {
                 [$class: 'StringParameterValue', name: 'SHARED_LIB_BRANCH', value: "${params.SHARED_LIB_BRANCH}"]
             ]
         )
-        echo "${params.TEST_PIPELINE_PATH}/${params.TEST_PIPELINE} #${buildResult.number} succeeded."
+        echo "${params.TEST_PIPELINE_PATH}/${params.TESTS_BRANCH} #${buildResult.number} succeeded."
     }
 }
