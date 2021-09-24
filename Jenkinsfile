@@ -38,20 +38,26 @@ properties(
 def buildResult
 
 node('master') {
+
+    cleanWs()
+
     stage('Build-BCC') {
+
+        // checkout target code
         dir("bcc") {
             checkout scm
-            sh "tar -zcvf bcc_source.tar.gz ."
         }
 
-        archiveArtifacts artifacts: 'bcc/bcc_source.tar.gz'
+        sh "tar -zcvf bcc_source.tar.gz bcc"
+
+        archiveArtifacts artifacts: 'bcc_source.tar.gz'
 
         buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.BUILD_BRANCH}",
             propagate: true,
             wait: true,
             parameters: [
-                [$class: 'StringParameterValue', name: 'BUILD_JOB_NAME', value: "${JOB_NAME}"],
-                [$class: 'StringParameterValue', name: 'BUILD_JOB_NUMBER', value: "${BUILD_NUMBER}"],
+                [$class: 'StringParameterValue', name: 'BCC_JOB_NAME', value: "${JOB_NAME}"],
+                [$class: 'StringParameterValue', name: 'BCC_JOB_NUMBER', value: "${BUILD_NUMBER}"],
                 [$class: 'StringParameterValue', name: 'BUILD_BRANCH', value: "${params.BUILD_BRANCH}"],
                 [$class: 'StringParameterValue', name: 'FRAMEWORK_BRANCH', value: "${params.FRAMEWORK_BRANCH}"],
                 [$class: 'StringParameterValue', name: 'VERSION', value: "${params.VERSION}"],
