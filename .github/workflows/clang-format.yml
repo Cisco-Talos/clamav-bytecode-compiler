@@ -1,0 +1,33 @@
+name: clang-format
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - rel/*
+      - dev/*
+      - main
+  pull_request:
+    branches:
+      - rel/*
+      - dev/*
+      - main
+
+jobs:
+  formatting-check:
+    name: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        path:
+          - check: "libclambcc"
+            exclude: ""
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run clang-format style check for C/C++ programs.
+        uses: jidicula/clang-format-action@v3.4.0
+        with:
+          clang-format-version: "10"
+          check-path: ${{ matrix.path['check'] }}
+          exclude-regex: ${{ matrix.path['exclude'] }}
