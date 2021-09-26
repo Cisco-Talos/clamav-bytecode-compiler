@@ -42,7 +42,7 @@ class ClamBCPreserveABIs : public ModulePass
 
     virtual void processFunction(Function *pFunc)
     {
-        if (0 == pFunc->arg_size()){
+        if (0 == pFunc->arg_size()) {
             return;
         }
         FunctionType *pFunctionType = llvm::dyn_cast<FunctionType>(pFunc->getType());
