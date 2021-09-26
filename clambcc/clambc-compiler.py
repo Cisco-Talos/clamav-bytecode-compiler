@@ -88,9 +88,9 @@ class ClangLLVM():
         return self.link
 
     def validate(self):
-        optVersion = findVersion(self.opt)
-        clangVersion = findVersion(self.clang)
-        llvmLinkVersion = findVersion(self.link)
+        optVersion = findVersion(self.opt, "-version")
+        clangVersion = findVersion(self.clang, "--version")
+        llvmLinkVersion = findVersion(self.link, "--version")
 
         if optVersion == -1:
             print("error: unable to get version information for opt", file=sys.stderr)
@@ -493,7 +493,7 @@ def optimize(clangLLVM, inFile, outFile, sigFile, inputSourceFile, standardCompi
           f' -mem2reg'
           f' -clambc-remove-undefs' #add pointer bounds checking.
           f' -clambc-preserve-abis' #add fake function calls that use all of
-                                   #the arguments so that O3 doesn't change 
+                                   #the arguments so that O3 doesn't change
                                    #the argument lists
           f' -O3'
           f' -clambc-preserve-abis' #remove fake function calls because O3 has already run
@@ -522,7 +522,7 @@ def optimize(clangLLVM, inFile, outFile, sigFile, inputSourceFile, standardCompi
           f' -mem2reg'
           f' -clambc-lcompiler' #compile the logical_trigger function to a
                                #logical signature.
-          f' -internalize -internalize-public-api-list="{internalizeAPIList}"' 
+          f' -internalize -internalize-public-api-list="{internalizeAPIList}"'
           f' -globaldce'
           f' -instcombine'
           f' -clambc-rebuild'
@@ -613,10 +613,10 @@ def fixFileSize(optimizedFile) :
         f.close()
 
 
-def findVersion(progName):
+def findVersion(progName, versionOption):
     ret = -1
     try :
-        sp = subprocess.Popen([progName, "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sp = subprocess.Popen([progName, versionOption], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         err = sp.communicate()
         m = re.search("version\s*([0-9]*)\.", str(err))
         if m:
@@ -636,7 +636,7 @@ def genList(prog, maj):
     return ret
 
 
-def findProgram(progName, progVersion, strictVersion):
+def findProgram(progName, versionOption, progVersion, strictVersion):
     ret = None
 
     progList = []
@@ -655,7 +655,7 @@ def findProgram(progName, progVersion, strictVersion):
         except FileNotFoundError:
             pass
 
-    version = findVersion(progName)
+    version = findVersion(progName, versionOption)
     if  version == progVersion:
         return progName
 
@@ -673,7 +673,7 @@ def findProgram(progName, progVersion, strictVersion):
 def findClangLLVM(options):
     cl = None
 
-    if (((None == options.clangBinary) and (None != options.optBinary)) 
+    if (((None == options.clangBinary) and (None != options.optBinary))
             or ((None != options.clangBinary) and (None == options.optBinary))):
         print(f"error: if '{CLANG_BINARY_ARG} is present, then {OPT_BINARY_ARG} must also be present", out=sys.stderr)
         sys.exit(1)
@@ -693,7 +693,7 @@ def findClangLLVM(options):
             strictClang = False
         else:
             if not clangVersion.isnumeric():
-                print(f"error: {CLANG_VERSION_ARG} must be passed an integer type")
+                print(f"error: {clangVersion} must be passed an integer type")
                 sys.exit(1)
             clangVersion = int(clangVersion)
 
@@ -704,16 +704,16 @@ def findClangLLVM(options):
 
         else:
             if not llvmVersion.isnumeric():
-                print(f"error: {LLVM_VERSION_ARG} must be passed an integer type")
+                print(f"error: {llvmVersion} must be passed an integer type")
                 sys.exit(1)
             llvmVersion = int(llvmVersion)
 
 
-        clang = findProgram(CLANG_NAME, clangVersion, strictClang)
+        clang = findProgram(CLANG_NAME, "--version", clangVersion, strictClang)
         if None == clang:
             print(f"{CLANG_NAME} must be installed and in your path.", file=sys.stderr)
 
-        opt = findProgram(LLVM_NAME, llvmVersion, strictLLVM)
+        opt = findProgram(LLVM_NAME, "--version", llvmVersion, strictLLVM)
         if None == opt:
             print(f"{LLVM_NAME} must be installed and in your path.", file=sys.stderr)
 
@@ -763,8 +763,6 @@ def main():
     parser.add_option("--save-tempfiles", dest="save", action="store_true", default=False)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False)
 
-    #parser.add_option("--clang-version", dest="clangVersion", default=PREFERRED_CLANG_LLVM_VERSION)
-    #parser.add_option("--llvm-version", dest="llvmVersion", default=PREFERRED_CLANG_LLVM_VERSION)
     parser.add_option("--clang-version", dest="clangVersion")
     parser.add_option("--llvm-version", dest="llvmVersion")
 
