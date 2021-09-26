@@ -4,8 +4,3 @@ clang-format -style='{ Language: Cpp, UseTab: Never, IndentWidth: 4, AlignTraili
 
 clang-format -i -verbose libclambcc/*/*.cpp
 clang-format -i -verbose libclambcc/*/*.h
-clang-format -i -verbose test/*.c
-clang-format -i -verbose headers/bcfeatures.h
-clang-format -i -verbose headers/bytecode*.h
-clang-format -i -verbose clambc-ifacegen/*.cpp
-clang-format -i -verbose clambc-ifacegen/*.h
