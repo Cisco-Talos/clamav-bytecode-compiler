@@ -2,7 +2,7 @@
 # ClamAV Bytecode Compiler
 
 <p align="center">
-  <img width="250" height="250" src="https://raw.githubusercontent.com/Cisco-Talos/clamav-devel/dev/0.104/logo.png" alt='Maeve, the ClamAV mascot'>
+  <img width="250" height="250" src="https://raw.githubusercontent.com/Cisco-Talos/clamav/main/logo.png" alt='Maeve, the ClamAV mascot'>
 </p>
 
 <p align="center">
@@ -23,7 +23,12 @@
 
 ## Documentation
 
-See [the documentation, chapter 1 "Installation".](docs/user/clambc-user.pdf)
+At present the [pdf documentation](docs/user/clambc-user.pdf) is dated.
+Specifically, the instructions for building the compiler or no longer correct.
+The documentation will be updated as time permits.
+
+The PDF documentation still provides valuable instructions for writing and
+compiling signatures, and documents features of the bytecode signature API.
 
 ## Quick Start
 
@@ -35,51 +40,41 @@ git clone git://github.com/Cisco-Talos/clamav-bytecode-compiler
 
 ### Quick start for building & installing
 
-1. Ensure that you have LLVM 8 and Clang 8 installed.
+#### Requirements
 
-2. Ensure that you have Python 3.6 or newer.
+- LLVM and Clang, version 8 or newer
+  - LLVM and Clang versions **must** match.
+  - Version 8 is preferred, tested. Newer versions are not guaranteed to work correctly.
+  - LLVM is required to build the bytecode compiler.
+  - Clang is required to run the bytecode compiler.
 
-3. Run:
+- Python 3.6 or newer.
+  - Python is required to run the unit tests, and to run the bytecode compiler.
 
+#### Build & Install
+
+Configure:
 ```bash
 mkdir build && cd build
 
 cmake .. \
     -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_INSTALL_PREFIX=<install path>
+```
 
+Build:
+```bash
 cmake --build .
+```
 
+Test:
+```bash
 ctest -V
-
-ctest install
 ```
 
-See [the documentation, section "1.3 Building" if build fails](docs/user/clambc-user.pdf)
-
-### Staying up-to-date
-
+Install:
 ```bash
-git pull
-```
-
-### Using a specific release
-
-```bash
-$ git tag | grep clambc
-clambc-0.10
-clambc-0.102.0
-clambc-0.102.0-2
-clambc-0.103.0
-clambc-0.11
-clambc-0.97.3a
-clambc-0.98.1rc1
-clambc-0.98.1rc2
-clambc-0.98.5rc1
-clambc-0.98.7
-clambc-0.99.2
-
-$ git checkout clambc-0.102.0-2
+cmake --build . --target install
 ```
 
 ## Change Log
