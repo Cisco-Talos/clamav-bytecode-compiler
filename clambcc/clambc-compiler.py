@@ -37,6 +37,11 @@ COMMON_WARNING_OPTIONS = "-Wno-backslash-newline-escape \
   -Wno-return-type \
   -Wno-incompatible-pointer-types \
   -Wno-unused-value \
+  -Wno-shift-negative-value \
+  -Wno-implicit-function-declaration \
+  -Wno-incompatible-library-redeclaration \
+  -Wno-implicit-int \
+  -Wno-constant-conversion \
 "
 
 TMPDIR=".__clambc_tmp"
@@ -85,18 +90,21 @@ class ClangLLVM():
         return self.link
 
     def validate(self) -> bool:
-        optVersion = findVersion(self.opt, "-version")
+        optVersion = findVersion(self.opt, "--version")
         clangVersion = findVersion(self.clang, "--version")
         llvmLinkVersion = findVersion(self.link, "--version")
 
         if optVersion == -1:
             print("error: unable to get version information for opt", file=sys.stderr)
+            return False
 
         if optVersion != clangVersion:
             print("error: versions of opt and clang must match", file=sys.stderr)
+            return False
 
         if optVersion != llvmLinkVersion:
             print("error: versions of opt and llvm-link must match", file=sys.stderr)
+            return False
 
         return True
 
