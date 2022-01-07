@@ -125,61 +125,67 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
         std::set<ConstantExpr *> ces;
         getDependentValues(gv, insts, globs, ces);
 
-        for (auto J : ces) {
-            ConstantExpr *CE = llvm::cast<ConstantExpr>(J);
-            // ClamAV bytecode doesn't support arbitrary constant expressions for
-            // globals, so introduce helper globals for nested constant expressions.
-            if (CE->getOpcode() != Instruction::GetElementPtr) {
-                if (CE->getOpcode() == Instruction::BitCast) {
-                    GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true,
-                                                            GlobalValue::InternalLinkage,
-                                                            CE, I->getName() + "_bc");
-                    CEMap[CE]          = GV;
-                    continue;
+        /*It is necessary to add these twice, because there is a condition we
+         * can't use global idx 0 or 1 in the interpreter, since the size will
+         * be incorrect in the interpreter.  Look at line 2011 of bytecode.c
+         */
+        for (size_t loop = 0; loop < 2; loop++){
+            for (auto J : ces) {
+                ConstantExpr *CE = llvm::cast<ConstantExpr>(J);
+                // ClamAV bytecode doesn't support arbitrary constant expressions for
+                // globals, so introduce helper globals for nested constant expressions.
+                if (CE->getOpcode() != Instruction::GetElementPtr) {
+                    if (CE->getOpcode() == Instruction::BitCast) {
+                        GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true,
+                                                                GlobalValue::InternalLinkage,
+                                                                CE, I->getName() + "_bc");
+                        CEMap[CE]          = GV;
+                        continue;
+                    }
+                    errs() << "UNSUPPORTED: " << *CE << "\n";
+                    ClamBCStop("Unsupported constant expression", &M);
                 }
-                errs() << "UNSUPPORTED: " << *CE << "\n";
-                ClamBCStop("Unsupported constant expression", &M);
-            }
-            ConstantInt *C0 = dyn_cast<ConstantInt>(CE->getOperand(1));
-            ConstantInt *C1 = dyn_cast<ConstantInt>(CE->getOperand(2));
-            uint64_t v      = C1->getValue().getZExtValue();
-            if (!C0->isZero()) {
-                errs() << "UNSUPPORTED: " << *CE << "\n";
-                ClamBCStop("Unsupported constant expression, nonzero first"
-                           " index",
-                           &M);
-            }
+                ConstantInt *C0 = dyn_cast<ConstantInt>(CE->getOperand(1));
+                ConstantInt *C1 = dyn_cast<ConstantInt>(CE->getOperand(2));
+                uint64_t v      = C1->getValue().getZExtValue();
+                if (!C0->isZero()) {
+                    errs() << "UNSUPPORTED: " << *CE << "\n";
+                    ClamBCStop("Unsupported constant expression, nonzero first"
+                               " index",
+                               &M);
+                }
 
-            const DataLayout &dataLayout = pMod->getDataLayout();
-            std::vector<Value *> indices;
-            for (unsigned i = 1; i < CE->getNumOperands(); i++) {
-                indices.push_back(CE->getOperand(i));
-            }
-            Type *IP8Ty = PointerType::getUnqual(Type::getInt8Ty(CE->getContext()));
+                const DataLayout &dataLayout = pMod->getDataLayout();
+                std::vector<Value *> indices;
+                for (unsigned i = 1; i < CE->getNumOperands(); i++) {
+                    indices.push_back(CE->getOperand(i));
+                }
+                Type *IP8Ty = PointerType::getUnqual(Type::getInt8Ty(CE->getContext()));
 
-            Type *type = CE->getOperand(0)->getType();
-            if (llvm::isa<PointerType>(type)) {
-                type = llvm::cast<PointerType>(type)->getElementType();
-            }
-            uint64_t idx = dataLayout.getIndexedOffsetInType(type, indices);
+                Type *type = CE->getOperand(0)->getType();
+                if (llvm::isa<PointerType>(type)) {
+                    type = llvm::cast<PointerType>(type)->getElementType();
+                }
+                uint64_t idx = dataLayout.getIndexedOffsetInType(type, indices);
 
-            Value *Idxs[1];
-            Idxs[0]     = ConstantInt::get(Type::getInt64Ty(CE->getContext()), idx);
-            Constant *C = ConstantExpr::getPointerCast(CE->getOperand(0), IP8Ty);
-            ConstantExpr *NewCE =
-                cast<ConstantExpr>(ConstantExpr::getGetElementPtr(nullptr, C,
-                                                                  Idxs));
-            NewCE = cast<ConstantExpr>(ConstantExpr::getPointerCast(NewCE,
-                                                                    CE->getType()));
-            if (CE != NewCE) {
-                CE->replaceAllUsesWith(NewCE);
+                Value *Idxs[1];
+                Idxs[0]     = ConstantInt::get(Type::getInt64Ty(CE->getContext()), idx);
+                Constant *C = ConstantExpr::getPointerCast(CE->getOperand(0), IP8Ty);
+                ConstantExpr *NewCE =
+                    cast<ConstantExpr>(ConstantExpr::getGetElementPtr(nullptr, C,
+                                                                      Idxs));
+                NewCE = cast<ConstantExpr>(ConstantExpr::getPointerCast(NewCE,
+                                                                        CE->getType()));
+                if (CE != NewCE) {
+                    CE->replaceAllUsesWith(NewCE);
+                }
+                CE                 = NewCE;
+                GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true,
+                                                        GlobalValue::InternalLinkage,
+                                                        CE,
+                                                        I->getName() + "_" + Twine(v));
+                CEMap[CE]          = GV;
             }
-            CE                 = NewCE;
-            GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true,
-                                                    GlobalValue::InternalLinkage,
-                                                    CE,
-                                                    I->getName() + "_" + Twine(v));
-            CEMap[CE]          = GV;
         }
 
         // Collect types of all globals.

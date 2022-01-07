@@ -62,9 +62,10 @@ class ChangeMallocArgSize : public ModulePass
         }
     }
 
-    /*Yes, I know there is a "getTerminator" function, but I have come across blocks 
-             * that have more than one branch instruction (I think it is a bug in the runtime), but
-             * until that is resolved, I want to use this function.*/
+    /* Yes, I know there is a "getTerminator" function, but I have come across blocks 
+     * that have more than one branch instruction (I think it is a bug in the runtime), but
+     * until that is resolved, I want to use this function.
+     */
     Instruction* findTerminator(BasicBlock* pb)
     {
         Instruction* inst = nullptr;
@@ -129,7 +130,7 @@ class ChangeMallocArgSize : public ModulePass
                     }
                 }
 
-                pn->eraseFromParent(); //THIS IS NEW (SHOULDN'T BE A PROBLEM, BUT JUST IN CASE)
+                pn->eraseFromParent();
             }
         }
     }

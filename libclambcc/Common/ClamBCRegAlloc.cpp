@@ -45,6 +45,7 @@ using namespace llvm;
 // targets with fixed number of registers, and a much simpler allocator
 // suffices for us.
 
+/*TODO: Should rework this so that we are not changing things with open iterators.*/
 void ClamBCRegAlloc::handlePHI(PHINode *PN)
 {
     BasicBlock *BB = PN->getIncomingBlock(0);
@@ -103,17 +104,18 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
     unsigned id = 0;
     for (Function::arg_iterator I = F.arg_begin(), E = F.arg_end();
          I != E; ++I) {
-        Argument *A = &*I;
+        Argument *A = llvm::cast<Argument>(I);
         ValueMap[A] = id;
-        if (RevValueMap.size() == id)
+        if (RevValueMap.size() == id) {
             RevValueMap.push_back(A);
-        else
+        } else {
             errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+        }
         ++id;
     }
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-        Instruction *II = &*I;
+        Instruction *II = llvm::cast<Instruction>(&*I);
         if (ValueMap.count(II))
             continue;
         if (II->getType()->getTypeID() == Type::VoidTyID) {
@@ -147,10 +149,11 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
                     if (!AI->isArrayAllocation()) {
                         // we need to use a GEP 0,0 for bitcast here
                         ValueMap[II] = id;
-                        if (RevValueMap.size() == id)
+                        if (RevValueMap.size() == id) {
                             RevValueMap.push_back(II);
-                        else
+                        } else {
                             errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+                        }
                         ++id;
                         continue;
                     }
@@ -166,10 +169,11 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
                 if (AllocaInst *AI = dyn_cast<AllocaInst>(SI->getPointerOperand())) {
                     if (!ValueMap.count(AI)) {
                         ValueMap[AI] = id;
-                        if (RevValueMap.size() == id)
+                        if (RevValueMap.size() == id) {
                             RevValueMap.push_back(II);
-                        else
+                        } else {
                             errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
+                        }
                         ++id;
                     }
                     ValueMap[II] = getValueID(AI);
@@ -187,9 +191,9 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
               }*/
         }
         ValueMap[II] = id;
-        if (RevValueMap.size() == id)
+        if (RevValueMap.size() == id) {
             RevValueMap.push_back(II);
-        else {
+        } else {
             errs() << id << " " << __FILE__ << ":" << __LINE__ << "\n";
         }
         ++id;

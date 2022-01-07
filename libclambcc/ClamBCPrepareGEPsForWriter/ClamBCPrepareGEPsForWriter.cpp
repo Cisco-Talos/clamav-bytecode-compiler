@@ -87,6 +87,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
 
     virtual int64_t getTypeSize(Type *pt)
     {
+
         int64_t size = pt->getScalarSizeInBits();
         if (size) {
             return size;
@@ -203,12 +204,22 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
                     currType = llvm::cast<StructType>(tmp);
                 } else if (llvm::isa<ArrayType>(tmp)) {
                     currType = tmp;
-                }
+                } 
             } else if (ArrayType *pat = llvm::dyn_cast<ArrayType>(currType)) {
 
                 uint64_t size = getTypeSizeInBytes(pat->getArrayElementType());
                 Constant *pci = ConstantInt::get(vIdx->getType(), size);
                 ciAddend      = BinaryOperator::Create(Instruction::Mul, pci, vIdx, "processGEPI_", pgepi);
+
+                Type *tmp = findTypeAtIndex(currType, ciIdx);
+                assert(tmp && "Should always be defined");
+
+                if (llvm::isa<StructType>(tmp)) {
+                    currType = llvm::cast<StructType>(tmp);
+                } else if (llvm::isa<ArrayType>(tmp)) {
+                    currType = tmp;
+                } 
+
             } else {
                 assert(0 && "Figure out what to do here");
             }
@@ -314,6 +325,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
         return pInst;
     }
 
+
     virtual void processGEPI(GetElementPtrInst *pgepi)
     {
 
@@ -363,7 +375,6 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
 
     virtual bool runOnModule(Module &m)
     {
-
         pMod = &m;
         for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
             Function *pFunc = llvm::cast<Function>(i);

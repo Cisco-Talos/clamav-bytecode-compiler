@@ -387,12 +387,9 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         SwitchInst *SI = Builder->CreateSwitch(mapValue(I.getCondition()),
                                                mapBlock(I.getDefaultDest()),
                                                I.getNumCases());
-        /* aragusa: 
-           0 is the default destination.
-         */
+        // 0 is the default destination.
         for (unsigned i = 1; i < I.getNumCases(); i++) {
             BasicBlock *BB = mapBlock(I.getSuccessor(i));
-            //SI->addCase(I.getCaseValue(i), BB);
             SI->addCase(I.findCaseDest(I.getSuccessor(i)), BB);
         }
     }
@@ -510,7 +507,6 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
 
         std::vector<Value *> params;
         for (unsigned i = 0; i < FTy->getNumParams(); i++) {
-            /*aragusa: it looks like when this was written, the indexing for operands was 1-based, not 0.*/
             Value *V = mapValue(I.getOperand(i));
 
             Type *Ty = FTy->getParamType(i);
@@ -560,7 +556,6 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
 
     void visitFunction(Function *F, Function *NF)
     {
-        //VMap[&F] = &NF;
         assert(!F->isVarArg() || !NF->isVarArg());
         Function::arg_iterator FAI = F->arg_begin(), FAIE = F->arg_end();
         Function::arg_iterator NFAI = NF->arg_begin();

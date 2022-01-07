@@ -30,7 +30,6 @@
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/DebugInfo.h>
 #include <llvm/Analysis/ValueTracking.h>
-//j#include "llvm/Config/config.h"
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
@@ -44,7 +43,6 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/raw_ostream.h>
-//#include <llvm/Target/TargetData.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Local.h>
