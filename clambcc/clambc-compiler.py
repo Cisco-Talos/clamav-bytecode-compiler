@@ -513,6 +513,7 @@ def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inpu
           f' -clambc-preserve-abis' #remove fake function calls because O3 has already run
           f' -clambc-remove-pointer-phis'
           f' -dce'
+          f' -disable-loop-unrolling'
           f' -disable-loop-vectorization'
           f' -disable-slp-vectorization'
           f' -globaldce'
@@ -547,7 +548,6 @@ def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inpu
           f' -clambc-verifier'
           f' -verify'
           f' -strip-debug-declare'
-          f' -clambc-gepsplitter-placeholder'
           f' -clambc-lowering-final'
           f' -clambc-trace'
           f' -dce'

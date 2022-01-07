@@ -1050,8 +1050,8 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
 
         Function *pFunc = SI.getParent()->getParent();
         for (auto i = pFunc->arg_begin(), e = pFunc->arg_end(); i != e; i++) {
-            //Argument * pArg = llvm::cast<Argument>(i);
-            if (i == V) {
+            Argument * pArg = llvm::cast<Argument>(i);
+            if (pArg == V) {
                 printFixedNumber(OP_BC_COPY, 2);
                 printOperand(SI, SI.getOperand(0));
                 printOperand(SI, V);
