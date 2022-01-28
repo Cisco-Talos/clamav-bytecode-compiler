@@ -1,29 +1,32 @@
 properties(
     [
         disableConcurrentBuilds(),
+        buildDiscarder(logRotator(
+            artifactDaysToKeepStr: '15',
+            artifactNumToKeepStr: '15',
+            daysToKeepStr: '30',
+            numToKeepStr: '20')),
         parameters(
             [
-                string(name: 'BCC_BRANCH',
-                       defaultValue: "${env.BRANCH_NAME}",
-                       description: 'bcc branch to test against'),
                 string(name: 'VERSION',
                        defaultValue: '1.0',
                        description: 'bcc version string'),
                 string(name: 'FRAMEWORK_BRANCH',
                        defaultValue: '0.104',
                        description: 'test-framework branch'),
+                string(name: 'BUILD_BRANCH',
+                       defaultValue: 'master',
+                       description: 'test-bcc branch for building  bcc'),
                 string(name: 'TESTS_BRANCH',
-                       defaultValue: 'master',
-                       description: 'tests branch'),
-                string(name: 'BUILD_PIPELINE',
-                       defaultValue: 'master',
-                       description: 'test-bcc branch for building  bcc'),
-                string(name: 'TEST_PIPELINE',
-                       defaultValue: 'test-bcc',
-                       description: 'test-bcc branch for building  bcc'),
+                       defaultValue: 'tests',
+                       description: 'test-bcc branch for testing  bcc'),
                 string(name: 'SHARED_LIB_BRANCH',
-                       defaultValue: 'bcc-shared-lib',
-                       description: 'tests-jenkins-shared-libraries branch')
+                       defaultValue: 'master',
+                       description: 'tests-jenkins-shared-libraries branch'),
+                string(name: 'TEST_PIPELINE_PATH',
+                       defaultValue: 'bcc/test_bcc/',
+                       description: 'path for test pipelines'),
+
             ]
         )
     ]
@@ -32,22 +35,37 @@ properties(
 def buildResult
 
 node('master') {
+
+    cleanWs()
+
     stage('Build-BCC') {
-        buildResult = build(job: "test-bcc/${params.BUILD_PIPELINE}",
+
+        // checkout target code
+        dir("bcc") {
+            checkout scm
+        }
+
+        sh "tar -zcvf bcc_source.tar.gz bcc"
+
+        archiveArtifacts artifacts: 'bcc_source.tar.gz'
+
+        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.BUILD_BRANCH}",
             propagate: true,
             wait: true,
             parameters: [
-                [$class: 'StringParameterValue', name: 'TARGET_BRANCH', value: "${params.BCC_BRANCH}"],
+                [$class: 'StringParameterValue', name: 'BCC_JOB_NAME', value: "${JOB_NAME}"],
+                [$class: 'StringParameterValue', name: 'BCC_JOB_NUMBER', value: "${BUILD_NUMBER}"],
+                [$class: 'StringParameterValue', name: 'BUILD_BRANCH', value: "${params.BUILD_BRANCH}"],
                 [$class: 'StringParameterValue', name: 'FRAMEWORK_BRANCH', value: "${params.FRAMEWORK_BRANCH}"],
                 [$class: 'StringParameterValue', name: 'VERSION', value: "${params.VERSION}"],
                 [$class: 'StringParameterValue', name: 'SHARED_LIB_BRANCH', value: "${params.SHARED_LIB_BRANCH}"]
             ]
         )
-        echo "test-bcc/${params.BUILD_PIPELINE} #${buildResult.number} succeeded."
+        echo "${params.TEST_PIPELINE_PATH}${params.BUILD_BRANCH} #${buildResult.number} succeeded."
     }
 
     stage('Test-BCC') {
-        buildResult = build(job: "test-bcc/${params.TEST_PIPELINE}",
+        buildResult = build(job: "${params.TEST_PIPELINE_PATH}${params.TESTS_BRANCH}",
             propagate: true,
             wait: true,
             parameters: [
@@ -57,6 +75,6 @@ node('master') {
                 [$class: 'StringParameterValue', name: 'SHARED_LIB_BRANCH', value: "${params.SHARED_LIB_BRANCH}"]
             ]
         )
-        echo "test-bcc/${params.TEST_PIPELINE} #${buildResult.number} succeeded."
+        echo "${params.TEST_PIPELINE_PATH}/${params.TESTS_BRANCH} #${buildResult.number} succeeded."
     }
 }
