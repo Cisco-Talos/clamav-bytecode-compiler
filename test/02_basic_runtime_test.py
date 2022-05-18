@@ -54,7 +54,7 @@ class TC(testcase.TestCase):
         outFile = os.path.join(SAMPLEDIR, 'file')
         self.execute_command (f'echo {SIGSTRING} > {outFile}')
 
-        command = f'clamscan --bytecode-unsigned -d {SIGDIR} {SAMPLEDIR}'
+        command = f'{self.clamscan} --bytecode-unsigned -d {SIGDIR} {SAMPLEDIR}'
         output = self.execute_command (command)
 
         self.verify_output(output.out, expected='Clamav-Unit-Test-Signature.02 FOUND')
