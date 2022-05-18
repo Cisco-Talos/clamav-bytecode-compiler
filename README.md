@@ -77,6 +77,24 @@ Install:
 cmake --build . --target install
 ```
 
+#### Additional Build Examples
+
+Build with a specific LLVM version and specific ClamAV install that installs to
+local directory:
+```bash
+cmake .. \
+  -D CMAKE_INSTALL_PREFIX=install \
+  -D ENABLE_TESTS=ON \
+  -D LLVM_ROOT=/usr/lib/llvm-8 \
+  -D ClamAV_HOME=$HOME/clams/0.105.0
+
+make -j12
+
+ctest -V
+
+make install
+```
+
 ## Change Log
 
 For information about the features in this and prior releases, read
