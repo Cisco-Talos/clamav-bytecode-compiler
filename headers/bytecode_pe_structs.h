@@ -28,6 +28,8 @@
 #ifndef __PE_STRUCTS_H
 #define __PE_STRUCTS_H
 
+
+
 struct pe_image_file_hdr {
     uint32_t Magic;                /**< PE magic header: PE\\0\\0 */
     uint16_t Machine;              /**< CPU this executable runs on, see libclamav/pe.c for possible values */
@@ -75,7 +77,7 @@ struct pe_image_optional_hdr32 {
     uint32_t SizeOfHeapCommit;
     uint32_t LoaderFlags; /*< ? */
     uint32_t NumberOfRvaAndSizes;
-    //struct pe_image_data_dir DataDirectory[16];
+    // struct pe_image_data_dir DataDirectory[16];
 };
 
 struct pe_image_optional_hdr64 {
@@ -108,7 +110,7 @@ struct pe_image_optional_hdr64 {
     uint64_t SizeOfHeapCommit;
     uint32_t LoaderFlags; /* ? */
     uint32_t NumberOfRvaAndSizes;
-    //struct pe_image_data_dir DataDirectory[16];
+    // struct pe_image_data_dir DataDirectory[16];
 };
 
 struct pe_image_section_hdr {
@@ -129,6 +131,9 @@ struct pe_image_section_hdr {
     uint16_t NumberOfLinenumbers;  /**< object files only */
     uint32_t Characteristics;
 };
+
+
+
 
 struct pe_certificate_hdr {
     uint32_t length; /** length of the certificate data, including the header */
