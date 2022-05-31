@@ -493,7 +493,7 @@ def createInputSourceFile(clangLLVM: ClangLLVM, name: str, args: list, options: 
 
 def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inputSourceFile: str, standardCompiler: bool) -> int:
 
-    internalizeAPIList = "_Z10entrypointv,entrypoint,__clambc_kind,__clambc_virusname_prefix,__clambc_virusnames,__clambc_filesize,__clambc_match_counts,__clambc_match_offsets,__clambc_pedata"
+    internalizeAPIList = "_Z10entrypointv,entrypoint,__clambc_kind,__clambc_virusname_prefix,__clambc_virusnames,__clambc_filesize,__clambc_match_counts,__clambc_match_offsets,__clambc_pedata,__Copyright"
     if standardCompiler:
         internalizeAPIList += ",main"
 
