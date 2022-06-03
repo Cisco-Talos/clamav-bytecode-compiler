@@ -764,6 +764,24 @@ class ClamBCCOptionParser(OptionParser):
     def getPassthrough(self):
         return self.passthrough
 
+def printVersion():
+    compilerVersion = "Not written"
+    fileName = os.path.join("headers", "clambc-version.h")
+    if os.path.isfile(fileName):
+        f = open(fileName)
+        lines = f.readlines()
+        f.close()
+
+        for i in range(0, len(lines)):
+            line = lines[i].rstrip()
+            m = re.search('CLAMBC_VERSION "(.*)"', line)
+            if m:
+                compilerVersion = m.group(1)
+                break
+
+    #TODO: Print information for target version (after clamav installs the headers) 
+    print (f"ClamBC-Compiler {compilerVersion}")
+
 
 def main():
 
@@ -792,8 +810,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.version:
-        #TODO: determine the version by calling into libclambcc.so
-        print('ClamBC-Compiler 0.103.1')
+        printVersion()
         sys.exit(0)
 
 

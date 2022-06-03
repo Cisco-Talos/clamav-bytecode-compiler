@@ -1,4 +1,4 @@
-#include "clambc-version.h"
+#include "headers/clambc-version.h"
 
 const char *clambc_getversion(void)
 {

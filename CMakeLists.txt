@@ -20,7 +20,7 @@ string(TIMESTAMP TODAY "%Y%m%d")
 set(VERSION_SUFFIX "-devel-${TODAY}")
 
 project( ClamBCC
-         VERSION "0.103.1"
+         VERSION "0.105.0"
          DESCRIPTION "ClamAV Bytecode Compiler." )
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -181,7 +181,7 @@ else()
     )
 endif()
 
-configure_file(clambc-version.h.in clambc-version.h)
+configure_file(clambc-version.h.in headers/clambc-version.h)
 
 #
 # Build targets!
