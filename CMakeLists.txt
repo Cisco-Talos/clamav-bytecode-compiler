@@ -17,10 +17,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #  For release candidate:     set(VERSION_SUFFIX "-rc")
 #  For release:               set(VERSION_SUFFIX "")
 string(TIMESTAMP TODAY "%Y%m%d")
-set(VERSION_SUFFIX "-devel-${TODAY}")
+set(VERSION_SUFFIX "")
 
 project( ClamBCC
-         VERSION "0.103.1"
+         VERSION "0.105.0"
          DESCRIPTION "ClamAV Bytecode Compiler." )
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
