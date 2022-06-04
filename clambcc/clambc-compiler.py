@@ -792,8 +792,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.version:
-        #TODO: determine the version by calling into libclambcc.so
-        print('ClamBC-Compiler 0.103.1')
+        print('ClamBC-Compiler @PACKAGE_VERSION@')
         sys.exit(0)
 
 

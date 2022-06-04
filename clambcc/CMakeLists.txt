@@ -1,6 +1,6 @@
 # Copyright (C) 2021 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
 
-configure_file(clambc-compiler.py clambc-compiler COPYONLY)
+configure_file(clambc-compiler.py clambc-compiler)
 
 install(
     FILES "${CMAKE_CURRENT_BINARY_DIR}/clambc-compiler"
