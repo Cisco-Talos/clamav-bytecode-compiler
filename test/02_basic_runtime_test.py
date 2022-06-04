@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
+# Copyright (C) 2021-2022 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
 
 """
 The tests in this file check that clambcc is able to compile the example
@@ -40,26 +40,20 @@ class TC(testcase.TestCase):
     def test_00_run_test(self):
         self.step_name('Test that clamscan can run a specific signature.')
 
-        testPath = os.path.join(TC.path_source , 'test' , '02' , 'Sig.c')
+        testsig_src_file = self.path_source / 'test' / 'examples' / 'in' / 'lsig_simple2.c'
+        testsig_out_file = self.path_tmp / 'sigs' / 'lsig_simple2.cbc'
+        os.makedirs(testsig_out_file.parent, exist_ok=True)
 
-        SIGDIR = 'sigs'
-        os.mkdir(SIGDIR)
+        self.execute_command(f'{TC.clambcc} {testsig_src_file} -o {testsig_out_file} {TC.headers}')
 
-        self.execute_command(f'{TC.clambcc} {testPath} -o {SIGDIR} {TC.headers}')
+        test_sample_path = self.path_tmp / 'samples'
+        os.mkdir (test_sample_path)
 
-        SAMPLEDIR = 'samples'
-        os.mkdir (SAMPLEDIR)
+        test_string='CLAMAV-TEST-STRING-NOT-EICAR'
+        test_file = test_sample_path / 'testfile'
+        self.execute_command(f'echo {test_string} > {test_file}')
 
-        SIGSTRING='CLAMAV-TEST-STRING-NOT-EICAR'
-        outFile = os.path.join(SAMPLEDIR, 'file')
-        self.execute_command (f'echo {SIGSTRING} > {outFile}')
-
-        command = f'{self.clamscan} --bytecode-unsigned -d {SIGDIR} {SAMPLEDIR}'
-        output = self.execute_command (command)
+        command = f'{TC.clamscan} --bytecode-unsigned -d {testsig_out_file} {test_sample_path}'
+        output = self.execute_command(command)
 
         self.verify_output(output.out, expected='Clamav-Unit-Test-Signature.02 FOUND')
-
-
-
-
-
