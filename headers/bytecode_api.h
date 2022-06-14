@@ -489,6 +489,9 @@ int32_t file_find(const uint8_t* data, uint32_t len);
  */
 int32_t file_byteat(uint32_t offset);
 
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 /**
 \group_adt
  * Allocates memory. Currently this memory is freed automatically on exit
@@ -497,6 +500,7 @@ int32_t file_byteat(uint32_t offset);
  * @return pointer to allocated memory
  */
 void* malloc(uint32_t size);
+#pragma GCC diagnostic pop
 
 /**
  * Test api2.
