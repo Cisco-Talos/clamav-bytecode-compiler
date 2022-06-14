@@ -545,6 +545,7 @@ static force_inline bool hasPEInfo(void)
             __fail_missing_PE_HOOK_DECLARE__or__PE_UNPACKER_DECLARE(); \
     }
 
+
 /**
 \group_pe
  * Returns whether this is a PE32+ executable.
@@ -913,8 +914,8 @@ static force_inline bool getPEisDLL()
 static force_inline uint32_t getPEDataDirRVA(unsigned n)
 {
     NEED_PE_INFO;
-    struct pe_image_data_dir *p   = &__clambc_pedata.opt64_dirs[n];
-    struct pe_image_data_dir *p32 = &__clambc_pedata.opt32_dirs[n];
+    const struct pe_image_data_dir *p   = &__clambc_pedata.opt64_dirs[n];
+    const struct pe_image_data_dir *p32 = &__clambc_pedata.opt32_dirs[n];
     return n < 16 ? le32_to_host(isPE64() ? p->VirtualAddress : p32->VirtualAddress)
                   : 0;
 }
@@ -1139,6 +1140,8 @@ void *memmove(void *dst, const void *src, uintptr_t n)
 void *memcpy(void *restrict dst, const void *restrict src, uintptr_t n)
     __attribute__((__nothrow__)) __attribute__((__nonnull__(1, 2)));
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 /**
 \group_string
  * [LLVM Intrinsic] Compares two memory buffers, \p s1 and \p s2 to length \p n.
@@ -1150,6 +1153,7 @@ void *memcpy(void *restrict dst, const void *restrict src, uintptr_t n)
  * or be greater than the first \p n bytes of \p s2.*/
 int memcmp(const void *s1, const void *s2, uint32_t n)
     __attribute__((__nothrow__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+#pragma GCC diagnostic pop
 
 /**
 \group_disasm
