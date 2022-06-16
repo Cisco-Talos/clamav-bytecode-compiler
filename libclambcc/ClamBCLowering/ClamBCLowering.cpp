@@ -129,23 +129,6 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
                     switch (iid) {
                         default:
                             break;
-                            /*
-            {
-              Instruction *Before = 0;
-              if (CI != &BB->front())
-                Before = prior(BasicBlock::iterator(CI));
-              IL->LowerIntrinsicCall(CI);
-              if (Before) {
-                I = Before; ++I;
-              } else {
-                I = BB->begin();
-              }
-              if (CallInst *Call = dyn_cast<CallInst>(I))
-                if (Function *NewF = Call->getCalledFunction())
-                  if (!NewF->isDeclaration())
-                    prototypesToGen.push_back(NewF);
-            }
-*/
                         case Intrinsic::memset:
                         case Intrinsic::memcpy:
                         case Intrinsic::memmove:
@@ -206,17 +189,6 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
                             // replace the operand with the 32-bit sized index
                             GEPI->setOperand(i, V2);
                         }
-                        /*
-            // {s,z}ext i32 %foo to i64, getelementptr %ptr, i64 %sext ->
-            // getelementptr %ptr, i32 %foo
-            if (SExtInst *Ext = dyn_cast<SExtInst>(V))
-              GEPI->setOperand(i, Ext->getOperand(0));
-            if (ZExtInst *Ext = dyn_cast<ZExtInst>(V))
-              GEPI->setOperand(i, Ext->getOperand(0));
-            if (ConstantInt *CI = dyn_cast<ConstantInt>(V)) {
-              GEPI->setOperand(i, ConstantExpr::getTrunc(CI,
-                                                         Type::getInt32Ty(C)));
-            }*/
                     }
                 }
             } else if (ICmpInst *ICI = dyn_cast<ICmpInst>(II)) {
@@ -259,10 +231,6 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
 static bool hasBitcastUse(Instruction *I)
 {
     assert(I && "Bad pointer passed in");
-    //    if (!I)
-    //        return false;
-    //    for (Value::use_iterator UI = I->use_begin(), UE = I->use_end();
-    //         UI != UE; ++UI) {
     for (auto i : I->users()) {
         Value *vUser = llvm::cast<Value>(i);
         if (BitCastInst *BCI = dyn_cast<BitCastInst>(vUser)) {

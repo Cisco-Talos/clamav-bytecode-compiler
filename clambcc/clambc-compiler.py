@@ -547,7 +547,6 @@ def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inpu
           f' -clambc-verifier'
           f' -verify'
           f' -strip-debug-declare'
-          f' -clambc-gepsplitter-placeholder'
           f' -clambc-lowering-final'
           f' -clambc-trace'
           f' -dce'

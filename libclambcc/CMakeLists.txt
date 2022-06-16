@@ -8,10 +8,8 @@ target_sources(clambcc_obj
     PRIVATE
         ClamBCLowering/ClamBCLowering.cpp
         ClamBCVerifier/ClamBCVerifier.cpp
-        ClamBCRTChecks/ClamBCRTChecks.cpp
         ClamBCLogicalCompiler/ClamBCLogicalCompiler.cpp
         ClamBCRebuild/ClamBCRebuild.cpp
-        ClamBCGEPSplitter/ClamBCGEPSplitter.cpp
         ClamBCTrace/ClamBCTrace.cpp
         ClamBCModule/ClamBCModule.cpp
         ClamBCWriter/ClamBCWriter.cpp
