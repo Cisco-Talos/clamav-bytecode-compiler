@@ -20,13 +20,18 @@ For example:
 > - [bytecode_api.h](headers/bytecode_api.h)
 > - [bytecode_local.h](headers/bytecode_local.h)
 
-## `0.103.1`
+## `0.105.0`
 
 ➕ Complete overhaul of the bytecode compiler project.
   - The clamav compiler passes now build against a system-installed LLVM-
     library. This builds a single shared library (i.e. libclambcc.so).
   - The compiler application is now a Python script that uses Clang with the
     bytecode compiler library to run the compiler passes.
+
+🐛 Fixed bug causing signatures with malloc to fail to run when using system
+   installed llvm.
+
+🐛 Fixed the peinfo.c example bytecode source.
 
 ❌ Removed vendored/modified LLVM/Clang 2.7-ish source.
 
