@@ -233,15 +233,15 @@ typedef struct signature {
  */
 /* some other macro may use __COUNTER__, so we need to subtract its current\
  * value to obtain zero-based indices */
-#define SIGNATURES_DEF_BEGIN                                                                               \
-    static const unsigned __signature_bias = __COUNTER__ + 1;                                              \
-    const struct __Signatures Signatures   = {/**                                                          \
-                                          \group_config                                                  \
-                                           * Defines the pattern for a previously declared subsignature. \
-                                           * @sa DECLARE_SIGNATURE                                       \
-                                           * @param name the name of a previously declared subsignature  \
-                                           * @param hex the pattern for this subsignature                \
-                                           */
+#define SIGNATURES_DEF_BEGIN                                                                             \
+    static const unsigned __signature_bias = __COUNTER__ + 1;                                            \
+    const struct __Signatures Signatures   = {/**                                                        \
+                                        \group_config                                                  \
+                                         * Defines the pattern for a previously declared subsignature. \
+                                         * @sa DECLARE_SIGNATURE                                       \
+                                         * @param name the name of a previously declared subsignature  \
+                                         * @param hex the pattern for this subsignature                \
+                                         */
 #define DEFINE_SIGNATURE(name, hex) \
     .name##_sig = (hex),            \
     .name       = {__COUNTER__ - __signature_bias},
@@ -545,7 +545,6 @@ static force_inline bool hasPEInfo(void)
             __fail_missing_PE_HOOK_DECLARE__or__PE_UNPACKER_DECLARE(); \
     }
 
-
 /**
 \group_pe
  * Returns whether this is a PE32+ executable.
@@ -553,7 +552,10 @@ static force_inline bool hasPEInfo(void)
  */
 static force_inline bool isPE64(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le16_to_host(__clambc_pedata.opt64.Magic) == 0x020b;
 }
 
@@ -834,7 +836,10 @@ static force_inline uint32_t getPELoaderFlags(void)
  */
 static force_inline uint16_t getPEMachine()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le16_to_host(__clambc_pedata.file_hdr.Machine);
 }
 
@@ -845,7 +850,10 @@ static force_inline uint16_t getPEMachine()
  */
 static force_inline uint32_t getPETimeDateStamp()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le32_to_host(__clambc_pedata.file_hdr.TimeDateStamp);
 }
 
@@ -856,7 +864,10 @@ static force_inline uint32_t getPETimeDateStamp()
  */
 static force_inline uint32_t getPEPointerToSymbolTable()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le32_to_host(__clambc_pedata.file_hdr.PointerToSymbolTable);
 }
 
@@ -867,7 +878,10 @@ static force_inline uint32_t getPEPointerToSymbolTable()
  */
 static force_inline uint32_t getPENumberOfSymbols()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le32_to_host(__clambc_pedata.file_hdr.NumberOfSymbols);
 }
 
@@ -878,7 +892,10 @@ static force_inline uint32_t getPENumberOfSymbols()
  */
 static force_inline uint16_t getPESizeOfOptionalHeader()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le16_to_host(__clambc_pedata.file_hdr.SizeOfOptionalHeader);
 }
 
@@ -889,7 +906,10 @@ static force_inline uint16_t getPESizeOfOptionalHeader()
  * @return characteristic of PE file, or 0 if not in PE hook*/
 static force_inline uint16_t getPECharacteristics()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le16_to_host(__clambc_pedata.file_hdr.Characteristics);
 }
 
@@ -913,7 +933,10 @@ static force_inline bool getPEisDLL()
  */
 static force_inline uint32_t getPEDataDirRVA(unsigned n)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     const struct pe_image_data_dir *p   = &__clambc_pedata.opt64_dirs[n];
     const struct pe_image_data_dir *p32 = &__clambc_pedata.opt32_dirs[n];
     return n < 16 ? le32_to_host(isPE64() ? p->VirtualAddress : p32->VirtualAddress)
@@ -928,7 +951,10 @@ static force_inline uint32_t getPEDataDirRVA(unsigned n)
  */
 static force_inline uint32_t getPEDataDirSize(unsigned n)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return n < 16 ? le32_to_host(isPE64() ? __clambc_pedata.opt64_dirs[n].Size : __clambc_pedata.opt32_dirs[n].Size)
                   : 0;
 }
@@ -951,7 +977,10 @@ static force_inline uint16_t getNumberOfSections(void)
  */
 static uint32_t getPELFANew(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le32_to_host(__clambc_pedata.e_lfanew);
 }
 
@@ -965,7 +994,10 @@ static uint32_t getPELFANew(void)
  */
 static force_inline int readPESectionName(unsigned char name[8], unsigned n)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     if (n >= getNumberOfSections())
         return -1;
     uint32_t at = getPELFANew() + sizeof(struct pe_image_file_hdr) + sizeof(struct pe_image_optional_hdr32);
@@ -1016,7 +1048,10 @@ static force_inline uint32_t getExeOffset(void)
  */
 static force_inline uint32_t getImageBase(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le32_to_host(__clambc_pedata.opt32.ImageBase);
 }
 
@@ -1027,7 +1062,10 @@ static force_inline uint32_t getImageBase(void)
  */
 static uint32_t getVirtualEntryPoint(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
     NEED_PE_INFO;
+#pragma GCC diagnostic pop
     return le32_to_host(isPE64() ? __clambc_pedata.opt64.AddressOfEntryPoint : __clambc_pedata.opt32.AddressOfEntryPoint);
 }
 
