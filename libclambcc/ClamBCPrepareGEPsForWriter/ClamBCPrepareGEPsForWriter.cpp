@@ -204,7 +204,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
                     currType = llvm::cast<StructType>(tmp);
                 } else if (llvm::isa<ArrayType>(tmp)) {
                     currType = tmp;
-                } 
+                }
             } else if (ArrayType *pat = llvm::dyn_cast<ArrayType>(currType)) {
 
                 uint64_t size = getTypeSizeInBytes(pat->getArrayElementType());
@@ -218,7 +218,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
                     currType = llvm::cast<StructType>(tmp);
                 } else if (llvm::isa<ArrayType>(tmp)) {
                     currType = tmp;
-                } 
+                }
 
             } else {
                 assert(0 && "Figure out what to do here");
@@ -324,7 +324,6 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
 
         return pInst;
     }
-
 
     virtual void processGEPI(GetElementPtrInst *pgepi)
     {
