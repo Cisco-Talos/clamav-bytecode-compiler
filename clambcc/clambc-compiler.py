@@ -493,7 +493,7 @@ def createInputSourceFile(clangLLVM: ClangLLVM, name: str, args: list, options: 
 
 def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inputSourceFile: str, standardCompiler: bool) -> int:
 
-    internalizeAPIList = "_Z10entrypointv,entrypoint,__clambc_kind,__clambc_virusname_prefix,__clambc_virusnames,__clambc_filesize,__clambc_match_counts,__clambc_match_offsets,__clambc_pedata,__Copyright"
+    internalizeAPIList = "_Z10entrypointv,entrypoint,__clambc_kind,__clambc_virusname_prefix,__clambc_virusnames,__clambc_filesize,__clambc_match_counts,__clambc_match_offsets,__clambc_pedata"
     if standardCompiler:
         internalizeAPIList += ",main"
 
@@ -509,6 +509,7 @@ def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inpu
           f' -clambc-preserve-abis' #add fake function calls that use all of
                                    #the arguments so that O3 doesn't change
                                    #the argument lists
+          f' -clambc-copyright-handler'
           f' -O3'
           f' -clambc-preserve-abis' #remove fake function calls because O3 has already run
           f' -clambc-remove-pointer-phis'

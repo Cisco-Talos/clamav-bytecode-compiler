@@ -9,6 +9,7 @@ target_sources(clambcc_obj
         ClamBCLowering/ClamBCLowering.cpp
         ClamBCVerifier/ClamBCVerifier.cpp
         ClamBCLogicalCompiler/ClamBCLogicalCompiler.cpp
+        ClamBCCopyrightHandler/ClamBCCopyrightHandler.cpp
         ClamBCRebuild/ClamBCRebuild.cpp
         ClamBCTrace/ClamBCTrace.cpp
         ClamBCModule/ClamBCModule.cpp

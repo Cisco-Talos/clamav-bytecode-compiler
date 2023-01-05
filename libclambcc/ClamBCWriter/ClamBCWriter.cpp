@@ -461,6 +461,7 @@ class ClamBCOutputWriter
                 printNumber(Out, 0, false);
                 continue;
             }
+
             Constant *pConst = llvm::cast<Constant>(*I);
             // type of constant
             uint16_t id = pAnalyzer->getTypeID((*I)->getType());
@@ -540,9 +541,11 @@ class ClamBCOutputWriter
         printModuleHeader(*pMod, pAnalyzer, maxLineLength + 1);
         OutReal << Out.str();
 
-        //MemoryBuffer *MB  = nullptr;
-        const char *start     = NULL;
-        std::string copyright = pAnalyzer->getCopyright();
+        const char *start = NULL;
+
+        NamedMDNode *copyrightNode = pMod->getNamedMetadata("clambc.copyright");
+        std::string copyright      = copyrightNode ? cast<MDString>(copyrightNode->getOperand(0)->getOperand(0))->getString() : "";
+
         if (copyright.length()) {
             start = copyright.c_str();
         } else {
@@ -593,6 +596,10 @@ class ClamBCOutputWriter
                 linelength = 0;
             }
         } while (c);
+        //OutReal doesn't appear to add the last newline unless there is something
+        //after it, so there is no newline at the end of the source code printout
+        //without this.
+        OutReal << "\n";
     }
 
     void dumpTypes(llvm::raw_ostream &OS)
@@ -743,7 +750,6 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
 
     bool runOnModule(Module &m)
     {
-
         pMod          = &m;
         pAnalyzer     = &getAnalysis<ClamBCAnalyzer>();
         pOutputWriter = ClamBCOutputWriter::createClamBCOutputWriter(outFile, pMod, pAnalyzer);
