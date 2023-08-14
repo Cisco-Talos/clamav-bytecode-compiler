@@ -24,14 +24,14 @@ project( ClamBCC
          DESCRIPTION "ClamAV Bytecode Compiler." )
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-include(Version)
+#include(Version)
 
 set(PACKAGE_NAME      "${PROJECT_NAME}")
 set(PACKAGE_VERSION   "${PROJECT_VERSION}")
 set(PACKAGE_STRING    "${PROJECT_NAME} ${PROJECT_VERSION}${VERSION_SUFFIX}")
 set(PACKAGE_BUGREPORT "https://github.com/Cisco-Talos/clamav-bytecode-compiler/issues")
 set(PACKAGE_URL       "https://www.clamav.net/")
-HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR} ${PROJECT_VERSION_PATCH})
+#HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR} ${PROJECT_VERSION_PATCH})
 
 # libtool library versioning rules: http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 set(LIBCLAMBC_CURRENT  1)
@@ -40,7 +40,7 @@ set(LIBCLAMBC_AGE      0)
 
 math(EXPR LIBCLAMBC_SOVERSION "${LIBCLAMBC_CURRENT} - ${LIBCLAMBC_AGE}")
 set(LIBCLAMBC_VERSION "${LIBCLAMBC_SOVERSION}.${LIBCLAMBC_AGE}.${LIBCLAMBC_REVISION}")
-HexVersion(LIBCLAMBC_VERSION_NUM ${LIBCLAMBC_CURRENT} ${LIBCLAMBC_REVISION} ${LIBCLAMBC_AGE})
+#HexVersion(LIBCLAMBC_VERSION_NUM ${LIBCLAMBC_CURRENT} ${LIBCLAMBC_REVISION} ${LIBCLAMBC_AGE})
 
 # Git optionally used to add commit info into build to differentiate in bug reports.
 find_package(Git)
@@ -103,10 +103,10 @@ if(ENABLE_TESTS)
         set(Python3_TEST_PACKAGE "pytest;-v")
     endif()
 
-    find_package(ClamAV REQUIRED)
+    #find_package(ClamAV REQUIRED)
 endif()
 
-find_package(LLVM 8 REQUIRED)
+find_package(LLVM 16 REQUIRED)
 
 # Do not disable assertions based on CMAKE_BUILD_TYPE.
 foreach(_build_type "Release" "MinSizeRel" "RelWithDebInfo")
@@ -187,13 +187,15 @@ configure_file(clambc-version.h.in clambc-version.h)
 # Build targets!
 #
 
+include(AddLLVM)
+
 # The bytecode compiler optimization passes
 # This is the core of the bytecode compiler
 add_subdirectory(libclambcc)
 
 # The bytecode compiler application
 # This is really just a python script
-add_subdirectory(clambcc)
+#add_subdirectory(clambcc)
 
 # A tool to generate the runtime interface from the headers
 #TODO: Finish updating ifacegen to work with modern LLVM
@@ -203,7 +205,7 @@ add_subdirectory(clambcc)
 #
 # Some of these are copied from ClamAV, some are generated,
 # and some provide similar interfaces to familiar POSIX API's.
-add_subdirectory(headers)
+#add_subdirectory(headers)
 
 # Documentation (doxygen, manpages)
 #TODO:
@@ -212,17 +214,18 @@ add_subdirectory(headers)
 #   `pandoc -s file.tex -o file.md` mostly-works, but w/ the doxygen integration is insufficient.
 # add_subdirectory(docs)
 
-if(ENABLE_EXAMPLES)
-    # Example optimization passes; boilerplate to help compiler devs write new passes.
-    add_subdirectory( examples )
-endif()
+#if(ENABLE_EXAMPLES)
+#    # Example optimization passes; boilerplate to help compiler devs write new passes.
+#    add_subdirectory( examples )
+#endif()
 
 include(CTest)
+
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
-if(ENABLE_TESTS)
-    # Tests to verify compiler works as intended and that signatures behave as intended.
-    add_subdirectory( test )
-endif()
+#if(ENABLE_TESTS)
+#    # Tests to verify compiler works as intended and that signatures behave as intended.
+#    add_subdirectory( test )
+#endif()
 
 if(WIN32)
     # Include the license(s) in the installation
