@@ -40,7 +40,14 @@ bool functionRecurses(Function *pFunc, Function *orig, std::vector<Function *> &
         for (auto blockIter = bb->begin(), blockEnd = bb->end(); blockIter != blockEnd; blockIter++) {
             Instruction *inst = llvm::cast<Instruction>(blockIter);
             if (CallInst *ci = llvm::dyn_cast<CallInst>(inst)) {
+#if 0
                 Value *calledValue = ci->getCalledValue();
+#else
+		Function * calledValue = ci->getCalledFunction();
+		if (nullptr == calledValue){
+			assert (0 && "ci->getCalledFunction returned NULL\n");
+		}
+#endif
                 if (calledValue == orig) {
                     return true;
                 } else if (Function *callee = dyn_cast<Function>(calledValue)) {
