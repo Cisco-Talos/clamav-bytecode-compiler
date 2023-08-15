@@ -3,9 +3,11 @@
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/Analysis/LoopInfo.h>
 
 #include <set>
+#include <map>
 
 #include "ClamBCDiagnostics.h"
 

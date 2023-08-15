@@ -4,5 +4,5 @@
 #add_subdirectory(ClamBCRemoveUndefs)
 #add_subdirectory(ClamBCPreserveABIs)
 #add_subdirectory(ClamBCAnalyzer)
-#add_subdirectory(Common)
+add_subdirectory(Common)
 
