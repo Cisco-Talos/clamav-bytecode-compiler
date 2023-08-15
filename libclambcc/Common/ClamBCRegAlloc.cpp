@@ -77,7 +77,12 @@ void ClamBCRegAlloc::handlePHI(PHINode *PN)
         ++It;
     } while (isa<PHINode>(It));
     builder.SetInsertPoint(&*It);
+#if 0
     LoadInst *LI = builder.CreateLoad(AI, ".phiload");
+#else
+    llvm::errs() << "<" << __LINE__ << ">" << "There is a chance I'll have to do something like getPoinerOperand->getType or something like that, so leave this in here as a reminder to go look\n" << "<END>\n";
+    LoadInst *LI = builder.CreateLoad(AI->getType(), AI, ".phiload");
+#endif
     builder.SetInstDebugLocation(LI);
     PN->replaceAllUsesWith(LI);
     PN->eraseFromParent();
@@ -141,8 +146,19 @@ bool ClamBCRegAlloc::runOnFunction(Function &F)
                         ClamBCStop("Cast from pointer to non-pointer element",
                                    BCI);
                     }
+#if 0
                     SrcTy = SPTy->getElementType();
                     DstTy = DPTy->getElementType();
+#else
+
+                    assert (0 && "removed deprecated getPointerElementType calls");
+
+
+                    /*Don't expect any issues with this change.*/
+                    SrcTy = SPTy->getPointerElementType();
+                    DstTy = DPTy->getPointerElementType();
+
+#endif
                 }
 
                 if (AllocaInst *AI = dyn_cast<AllocaInst>(BCI->getOperand(0))) {
