@@ -24,15 +24,20 @@
 
 #include "Common/clambc.h"
 
-#include <cstddef>
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/Twine.h"
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/ADT/Twine.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/IRBuilder.h>
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/raw_ostream.h>
+
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Passes/PassBuilder.h>
+
+#include <cstddef>
 #include <vector>
 #include <map>
 
@@ -45,7 +50,7 @@
 //5.  Cannot see where banMap has any functions inserted.  Do we need it?
 //6.  Evaluate the TODO in runOnModule.
 
-class ClamBCAnalyzer : public llvm::ModulePass
+class ClamBCAnalyzer : public llvm::PassInfoMixin<ClamBCAnalyzer> //llvm::ModulePass
 {
   protected:
     typedef llvm::DenseMap<const llvm::Type *, unsigned> TypeMapTy;
@@ -76,6 +81,7 @@ class ClamBCAnalyzer : public llvm::ModulePass
     unsigned maxGlobal = 0;
     std::vector<llvm::Constant *> globalInits;
     std::vector<const llvm::MDNode *> mds;
+    bool WriteDI = false;
 
     virtual void printGlobals(uint16_t stid);
 
@@ -103,7 +109,7 @@ class ClamBCAnalyzer : public llvm::ModulePass
   public:
     static char ID;
     explicit ClamBCAnalyzer()
-        : ModulePass(ID)
+        //: ModulePass(ID)
     {
 
         populateAPIMap();
@@ -118,9 +124,12 @@ class ClamBCAnalyzer : public llvm::ModulePass
     }
 
     ~ClamBCAnalyzer() {}
-    virtual bool runOnModule(llvm::Module &m) override;
+    //virtual bool runOnModule(llvm::Module &m) override;
+    virtual llvm::PreservedAnalyses run(llvm::Module & m, llvm::ModuleAnalysisManager & MAM);
 
+#if 0
     virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override;
+#endif
 
     virtual uint32_t getTypeID(const llvm::Type *const t)
     {
