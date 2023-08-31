@@ -41,23 +41,30 @@
  * }
  */
 
+
+#include "Common/ClamBCDiagnostics.h"
+#include "Common/ClamBCModule.h"
+#include "Common/clambc.h"
+#include "Common/ClamBCUtilities.h"
+
+
+
+
 #include <llvm/Pass.h>
-#include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/Function.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Passes/PassPlugin.h>
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+//#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-using namespace llvm;
 
-#include "ClamBCDiagnostics.h"
-#include "ClamBCModule.h"
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/Dominators.h>
-#include "llvm/Analysis/ConstantFolding.h"
-#include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/Analysis/ScalarEvolutionExpander.h"
+#include <llvm/Analysis/ConstantFolding.h>
+#include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -68,22 +75,40 @@ using namespace llvm;
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
-#include "llvm/ADT/DepthFirstIterator.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include <llvm/ADT/DepthFirstIterator.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/IR/InstrTypes.h>
 
-#include "llvm/ADT/SmallSet.h"
+#include <llvm/ADT/SmallSet.h>
 
-#include "Common/clambc.h"
-#include "Common/ClamBCUtilities.h"
 
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Support/raw_ostream.h>
+
+#include <llvm/IR/Dominators.h>
+
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+
+
+
+
+
+using namespace llvm;
+
+#if 0
 static cl::opt<bool>
     StopOnFirstError("clambc-stopfirst", cl::init(false),
                      cl::desc("Stop on first error in the verifier"));
-namespace
+#else
+static bool StopOnFirstError = true;
+#endif
+
+namespace ClamBCVerifier
 {
-class ClamBCVerifier : public FunctionPass,
+class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier >,
                        public InstVisitor<ClamBCVerifier, bool>
 {
 
@@ -144,7 +169,16 @@ class ClamBCVerifier : public FunctionPass,
     {
         Function *ret = pci->getCalledFunction();
         if (nullptr == ret) {
+#if 0
             Value *v = pci->getCalledValue();
+#else
+            Value * v = pci->getOperand(0); /*This is the called operand.*/
+            if (nullptr == v){
+                llvm::errs() << "<" << __LINE__ << ">" << *pci << "<END>\n";
+                llvm::errs() << "<" << __LINE__ << ">" << *(pci->getOperand(0)) << "<END>\n";
+                assert (0 && "How do I handle function pointers?");
+            }
+#endif
             if (BitCastOperator *bco = llvm::dyn_cast<BitCastOperator>(v)) {
                 ret = llvm::dyn_cast<Function>(bco->getOperand(0));
             }
@@ -156,7 +190,8 @@ class ClamBCVerifier : public FunctionPass,
     {
         Function *F = getCalledFunctionFromCallInst(&CI);
         if (!F) {
-            printDiagnostic("Indirect call checking not implemented yet!", &CI);
+            /*Determine if we want to allow indirect calls*/
+            printDiagnostic("Indirect call checking not implemented!", &CI);
             return false;
         }
 
@@ -210,22 +245,27 @@ class ClamBCVerifier : public FunctionPass,
     }
 
   public:
-    static char ID;
-    explicit ClamBCVerifier()
-        : FunctionPass(ID), Final(false) {}
+    //static char ID;
+    explicit ClamBCVerifier():
+        Final(false) {}
 
     virtual llvm::StringRef getPassName() const
     {
         return "ClamAV Bytecode Verifier";
     }
 
+#if 0
     virtual bool runOnFunction(Function &F)
+#else
+    PreservedAnalyses run(Function & F, FunctionAnalysisManager & fam)
+#endif
     {
         pMod   = F.getParent();
         AbrtBB = 0;
-        SE     = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-        ;
-        DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+        //SE     = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+        SE = &fam.getResult<ScalarEvolutionAnalysis>(F);
+        //DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+        DT = &fam.getResult<DominatorTreeAnalysis>(F);
 
         bool OK = true;
         std::vector<Instruction *> insns;
@@ -243,7 +283,7 @@ class ClamBCVerifier : public FunctionPass,
         if (!OK)
             ClamBCStop("Verifier rejected bytecode function due to errors",
                        &F);
-        return false;
+        return PreservedAnalyses::all();
     }
     virtual void getAnalysisUsage(AnalysisUsage &AU) const
     {
@@ -252,10 +292,45 @@ class ClamBCVerifier : public FunctionPass,
         AU.setPreservesAll();
     }
 };
-char ClamBCVerifier::ID = 0;
+//char ClamBCVerifier::ID = 0;
 
 } // namespace
 
+#if 0
 static RegisterPass<ClamBCVerifier> X("clambc-verifier", "ClamBCVerifier Pass",
                                       false /* Only looks at CFG */,
                                       false /* Analysis Pass */);
+#else
+
+
+
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo() {
+  return {
+    LLVM_PLUGIN_API_VERSION, "ClamBCVerifier", "v0.1",
+    [](PassBuilder &PB) {
+      PB.registerPipelineParsingCallback(
+        [](StringRef Name, FunctionPassManager &FPM,
+        ArrayRef<PassBuilder::PipelineElement>) {
+          if(Name == "clambc-verifier"){
+            FPM.addPass(ClamBCVerifier::ClamBCVerifier());
+            return true;
+          }
+          return false;
+        }
+      );
+    }
+  };
+}
+
+
+
+#endif
+
+
+
+
+
+
+
