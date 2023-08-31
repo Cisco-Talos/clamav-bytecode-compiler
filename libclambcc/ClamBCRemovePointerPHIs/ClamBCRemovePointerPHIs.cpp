@@ -5,6 +5,8 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Passes/PassBuilder.h>
 
 #include <llvm/IR/Dominators.h>
 
@@ -20,7 +22,7 @@ using namespace llvm;
 
 namespace
 {
-class ClambcRemovePointerPHIs : public FunctionPass
+class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
 {
   protected:
     Function *pFunc = nullptr;
@@ -283,15 +285,21 @@ class ClambcRemovePointerPHIs : public FunctionPass
     }
 
   public:
-    static char ID;
-    ClambcRemovePointerPHIs()
-        : FunctionPass(ID) {}
+    ClamBCRemovePointerPHIs(){}
 
+    virtual ~ClamBCRemovePointerPHIs(){}
+
+#if 0
     bool runOnFunction(Function &F) override
+#else
+    virtual PreservedAnalyses run(Function & F, FunctionAnalysisManager & MAM)
+#endif
     {
 
         pFunc    = &F;
         bool ret = false;
+
+        llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << "<END>\n";
 
         std::vector<PHINode *> phis = gatherPHIs();
         for (size_t i = 0; i < phis.size(); i++) {
@@ -302,14 +310,40 @@ class ClambcRemovePointerPHIs : public FunctionPass
             }
         }
 
-        return ret;
+        if (ret){
+            return PreservedAnalyses::none();
+        }
+            return PreservedAnalyses::all();
     }
 
-}; // end of class ClambcRemovePointerPHIs
+}; // end of class ClamBCRemovePointerPHIs
 
 } // end of anonymous namespace
 
-char ClambcRemovePointerPHIs::ID = 0;
-static RegisterPass<ClambcRemovePointerPHIs> X("clambc-remove-pointer-phis", "Remove PHI Nodes with pointers",
+#if 0
+char ClamBCRemovePointerPHIs::ID = 0;
+static RegisterPass<ClamBCRemovePointerPHIs> X("clambc-remove-pointer-phis", "Remove PHI Nodes with pointers",
                                                false /* Only looks at CFG */,
                                                false /* Analysis Pass */);
+#else
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo() {
+  return {
+    LLVM_PLUGIN_API_VERSION, "ClamBCRemovePointerPHIs", "v0.1",
+    [](PassBuilder &PB) {
+      PB.registerPipelineParsingCallback(
+        [](StringRef Name, FunctionPassManager &FPM,
+        ArrayRef<PassBuilder::PipelineElement>) {
+          if(Name == "clambc-remove-pointer-phis"){
+            FPM.addPass(ClamBCRemovePointerPHIs());
+            return true;
+          }
+          return false;
+        }
+      );
+    }
+  };
+}
+
+#endif
