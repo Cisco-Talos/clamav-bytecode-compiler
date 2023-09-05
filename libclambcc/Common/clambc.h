@@ -136,5 +136,13 @@ enum bc_global {
 #define DEBUGERR llvm::errs() << "<" << __FILE__ << "::" << __FUNCTION__ << "::" << __LINE__ << ">"
 #endif //DEBUGERR
 
+#ifndef DEBUG_WHERE
+#define DEBUG_WHERE llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << "><END>\n"
+#endif
+
+#ifndef DEBUG_VALUE
+#define DEBUG_VALUE(__value__) llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">" << *__value__ << "<END>\n";
+#endif
+
 #define BC_START_TID 69
 #endif
