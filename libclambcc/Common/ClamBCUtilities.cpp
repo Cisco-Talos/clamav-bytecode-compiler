@@ -1,11 +1,11 @@
 
+#include "Common/ClamBCUtilities.h"
+#include "Common/ClamBCDiagnostics.h"
+#include "Common/clambc.h"
+
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Operator.h>
-
-#include "ClamBCUtilities.h"
-#include "ClamBCDiagnostics.h"
-#include "clambc.h"
 
 using namespace llvm;
 

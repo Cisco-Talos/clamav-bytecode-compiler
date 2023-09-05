@@ -5,6 +5,7 @@ add_subdirectory(ClamBCRemoveUndefs)
 add_subdirectory(ClamBCPreserveABIs)
 add_subdirectory(ClamBCAnalyzer)
 add_subdirectory(Common)
+add_subdirectory(ClamBCVerifier)
 add_subdirectory(ClamBCRemovePointerPHIs)
 add_subdirectory(ClamBCLowering)
 
