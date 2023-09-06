@@ -12,3 +12,25 @@ add_subdirectory(ClamBCRemovePointerPHIs)
 add_subdirectory(ClamBCLowering)
 add_subdirectory(ClamBCRemoveFreezeInsts)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+add_subdirectory(ClamBCRebuild)

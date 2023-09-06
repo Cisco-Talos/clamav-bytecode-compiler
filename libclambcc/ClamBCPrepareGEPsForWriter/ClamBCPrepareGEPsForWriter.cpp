@@ -156,6 +156,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
         return 0;
     }
 
+use the functions from Common/ClamBCUtilities.cpp;
     virtual Type *findTypeAtIndex(Type *pst, ConstantInt *ciIdx)
     {
         Type *ret = nullptr;
@@ -325,6 +326,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
         return pInst;
     }
 
+    /*This doesn't do anything unless it's a bitcast.*/
     virtual void processGEPI(GetElementPtrInst *pgepi)
     {
 

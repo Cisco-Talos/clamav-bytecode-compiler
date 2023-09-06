@@ -204,6 +204,28 @@ class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier >,
 
         return ret;
     }
+
+    bool validateFunction(const llvm::Function * pFunc){
+
+        if (pFunc->isVarArg()) {
+            if (!pFunc->getFunctionType()->getNumParams()) {
+                printDiagnostic(("Calling implicitly declared function '" +
+                                 pFunc->getName() + "' is not supported (did you forget to"
+                                                "implement it, or typoed the function name?)")
+                                    .str(),
+                                pFunc);
+            } else {
+                printDiagnostic("Checking calls to vararg functions/functions without"
+                                "a prototype is not supported!",
+                                pFunc);
+            }
+            return false;
+        }
+
+        return true;
+
+    }
+
     bool visitCallInst(CallInst &CI)
     {
         Function *F = getCalledFunctionFromCallInst(&CI);
@@ -217,22 +239,8 @@ class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier >,
             printDiagnostic("For call to " + F->getName() + ", calling conventions don't match!", &CI);
             return false;
         }
-        if (F->isVarArg()) {
-            if (!F->getFunctionType()->getNumParams()) {
-                printDiagnostic(("Calling implicitly declared function '" +
-                                 F->getName() + "' is not supported (did you forget to"
-                                                "implement it, or typoed the function name?)")
-                                    .str(),
-                                &CI);
-            } else {
-                printDiagnostic("Checking calls to vararg functions/functions without"
-                                "a prototype is not supported!",
-                                &CI);
-            }
-            return false;
-        }
 
-        return true;
+        return validateFunction(F);
     }
 
     bool visitPHINode(PHINode &PN)
@@ -390,7 +398,10 @@ class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier >,
         DT = &fam.getResult<DominatorTreeAnalysis>(F);
 #endif
 
-        bool OK = walk(&F);
+        bool OK = validateFunction(&F);
+        if (OK) {
+            OK = walk(&F);
+        }
 #if 0
         if (OK) {
 

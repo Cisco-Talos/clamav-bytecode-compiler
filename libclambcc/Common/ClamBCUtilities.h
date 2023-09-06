@@ -33,4 +33,19 @@ bool functionHasLoop(llvm::Function *pFunc, llvm::LoopInfo &loopInfo);
 
 llvm::BasicBlock *getEntryBlock(llvm::BasicBlock *pBlock);
 
+int64_t getTypeSize(llvm::Module * pMod, llvm::Type *pt);
+
+int64_t getTypeSizeInBytes(llvm::Module * pMod, llvm::Type *pt);
+
+int64_t computeOffsetInBytes(llvm::Module * pMod, llvm::Type *pt, uint64_t idx);
+
+int64_t computeOffsetInBytes(llvm::Module * pMod, llvm::Type *pst, llvm::ConstantInt *pIdx);
+
+int64_t computeOffsetInBytes(llvm::Module * pMod, llvm::Type *pst);
+
+llvm::Type *findTypeAtIndex(llvm::Type *pst, llvm::ConstantInt *ciIdx);
+
+
+
+
 #endif // CLAMBC_UTILITIES_H_

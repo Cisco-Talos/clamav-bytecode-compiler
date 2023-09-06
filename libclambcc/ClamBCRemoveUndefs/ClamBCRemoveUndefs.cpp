@@ -48,7 +48,7 @@
 
 using namespace llvm;
 
-namespace
+namespace ClamBCRemoveUndefs
 {
 /*
      * This pass requires -mem2reg before it (TEMPORARILY) 
@@ -301,7 +301,6 @@ struct ClamBCRemoveUndefs : public PassInfoMixin<ClamBCRemoveUndefs >
     }
 }; // end of struct ClamBCRemoveUndefs
 
-} // end of anonymous namespace
 
 #if 0
 char ClamBCRemoveUndefs::ID = 0;
@@ -333,3 +332,4 @@ llvmGetPassPluginInfo() {
 
 #endif
 
+} // end of namespace
