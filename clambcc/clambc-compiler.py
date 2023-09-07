@@ -527,7 +527,7 @@ def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inpu
           f' -globalopt'
           f' -simplifycfg'
           f' -indvars'
-          f' -constprop'
+          f' -constprop' #May no longer be available.
           f' -clambc-lowering-notfinal' # perform lowering pass
           f' -lowerswitch'
           f' -clambc-verifier'

@@ -1,6 +1,11 @@
 #ifndef CLAMBC_UTILITIES_H_
 #define CLAMBC_UTILITIES_H_
 
+
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Operator.h>
+
 #include <llvm/ADT/Twine.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Constants.h>
