@@ -20,56 +20,59 @@
  *  MA 02110-1301, USA.
  */
 
-#include "ClamBCModule.h"
+#include "Common/ClamBCModule.h"
+#include "Common/clambc.h"
+#include "Common/bytecode_api.h"
+#include "Common/ClamBCDiagnostics.h"
+#include "Common/ClamBCCommon.h"
+#include "Common/ClamBCUtilities.h"
+
 #include <llvm/Support/DataTypes.h>
-#include "../Common/bytecode_api.h"
-#include "clambc.h"
-#include "ClamBCDiagnostics.h"
-#include "ClamBCModule.h"
-#include "ClamBCCommon.h"
-#include "ClamBCUtilities.h"
-#include "llvm/ADT/FoldingSet.h"
-#include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/ADT/StringSet.h"
-#include "llvm/Analysis/ConstantFolding.h"
+#include <llvm/ADT/FoldingSet.h>
+#include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/ADT/StringSet.h>
+#include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/DebugInfo.h>
-#include "llvm/Analysis/ValueTracking.h"
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
-//#include <llvm/IR/PassManager.h>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/IR/CallSite.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 #include <llvm/IR/ConstantRange.h>
-#include "llvm/Support/Debug.h"
+#include <llvm/Support/Debug.h>
 #include <llvm/IR/InstIterator.h>
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Process.h>
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils/Local.h"
-#include "llvm/Transforms/IPO.h"
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils/Local.h>
+#include <llvm/Transforms/IPO.h>
 #include <llvm/IR/Type.h>
-//#include <llvm/IR/DataLayout.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/LinkAllPasses.h>
+
 
 #define DEBUG_TYPE "lsigcompiler"
 
 using namespace llvm;
 
-namespace
+namespace ClamBCLogicalCompiler
 {
 
-class ClamBCLogicalCompiler : public ModulePass
+class ClamBCLogicalCompiler : public PassInfoMixin<ClamBCLogicalCompiler> 
 {
   public:
+#if 0
     static char ID;
+#endif
     ClamBCLogicalCompiler()
-        : ModulePass(ID) {}
+        /* : ModulePass(ID) */ {}
 
-    virtual bool runOnModule(Module &M);
+    //virtual bool runOnModule(Module &M);
+    virtual PreservedAnalyses run(Module & m, ModuleAnalysisManager & MAM);
     virtual void getAnalysisUsage(AnalysisUsage &AU) const
     {
         AU.setPreservesCFG();
@@ -90,9 +93,9 @@ class ClamBCLogicalCompiler : public ModulePass
     bool compileVirusNames(Module &M, unsigned kind);
 };
 
-char ClamBCLogicalCompiler::ID = 0;
-RegisterPass<ClamBCLogicalCompiler> X("clambc-lcompiler",
-                                      "ClamAV Logical Compiler");
+
+
+
 enum LogicalKind {
     LOG_SUBSIGNATURE,
     LOG_AND,
@@ -1631,6 +1634,7 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
     bool Valid = true;
 
     for (auto I : F->users()) {
+#if 0
         Value *pv = nullptr;
         pv        = llvm::cast<Value>(I);
         CallSite CS(pv);
@@ -1644,14 +1648,48 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
             continue;
         }
         assert(CS.arg_size() == 2 && "setvirusname has 2 args");
+#else
+        CallInst * pCallInst = llvm::cast<CallInst>(I);
+        if (nullptr == pCallInst){
+            assert (0 && "NOT sure how this is possible");
+            continue;
+        }
+
+        if (F != pCallInst->getCalledFunction()){
+
+            llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">NOT SURE HOW THIS IS POSSIBLE<END>\n";
+
+            /*Not sure how this is possible, either*/
+            printDiagnostic("setvirusname can only be directly called",
+                            pCallInst);
+            Valid = false;
+            continue;
+        }
+#endif
+
+        if (2 != pCallInst->arg_size()){
+            printDiagnostic("setvirusname has 2 args", pCallInst);
+            Valid = false;
+            continue;
+        }
+
         std::string param;
         llvm::StringRef sr;
+#if 0
         Value *V    = CS.getArgument(0);
+#else
+#endif
+        Value * V = llvm::cast<Value>(pCallInst->arg_begin());
+        if (nullptr == V){
+            printDiagnostic("Invalid argument passed to setvirusname", pCallInst);
+            Valid = false;
+            continue;
+        }
         bool result = getConstantStringInfo(V, sr);
         param       = sr.str();
         if (!result) {
             printDiagnostic("Argument of foundVirus() must be a constant string",
-                            CS.getInstruction());
+                            pCallInst);
             Valid = false;
             continue;
         }
@@ -1662,23 +1700,32 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
         if (!p.empty() && !virusNamesSet.count(p)) {
             printDiagnostic(Twine("foundVirus called with an undeclared virusname: ",
                                   p),
-                            CS.getInstruction());
+                            pCallInst);
             Valid = false;
             continue;
         }
         // Add prefix
         std::string fullname = p.empty() ? virusNamePrefix : virusNamePrefix + "." + p.str();
-        IRBuilder<> builder(CS.getInstruction()->getParent());
+        IRBuilder<> builder(pCallInst->getParent());
         Value *C = builder.CreateGlobalStringPtr(fullname.c_str());
 
         IntegerType *I32Ty = Type::getInt32Ty(M.getContext());
+#if 0
         CS.setArgument(0, C);
         CS.setArgument(1, ConstantInt::get(I32Ty, fullname.size()));
+#else
+        pCallInst->setArgOperand(0, C);
+        pCallInst->setArgOperand(1, ConstantInt::get(I32Ty, fullname.size()));
+#endif
     }
     return Valid;
 }
 
+#if 0
 bool ClamBCLogicalCompiler::runOnModule(Module &M)
+#else
+    PreservedAnalyses ClamBCLogicalCompiler::run(Module & M, ModuleAnalysisManager & MAM)
+#endif
 {
     bool Valid       = true;
     LogicalSignature = "";
@@ -1705,14 +1752,21 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
         GVKind->setConstant(true);
     }
     if (!compileVirusNames(M, kind)) {
-        if (!kind || kind == BC_STARTUP)
-            return true;
+        if (!kind || kind == BC_STARTUP) {
+        //    return true;
+        return PreservedAnalyses::all();
+        }
         Valid = false;
     }
 
     if (F) {
+#if 0
         LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
-        if (functionHasLoop(F, li)) {
+#else
+        FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+        LoopInfo * li = &fam.getResult<LoopAnalysis>(*F);
+#endif
+        if (functionHasLoop(F, *li)) {
             printDiagnostic("Logical signature: loop/recursion not supported", F);
             Valid = false;
         }
@@ -1842,13 +1896,45 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
         // diagnostic already printed
         exit(42);
     }
-    return true;
+    return PreservedAnalyses::none();
 }
 
-} // namespace
-const PassInfo *const ClamBCLogicalCompilerID = &X;
-
-llvm::ModulePass *createClamBCLogicalCompiler()
+#if 0
+const PassInfo *const ClamBCLogicalCompilerID = &X; llvm::ModulePass *createClamBCLogicalCompiler()
 {
     return new ClamBCLogicalCompiler();
 }
+#endif
+
+
+#if 0
+char ClamBCLogicalCompiler::ID = 0;
+RegisterPass<ClamBCLogicalCompiler> X("clambc-lcompiler",
+                                      "ClamAV Logical Compiler");
+#else
+
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo() {
+  return {
+    LLVM_PLUGIN_API_VERSION, "ClamBCLogicalCompiler", "v0.1",
+    [](PassBuilder &PB) {
+      PB.registerPipelineParsingCallback(
+        [](StringRef Name, ModulePassManager &FPM,
+        ArrayRef<PassBuilder::PipelineElement>) {
+          if(Name == "clambc-lcompiler"){
+            FPM.addPass(ClamBCLogicalCompiler());
+            return true;
+          }
+          return false;
+        }
+      );
+    }
+  };
+}
+#endif
+
+
+} // namespace
+
+
