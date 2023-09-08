@@ -228,7 +228,7 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
         std::vector<Instruction *> newInsts;
         Instruction *insPt = findFirstNonPHI(pn->getParent());
 
-        Instruction *gepiNew = GetElementPtrInst::Create(nullptr, pBasePtr, idxNode, "ClamBCRemovePointerPHIs_gepi_", insPt);
+        Instruction *gepiNew = GetElementPtrInst::Create(pBasePtr->getType(), pBasePtr, idxNode, "ClamBCRemovePointerPHIs_gepi_", insPt);
         if (pn->getType() != gepiNew->getType()) {
             gepiNew = CastInst::CreatePointerCast(gepiNew, pn->getType(), "ClamBCRemovePointerPHIs_cast_", insPt);
         }
@@ -298,8 +298,6 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
 
         pFunc    = &F;
         bool ret = false;
-
-        llvm::errs() << "<" << __FILE__ << "::" << __FUNCTION__ << "::" << __LINE__ << "<END>\n\n";
 
         std::vector<PHINode *> phis = gatherPHIs();
         for (size_t i = 0; i < phis.size(); i++) {

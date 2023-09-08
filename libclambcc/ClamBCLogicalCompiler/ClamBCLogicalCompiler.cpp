@@ -604,13 +604,22 @@ class LogicalCompiler
     {
         Value *V         = LI.getOperand(0);
         ConstantExpr *CE = dyn_cast<ConstantExpr>(V);
-        if (!CE || CE->getOpcode() != Instruction::GetElementPtr ||
-            CE->getOperand(0) != GV || CE->getNumOperands() != 3 ||
-            !cast<ConstantInt>(CE->getOperand(1))->isZero()) {
-            printDiagnostic("Logical signature: unsupported read", &LI);
-            return false;
+        ConstantInt * CI = nullptr;
+        if (CE) {
+            if (CE->getOpcode() != Instruction::GetElementPtr ||
+                CE->getOperand(0) != GV || CE->getNumOperands() != 3 ||
+                !cast<ConstantInt>(CE->getOperand(1))->isZero()) {
+                printDiagnostic("Logical signature: unsupported read", &LI);
+                return false;
+            }
+            CI = cast<ConstantInt>(CE->getOperand(2));
+        } else {
+            /* In this case, we are directly loading the global, 
+             * instead of using a getelementptr.
+             * It is likely that this would have been changed by O3.
+             */
+            CI = ConstantInt::get(LI.getParent()->getParent()->getParent()->getContext(), APInt(64, 0));
         }
-        ConstantInt *CI = cast<ConstantInt>(CE->getOperand(2));
         Map[&LI]        = LogicalNode::getSubSig(allNodes, CI->getValue().getZExtValue());
         return true;
     }
@@ -934,6 +943,25 @@ class LogicalCompiler
             }
 
             Instruction *pInst = llvm::cast<Instruction>(I);
+#if 0
+            /*Look through all operands of the instruction and add the
+             * constants to the logical map, so that we won't fail to create
+             * the siganture if O3 changes a logical expression to a constant
+             * at compile time.
+             */
+            for (size_t i = 0; i < pInst->getNumOperands(); i++){
+                if (ConstantInt * pci = llvm::dyn_cast<ConstantInt>(pInst->getOperand(i))){
+                    if (pci->isOne()){
+                        LogicalNode * ln = LogicalNode::getTrue(allNodes) ;
+                        Map[pci] = ln;
+                    } else if (pci->isZero()){
+                        LogicalNode * ln = LogicalNode::getTrue(allNodes) ;
+                        Map[pci] = ln;
+                    }
+                }
+            }
+#endif
+
             switch (I->getOpcode()) {
                 case Instruction::Load:
                     valid &= processLoad(*cast<LoadInst>(I));
@@ -968,18 +996,132 @@ class LogicalCompiler
                     LogicalMap::iterator CondNode  = Map.find(SI->getCondition());
                     LogicalMap::iterator TrueNode  = Map.find(SI->getTrueValue());
                     LogicalMap::iterator FalseNode = Map.find(SI->getFalseValue());
+
+
+#if 0
+                    if (Map.end() == TrueNode){
+                        Value * pv = SI->getTrueValue();
+                        if (ConstantInt * pci = llvm::dyn_cast<ConstantInt>(pv)){
+                            if (pci->isOne()){
+                                LogicalNode * ln = LogicalNode::getTrue(allNodes) ;
+                                Map[SI->getTrueValue()] = ln;
+                                TrueNode = Map.find(SI->getTrueValue());
+                            }
+                        }
+                    }
+
+#endif
+
+
+#if 0
                     if (CondNode == Map.end() || TrueNode == Map.end() || FalseNode == Map.end()) {
+                        assert (0 && "FTT");
                         printDiagnostic("Logical signature: select operands must be logical"
                                         " expressions",
                                         SI);
                         return false;
                     }
+#else
+                    /*O3 creates blocks that look like the following, which are legitimate blocks.
+                     * This is essentially an AND of all the %cmp.i<number> instructions.
+                     * Since the cmp instructions all have false at the end, comparisons will be skipped
+                     * after one is found to be false, without having a bunch of branch instructions.
+                     *
+                     * We are going to handle these cases by only adding an 'and' or an 'or' if there is
+                     * an actual logical operation, not for constants.
+                     *   
+
+                    entry:
+                      %0 = load i32, ptr @__clambc_match_counts, align 16
+                      %cmp.i116.not = icmp eq i32 %0, 0
+                      %1 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 1), align 4
+                      %cmp.i112.not = icmp eq i32 %1, 0
+                      %or.cond = select i1 %cmp.i116.not, i1 %cmp.i112.not, i1 false
+                      %2 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 2), align 8
+                      %cmp.i108.not = icmp eq i32 %2, 0
+                      %or.cond1 = select i1 %or.cond, i1 %cmp.i108.not, i1 false
+                      %3 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 3), align 4
+                      %cmp.i104.not = icmp eq i32 %3, 0
+
+
+                      ....
+
+                      br i1 %or.cond15, label %lor.rhs, label %lor.end
+
+                    lor.rhs:                                          ; preds = %entry
+                      %17 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 17), align 4
+                      %cmp.i = icmp ne i32 %17, 0
+                      br label %lor.end
+
+                    lor.end:                                          ; preds = %lor.rhs, %entry
+                      %18 = phi i1 [ true, %entry ], [ %cmp.i, %lor.rhs ]
+                      ret i1 %18
+
+                     */
+                    if (CondNode == Map.end() || (TrueNode == Map.end() && FalseNode == Map.end())){
+                        printDiagnostic("Logical signature: select condition must be logical"
+                                        " expression",
+                                        SI);
+                        return false;
+                    }
+#endif
                     // select cond, trueval, falseval -> cond && trueval || !cond && falseval
-                    LogicalNode *N       = LogicalNode::getAnd(CondNode->second,
-                                                         TrueNode->second);
-                    LogicalNode *NotCond = LogicalNode::getNot(CondNode->second);
-                    LogicalNode *N2      = LogicalNode::getAnd(NotCond, FalseNode->second);
-                    Map[SI]              = LogicalNode::getOr(N, N2);
+                    LogicalNode *N       = nullptr;
+                    LogicalNode *NotCond = nullptr;
+                    LogicalNode *N2      = nullptr;
+
+                    if (TrueNode != Map.end()){
+                        N       = LogicalNode::getAnd(CondNode->second,
+                                                             TrueNode->second);
+                    } else if (ConstantInt * pci = llvm::cast<ConstantInt>(SI->getTrueValue())){
+                        if (pci->isOne()){
+                            N = LogicalNode::getNode(*(CondNode->second));
+                        } else if (not pci->isZero()) {
+                            printDiagnostic("Logical signature: Select true value must either be"
+                                    " a logical expression or a constant true/false integer.",
+                                            SI);
+                            return false;
+                        }
+                    } else {
+                            printDiagnostic("Logical signature: Select true value must either be"
+                                    " a logical expression or a constant true/false integer.",
+                                        SI);
+                        return false;
+                    }
+
+                    NotCond = LogicalNode::getNot(CondNode->second);
+                    if (FalseNode != Map.end()){
+                        N2      = LogicalNode::getAnd(NotCond, FalseNode->second);
+                    } else if (ConstantInt * pci = llvm::cast<ConstantInt>(SI->getFalseValue())){
+                        if (pci->isOne()){
+                            N2 = NotCond;
+                        } else if (not pci->isZero()){
+                            printDiagnostic("Logical signature: Select false value must either be"
+                                    " a logical expression or a constant true/false integer.",
+                                            SI);
+                            return false;
+                        }
+                    } else {
+                            printDiagnostic("Logical signature: Select false value must either be"
+                                    " a logical expression or a constant true/false integer.",
+                                            SI);
+                            return false;
+                    }
+
+                    LogicalNode * res = nullptr;
+                    if (N && N2){
+                        res = LogicalNode::getOr(N, N2);
+                    } else if (N){
+                        res = N;
+                    } else if (N2){
+                        res = N2;
+                    } else {
+                        /*SHOULD be impossible, but will add a check just in case.*/
+                        printDiagnostic("Logical signature: Malformed select statement.",
+                                        SI);
+                        return false;
+                    }
+                    Map[SI]              = res;
                     break;
                 }
                 case Instruction::Ret: {
