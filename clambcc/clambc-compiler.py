@@ -582,6 +582,11 @@ def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inpu
           f' -clambc-sigfile={sigFile}'
           )
 
+    print ("NEED TO ADD NEW SLP OPTIONS")
+    print ("NEED TO ADD ClamBCLogicalCompilerHelper")
+#OPTIONS_STR+=" --vectorize-slp=false"
+#OPTIONS_STR+=" --vectorize-loops=false"
+
     if standardCompiler:
         cmd += f" -clambc-standard-compiler"
 

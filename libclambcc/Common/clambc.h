@@ -144,5 +144,9 @@ enum bc_global {
 #define DEBUG_VALUE(__value__) llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">" << *__value__ << "<END>\n";
 #endif
 
+#ifndef DEBUG_NONPOINTER
+#define DEBUG_NONPOINTER(__value__) llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">" << __value__ << "<END>\n";
+#endif
+
 #define BC_START_TID 69
 #endif
