@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+
+#cmake -G Unix Makefiles .. -DTEST_SUITE_COLLECT_CODE_SIZE=OFF -DCMAKE_C_COMPILER=clambc_test_compiler
+
+
+SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+python3 $SCRIPT_DIR/clambc_test_compiler.py $@
+
+
+#clang-16 $@

@@ -1,0 +1,4 @@
+Use clambc_test_compiler as your "compiler" when building cmake with the llvm test suite.  It won't be able to use all of the clambc.h stuff, but you can use it to run individual opt passes.
+
+
+#cmake -G Unix Makefiles .. -DTEST_SUITE_COLLECT_CODE_SIZE=OFF -DCMAKE_C_COMPILER=clambc_test_compiler
