@@ -9,7 +9,7 @@
   The ClamAV® Bytecode Compiler is a tool to build cross-platform advanced
   malware detection plugins for the ClamAV® open source antivirus engine.
   We call these plugins "bytecode signatures". Bytecode signatures are are
-  executed by a ClamAV using either an LLVM JIT runtime or an interpeter
+  executed by a ClamAV using either an LLVM JIT runtime or an interpreter
   runtime. These signatures extend ClamAV's file format support and provide
   detection capabilities above and beyond the limitations of content-based
   logical signatures.
