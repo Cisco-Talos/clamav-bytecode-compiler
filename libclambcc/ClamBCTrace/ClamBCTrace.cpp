@@ -19,10 +19,10 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
-#include "clambc.h"
-#include "ClamBCModule.h"
-#include "ClamBCCommon.h"
-#include "ClamBCUtilities.h"
+#include "Common/clambc.h"
+#include "Common/ClamBCModule.h"
+#include "Common/ClamBCCommon.h"
+#include "Common/ClamBCUtilities.h"
 
 #include <llvm/Support/DataTypes.h>
 #include <llvm/ADT/FoldingSet.h>
@@ -34,6 +34,8 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/CommandLine.h>
@@ -55,22 +57,22 @@ static cl::opt<bool>
     InsertTracing("clambc-trace", cl::Hidden, cl::init(false),
                   cl::desc("Enable tracing of bytecode execution"));
 
-namespace
-{
-class ClamBCTrace : public ModulePass
+namespace ClamBCTrace {
+
+class ClamBCTrace : public PassInfoMixin<ClamBCTrace>
 {
   public:
-    static char ID;
+    //static char ID;
     ClamBCTrace()
-        : ModulePass(ID) {}
+        /* : ModulePass(ID) */ {}
     virtual llvm::StringRef getPassName() const
     {
         return "ClamAV Bytecode Execution Tracing";
     }
-    virtual bool runOnModule(Module &M);
+//    virtual bool runOnModule(Module &M);
+    PreservedAnalyses run(Module & m, ModuleAnalysisManager & MAM);
 };
-char ClamBCTrace::ID;
-} // namespace
+//char ClamBCTrace::ID;
 
 /*
 declare i32 @trace_directory(i8*, i32)
@@ -87,10 +89,16 @@ declare i32 @trace_ptr(i8*, i32)
 
 */
 
+#if 0
 bool ClamBCTrace::runOnModule(Module &M)
+#else
+PreservedAnalyses ClamBCTrace::run(Module & M, ModuleAnalysisManager & MAM)
+#endif
 {
-    if (!InsertTracing)
-        return false;
+    if (!InsertTracing) {
+        return PreservedAnalyses::all();
+        //return false;
+    }
     unsigned MDDbgKind = M.getContext().getMDKindID("dbg");
     DenseMap<MDNode *, unsigned> scopeIDs;
     unsigned scopeid = 0;
@@ -102,16 +110,16 @@ bool ClamBCTrace::runOnModule(Module &M)
     args.push_back(I32Ty);
     FunctionType *FTy = FunctionType::get(I32Ty, args, false);
     /* llvm 10 replaces this with FunctionCallee.  */
-    Constant *trace_directory = M.getOrInsertFunction("trace_directory", FTy);
-    Constant *trace_scope     = M.getOrInsertFunction("trace_scope", FTy);
-    Constant *trace_source    = M.getOrInsertFunction("trace_source", FTy);
-    Constant *trace_op        = M.getOrInsertFunction("trace_op", FTy);
-    Constant *trace_value     = M.getOrInsertFunction("trace_value", FTy);
-    Constant *trace_ptr       = M.getOrInsertFunction("trace_ptr", FTy);
+    FunctionCallee trace_directory = M.getOrInsertFunction("trace_directory", FTy);
+    FunctionCallee trace_scope     = M.getOrInsertFunction("trace_scope", FTy);
+    FunctionCallee trace_source    = M.getOrInsertFunction("trace_source", FTy);
+    FunctionCallee trace_op        = M.getOrInsertFunction("trace_op", FTy);
+    FunctionCallee trace_value     = M.getOrInsertFunction("trace_value", FTy);
+    FunctionCallee trace_ptr       = M.getOrInsertFunction("trace_ptr", FTy);
     assert(trace_scope && trace_source && trace_op && trace_value &&
            trace_directory && trace_ptr);
-    if (!trace_directory->use_empty() || !trace_scope->use_empty() || !trace_source->use_empty() || !trace_op->use_empty() ||
-        !trace_value->use_empty() || !trace_ptr->use_empty()) {
+    if (!trace_directory.getCallee()->use_empty() || !trace_scope.getCallee()->use_empty() || !trace_source.getCallee()->use_empty() || !trace_op.getCallee()->use_empty() ||
+        !trace_value.getCallee()->use_empty() || !trace_ptr.getCallee()->use_empty()) {
         ClamBCStop("Tracing API can only be used by compiler!\n", &M);
     }
 
@@ -156,7 +164,6 @@ bool ClamBCTrace::runOnModule(Module &M)
                     while (llvm::isa<DILexicalBlock>(scope)) {
                         DILexicalBlock *lex = llvm::cast<DILexicalBlock>(scope);
                         //scope = lex->getContext();
-                        /*aragusa: I have no idea if this is the right thing to do here.*/
                         scope = lex->getScope();
                     }
 
@@ -237,10 +244,37 @@ bool ClamBCTrace::runOnModule(Module &M)
             }
         }
     }
-    return true;
+    return PreservedAnalyses::none();
 }
 
-llvm::ModulePass *createClamBCTrace()
-{
-    return new ClamBCTrace();
+//llvm::ModulePass *createClamBCTrace()
+//{
+//    return new ClamBCTrace();
+//}
+
+
+} // namespace
+
+
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo() {
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCTrace", "v0.1",
+            [](PassBuilder &PB) {
+                PB.registerPipelineParsingCallback(
+                        [](StringRef Name, ModulePassManager &FPM,
+                            ArrayRef<PassBuilder::PipelineElement>) {
+                        if(Name == "clambc-trace"){
+                        FPM.addPass(ClamBCTrace::ClamBCTrace());
+                        return true;
+                        }
+                        return false;
+                        }
+                        );
+            }
+    };
 }
+
+
+
