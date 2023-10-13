@@ -12,4 +12,7 @@ add_subdirectory(ClamBCRemovePointerPHIs)
 add_subdirectory(ClamBCLowering)
 add_subdirectory(ClamBCRemoveFreezeInsts)
 add_subdirectory(ClamBCTrace)
+add_subdirectory(ClamBCOutlineEndiannessCalls)
+add_subdirectory(ClamBCChangeMallocArgSize)
+add_subdirectory(ClamBCExtendPHIsTo64Bit)
 
