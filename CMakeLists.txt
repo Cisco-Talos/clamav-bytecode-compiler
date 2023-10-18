@@ -193,6 +193,9 @@ include(AddLLVM)
 # This is the core of the bytecode compiler
 add_subdirectory(libclambcc)
 
+# Examples of plugins for the new and legacy pass managers.
+add_subdirectory(examples)
+
 # The bytecode compiler application
 # This is really just a python script
 #add_subdirectory(clambcc)
