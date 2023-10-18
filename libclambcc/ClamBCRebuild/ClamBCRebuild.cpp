@@ -19,13 +19,17 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
+
+#include "Common/ClamBCModule.h"
+#include "Common/clambc.h"
+#include "Common/ClamBCUtilities.h"
+
 #include <llvm/Support/DataTypes.h>
-#include <ClamBCModule.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Analysis/ScalarEvolution.h>
-#include <llvm/Analysis/ScalarEvolutionExpander.h>
+//#include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -33,23 +37,80 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/PassManager.h>
-#include <llvm/Support/Casting.h>
+#include <llvm/IR/TypedPointerType.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/Analysis/TargetFolder.h>
+#include <llvm/IR/TypedPointerType.h>
 
-#include "Common/clambc.h"
-#include "Common/ClamBCUtilities.h"
+/*
+ *
+ * Since the interpreter/runtime doesn't have a notion of complex types, we
+ * are using the 'Rebuild' pass to fix these types to arrays of bytes
+ * and calculate the offsets.  Similar to 
+ *
+ *   %metadata = alloca [1500 x %struct._metadata], align 16
+
+ changes to 
+
+     %metadata = alloca [12000 x i8]
+
+
+     List of some test files.
+
+    BC.Js.Downloader.Adodb-4553522-2.optimized.ll
+    BC.Win.Packer.GandCrab-6539706-3.optimized.ll
+    BC.Js.Downloader.Adodb-5999914-0.optimized.ll
+    BC.Win.Packer.script2exe-6754169-0.optimized.ll
+    BC.Unix.Packer.UPX-7086472-2.optimized.ll
+    BC.Win.Virus.Virut-7001009-0.optimized.ll
+
+ */
+
+/*
+ *
+ * Since the interpreter/runtime doesn't have a notion of complex types, we
+ * are using the 'Rebuild' pass to fix these types to arrays of bytes
+ * and calculate the offsets.  Similar to 
+ *
+ *   %metadata = alloca [1500 x %struct._metadata], align 16
+
+ changes to 
+
+     %metadata = alloca [12000 x i8]
+
+
+     List of some test files.
+
+    BC.Js.Downloader.Adodb-4553522-2.optimized.ll
+    BC.Win.Packer.GandCrab-6539706-3.optimized.ll
+    BC.Js.Downloader.Adodb-5999914-0.optimized.ll
+    BC.Win.Packer.script2exe-6754169-0.optimized.ll
+    BC.Unix.Packer.UPX-7086472-2.optimized.ll
+    BC.Win.Virus.Virut-7001009-0.optimized.ll
+
+ */
+
+
+
+
 
 using namespace llvm;
 
+namespace ClamBCRebuild {
+
+#if 0
 class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
+#else
+class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<ClamBCRebuild>
+#endif
 {
   public:
     static char ID;
-    explicit ClamBCRebuild()
-        : ModulePass(ID) {}
+    explicit ClamBCRebuild() {}
+
     virtual llvm::StringRef getPassName() const
     {
         return "ClamAV Bytecode Backend Rebuilder";
@@ -60,6 +121,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         AU.addRequired<ScalarEvolutionWrapperPass>();
     }
 
+    /*Copy each function.*/
     bool runOnFunction(Function &func)
     {
 
@@ -80,15 +142,18 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
 
         TargetFolder TF(NF.getParent()->getDataLayout());
 
-        Builder = new IRBuilder<TargetFolder>(*Context, TF);
+        Builder = new IRBuilder<TargetFolder>(*pContext, TF);
 
         SE       = nullptr;
+#if 0
         Expander = nullptr;
+#endif
 
+        /*Create a map of all the arguments in the 'old' function to the corresponding values in the new function.*/
         visitFunction(F, &NF);
         for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
             BasicBlock *BB = &*I;
-            BBMap[BB]      = BasicBlock::Create(*Context, BB->getName(), &NF, 0);
+            BBMap[BB]      = BasicBlock::Create(*pContext, BB->getName(), &NF, 0);
         }
         for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
             BasicBlock *bb = llvm::cast<BasicBlock>(I);
@@ -114,9 +179,11 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         fixupCalls(F, copy);
         F->setLinkage(GlobalValue::InternalLinkage);
 
+#if 0
         if (Expander) {
             delete Expander;
         }
+#endif
         delete Builder;
         return true;
     }
@@ -132,7 +199,6 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
                 CallInst *pCallInst = llvm::cast<CallInst>(val);
                 cis.push_back(pCallInst);
             } else {
-                DEBUGERR << *val << "<END>\n";
                 assert(0 && "NOT IMPLEMENTED");
             }
         }
@@ -146,7 +212,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     void fixupCallInst(CallInst *pCallInst, Function *pFunc)
     {
         assert(pCallInst->arg_size() == pFunc->arg_size() && "Incorrect number of arguments");
-        assert(pCallInst->getCalledValue() == pFunc && "This CallInst doesn't call this function");
+        assert(pCallInst->getCalledFunction() == pFunc && "This CallInst doesn't call this function");
 
         auto argIter = pFunc->arg_begin(), argEnd = pFunc->arg_end();
         auto callIter = pCallInst->arg_begin(), callEnd = pCallInst->arg_end();
@@ -174,29 +240,444 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         }
     }
 
-    bool runOnModule(Module &M)
+    bool needsTypeChanged(AllocaInst* pAlloca){
+        Type * pType = pAlloca->getAllocatedType();
+
+        /*For now, we are not going to change integer types that are larger than
+         *i8.   That seems really unnecessary.
+         */
+        if (pType->isVoidTy()){
+            return false;
+        }
+
+        if (pType->isPointerTy()){
+            PointerType * pPointerType = llvm::cast<PointerType>(pType);
+
+            DEBUGERR << "TODO: MOVE THIS CHECK TO THE VALIDATOR" << "<END>\n";
+            if (pPointerType->isOpaque()){
+                DEBUG_VALUE(pPointerType);
+                DEBUG_VALUE(pAlloca);
+                assert (0 && "Fail gracefully, when we move to the validator");
+            }
+
+            Type * pt = pPointerType->getNonOpaquePointerElementType();
+            return (not pt->isIntegerTy(8));
+        }
+
+        if (pType->isArrayTy()){
+            Type * pt = pType->getArrayElementType();
+            return (not pt->isIntegerTy(8));
+        }
+
+        if (pType->isStructTy()){
+            return true;
+        }
+        return false ;
+    }
+
+
+    void gatherAllocas(BasicBlock * pBB, std::vector<AllocaInst*> & allocas){
+
+        for (auto i = pBB->begin(), e = pBB->end(); i != e; i++){
+            if (AllocaInst * pAlloca = llvm::dyn_cast<AllocaInst>(i)) {
+                if (!isa<ConstantInt>(pAlloca->getArraySize())) {
+                    stop("VLA not supported", pAlloca);
+                }
+                if (needsTypeChanged(pAlloca)){
+                    allocas.push_back(pAlloca);
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+    /*The following code copied from ClamBCPrepareGEPsForWriter.  Determine whether or
+     * not we can get rid of that pass all together.
+     *
+     */
+
+#if 0
+
+
+NOTE: I am not ready to delete this block yet, I want to revisit this when I am doing runtime testing.
+
+
+    virtual void processGEPI(GetElementPtrInst *pgepi, AllocaInst *pNew, StructType *gepiDstType)
     {
+        Type * pIdxType = Type::getInt32Ty(pMod->getContext());
+
+            Type * curr = gepiDstType;
+            std::vector<Value*> idxs;
+            for (auto i = pgepi->idx_begin(), e = pgepi->idx_end(); i != e; i++){
+                Value * pIdx = llvm::cast<Value>(i);
+                idxs.push_back(pIdx);
+            }
+
+            Value * vTot = nullptr;
+            for (size_t i = 0; i < idxs.size(); i++){
+                Value * pIdx = idxs[i];
+
+                Type * pType = nullptr;
+                if (StructType * pst = llvm::dyn_cast<StructType>(curr)){
+                    pType = pst->getTypeAtIndex(pIdx);
+                } else if (ArrayType * pat = llvm::dyn_cast<ArrayType>(curr)){
+                    pType = pat->getArrayElementType();
+                }else {
+                    pType = curr;
+#if 1
+                    DEBUG_VALUE(curr);
+                    //verify this is correct;
+                    assert (0 && "FIGURE OUT WHAT TO DO HERE");
+#endif
+                }
+
+                Value * tmp = ConstantInt::get(pIdxType, getTypeSizeInBytes(pMod, pType));
+
+                tmp = BinaryOperator::Create(Instruction::Mul, tmp, pIdx, "processGEPI_mul_", pgepi);
+                DEBUG_VALUE(tmp);
+
+                curr = pType;
+
+                if (vTot){
+                    vTot = BinaryOperator::Create(Instruction::Add, tmp, vTot, "processGEPI_add_", pgepi);
+                DEBUG_VALUE(vTot);
+                } else {
+                    vTot = tmp;
+                }
+            }
+
+            vTot = GetElementPtrInst::Create(pgepi->getResultElementType(), pNew, vTot, "processGEPI_gepi_", pgepi);
+                DEBUG_VALUE(pgepi);
+                DEBUG_VALUE(vTot);
+                exit(121);
+
+            pgepi->replaceAllUsesWith(vTot);
+            pgepi->eraseFromParent();
+        }
+#else
+
+
+
+    virtual void processGEPI(GetElementPtrInst *pgepi, AllocaInst *pNew, StructType *gepiDstType)
+    {
+        Type * pIdxType = Type::getInt32Ty(pMod->getContext());
+
+
+        uint64_t size = getTypeSizeInBytes(pMod, gepiDstType);
+        assert(size && "size not computed");
+
+        Value *vCnt = nullptr;
+
+        auto i      = pgepi->idx_begin();
+        Value *vIdx = llvm::cast<Value>(i);
+        vCnt        = ConstantInt::get(vIdx->getType(), size);
+        vCnt        = BinaryOperator::Create(Instruction::Mul, vCnt, vIdx, "processGEPI_", pgepi);
+        i++;
+
+        Type *currType = gepiDstType;
+
+        for (auto e = pgepi->idx_end(); i != e; i++) {
+            Value *vIdx = llvm::cast<Value>(i);
+
+            Value *ciAddend = nullptr;
+            if (ConstantInt *ciIdx = llvm::dyn_cast<ConstantInt>(vIdx)) {
+
+                uint64_t val = computeOffsetInBytes(pMod, currType, ciIdx);
+                ciAddend     = ConstantInt::get(ciIdx->getType(), val);
+
+                Type *tmp = findTypeAtIndex(currType, ciIdx);
+                assert(tmp && "Should always be defined");
+
+                if (llvm::isa<StructType>(tmp)) {
+                    currType = llvm::cast<StructType>(tmp);
+                } else if (llvm::isa<ArrayType>(tmp)) {
+                    currType = tmp;
+                }
+            } else if (ArrayType *pat = llvm::dyn_cast<ArrayType>(currType)) {
+
+                uint64_t size = getTypeSizeInBytes(pMod, pat->getArrayElementType());
+                Constant *pci = ConstantInt::get(vIdx->getType(), size);
+                ciAddend      = BinaryOperator::Create(Instruction::Mul, pci, vIdx, "processGEPI_else_", pgepi);
+
+                Type *tmp = findTypeAtIndex(currType, ciIdx);
+                assert(tmp && "Should always be defined");
+
+                if (llvm::isa<StructType>(tmp)) {
+                    currType = llvm::cast<StructType>(tmp);
+                } else if (llvm::isa<ArrayType>(tmp)) {
+                    currType = tmp;
+                }
+
+            } else {
+                assert(0 && "Figure out what to do here");
+            }
+
+            vCnt = BinaryOperator::Create(Instruction::Add, vCnt, ciAddend, "processGEPI_after_", pgepi);
+        }
+
+        Constant *Zero                     = ConstantInt::get(vIdx->getType(), 0);
+        Value * gepiNew = pNew;
+        llvm::ArrayRef<llvm::Value *> Idxs = {Zero, vCnt};
+
+        gepiNew = GetElementPtrInst::Create(pgepi->getResultElementType(), gepiNew, vCnt, "processGEPI_3_", pgepi);
+
+        CastInst *ciNew = CastInst::CreatePointerCast(gepiNew, pgepi->getType(), "processGEPI_cast_", pgepi);
+
+        pgepi->replaceAllUsesWith(ciNew);
+        pgepi->eraseFromParent();
+    }
+#endif
+
+
+
+
+
+    virtual void processGEPI(GetElementPtrInst *pgepi, AllocaInst *pNew, ArrayType *gepiDstType)
+    {
+        Type *currType = gepiDstType->getArrayElementType();
+
+        uint64_t size = getTypeSizeInBytes(pMod, currType);
+        assert(size && "size not computed");
+
+        Value *vCnt = nullptr;
+
+        auto i      = pgepi->idx_begin();
+        Value *vIdx = llvm::cast<Value>(i);
+        vCnt        = ConstantInt::get(vIdx->getType(), size);
+        vCnt        = BinaryOperator::Create(Instruction::Mul, vCnt, vIdx, "processGEPI_", pgepi);
+        i++;
+
+        StructType *pCurrStruct = nullptr;
+
+        for (auto e = pgepi->idx_end(); i != e; i++) {
+            Value *vIdx = llvm::cast<Value>(i);
+
+            if (nullptr == pCurrStruct) {
+                if (StructType *st = llvm::dyn_cast<StructType>(currType)) {
+                    pCurrStruct = st;
+                }
+            }
+
+            ConstantInt *pc = llvm::dyn_cast<ConstantInt>(vIdx);
+            if (pc) {
+                Type *pt = findTypeAtIndex(currType, pc);
+                if (pt) {
+                    currType              = pt;
+                    ConstantInt *ciAddend = nullptr;
+                    if (StructType *pst = llvm::dyn_cast<StructType>(pt)) {
+                        uint64_t val = computeOffsetInBytes(pMod, pst, pc);
+                        ciAddend     = ConstantInt::get(pc->getType(), val);
+                        pCurrStruct  = pst;
+
+                    } else {
+                        uint64_t val = computeOffsetInBytes(pMod, pCurrStruct, pc);
+                        ciAddend     = ConstantInt::get(pc->getType(), val);
+                        vIdx         = BinaryOperator::Create(Instruction::Add, ciAddend, vIdx, "processGEPI_", pgepi);
+                    }
+
+                    vCnt = BinaryOperator::Create(Instruction::Add, vCnt, ciAddend, "processGEPI_", pgepi);
+                }
+
+            } else {
+
+                size       = getTypeSizeInBytes(pMod, currType);
+                Value *tmp = ConstantInt::get(vIdx->getType(), size);
+                vIdx       = BinaryOperator::Create(Instruction::Mul, tmp, vIdx, "processGEPI_", pgepi);
+
+                vCnt = BinaryOperator::Create(Instruction::Add, vCnt, vIdx, "processGEPI_", pgepi);
+            }
+        }
+
+        Constant *Zero                     = ConstantInt::get(vIdx->getType(), 0);
+        Value * gepiNew = pNew;
+        llvm::ArrayRef<llvm::Value *> Idxs = {Zero, vCnt};
+        gepiNew = GetElementPtrInst::Create(pgepi->getType(), gepiNew, vCnt, "processGEPI_1_", pgepi);
+
+        pgepi->replaceAllUsesWith(gepiNew);
+        pgepi->eraseFromParent();
+    }
+
+    virtual Value *stripBitCasts(Value *pInst)
+    {
+        if (BitCastInst *pbci = llvm::dyn_cast<BitCastInst>(pInst)) {
+            return stripBitCasts(pbci->getOperand(0));
+        }
+
+        return pInst;
+    }
+
+    virtual void processGEPI(GetElementPtrInst *pgepi, AllocaInst * pOld, AllocaInst * pNew)
+    {
+
+        Type *pdst = Type::getInt8Ty(pMod->getContext());
+
+        Value *vPtr = pgepi->getPointerOperand();
+        if (BitCastInst *pbci = llvm::dyn_cast<BitCastInst>(vPtr)) {
+            vPtr = stripBitCasts(pbci);
+        }
+
+        PointerType *ptrType = llvm::dyn_cast<PointerType>(vPtr->getType());
+        if (nullptr == ptrType){
+            ClamBCStop("ClamBCRebuild: expected PointerType", pgepi);
+        }
+
+        Type *gepiDstType = pOld->getAllocatedType();
+        if (StructType *pst = llvm::dyn_cast<StructType>(gepiDstType)) {
+            processGEPI(pgepi, pNew, pst);
+        } else if (ArrayType *pat = llvm::dyn_cast<ArrayType>(gepiDstType)) {
+            processGEPI(pgepi, pNew, pat);
+        }
+
+    }
+
+    void handleInstruction(Instruction * pInst, AllocaInst * pOld, AllocaInst * pNew){
+        for (size_t i = 0; i < pInst->getNumOperands(); i++){
+            if (pOld == pInst->getOperand(i)){
+                pInst->setOperand(i, pNew);
+            }
+        }
+        llvm::errs() << "\n";
+    }
+
+    void changeAccesses(AllocaInst * pOld, AllocaInst * pNew){
+
+        std::vector<llvm::Value*> users;
+        for (auto i = pOld->user_begin(), e = pOld->user_end(); i != e; i++) {
+            Value * pUser = llvm::cast<User>(*i);
+            users.push_back(pUser);
+        }
+
+        for (size_t i = 0; i < users.size(); i++){
+            Value * pUser = users[i];
+
+            /*For now, we are going to skip GEPs, because I
+             * *think* they are handled by ClamBCPrepareGEPsForWriter
+             */
+            if (GetElementPtrInst * pgepi = llvm::dyn_cast<GetElementPtrInst>(pUser)){
+                processGEPI(pgepi, pOld, pNew);
+                continue;
+            }
+
+            if (CallInst * pInst = llvm::dyn_cast<CallInst>(pUser)){
+                handleInstruction(pInst, pOld, pNew);
+                continue;
+            }
+
+            if (LoadInst * pInst = llvm::dyn_cast<LoadInst>(pUser)){
+                handleInstruction(pInst, pOld, pNew);
+
+                DEBUGERR << "TODO: DETERMINE WHETHER THIS IS SAFE WITH THE NEW POINTER LOAD CONTEXT" << "<END>\n";
+                continue;
+            }
+
+            DEBUGERR << "TAKE THIS OUT" << "<END>\n";
+            DEBUG_VALUE(pUser);
+            //assert (0 && "NOT HANDLED");
+
+        }
+    }
+
+    bool processBasicBlock(BasicBlock * pBB){
+        bool bRet = false;
+        std::vector<AllocaInst*> allocas;
+
+        gatherAllocas(pBB, allocas);
+
+        for (size_t i = 0; i < allocas.size(); i++){
+            bRet = true;
+            AllocaInst * pAlloca = allocas[i];
+
+            Type *pType   = rebuildType(pAlloca->getAllocatedType(), true);
+            AllocaInst * pNewAlloca = new AllocaInst(pType, pBB->getParent()->getAddressSpace(),
+                    "ClamBCRebuild_processBasicBlock", pAlloca);
+
+            changeAccesses(pAlloca, pNewAlloca);
+        }
+
+        return bRet;
+    }
+
+    bool processFunction(Function* pFunc){
+        bool bRet = false;
+
+        for (auto i = pFunc->begin(), e = pFunc->end(); i != e; i++){
+            BasicBlock * pBB = llvm::dyn_cast<BasicBlock>(i);
+            if (nullptr == pBB){
+                /*Not sure how this would be possible.*/
+                continue;
+            }
+
+            if (processBasicBlock(pBB)){
+                bRet = true;
+            }
+        }
+
+        return bRet;
+    }
+
+#if 0
+    bool runOnModule(Module &M)
+#else
+    PreservedAnalyses run(Module & M, ModuleAnalysisManager & MAM)
+#endif
+    {
+
+        bool bChanged = false;
+        DEBUGERR << "TODO: REMOVE ALL THE VISITOR STUFF" << "<END>\n";
         pMod = &M;
+        pContext = &(pMod->getContext());
+        i8Ty    = Type::getInt8Ty(*pContext);
+        i8pTy   = PointerType::getUnqual(i8Ty);
+
+        for (auto i = pMod->begin(), e = pMod->end(); i != e; i++){
+            if (Function * pFunc = llvm::dyn_cast<Function>(i)){
+                if (pFunc->isDeclaration()){
+                    continue;
+                }
+
+                processFunction(pFunc);
+            }
+        }
+
+        DEBUGERR << "LEAVING" << "<END>\n";
+
+        if (bChanged){
+            return PreservedAnalyses::none();
+        }
+
+        return PreservedAnalyses::all();
+
+
+
+
 
         /* Taken from doInitialization.  */
         FMap.clear();
         //FMapRev.clear();
 
-        Context = &(pMod->getContext());
-        i8Ty    = Type::getInt8Ty(*Context);
-        i8pTy   = PointerType::getUnqual(i8Ty);
-
         std::vector<Function *> funcs;
+        DEBUG_WHERE;
         for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
             Function *pFunc = llvm::cast<Function>(i);
             funcs.push_back(pFunc);
         }
+        DEBUG_WHERE;
         for (size_t i = 0; i < funcs.size(); i++) {
             Function *pFunc = funcs[i];
-            runOnFunction(*pFunc);
+            if (runOnFunction(*pFunc)){
+                bChanged = true;
+            }
         }
 
-        return true;
+        if (bChanged){
+            return PreservedAnalyses::none();
+        }
+
+        return PreservedAnalyses::all();
     }
 
   private:
@@ -216,12 +697,14 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
 
     ScalarEvolution *SE = nullptr;
     Type *i8Ty          = nullptr;
-    Type *i8pTy         = nullptr;
+    PointerType *i8pTy         = nullptr;
     //FunctionPassManager *FPM = nullptr;
-    LLVMContext *Context = nullptr;
+    LLVMContext *pContext = nullptr;
     DenseSet<const BasicBlock *> visitedBB;
     IRBuilder<TargetFolder> *Builder = nullptr;
+#if 0
     SCEVExpander *Expander           = nullptr;
+#endif
 
     void stop(const std::string &Msg, const llvm::Instruction *I)
     {
@@ -229,6 +712,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     }
     friend class InstVisitor<ClamBCRebuild>;
 
+#if 0
     const Type *getInnerElementType(const CompositeType *CTy)
     {
         const Type *ETy = nullptr;
@@ -241,6 +725,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         assert(ETy->isIntegerTy());
         return ETy;
     }
+#endif
 
     Type *rebuildType(Type *Ty, bool i8only = false)
     {
@@ -252,17 +737,21 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         if (Ty->isVoidTy() || Ty == i8Ty)
             return Ty;
         unsigned bytes = pMod->getDataLayout().getTypeAllocSize(Ty);
+
+        ArrayType::get(i8Ty, 1);
+
         return ArrayType::get(i8Ty, bytes);
+
     }
 
     ConstantInt *u32const(uint32_t n)
     {
-        return ConstantInt::get(Type::getInt32Ty(*Context), n);
+        return ConstantInt::get(Type::getInt32Ty(*pContext), n);
     }
 
     ConstantInt *i32const(int32_t n)
     {
-        return ConstantInt::get(Type::getInt32Ty(*Context), n, true);
+        return ConstantInt::get(Type::getInt32Ty(*pContext), n, true);
     }
 
     void visitAllocaInst(AllocaInst &AI)
@@ -346,8 +835,13 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     {
         Value *PV = mapValue(P);
         if (PV->getType() == Ty && !isa<AllocaInst>(PV)) {
+#if 0
             assert(!isa<AllocaInst>(PV) ||
                    cast<PointerType>(Ty)->getElementType()->isIntegerTy());
+#else
+            assert(!isa<AllocaInst>(PV) ||
+                   cast<TypedPointerType>(Ty)->getElementType()->isIntegerTy());
+#endif
             return PV;
         }
         PV = PV->stripPointerCasts();
@@ -425,7 +919,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     void visitLoadInst(LoadInst &I)
     {
         Value *P = I.getPointerOperand();
-        VMap[&I] = Builder->CreateLoad(mapPointer(P, P->getType()),
+        VMap[&I] = Builder->CreateLoad(P->getType(), mapPointer(P, P->getType()),
                                        I.getName());
     }
 
@@ -452,14 +946,11 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
             idxs.push_back(mapValue(*I));
         }
         if (II.isInBounds()) {
-            //P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
-            P = Builder->CreateInBoundsGEP(P, idxs, "clambcRebuildInboundsGEP");
+            P = Builder->CreateInBoundsGEP(P->getType(), P, idxs, "clambcRebuildInboundsGEP");
         } else {
-            //P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
-            P = Builder->CreateGEP(P, idxs, "clambcRebuildGEP");
+            P = Builder->CreateGEP(P->getType(), P, idxs, "clambcRebuildGEP");
         }
         VMap[&II] = makeCast(P, rebuildType(II.getType()));
-        ;
     }
 
     Value *mapPHIValue(Value *V)
@@ -569,7 +1060,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         unsigned i;
         std::vector<Type *> params;
         FunctionType *FTy = F->getFunctionType();
-        assert(!F->isVarArg());
+        assert(!F->isVarArg() && "VARIDAIC FUNCTIONS ARE NOT ALLOWED");
         for (i = 0; i < FTy->getNumParams(); i++) {
             params.push_back(rebuildType(FTy->getParamType(i)));
         }
@@ -593,14 +1084,17 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
             retIter++;
         }
 
-        BasicBlock *BB = BasicBlock::Create(*Context, "dummy", ret, 0);
-        new UnreachableInst(*Context, BB);
+        BasicBlock *BB = BasicBlock::Create(*pContext, "dummy", ret, 0);
+        new UnreachableInst(*pContext, BB);
 
         return ret;
     }
 };
-char ClamBCRebuild::ID = 0;
 
+
+#if 0
+
+char ClamBCRebuild::ID = 0;
 static RegisterPass<ClamBCRebuild> X("clambc-rebuild", "ClamBCRebuild Pass",
                                      false /* Only looks at CFG */,
                                      false /* Analysis Pass */);
@@ -609,3 +1103,39 @@ llvm::ModulePass *createClamBCRebuild(void)
 {
     return new ClamBCRebuild();
 }
+
+#else
+
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo() {
+  return {
+    LLVM_PLUGIN_API_VERSION, "ClamBCRebuild", "v0.1",
+    [](PassBuilder &PB) {
+      PB.registerPipelineParsingCallback(
+        [](StringRef Name, ModulePassManager &FPM,
+        ArrayRef<PassBuilder::PipelineElement>) {
+          if(Name == "clambc-rebuild"){
+            FPM.addPass(ClamBCRebuild());
+            return true;
+          }
+          return false;
+        }
+      );
+    }
+  };
+}
+
+
+#endif
+
+
+
+} //namespace
+
+
+
+
+
+
+

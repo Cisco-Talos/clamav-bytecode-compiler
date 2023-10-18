@@ -16,3 +16,25 @@ add_subdirectory(ClamBCOutlineEndiannessCalls)
 add_subdirectory(ClamBCChangeMallocArgSize)
 add_subdirectory(ClamBCExtendPHIsTo64Bit)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+add_subdirectory(ClamBCRebuild)
