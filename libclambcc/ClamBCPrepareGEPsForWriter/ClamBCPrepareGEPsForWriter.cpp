@@ -19,14 +19,14 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
-#include "../Common/bytecode_api.h"
+#include "bytecode_api.h"
 #include "clambc.h"
 #include "ClamBCModule.h"
+#include "ClamBCUtilities.h"
+
 #include "ClamBCAnalyzer/ClamBCAnalyzer.h"
-#include "Common/ClamBCUtilities.h"
 
 #include <llvm/Support/DataTypes.h>
-//#include "ClamBCTargetMachine.h"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/DebugInfo.h>
@@ -37,7 +37,6 @@
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
-//#include "llvm/Config/config.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Instructions.h>
@@ -47,21 +46,21 @@
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 
 #include <llvm/Analysis/ValueTracking.h>
 
 using namespace llvm;
 
-class ClamBCPrepareGEPsForWriter : public ModulePass
-{
+struct ClamBCPrepareGEPsForWriter : public PassInfoMixin<ClamBCPrepareGEPsForWriter> {
   protected:
     llvm::Module *pMod = nullptr;
 
   public:
     static char ID;
 
-    explicit ClamBCPrepareGEPsForWriter()
-        : ModulePass(ID) {}
+    explicit ClamBCPrepareGEPsForWriter() {}
 
     virtual ~ClamBCPrepareGEPsForWriter() {}
 
@@ -232,10 +231,10 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
 
         Value *gepiNew = underlyingObject;
         if (gepiNew->getType()->getPointerElementType()->isArrayTy()) {
-            gepiNew = GetElementPtrInst::Create(nullptr, gepiNew, Idxs, "processGEPI_2_", pgepi);
+            gepiNew = GetElementPtrInst::Create(gepiNew->getType()->getPointerElementType(), gepiNew, Idxs, "processGEPI_2_", pgepi);
         }
 
-        gepiNew = GetElementPtrInst::Create(nullptr, gepiNew, vCnt, "processGEPI_3_", pgepi);
+        gepiNew = GetElementPtrInst::Create(gepiNew->getType()->getPointerElementType(), gepiNew, vCnt, "processGEPI_3_", pgepi);
 
         CastInst *ciNew = CastInst::CreatePointerCast(gepiNew, pgepi->getType(), "processGEPI_", pgepi);
 
@@ -305,10 +304,10 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
 
         Value *gepiNew = underlyingObject;
         if (gepiNew->getType()->getPointerElementType()->isArrayTy()) {
-            gepiNew = GetElementPtrInst::Create(nullptr, gepiNew, Idxs, "processGEPI_0_", pgepi);
+            gepiNew = GetElementPtrInst::Create(gepiNew->getType()->getPointerElementType(), gepiNew, Idxs, "processGEPI_0_", pgepi);
         }
 
-        gepiNew = GetElementPtrInst::Create(nullptr, gepiNew, vCnt, "processGEPI_1_", pgepi);
+        gepiNew = GetElementPtrInst::Create(gepiNew->getType()->getPointerElementType(), gepiNew, vCnt, "processGEPI_1_", pgepi);
 
         CastInst *ciNew = CastInst::CreatePointerCast(gepiNew, pgepi->getType(), "processGEPI_", pgepi);
 
@@ -372,7 +371,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
         }
     }
 
-    virtual bool runOnModule(Module &m)
+    PreservedAnalyses run(Module &m, ModuleAnalysisManager &MAM)
     {
         pMod = &m;
         for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
@@ -387,7 +386,7 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
             fixCasts(pFunc);
         }
 
-        return true;
+        return PreservedAnalyses::none();
     }
 
     virtual void fixCasts(Function *pFunc)
@@ -417,12 +416,21 @@ class ClamBCPrepareGEPsForWriter : public ModulePass
     }
 };
 
-char ClamBCPrepareGEPsForWriter::ID = 0;
-static RegisterPass<ClamBCPrepareGEPsForWriter> X("clambc-prepare-geps-for-writer", "ClamBCPrepareGEPsForWriter Pass",
-                                                  false /* Only looks at CFG */,
-                                                  false /* Analysis Pass */);
-
-llvm::ModulePass *createClamBCPrepareGEPsForWriter()
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
 {
-    return new ClamBCPrepareGEPsForWriter();
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCPrepareGEPsForWriter", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-prepare-geps-for-writer") {
+                        FPM.addPass(ClamBCPrepareGEPsForWriter());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
 }

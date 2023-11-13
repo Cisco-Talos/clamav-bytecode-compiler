@@ -1,17 +1,18 @@
 
+#include "clambc.h"
+#include "ClamBCUtilities.h"
+
 #include <llvm/Pass.h>
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <llvm/IR/Dominators.h>
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-
-#include "Common/clambc.h"
-#include "Common/ClamBCUtilities.h"
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Passes/PassBuilder.h>
 
 #include <sstream>
 #include <string>
@@ -32,7 +33,7 @@ namespace
  * to fake functions.  If it does find it (the second time), it removes those
  * calls.
  */
-class ClamBCPreserveABIs : public ModulePass
+class ClamBCPreserveABIs : public PassInfoMixin<ClamBCPreserveABIs>
 {
   protected:
     llvm::Module *pMod = nullptr;
@@ -46,9 +47,9 @@ class ClamBCPreserveABIs : public ModulePass
             return;
         }
         FunctionType *pFunctionType = llvm::dyn_cast<FunctionType>(pFunc->getType());
-        std::string newname         = pFunc->getName();
+        std::string newname(pFunc->getName());
+        pFunctionType = pFunc->getFunctionType();
         newname += "_fake";
-        pFunctionType          = llvm::cast<FunctionType>(llvm::cast<PointerType>(pFunc->getType())->getElementType());
         Function *fakeFunction = Function::Create(pFunctionType, Function::ExternalLinkage, newname, pFunc->getParent());
         fakeFunctions.push_back(fakeFunction);
         std::vector<Value *> args;
@@ -127,18 +128,16 @@ class ClamBCPreserveABIs : public ModulePass
     }
 
   public:
-    static char ID;
-    ClamBCPreserveABIs()
-        : ModulePass(ID) {}
+    ClamBCPreserveABIs() {}
 
     virtual ~ClamBCPreserveABIs() {}
 
-    bool runOnModule(Module &m) override
+    virtual PreservedAnalyses run(Module &m, ModuleAnalysisManager &MAM)
     {
         pMod = &m;
 
         if (removeFakeFunctions()) {
-            return bChanged;
+            return PreservedAnalyses::none();
         }
 
         for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
@@ -157,13 +156,30 @@ class ClamBCPreserveABIs : public ModulePass
 
         writeMetadata();
 
-        return bChanged;
+        if (bChanged) {
+            return PreservedAnalyses::none();
+        }
+        return PreservedAnalyses::all();
     }
 }; // end of struct ClamBCPreserveABIs
 
 } // end of anonymous namespace
 
-char ClamBCPreserveABIs::ID = 0;
-static RegisterPass<ClamBCPreserveABIs> X("clambc-preserve-abis", "Preserve ABIs",
-                                          false /* Only looks at CFG */,
-                                          false /* Analysis Pass */);
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
+{
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCPreserveABIs", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-preserve-abis") {
+                        FPM.addPass(ClamBCPreserveABIs());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
+}

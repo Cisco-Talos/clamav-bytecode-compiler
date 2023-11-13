@@ -20,7 +20,10 @@
  *  MA 02110-1301, USA.
  */
 #define DEBUGTYPE "clambcdiags"
+
+#include "clambc.h"
 #include "ClamBCDiagnostics.h"
+
 #include <llvm/IR/DebugInfo.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Metadata.h>
@@ -29,21 +32,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Debug.h>
 
-#include "clambc.h"
 using namespace llvm;
-
-#if 0
-static inline void printSep(bool hasColors)
-{
-    if (hasColors) {
-        errs().resetColor();
-    }
-    errs() << ":";
-    if (hasColors) {
-        errs().changeColor(raw_ostream::SAVEDCOLOR, true);
-    }
-}
-#endif
 
 // Print the main compile unit's source filename,
 // falls back to printing the module identifier.
@@ -51,21 +40,8 @@ static void printLocation(const llvm::Module *M)
 {
     NamedMDNode *ND = M->getNamedMetadata("llvm.dbg.gv");
     if (ND) {
-#if 0
-        unsigned N = ND->getNumOperands();
-        // Try to find main compile unit
-        for (unsigned i = 0; i < N; i++) {
-            DIGlobalVariable G(ND->getOperand(i));
-            DICompileUnit CU(G.getCompileUnit());
-            if (!CU.isMain())
-                continue;
-            errs() << /*CU.getDirectory() << "/" <<*/ CU.getFilename() << ": ";
-            return;
-        }
-#else
         DEBUGERR << "FIGURE OUT WHAT TO DO IF I ACTUALLY GET HERE\n";
         assert(0 && "FIGURE OUT WHAT TO DO IF I ACTUALLY GET HERE");
-#endif
     }
     errs() << M->getModuleIdentifier() << ": ";
 }
@@ -81,27 +57,10 @@ static void printLocation(const llvm::Function *F)
              I != E; ++I) {
             if (const Instruction *T = I->getTerminator()) {
                 if (MDNode *N = T->getMetadata(MDDebugKind)) {
-#if 0
-                    DILocation Loc(N);
-                    DIScope Scope = Loc.getScope();
-                    while (Scope.isLexicalBlock()) {
-                        DILexicalBlock LB(Scope.getNode());
-                        Scope = LB.getContext();
-                    }
-                    if (Scope.isSubprogram()) {
-                        DISubprogram SP(Scope.getNode());
-                        errs() << /*Loc.getDirectory() << "/" << */ Loc.getFilename()
-                               << ": in function '"
-                               << SP.getDisplayName()
-                               << "': ";
-                        return;
-                    }
-#else
                     DEBUGERR << N << "<END>\n";
                     DEBUGERR << *N << "<END>\n";
                     DEBUGERR << "FIGURE OUT WHAT TO DO IF I ACTUALLY GET HERE\n";
                     assert(0 && "FIGURE OUT WHAT TO DO IF I ACTUALLY GET HERE");
-#endif
                 }
             }
         }
@@ -126,31 +85,9 @@ void printLocation(const llvm::Instruction *I, bool fallback)
         BasicBlock::const_iterator ItB = BB->begin();
         while (It != ItB) {
             if (MDNode *N = It->getMetadata("dbg")) {
-#if 0
-                DILocation Loc(N);
-                errs() << /*Loc.getDirectory() << "/" <<*/ Loc.getFilename()
-                       << ":" << Loc.getLineNumber();
-                if (unsigned Col = Loc.getColumnNumber()) {
-                    errs() << ":" << Col;
-                }
-                if (approx)
-                    errs() << "(?)";
-                errs() << ": ";
-                DIScope Scope = Loc.getScope();
-                while (Scope.isLexicalBlock()) {
-                    DILexicalBlock LB(Scope.getNode());
-                    Scope = LB.getContext();
-                }
-                if (Scope.isSubprogram()) {
-                    DISubprogram SP(Scope.getNode());
-                    errs() << "in function '" << SP.getDisplayName() << "': ";
-                }
-                return;
-#else
                 DEBUGERR << *N << "<END>\n";
                 DEBUGERR << approx << "<END>\n";
                 assert(0 && "FIGURE OUT WHAT TO DO IF I ACTUALLY GET HERE");
-#endif
             }
             approx = true;
             --It;
@@ -175,18 +112,8 @@ void printValue(const llvm::Value *V, bool printLocation, bool fallback)
     unsigned Line = 0;
     std::string File;
     std::string Dir;
-#if 0
-    if (!getLocationInfo(V, DisplayName, Type, Line, File, Dir)) {
-        if (fallback)
-            errs() << *V << "\n: ";
-        else
-            errs() << V->getName() << ": ";
-        return;
-    }
-#else
     DEBUGERR << "FIXME: FIGURE OUT WHAT 'getLocationInfo' has been replaced with"
              << "<END>\n";
-#endif
     errs() << "'" << DisplayName << "' ";
     if (printLocation)
         errs() << " (" << File << ":" << Line << ")";
@@ -201,15 +128,8 @@ void printLocation(const llvm::Module *M, const llvm::Value *V)
     unsigned Line = 0;
     std::string File;
     std::string Dir;
-#if 0
-    if (!getLocationInfo(V, DisplayName, Type, Line, File, Dir)) {
-        printLocation(M);
-        return;
-    }
-#else
     DEBUGERR << "FIXME: FIGURE OUT WHAT 'getLocationInfo' has been replaced with"
              << "<END>\n";
-#endif
     errs() << /*Dir << "/" <<*/ File << ":" << Line << ": ";
 }
 

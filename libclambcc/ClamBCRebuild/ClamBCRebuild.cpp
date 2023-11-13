@@ -19,13 +19,16 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
+
+#include "ClamBCModule.h"
+#include "clambc.h"
+#include "ClamBCUtilities.h"
+
 #include <llvm/Support/DataTypes.h>
-#include <ClamBCModule.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Analysis/ScalarEvolution.h>
-#include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -33,23 +36,21 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Analysis/TargetFolder.h>
 
-#include "Common/clambc.h"
-#include "Common/ClamBCUtilities.h"
-
 using namespace llvm;
 
-class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
+class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<ClamBCRebuild>
 {
   public:
     static char ID;
-    explicit ClamBCRebuild()
-        : ModulePass(ID) {}
+    explicit ClamBCRebuild() {}
     virtual llvm::StringRef getPassName() const
     {
         return "ClamAV Bytecode Backend Rebuilder";
@@ -82,8 +83,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
 
         Builder = new IRBuilder<TargetFolder>(*Context, TF);
 
-        SE       = nullptr;
-        Expander = nullptr;
+        SE = nullptr;
 
         visitFunction(F, &NF);
         for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
@@ -104,6 +104,13 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
                 for (unsigned i = 0; i < N->getNumIncomingValues(); i++) {
                     Value *V       = mapPHIValue(N->getIncomingValue(i));
                     BasicBlock *BB = mapBlock(N->getIncomingBlock(i));
+
+                    if (V->getType() != N->getType()) {
+                        if (V->getType()->isPointerTy() and N->getType()->isPointerTy()) {
+                            V = CastInst::CreatePointerCast(V, N->getType(),
+                                                            "ClamBCRebuild_fixCast_", BB->getTerminator());
+                        }
+                    }
                     PN->addIncoming(V, BB);
                 }
                 assert(PN->getNumIncomingValues() > 0);
@@ -114,9 +121,6 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         fixupCalls(F, copy);
         F->setLinkage(GlobalValue::InternalLinkage);
 
-        if (Expander) {
-            delete Expander;
-        }
         delete Builder;
         return true;
     }
@@ -146,7 +150,6 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     void fixupCallInst(CallInst *pCallInst, Function *pFunc)
     {
         assert(pCallInst->arg_size() == pFunc->arg_size() && "Incorrect number of arguments");
-        assert(pCallInst->getCalledValue() == pFunc && "This CallInst doesn't call this function");
 
         auto argIter = pFunc->arg_begin(), argEnd = pFunc->arg_end();
         auto callIter = pCallInst->arg_begin(), callEnd = pCallInst->arg_end();
@@ -174,13 +177,12 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         }
     }
 
-    bool runOnModule(Module &M)
+    PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM)
     {
         pMod = &M;
 
         /* Taken from doInitialization.  */
         FMap.clear();
-        //FMapRev.clear();
 
         Context = &(pMod->getContext());
         i8Ty    = Type::getInt8Ty(*Context);
@@ -188,7 +190,11 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
 
         std::vector<Function *> funcs;
         for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
-            Function *pFunc = llvm::cast<Function>(i);
+            Function *pFunc         = llvm::cast<Function>(i);
+            const FunctionType *FTy = pFunc->getFunctionType();
+            if (FTy->isVarArg()) {
+                return PreservedAnalyses::all();
+            }
             funcs.push_back(pFunc);
         }
         for (size_t i = 0; i < funcs.size(); i++) {
@@ -196,7 +202,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
             runOnFunction(*pFunc);
         }
 
-        return true;
+        return PreservedAnalyses::none();
     }
 
   private:
@@ -214,33 +220,18 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     ValueMapTy VMap;
     DenseMap<std::pair<const Value *, const Type *>, Value *> CastMap;
 
-    ScalarEvolution *SE = nullptr;
-    Type *i8Ty          = nullptr;
-    Type *i8pTy         = nullptr;
-    //FunctionPassManager *FPM = nullptr;
+    ScalarEvolution *SE  = nullptr;
+    Type *i8Ty           = nullptr;
+    Type *i8pTy          = nullptr;
     LLVMContext *Context = nullptr;
     DenseSet<const BasicBlock *> visitedBB;
     IRBuilder<TargetFolder> *Builder = nullptr;
-    SCEVExpander *Expander           = nullptr;
 
     void stop(const std::string &Msg, const llvm::Instruction *I)
     {
         ClamBCStop(Msg, I);
     }
     friend class InstVisitor<ClamBCRebuild>;
-
-    const Type *getInnerElementType(const CompositeType *CTy)
-    {
-        const Type *ETy = nullptr;
-        // get pointer to first element
-        do {
-            assert(CTy->indexValid(0u));
-            ETy = CTy->getTypeAtIndex(0u);
-            CTy = dyn_cast<CompositeType>(ETy);
-        } while (CTy);
-        assert(ETy->isIntegerTy());
-        return ETy;
-    }
 
     Type *rebuildType(Type *Ty, bool i8only = false)
     {
@@ -347,7 +338,8 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         Value *PV = mapValue(P);
         if (PV->getType() == Ty && !isa<AllocaInst>(PV)) {
             assert(!isa<AllocaInst>(PV) ||
-                   cast<PointerType>(Ty)->getElementType()->isIntegerTy());
+                   Ty->getPointerElementType()->isIntegerTy());
+
             return PV;
         }
         PV = PV->stripPointerCasts();
@@ -425,7 +417,7 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
     void visitLoadInst(LoadInst &I)
     {
         Value *P = I.getPointerOperand();
-        VMap[&I] = Builder->CreateLoad(mapPointer(P, P->getType()),
+        VMap[&I] = Builder->CreateLoad(I.getType(), mapPointer(P, P->getType()),
                                        I.getName());
     }
 
@@ -451,12 +443,18 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
              I != E; ++I) {
             idxs.push_back(mapValue(*I));
         }
+
+        Type *pt = P->getType();
+        if (llvm::isa<PointerType>(pt)) {
+            pt = pt->getPointerElementType();
+        }
+
         if (II.isInBounds()) {
             //P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
-            P = Builder->CreateInBoundsGEP(P, idxs, "clambcRebuildInboundsGEP");
+            P = Builder->CreateInBoundsGEP(pt, P, idxs, "clambcRebuildInboundsGEP");
         } else {
             //P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
-            P = Builder->CreateGEP(P, idxs, "clambcRebuildGEP");
+            P = Builder->CreateGEP(pt, P, idxs, "clambcRebuildGEP");
         }
         VMap[&II] = makeCast(P, rebuildType(II.getType()));
         ;
@@ -599,13 +597,22 @@ class ClamBCRebuild : public ModulePass, public InstVisitor<ClamBCRebuild>
         return ret;
     }
 };
-char ClamBCRebuild::ID = 0;
 
-static RegisterPass<ClamBCRebuild> X("clambc-rebuild", "ClamBCRebuild Pass",
-                                     false /* Only looks at CFG */,
-                                     false /* Analysis Pass */);
-
-llvm::ModulePass *createClamBCRebuild(void)
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
 {
-    return new ClamBCRebuild();
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCRebuild", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-rebuild") {
+                        FPM.addPass(ClamBCRebuild());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
 }

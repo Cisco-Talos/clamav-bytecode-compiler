@@ -1,3 +1,6 @@
+#include "clambc.h"
+#include "ClamBCUtilities.h"
+#include "ClamBCModule.h"
 
 #include <llvm/Pass.h>
 #include <llvm/IR/Function.h>
@@ -8,24 +11,22 @@
 
 #include <llvm/IR/Dominators.h>
 
-#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 
-#include "Common/clambc.h"
-#include "Common/ClamBCUtilities.h"
-#include "Common/ClamBCModule.h"
 using namespace llvm;
 
 #include <set>
 
 namespace
 {
-class ClambcRemovePointerPHIs : public FunctionPass
+class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
 {
   protected:
-    Function *pFunc = nullptr;
+    llvm::Module *pMod = nullptr;
 
-    std::vector<PHINode *> gatherPHIs()
+    std::vector<PHINode *> gatherPHIs(llvm::Function *pFunc)
     {
 
         std::vector<PHINode *> ret;
@@ -178,14 +179,13 @@ class ClambcRemovePointerPHIs : public FunctionPass
         if (not pn->getType()->isPointerTy()) {
             return false;
         }
-        //std::vector<Value*> delLst;
 
         Value *pBasePtr = findBasePointer(pn);
         if (nullptr == pBasePtr) { /*No unique base pointer.*/
             return false;
         }
 
-        IntegerType *pType = Type::getInt64Ty(pFunc->getParent()->getContext());
+        IntegerType *pType = Type::getInt64Ty(pMod->getContext());
         Constant *zero     = ConstantInt::get(pType, 0);
         Value *initValue   = zero;
         PHINode *idxNode   = PHINode::Create(pType, pn->getNumIncomingValues(), "ClamBCRemovePointerPHIs_idx_", pn);
@@ -226,7 +226,13 @@ class ClambcRemovePointerPHIs : public FunctionPass
         std::vector<Instruction *> newInsts;
         Instruction *insPt = findFirstNonPHI(pn->getParent());
 
-        Instruction *gepiNew = GetElementPtrInst::Create(nullptr, pBasePtr, idxNode, "ClamBCRemovePointerPHIs_gepi_", insPt);
+        PointerType *pt = llvm::dyn_cast<PointerType>(pBasePtr->getType());
+        if (nullptr == pt) {
+            assert(0 && "This pass is only for pointer phis, how did we get here???");
+        }
+        Type *elementType = pt->getPointerElementType();
+
+        Instruction *gepiNew = GetElementPtrInst::Create(elementType, pBasePtr, idxNode, "ClamBCRemovePointerPHIs_gepi_", insPt);
         if (pn->getType() != gepiNew->getType()) {
             gepiNew = CastInst::CreatePointerCast(gepiNew, pn->getType(), "ClamBCRemovePointerPHIs_cast_", insPt);
         }
@@ -283,33 +289,59 @@ class ClambcRemovePointerPHIs : public FunctionPass
     }
 
   public:
-    static char ID;
-    ClambcRemovePointerPHIs()
-        : FunctionPass(ID) {}
+    ClamBCRemovePointerPHIs() {}
 
-    bool runOnFunction(Function &F) override
+    virtual PreservedAnalyses run(Module &m, ModuleAnalysisManager &mam)
     {
 
-        pFunc    = &F;
+        /*Currently unused.  Will remove after the RC phase.*/
+        DEBUGERR << "TODO: EVALUATE WHETHER OR NOT I NEED THIS"
+                 << "<END>\n";
+        return PreservedAnalyses::all();
+
+        pMod     = &m;
         bool ret = false;
 
-        std::vector<PHINode *> phis = gatherPHIs();
-        for (size_t i = 0; i < phis.size(); i++) {
-            PHINode *pn = phis[i];
+        for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
+            llvm::Function *pFunc = llvm::dyn_cast<Function>(i);
+            if (nullptr == pFunc) {
+                continue;
+            }
+            std::vector<PHINode *> phis = gatherPHIs(pFunc);
+            for (size_t i = 0; i < phis.size(); i++) {
+                PHINode *pn = phis[i];
 
-            if (handlePHI(pn)) {
-                ret = true;
+                if (handlePHI(pn)) {
+                    ret = true;
+                }
             }
         }
 
-        return ret;
+        if (ret) {
+            return PreservedAnalyses::none();
+        }
+        return PreservedAnalyses::all();
     }
 
 }; // end of class ClambcRemovePointerPHIs
 
 } // end of anonymous namespace
 
-char ClambcRemovePointerPHIs::ID = 0;
-static RegisterPass<ClambcRemovePointerPHIs> X("clambc-remove-pointer-phis", "Remove PHI Nodes with pointers",
-                                               false /* Only looks at CFG */,
-                                               false /* Analysis Pass */);
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
+{
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCRemovePointerPHIs", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-remove-pointer-phis") {
+                        FPM.addPass(ClamBCRemovePointerPHIs());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
+}

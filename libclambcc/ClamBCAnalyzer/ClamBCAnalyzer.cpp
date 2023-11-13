@@ -20,8 +20,9 @@
  *  MA 02110-1301, USA.
  */
 #include "ClamBCAnalyzer.h"
-#include "Common/ClamBCCommon.h"
-#include "Common/ClamBCUtilities.h"
+
+#include "ClamBCCommon.h"
+#include "ClamBCUtilities.h"
 
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -37,7 +38,7 @@
 
 using namespace llvm;
 
-extern cl::opt<bool> WriteDI;
+AnalysisKey ClamBCAnalyzer::Key;
 
 static unsigned getSpecialIndex(StringRef Name)
 {
@@ -67,58 +68,55 @@ static bool compare_lt_functions(Function *A, Function *B)
     return NA.compare(NB) < 0;
 }
 
-bool ClamBCAnalyzer::runOnModule(Module &M)
+void ClamBCAnalysis::run(Module &m)
 {
-    pMod = &M;
+    pMod = &m;
 
     // Determine bytecode kind, default is 0 (generic).
     kind                   = 0;
-    GlobalVariable *GVKind = M.getGlobalVariable("__clambc_kind");
+    GlobalVariable *GVKind = pMod->getGlobalVariable("__clambc_kind");
     if (GVKind && GVKind->hasDefinitiveInitializer()) {
         kind = cast<ConstantInt>(GVKind->getInitializer())->getValue().getZExtValue();
         // GVKind->setLinkage(GlobalValue::InternalLinkage);
         // Do not set the linkage type to internal, because the optimizer will remove it.
         if (kind >= 65536) {
-            ClamBCStop("Bytecode kind cannot be higher than 64k\n", &M);
+            ClamBCStop("Bytecode kind cannot be higher than 64k\n", pMod);
         }
     }
 
-    GlobalVariable *G = M.getGlobalVariable("__Copyright");
+    GlobalVariable *G = pMod->getGlobalVariable("__Copyright");
     if (G && G->hasDefinitiveInitializer()) {
         Constant *C = G->getInitializer();
         // std::string c;
         StringRef c;
         if (!getConstantStringInfo(C, c)) {
-            ClamBCStop("Failed to extract copyright string\n", &M);
+            ClamBCStop("Failed to extract copyright string\n", pMod);
         }
-        // copyright = strdup(c.c_str());
         copyright = c.str();
-        // G->setLinkage(GlobalValue::InternalLinkage);
         // Do not set the linkage type to internal because the optimizer will remove it.
     }
 
     // Logical signature created by ClamBCLogicalCompiler.
-    NamedMDNode *Node = M.getNamedMetadata("clambc.logicalsignature");
+    NamedMDNode *Node = pMod->getNamedMetadata("clambc.logicalsignature");
     logicalSignature  = Node ? cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
 
-    Node       = M.getNamedMetadata("clambc.virusnames");
+    Node       = pMod->getNamedMetadata("clambc.virusnames");
     virusnames = Node ? cast<MDString>(Node->getOperand(0)->getOperand(0))->getString() : "";
 
     unsigned tid, fid;
     // unsigned cid;
-    startTID = tid = clamav::initTypeIDs(typeIDs, M.getContext());
+    startTID = tid = clamav::initTypeIDs(typeIDs, pMod->getContext());
     // arrays of [2 x i8] .. [7 x i8] used for struct padding
     for (unsigned i = 1; i < 8; i++) {
-        const Type *Ty = llvm::ArrayType::get(llvm::Type::getInt8Ty(M.getContext()),
+        const Type *Ty = llvm::ArrayType::get(llvm::Type::getInt8Ty(pMod->getContext()),
                                               i);
         typeIDs[Ty]    = tid++;
         extraTypes.push_back(Ty);
     }
 
     std::vector<const Type *> types;
-    // cid=1;
     fid = 1;
-    for (Module::global_iterator I = M.global_begin(); I != M.global_end(); ++I) {
+    for (Module::global_iterator I = pMod->global_begin(); I != pMod->global_end(); ++I) {
         GlobalVariable *gv = llvm::cast<GlobalVariable>(I);
         std::set<Instruction *> insts;
         std::set<GlobalVariable *> globs;
@@ -136,14 +134,14 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
                 // globals, so introduce helper globals for nested constant expressions.
                 if (CE->getOpcode() != Instruction::GetElementPtr) {
                     if (CE->getOpcode() == Instruction::BitCast) {
-                        GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true,
+                        GlobalVariable *GV = new GlobalVariable(*pMod, CE->getType(), true,
                                                                 GlobalValue::InternalLinkage,
                                                                 CE, I->getName() + "_bc");
                         CEMap[CE]          = GV;
                         continue;
                     }
                     errs() << "UNSUPPORTED: " << *CE << "\n";
-                    ClamBCStop("Unsupported constant expression", &M);
+                    ClamBCStop("Unsupported constant expression", pMod);
                 }
                 ConstantInt *C0 = dyn_cast<ConstantInt>(CE->getOperand(1));
                 ConstantInt *C1 = dyn_cast<ConstantInt>(CE->getOperand(2));
@@ -152,7 +150,7 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
                     errs() << "UNSUPPORTED: " << *CE << "\n";
                     ClamBCStop("Unsupported constant expression, nonzero first"
                                " index",
-                               &M);
+                               pMod);
                 }
 
                 const DataLayout &dataLayout = pMod->getDataLayout();
@@ -161,18 +159,15 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
                     indices.push_back(CE->getOperand(i));
                 }
                 Type *IP8Ty = PointerType::getUnqual(Type::getInt8Ty(CE->getContext()));
+                Type *type  = getResultType(CE);
 
-                Type *type = CE->getOperand(0)->getType();
-                if (llvm::isa<PointerType>(type)) {
-                    type = llvm::cast<PointerType>(type)->getElementType();
-                }
                 uint64_t idx = dataLayout.getIndexedOffsetInType(type, indices);
 
                 Value *Idxs[1];
                 Idxs[0]     = ConstantInt::get(Type::getInt64Ty(CE->getContext()), idx);
                 Constant *C = ConstantExpr::getPointerCast(CE->getOperand(0), IP8Ty);
                 ConstantExpr *NewCE =
-                    cast<ConstantExpr>(ConstantExpr::getGetElementPtr(nullptr, C,
+                    cast<ConstantExpr>(ConstantExpr::getGetElementPtr(C->getType(), C,
                                                                       Idxs));
                 NewCE = cast<ConstantExpr>(ConstantExpr::getPointerCast(NewCE,
                                                                         CE->getType()));
@@ -180,7 +175,7 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
                     CE->replaceAllUsesWith(NewCE);
                 }
                 CE                 = NewCE;
-                GlobalVariable *GV = new GlobalVariable(M, CE->getType(), true,
+                GlobalVariable *GV = new GlobalVariable(*pMod, CE->getType(), true,
                                                         GlobalValue::InternalLinkage,
                                                         CE,
                                                         I->getName() + "_" + Twine(v));
@@ -190,6 +185,7 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
 
         // Collect types of all globals.
         const Type *Ty = I->getType();
+        Ty             = I->getValueType();
         if (!typeIDs.count(Ty)) {
             extraTypes.push_back(Ty);
             typeIDs[Ty] = tid++;
@@ -199,30 +195,39 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
 
     // Sort functions.
     std::vector<Function *> functions;
-    for (Module::iterator I = M.begin(), E = M.end(); I != E;) {
+    for (Module::iterator I = pMod->begin(), E = pMod->end(); I != E;) {
         Function *F = &*I;
         ++I;
         functions.push_back(F);
-        F->removeFromParent();
     }
+
+    /*
+     * Remove all functions and re-insert them sorted by number of arguments.
+     * This is a requirement of the writer, but I have not verified that it is
+     * still necessary.
+     */
+    for (size_t i = 0; i < functions.size(); i++) {
+        functions[i]->removeFromParent();
+    }
+
     std::sort(functions.begin(), functions.end(), compare_lt_functions);
     for (std::vector<Function *>::iterator I = functions.begin(),
                                            E = functions.end();
          I != E; ++I) {
-        M.getFunctionList().push_back(*I);
+        pMod->getFunctionList().push_back(*I);
     }
 
-    Function *ep = M.getFunction("entrypoint");
+    Function *ep = pMod->getFunction("entrypoint");
     if (!ep) {
-        ClamBCStop("Bytecode must define an entrypoint (with 0 parameters)!\n", &M);
+        ClamBCStop("Bytecode must define an entrypoint (with 0 parameters)!\n", pMod);
     }
     if (ep->getFunctionType()->getNumParams() != 0) {
-        ClamBCStop("Bytecode must define an entrypoint with 0 parameters!\n", &M);
+        ClamBCStop("Bytecode must define an entrypoint with 0 parameters!\n", pMod);
     }
 
     unsigned dbgid     = 0;
-    unsigned MDDbgKind = M.getContext().getMDKindID("dbg");
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+    unsigned MDDbgKind = pMod->getContext().getMDKindID("dbg");
+    for (Module::iterator I = pMod->begin(), E = pMod->end(); I != E; ++I) {
         Function &F = *I;
         if (F.isDeclaration()) {
             // Don't add prototypes of debug intrinsics
@@ -261,19 +266,12 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
             extraTypes.push_back(Ty);
             typeIDs[Ty] = tid++;
         }
+
         for (inst_iterator II = inst_begin(F), IE = inst_end(F); II != IE; ++II) {
             const Type *Ty;
             // Skip debug intrinsics, so we don't add llvm.dbg.* types
             if (isa<DbgInfoIntrinsic>(&*II)) {
                 continue;
-            }
-            if (WriteDI) {
-                if (MDNode *Dbg = II->getMetadata(MDDbgKind)) {
-                    if (!dbgMap.count(Dbg)) {
-                        dbgMap[Dbg] = dbgid++;
-                    }
-                    anyDbgIds = true;
-                }
             }
 
             // Collect types of all instructions.
@@ -282,6 +280,7 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
             } else {
                 Ty = II->getType();
             }
+
             if (const GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(&*II)) {
                 const Type *GTy = GEPI->getPointerOperand()->getType();
                 if (!typeIDs.count(GTy)) {
@@ -290,6 +289,24 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
                     typeIDs[GTy] = tid++;
                 }
             }
+
+            /*
+             * Collect types of all operands to each instruction.  Basic Blocks
+             * don't have types, so they can be skipped.
+             */
+            for (size_t i = 0; i < II->getNumOperands(); i++) {
+                Value *operand = II->getOperand(i);
+                if (llvm::isa<BasicBlock>(operand)) {
+                    continue;
+                }
+                Type *pt = operand->getType();
+                if (0 == typeIDs.count(pt)) {
+                    types.push_back(pt);
+                    extraTypes.push_back(pt);
+                    typeIDs[pt] = tid++;
+                }
+            }
+
             if (typeIDs.count(Ty)) {
                 continue;
             }
@@ -316,7 +333,7 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
                         continue;
                     }
                     DEBUGERR << *STy << "<END>\n";
-                    ClamBCStop("Bytecode cannot use abstract types (only pointers to them)!", &M);
+                    ClamBCStop("Bytecode cannot use abstract types (only pointers to them)!", pMod);
                 }
             }
             if (!typeIDs.count(STy)) {
@@ -328,21 +345,18 @@ bool ClamBCAnalyzer::runOnModule(Module &M)
     }
 
     if (tid >= 65536) {
-        ClamBCStop("Attempted to use more than 64k types", &M);
+        ClamBCStop("Attempted to use more than 64k types", pMod);
     }
 
     printGlobals(startTID);
-
-    return false;
 }
 
-void ClamBCAnalyzer::printGlobals(uint16_t stid)
+void ClamBCAnalysis::printGlobals(uint16_t stid)
 {
     llvm::Module &M = *pMod;
     // Describe types
     maxApi = 0;
-    // std::vector<const Function *> apis;
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+    for (Module::iterator I = pMod->begin(), E = pMod->end(); I != E; ++I) {
         llvm::Function *pFunc = llvm::cast<llvm::Function>(I);
         // Skip dead declarations
         if (I->use_empty()) {
@@ -392,20 +406,19 @@ void ClamBCAnalyzer::printGlobals(uint16_t stid)
     for (StringMap<unsigned>::iterator I = globalsMap.begin(),
                                        E = globalsMap.end();
          I != E; ++I) {
-        if (GlobalVariable *GV = M.getGlobalVariable(I->getKey())) {
+        if (GlobalVariable *GV = pMod->getGlobalVariable(I->getKey())) {
             specialGlobals.insert(GV);
             globals[GV] = I->getValue();
             if (I->getValue() > maxGlobal)
                 maxGlobal = I->getValue();
         }
     }
-    if (GlobalVariable *GV = M.getGlobalVariable("__clambc_kind")) {
+    if (GlobalVariable *GV = pMod->getGlobalVariable("__clambc_kind")) {
         specialGlobals.insert(GV);
     }
 
-    // std::vector<Constant *> globalInits;
     globalInits.push_back(0); // ConstantPointerNul placeholder
-    for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I) {
+    for (Module::global_iterator I = pMod->global_begin(), E = pMod->global_end(); I != E; ++I) {
         GlobalVariable *pgv = llvm::cast<GlobalVariable>(I);
         if (specialGlobals.count(pgv)) {
             continue;
@@ -433,8 +446,9 @@ void ClamBCAnalyzer::printGlobals(uint16_t stid)
                        &M);
         }
         Constant *C = pgv->getInitializer();
-        if (C->use_empty())
+        if (C->use_empty()) {
             continue;
+        }
         globalInits.push_back(C);
         globals[pgv] = i++;
         if (i >= 32768) {
@@ -473,7 +487,7 @@ void ClamBCAnalyzer::printGlobals(uint16_t stid)
 }
 
 // need to use bytecode_api_decl.c.h
-void ClamBCAnalyzer::populateAPIMap()
+void ClamBCAnalysis::populateAPIMap()
 {
     unsigned id                          = 1;
     apiMap["test1"]                      = id++;
@@ -585,14 +599,16 @@ void ClamBCAnalyzer::populateAPIMap()
     apiMap["bzip2_done"]                 = id++;
 }
 
-void ClamBCAnalyzer::getAnalysisUsage(AnalysisUsage &AU) const
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
 {
-    // Preserve the CFG, we only eliminate PHIs, and introduce some
-    // loads/stores.
-    AU.setPreservesAll();
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCAnalysis", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerAnalysisRegistrationCallback(
+                [](ModuleAnalysisManager &mam) {
+                    mam.registerPass([]() { return ClamBCAnalyzer(); });
+                });
+        }};
 }
-char ClamBCAnalyzer::ID = 0;
-static RegisterPass<ClamBCAnalyzer> X("clambc-analyzer",
-                                      "ClamAV bytecode register allocator");
-
-const PassInfo *const ClamBCAnalyzerID = &X;

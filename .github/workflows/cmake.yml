@@ -84,7 +84,6 @@ jobs:
   #       working-directory: ${{runner.workspace}}/build
   #       run: cpack -C ${{ env.BUILD_TYPE }}
 
-  # TODO: Some day add support for building on macOS with any modern LLVM version, not just LLVM-8.
   #
   # build-macos:
   #   runs-on: macos-latest
@@ -140,7 +139,7 @@ jobs:
         run: sudo apt-get update
 
       - name: Install Dependencies
-        run: sudo apt-get install -y llvm-8-dev clang-8 clamav # TODO: use just 'llvm-dev' when we can support any recent LLVM version.
+        run: sudo apt-get install -y llvm-16-dev clang-16 clamav # TODO: use just 'llvm-dev' when we can support any recent LLVM version.
 
       - name: Install pytest for easier to read test results
         run: python3 -m pip install pytest

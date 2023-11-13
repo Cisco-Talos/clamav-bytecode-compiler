@@ -1,20 +1,23 @@
+#include "clambc.h"
 
 #include <llvm/Pass.h>
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/raw_ostream.h>
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-#include "Common/clambc.h"
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
+
 
 using namespace llvm;
 
-namespace
+namespace ChangeMallocArgSize
 {
-class ChangeMallocArgSize : public ModulePass
+class ChangeMallocArgSize : public PassInfoMixin<ChangeMallocArgSize>
 {
   protected:
     std::vector<PHINode*> changeValues;
@@ -38,7 +41,8 @@ class ChangeMallocArgSize : public ModulePass
         for (auto i = pBB->begin(), e = pBB->end(); i != e; i++) {
             CallInst* pCall = llvm::dyn_cast<CallInst>(i);
             if (pCall) {
-                if ("malloc" == pCall->getCalledValue()->getName()) {
+                Function* pFunc = pCall->getCalledFunction();
+                if (pFunc && ("malloc" == pFunc->getName())) {
                     Value* pv = pCall->getOperand(0);
                     if (PHINode* pn = llvm::dyn_cast<PHINode>(pv)) {
                         addChangeValue(pn);
@@ -136,27 +140,41 @@ class ChangeMallocArgSize : public ModulePass
     }
 
   public:
-    static char ID;
     ChangeMallocArgSize()
-        : ModulePass(ID)
     {
     }
 
-    virtual bool runOnModule(Module& m) override
+    virtual PreservedAnalyses run(Module& m, ModuleAnalysisManager& MAM)
     {
-        pMod    = &m;
+        pMod = &m;
+        DEBUGERR << "TODO: Evaluate whether or not we still need this."
+                 << "<END>\n";
         dstType = Type::getInt64Ty(pMod->getContext());
 
         findSizes();
 
         fixBitWidths();
 
-        return true;
+        return PreservedAnalyses::none();
     }
 }; // end of struct ChangeMallocArgSize
-} // end of anonymous namespace
+} // namespace ChangeMallocArgSize
 
-char ChangeMallocArgSize::ID = 0;
-static RegisterPass<ChangeMallocArgSize> X("clambc-change-malloc-arg-size", "ChangeMallocArgSize Pass",
-                                           false /* Only looks at CFG */,
-                                           false /* Analysis Pass */);
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
+{
+    return {
+        LLVM_PLUGIN_API_VERSION, "ChangeMallocArgSize", "v0.1",
+        [](PassBuilder& PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager& FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-change-malloc-arg-size") {
+                        FPM.addPass(ChangeMallocArgSize::ChangeMallocArgSize());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
+}

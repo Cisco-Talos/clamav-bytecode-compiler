@@ -20,38 +20,36 @@
  *  MA 02110-1301, USA.
  */
 
-#include "ClamBCModule.h"
-#include <llvm/Support/DataTypes.h>
-#include "../Common/bytecode_api.h"
 #include "clambc.h"
+#include "bytecode_api.h"
 #include "ClamBCDiagnostics.h"
-#include "ClamBCModule.h"
 #include "ClamBCCommon.h"
 #include "ClamBCUtilities.h"
-#include "llvm/ADT/FoldingSet.h"
-#include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/ADT/StringSet.h"
-#include "llvm/Analysis/ConstantFolding.h"
+
+#include <llvm/Support/DataTypes.h>
+#include <llvm/ADT/FoldingSet.h>
+#include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/ADT/StringSet.h>
+#include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/DebugInfo.h>
-#include "llvm/Analysis/ValueTracking.h"
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
-//#include <llvm/IR/PassManager.h>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/IR/CallSite.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 #include <llvm/IR/ConstantRange.h>
-#include "llvm/Support/Debug.h"
+#include <llvm/Support/Debug.h>
 #include <llvm/IR/InstIterator.h>
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Process.h>
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils/Local.h"
-#include "llvm/Transforms/IPO.h"
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils/Local.h>
+#include <llvm/Transforms/IPO.h>
 #include <llvm/IR/Type.h>
-//#include <llvm/IR/DataLayout.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/LinkAllPasses.h>
 
@@ -59,17 +57,15 @@
 
 using namespace llvm;
 
-namespace
+namespace ClamBCLogicalCompiler
 {
 
-class ClamBCLogicalCompiler : public ModulePass
+class ClamBCLogicalCompiler : public PassInfoMixin<ClamBCLogicalCompiler>
 {
   public:
-    static char ID;
-    ClamBCLogicalCompiler()
-        : ModulePass(ID) {}
+    ClamBCLogicalCompiler() {}
 
-    virtual bool runOnModule(Module &M);
+    virtual PreservedAnalyses run(Module &m, ModuleAnalysisManager &MAM);
     virtual void getAnalysisUsage(AnalysisUsage &AU) const
     {
         AU.setPreservesCFG();
@@ -90,9 +86,6 @@ class ClamBCLogicalCompiler : public ModulePass
     bool compileVirusNames(Module &M, unsigned kind);
 };
 
-char ClamBCLogicalCompiler::ID = 0;
-RegisterPass<ClamBCLogicalCompiler> X("clambc-lcompiler",
-                                      "ClamAV Logical Compiler");
 enum LogicalKind {
     LOG_SUBSIGNATURE,
     LOG_AND,
@@ -601,14 +594,23 @@ class LogicalCompiler
     {
         Value *V         = LI.getOperand(0);
         ConstantExpr *CE = dyn_cast<ConstantExpr>(V);
-        if (!CE || CE->getOpcode() != Instruction::GetElementPtr ||
-            CE->getOperand(0) != GV || CE->getNumOperands() != 3 ||
-            !cast<ConstantInt>(CE->getOperand(1))->isZero()) {
-            printDiagnostic("Logical signature: unsupported read", &LI);
-            return false;
+        ConstantInt *CI  = nullptr;
+        if (CE) {
+            if (CE->getOpcode() != Instruction::GetElementPtr ||
+                CE->getOperand(0) != GV || CE->getNumOperands() != 3 ||
+                !cast<ConstantInt>(CE->getOperand(1))->isZero()) {
+                printDiagnostic("Logical signature: unsupported read", &LI);
+                return false;
+            }
+            CI = cast<ConstantInt>(CE->getOperand(2));
+        } else {
+            /* In this case, we are directly loading the global, 
+             * instead of using a getelementptr.
+             * It is likely that this would have been changed by O3.
+             */
+            CI = ConstantInt::get(LI.getParent()->getParent()->getParent()->getContext(), APInt(64, 0));
         }
-        ConstantInt *CI = cast<ConstantInt>(CE->getOperand(2));
-        Map[&LI]        = LogicalNode::getSubSig(allNodes, CI->getValue().getZExtValue());
+        Map[&LI] = LogicalNode::getSubSig(allNodes, CI->getValue().getZExtValue());
         return true;
     }
 
@@ -931,6 +933,7 @@ class LogicalCompiler
             }
 
             Instruction *pInst = llvm::cast<Instruction>(I);
+
             switch (I->getOpcode()) {
                 case Instruction::Load:
                     valid &= processLoad(*cast<LoadInst>(I));
@@ -965,18 +968,107 @@ class LogicalCompiler
                     LogicalMap::iterator CondNode  = Map.find(SI->getCondition());
                     LogicalMap::iterator TrueNode  = Map.find(SI->getTrueValue());
                     LogicalMap::iterator FalseNode = Map.find(SI->getFalseValue());
-                    if (CondNode == Map.end() || TrueNode == Map.end() || FalseNode == Map.end()) {
-                        printDiagnostic("Logical signature: select operands must be logical"
-                                        " expressions",
+
+                    /*O3 creates blocks that look like the following, which are legitimate blocks.
+                     * This is essentially an AND of all the %cmp.i<number> instructions.
+                     * Since the cmp instructions all have false at the end, comparisons will be skipped
+                     * after one is found to be false, without having a bunch of branch instructions.
+                     *
+                     * We are going to handle these cases by only adding an 'and' or an 'or' if there is
+                     * an actual logical operation, not for constants.
+                     *   
+
+                    entry:
+                      %0 = load i32, ptr @__clambc_match_counts, align 16
+                      %cmp.i116.not = icmp eq i32 %0, 0
+                      %1 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 1), align 4
+                      %cmp.i112.not = icmp eq i32 %1, 0
+                      %or.cond = select i1 %cmp.i116.not, i1 %cmp.i112.not, i1 false
+                      %2 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 2), align 8
+                      %cmp.i108.not = icmp eq i32 %2, 0
+                      %or.cond1 = select i1 %or.cond, i1 %cmp.i108.not, i1 false
+                      %3 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 3), align 4
+                      %cmp.i104.not = icmp eq i32 %3, 0
+
+
+                      ....
+
+                      br i1 %or.cond15, label %lor.rhs, label %lor.end
+
+                    lor.rhs:                                          ; preds = %entry
+                      %17 = load i32, ptr getelementptr inbounds ([64 x i32], ptr @__clambc_match_counts, i64 0, i64 17), align 4
+                      %cmp.i = icmp ne i32 %17, 0
+                      br label %lor.end
+
+                    lor.end:                                          ; preds = %lor.rhs, %entry
+                      %18 = phi i1 [ true, %entry ], [ %cmp.i, %lor.rhs ]
+                      ret i1 %18
+
+                     */
+                    if (CondNode == Map.end() || (TrueNode == Map.end() && FalseNode == Map.end())) {
+                        printDiagnostic("Logical signature: select condition must be logical"
+                                        " expression",
                                         SI);
                         return false;
                     }
+
                     // select cond, trueval, falseval -> cond && trueval || !cond && falseval
-                    LogicalNode *N       = LogicalNode::getAnd(CondNode->second,
-                                                         TrueNode->second);
-                    LogicalNode *NotCond = LogicalNode::getNot(CondNode->second);
-                    LogicalNode *N2      = LogicalNode::getAnd(NotCond, FalseNode->second);
-                    Map[SI]              = LogicalNode::getOr(N, N2);
+                    LogicalNode *N       = nullptr;
+                    LogicalNode *NotCond = nullptr;
+                    LogicalNode *N2      = nullptr;
+
+                    if (TrueNode != Map.end()) {
+                        N = LogicalNode::getAnd(CondNode->second,
+                                                TrueNode->second);
+                    } else if (ConstantInt *pci = llvm::cast<ConstantInt>(SI->getTrueValue())) {
+                        if (pci->isOne()) {
+                            N = LogicalNode::getNode(*(CondNode->second));
+                        } else if (not pci->isZero()) {
+                            printDiagnostic("Logical signature: Select true value must either be"
+                                            " a logical expression or a constant true/false integer.",
+                                            SI);
+                            return false;
+                        }
+                    } else {
+                        printDiagnostic("Logical signature: Select true value must either be"
+                                        " a logical expression or a constant true/false integer.",
+                                        SI);
+                        return false;
+                    }
+
+                    NotCond = LogicalNode::getNot(CondNode->second);
+                    if (FalseNode != Map.end()) {
+                        N2 = LogicalNode::getAnd(NotCond, FalseNode->second);
+                    } else if (ConstantInt *pci = llvm::cast<ConstantInt>(SI->getFalseValue())) {
+                        if (pci->isOne()) {
+                            N2 = NotCond;
+                        } else if (not pci->isZero()) {
+                            printDiagnostic("Logical signature: Select false value must either be"
+                                            " a logical expression or a constant true/false integer.",
+                                            SI);
+                            return false;
+                        }
+                    } else {
+                        printDiagnostic("Logical signature: Select false value must either be"
+                                        " a logical expression or a constant true/false integer.",
+                                        SI);
+                        return false;
+                    }
+
+                    LogicalNode *res = nullptr;
+                    if (N && N2) {
+                        res = LogicalNode::getOr(N, N2);
+                    } else if (N) {
+                        res = N;
+                    } else if (N2) {
+                        res = N2;
+                    } else {
+                        /*SHOULD be impossible, but will add a check just in case.*/
+                        printDiagnostic("Logical signature: Malformed select statement.",
+                                        SI);
+                        return false;
+                    }
+                    Map[SI] = res;
                     break;
                 }
                 case Instruction::Ret: {
@@ -1631,27 +1723,42 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
     bool Valid = true;
 
     for (auto I : F->users()) {
-        Value *pv = nullptr;
-        pv        = llvm::cast<Value>(I);
-        CallSite CS(pv);
-        if (!CS.getInstruction()) {
+        CallInst *pCallInst = llvm::cast<CallInst>(I);
+        if (nullptr == pCallInst) {
+            assert(0 && "NOT sure how this is possible");
             continue;
         }
-        if (CS.getCalledFunction() != F) {
+
+        if (F != pCallInst->getCalledFunction()) {
+
+            llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">NOT SURE HOW THIS IS POSSIBLE<END>\n";
+
+            /*Not sure how this is possible, either*/
             printDiagnostic("setvirusname can only be directly called",
-                            CS.getInstruction());
+                            pCallInst);
             Valid = false;
             continue;
         }
-        assert(CS.arg_size() == 2 && "setvirusname has 2 args");
+
+        if (2 != pCallInst->arg_size()) {
+            printDiagnostic("setvirusname has 2 args", pCallInst);
+            Valid = false;
+            continue;
+        }
+
         std::string param;
         llvm::StringRef sr;
-        Value *V    = CS.getArgument(0);
+        Value *V = llvm::cast<Value>(pCallInst->arg_begin());
+        if (nullptr == V) {
+            printDiagnostic("Invalid argument passed to setvirusname", pCallInst);
+            Valid = false;
+            continue;
+        }
         bool result = getConstantStringInfo(V, sr);
         param       = sr.str();
         if (!result) {
             printDiagnostic("Argument of foundVirus() must be a constant string",
-                            CS.getInstruction());
+                            pCallInst);
             Valid = false;
             continue;
         }
@@ -1662,30 +1769,28 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
         if (!p.empty() && !virusNamesSet.count(p)) {
             printDiagnostic(Twine("foundVirus called with an undeclared virusname: ",
                                   p),
-                            CS.getInstruction());
+                            pCallInst);
             Valid = false;
             continue;
         }
         // Add prefix
         std::string fullname = p.empty() ? virusNamePrefix : virusNamePrefix + "." + p.str();
-        IRBuilder<> builder(CS.getInstruction()->getParent());
+        IRBuilder<> builder(pCallInst->getParent());
         Value *C = builder.CreateGlobalStringPtr(fullname.c_str());
 
         IntegerType *I32Ty = Type::getInt32Ty(M.getContext());
-        CS.setArgument(0, C);
-        CS.setArgument(1, ConstantInt::get(I32Ty, fullname.size()));
+        pCallInst->setArgOperand(0, C);
+        pCallInst->setArgOperand(1, ConstantInt::get(I32Ty, fullname.size()));
     }
     return Valid;
 }
 
-bool ClamBCLogicalCompiler::runOnModule(Module &M)
+PreservedAnalyses ClamBCLogicalCompiler::run(Module &M, ModuleAnalysisManager &MAM)
 {
     bool Valid       = true;
     LogicalSignature = "";
     virusnames       = "";
     pMod             = &M;
-
-    //dumpPHIGraphs();
 
     // Handle virusname
     unsigned kind          = 0;
@@ -1705,14 +1810,17 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
         GVKind->setConstant(true);
     }
     if (!compileVirusNames(M, kind)) {
-        if (!kind || kind == BC_STARTUP)
-            return true;
+        if (!kind || kind == BC_STARTUP) {
+            //    return true;
+            return PreservedAnalyses::all();
+        }
         Valid = false;
     }
 
     if (F) {
-        LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
-        if (functionHasLoop(F, li)) {
+        FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+        LoopInfo *li                 = &fam.getResult<LoopAnalysis>(*F);
+        if (functionHasLoop(F, *li)) {
             printDiagnostic("Logical signature: loop/recursion not supported", F);
             Valid = false;
         }
@@ -1842,13 +1950,26 @@ bool ClamBCLogicalCompiler::runOnModule(Module &M)
         // diagnostic already printed
         exit(42);
     }
-    return true;
+    return PreservedAnalyses::none();
 }
 
-} // namespace
-const PassInfo *const ClamBCLogicalCompilerID = &X;
-
-llvm::ModulePass *createClamBCLogicalCompiler()
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
 {
-    return new ClamBCLogicalCompiler();
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCLogicalCompiler", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-lcompiler") {
+                        FPM.addPass(ClamBCLogicalCompiler());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
 }
+
+} // namespace ClamBCLogicalCompiler

@@ -21,19 +21,22 @@
  */
 #ifndef CLAMBC_MODULE_H
 #define CLAMBC_MODULE_H
-#include <cstddef>
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/Twine.h"
-#include <llvm/Pass.h>
-#include <llvm/IR/IRBuilder.h>
-#include "llvm/Support/raw_ostream.h"
-#include <vector>
-#include <map>
 
 #include "clambc.h"
+
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/ADT/Twine.h>
+#include <llvm/Pass.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/Support/raw_ostream.h>
+
+#include <vector>
+#include <map>
+#include <cstddef>
+
 
 class ClamBCWriter;
 class ClamBCRegAlloc;
@@ -153,12 +156,6 @@ class ClamBCModule : public llvm::ModulePass
 
     virtual bool runOnModule(llvm::Module &M);
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
-
-#if 0
-    static void stop(const llvm::Twine &Msg, const llvm::Module *M);
-    static void stop(const llvm::Twine &Msg, const llvm::Function *F);
-    static void stop(const llvm::Twine &Msg, const llvm::Instruction *I);
-#endif
 
     void printNumber(uint64_t n, bool constant = false)
     {

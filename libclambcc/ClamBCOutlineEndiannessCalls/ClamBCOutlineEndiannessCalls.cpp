@@ -1,20 +1,22 @@
 
+#include "clambc.h"
+
 #include <llvm/Pass.h>
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/raw_ostream.h>
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-#include "Common/clambc.h"
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 
 using namespace llvm;
 
 namespace
 {
-class OutlineEndniassCalls : public ModulePass
+class ClamBCOutlineEndiannessCalls : public PassInfoMixin<ClamBCOutlineEndiannessCalls>
 {
   protected:
     bool bChanged = false;
@@ -25,7 +27,7 @@ class OutlineEndniassCalls : public ModulePass
         for (auto i = pBB->begin(), e = pBB->end(); i != e; i++) {
             CallInst* pCall = llvm::dyn_cast<CallInst>(i);
             if (pCall) {
-                if ("__is_bigendian" == pCall->getCalledValue()->getName()) {
+                if ("__is_bigendian" == pCall->getCalledFunction()->getName()) {
                     calls.push_back(pCall);
                 }
             }
@@ -79,33 +81,49 @@ class OutlineEndniassCalls : public ModulePass
 
   public:
     static char ID;
-    OutlineEndniassCalls()
-        : ModulePass(ID) {}
+    ClamBCOutlineEndiannessCalls() {}
 
-    virtual bool runOnModule(Module& m) override
+    virtual PreservedAnalyses run(Module& m, ModuleAnalysisManager& MAM)
     {
         pMod = &m;
 
         std::vector<CallInst*> calls = findCalls();
 
         if (0 == calls.size()) {
-            return false;
+            return PreservedAnalyses::all();
         }
 
         Function* pNew = getNewEndiannessFunction(calls[0]);
 
         for (size_t i = 0; i < calls.size(); i++) {
-            CallInst* pNewCall = CallInst::Create(pNew, "OutlineEndniassCalls_", calls[i]);
+            CallInst* pNewCall = CallInst::Create(pNew, "ClamBCOutlineEndiannessCalls_", calls[i]);
             calls[i]->replaceAllUsesWith(pNewCall);
             calls[i]->eraseFromParent();
         }
 
-        return bChanged;
+        if (bChanged) {
+            return PreservedAnalyses::none();
+        }
+        return PreservedAnalyses::all();
     }
-}; // end of struct OutlineEndniassCalls
+}; // end of struct ClamBCOutlineEndiannessCalls
 } // end of anonymous namespace
 
-char OutlineEndniassCalls::ID = 0;
-static RegisterPass<OutlineEndniassCalls> X("clambc-outline-endianness-calls", "OutlineEndniassCalls TEST Pass",
-                                            false /* Only looks at CFG */,
-                                            false /* Analysis Pass */);
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
+{
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCOutlineEndiannessCalls", "v0.1",
+        [](PassBuilder& PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager& FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-outline-endianness-calls") {
+                        FPM.addPass(ClamBCOutlineEndiannessCalls());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
+}

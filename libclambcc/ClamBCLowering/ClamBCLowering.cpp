@@ -19,101 +19,18 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
-#define DEBUG_TYPE "bclowering"
-#include <llvm/Support/DataTypes.h>
-#include "clambc.h"
-#include "ClamBCModule.h"
+#include "ClamBCLowering.h"
 
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/Analysis/ConstantFolding.h"
-#include <llvm/IR/DebugInfo.h>
-#include <llvm/IR/Dominators.h>
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/Passes.h"
-#include "llvm/Analysis/ValueTracking.h"
-#include <llvm/IR/Attributes.h>
-#include <llvm/IR/CallingConv.h>
-#include "llvm/CodeGen/IntrinsicLowering.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/DerivedTypes.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/Intrinsics.h>
-#include <llvm/IR/Module.h>
-#include <llvm/Pass.h>
-#include <llvm/IR/CallSite.h>
-#include "llvm/Support/CommandLine.h"
-#include <llvm/IR/GetElementPtrTypeIterator.h>
+#include "clambc.h"
+
+#include <llvm/Passes/PassPlugin.h>
 #include <llvm/IR/InstIterator.h>
-#include <llvm/IR/InstVisitor.h>
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/raw_ostream.h"
-#include <llvm/IR/PatternMatch.h>
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/CodeGen/IntrinsicLowering.h"
 
 using namespace llvm;
 
-namespace
+namespace ClamBCLowering
 {
-class ClamBCLowering : public ModulePass
-{
-  public:
-    static char ID;
-    ClamBCLowering()
-        : ModulePass(ID) {}
 
-    virtual ~ClamBCLowering() {}
-
-    virtual llvm::StringRef getPassName() const
-    {
-        return "ClamAV Bytecode Lowering";
-    }
-    virtual bool runOnModule(Module &M);
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const
-    {
-    }
-
-  protected:
-    virtual bool isFinal() = 0;
-
-  private:
-    void lowerIntrinsics(IntrinsicLowering *IL, Function &F);
-    void simplifyOperands(Function &F);
-    void downsizeIntrinsics(Function &F);
-    void splitGEPZArray(Function &F);
-    void fixupBitCasts(Function &F);
-    void fixupGEPs(Function &F);
-    void fixupPtrToInts(Function &F);
-};
-
-class ClamBCLoweringNF : public ClamBCLowering
-{
-  public:
-    ClamBCLoweringNF() {}
-    virtual ~ClamBCLoweringNF() {}
-
-  protected:
-    virtual bool isFinal()
-    {
-        return false;
-    }
-};
-
-class ClamBCLoweringF : public ClamBCLowering
-{
-  public:
-    ClamBCLoweringF() {}
-    virtual ~ClamBCLoweringF() {}
-
-  protected:
-    virtual bool isFinal()
-    {
-        return true;
-    }
-};
-
-char ClamBCLowering::ID = 0;
 void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
 {
     std::vector<Function *> prototypesToGen;
@@ -156,7 +73,7 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
                 Builder.SetInsertPoint(BO);
                 Value *V = Builder.CreatePointerCast(PII->getOperand(0),
                                                      PointerType::getUnqual(Type::getInt8Ty(F.getContext())));
-                V        = Builder.CreateGEP(V, Idx);
+                V        = Builder.CreateGEP(V->getType(), V, Idx);
                 V        = Builder.CreatePtrToInt(V, BO->getType());
                 BO->replaceAllUsesWith(V);
             } else if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(II)) {
@@ -284,7 +201,7 @@ void ClamBCLowering::simplifyOperands(Function &F)
                 if (ConstantExpr *CE = dyn_cast<ConstantExpr>(II->getOperand(i))) {
                     if (CE->getOpcode() == Instruction::GetElementPtr) {
                         // rip out GEP expr and load it
-                        Ops.push_back(new LoadInst(CE, "gepex_load", SI));
+                        Ops.push_back(new LoadInst(CE->getType(), CE, "gepex_load", SI));
                         Changed = true;
                     }
                 } else {
@@ -368,47 +285,47 @@ static inline void addIntrinsicFunctions(llvm::Module *pMod,
         Intrinsic::getDeclaration(pMod, Intrinsic::memmove, {i8Ptr, i8Ptr, i32, i1})));
 }
 
-static llvm::Value *getReplacementSizeOperand(llvm::CallSite &CS, llvm::Value *Len)
+static llvm::Value *getReplacementSizeOperand(llvm::CallInst *pCallInst, llvm::Value *Len)
 {
-    llvm::LLVMContext &Context = CS.getParent()->getParent()->getParent()->getContext();
-    Value *NewLen              = NULL;
+    LLVMContext &context = pCallInst->getParent()->getParent()->getParent()->getContext();
+    Value *NewLen        = NULL;
     if (ConstantInt *C = dyn_cast<ConstantInt>(Len)) {
-        NewLen = ConstantInt::get(Type::getInt32Ty(Context),
+        NewLen = ConstantInt::get(Type::getInt32Ty(context),
                                   C->getValue().getLimitedValue((1ULL << 32) - 1));
     } else {
-        NewLen = new TruncInst(Len, Type::getInt32Ty(Context), "lvl_dwn", CS.getInstruction());
+        NewLen = new TruncInst(Len, Type::getInt32Ty(context), "lvl_dwn", pCallInst);
     }
     return NewLen;
 }
 
-static void populateArgumentList(llvm::CallSite &CS, llvm::Value *newLen, size_t idx, std::vector<llvm::Value *> &Ops)
+static void populateArgumentList(llvm::CallInst *pCallInst, llvm::Value *newLen, size_t idx, std::vector<llvm::Value *> &Ops)
 {
 
-    for (unsigned i = 0; i < CS.arg_size(); ++i) {
+    for (unsigned i = 0; i < pCallInst->arg_size(); ++i) {
         if (i == idx) {
             Ops.push_back(newLen);
         } else {
-            Ops.push_back(CS.getArgument(i));
+            Ops.push_back(pCallInst->getArgOperand(i));
         }
     }
 }
 
-static bool replaceIntrinsicCalls(llvm::MemIntrinsic *MI, std::pair<llvm::Function *, llvm::Function *> rep, size_t idx)
+static bool replaceIntrinsicCalls(llvm::MemIntrinsic *pMemIntrinsic, std::pair<llvm::Function *, llvm::Function *> rep, size_t idx)
 {
 
-    llvm::Function *pCalled = MI->getCalledFunction();
+    llvm::Function *pCalled = pMemIntrinsic->getCalledFunction();
     {
         if (rep.first == pCalled) {
-            llvm::CallSite CS(MI);
-            Value *Len          = CS.getArgument(2);
-            llvm::Value *newLen = getReplacementSizeOperand(CS, Len);
+            //llvm::CallSite CS(MI);
+            Value *Len          = pMemIntrinsic->getArgOperand(2);
+            llvm::Value *newLen = getReplacementSizeOperand(pMemIntrinsic, Len);
 
             std::vector<llvm::Value *> args;
-            populateArgumentList(CS, newLen, idx, args);
+            populateArgumentList(pMemIntrinsic, newLen, idx, args);
 
             assert(args.size() == 4 && "malformed intrinsic call!");
 
-            llvm::Instruction *i = CallInst::Create(rep.second, args, MI->getName(), MI);
+            llvm::Instruction *i = CallInst::Create(rep.second, args, pMemIntrinsic->getName(), pMemIntrinsic);
             assert(i && "Failed to create new CallInst");
 
             return true;
@@ -421,7 +338,6 @@ static bool replaceIntrinsicCalls(llvm::MemIntrinsic *MI, std::pair<llvm::Functi
 void ClamBCLowering::downsizeIntrinsics(Function &F)
 {
 
-    //LLVMContext &Context = F.getContext();
     std::vector<Instruction *> InstDel;
 
     std::vector<std::pair<llvm::Function *, llvm::Function *>> repPairs;
@@ -458,7 +374,7 @@ static void gatherAllocasWithBitcasts(llvm::BasicBlock *bb, std::vector<llvm::Al
     }
 }
 
-/*aragusa 
+/*
  * The following function makes changes similar to the following.
  * BEFORE
  *   %st = alloca [264 x i8]                         ; <[264 x i8]*> [#uses=2]
@@ -496,19 +412,9 @@ void ClamBCLowering::fixupBitCasts(Function &F)
                 continue;
             }
 
-            /*aragusa
-             * I am getting an assertion failure trying to cast a value that is not an ArrayType 
-             * to an ArrayType.  I don't fully understand the reason for doing what we are doing here.
-             * I am just going to check if AI->getAllocatedType is an array type.  I may need to revisit this later.
-             */
             if (not llvm::isa<ArrayType>(AI->getAllocatedType())) {
                 continue;
             }
-            /*Intentionally leaving this debug message in, because I don't think this code is executed very often, and 
-             * I don't believe it is necessary.  Once I get the bugs ironed out of the header files, I am going to 
-             * see if this ever prints and does not have an assertion failure.  The iterators were previously not working
-             * correctly and in fixing them, I believe I turned on code that wasn't previously working.*/
-
             const ArrayType *arTy = cast<ArrayType>(AI->getAllocatedType());
             Type *APTy            = PointerType::getUnqual(arTy->getElementType());
 
@@ -517,7 +423,6 @@ void ClamBCLowering::fixupBitCasts(Function &F)
             AIC->setName("ClamBCLowering_fixupBitCasts");
             BasicBlock::iterator IP = AI->getParent()->begin();
             while (isa<AllocaInst>(IP)) ++IP;
-            //Value *Idx[] = {Zero, Zero};
             llvm::ArrayRef<llvm::Value *> Idxs = {Zero, Zero};
             V                                  = GetElementPtrInst::Create(nullptr, AIC, Idxs, "base_gepz", AI);
 
@@ -545,7 +450,6 @@ void ClamBCLowering::fixupGEPs(Function &F)
         std::vector<Value *> indexes;
         GetElementPtrInst::op_iterator J = GEPI->idx_begin(), JE = GEPI->idx_end();
         for (; J != JE; ++J) {
-            //llvm::Value * v = llvm::cast<llvm::Value>(J);
             // push all constants
             if (Constant *C = dyn_cast<Constant>(*J)) {
                 indexes.push_back(C);
@@ -556,10 +460,7 @@ void ClamBCLowering::fixupGEPs(Function &F)
                                                0));
             break;
         }
-        Constant *C = cast<Constant>(GEPI->getOperand(0));
-        //Constant *GC = ConstantExpr::getInBoundsGetElementPtr(C,
-        //                                                      &indexes[0],
-        //                                                      indexes.size());
+        Constant *C  = cast<Constant>(GEPI->getOperand(0));
         Constant *GC = ConstantExpr::getInBoundsGetElementPtr(nullptr, C,
                                                               indexes);
         if (J != JE) {
@@ -567,11 +468,10 @@ void ClamBCLowering::fixupGEPs(Function &F)
             for (; J != JE; ++J) {
                 indexes.push_back(*J);
             }
-            //AllocaInst *AI = new AllocaInst(GC->getType(), "", Entry->begin());
             AllocaInst *AI = new AllocaInst(GC->getType(), 0, "ClamBCLowering_fixupGEPs", llvm::cast<llvm::Instruction>(Entry->begin()));
             new StoreInst(GC, AI, GEPI);
-            Value *L = new LoadInst(AI, "ClamBCLowering_fixupGEPs", GEPI);
-            Value *V = GetElementPtrInst::CreateInBounds(L, indexes, "ClamBCLowering_fixupGEPs", GEPI);
+            Value *L = new LoadInst(AI->getType(), AI, "ClamBCLowering_fixupGEPs", GEPI);
+            Value *V = GetElementPtrInst::CreateInBounds(L->getType(), L, indexes, "ClamBCLowering_fixupGEPs", GEPI);
             GEPI->replaceAllUsesWith(V);
             GEPI->eraseFromParent();
         } else {
@@ -629,7 +529,7 @@ void ClamBCLowering::splitGEPZArray(Function &F)
                 continue;
             }
             const PointerType *Ty = cast<PointerType>(GEPI->getPointerOperand()->getType());
-            const ArrayType *ATy  = dyn_cast<ArrayType>(Ty->getElementType());
+            const ArrayType *ATy  = dyn_cast<ArrayType>(Ty->getArrayElementType());
             if (!ATy) {
                 continue;
             }
@@ -637,18 +537,21 @@ void ClamBCLowering::splitGEPZArray(Function &F)
             Constant *Zero = ConstantInt::get(Type::getInt32Ty(Ty->getContext()), 0);
             Value *VZ[]    = {Zero, Zero};
             // transform GEPZ: [4 x i16]* %p, 0, %i -> GEP1 i16* (bitcast)%p, %i
-            Value *C  = GetElementPtrInst::CreateInBounds(GEPI->getPointerOperand(), VZ, "ClamBCLowering_splitGEPZArray", GEPI);
-            Value *NG = GetElementPtrInst::CreateInBounds(C, V, "ClamBCLowering_splitGEPZArray", GEPI);
+            Value *C  = GetElementPtrInst::CreateInBounds(GEPI->getPointerOperand()->getType(), GEPI->getPointerOperand(), VZ, "ClamBCLowering_splitGEPZArray", GEPI);
+            Value *NG = GetElementPtrInst::CreateInBounds(C->getType(), C, V, "ClamBCLowering_splitGEPZArray", GEPI);
             GEPI->replaceAllUsesWith(NG);
             GEPI->eraseFromParent();
         }
     }
 }
 
-bool ClamBCLowering::runOnModule(Module &M)
+PreservedAnalyses ClamBCLowering::run(Module &m, ModuleAnalysisManager &MAM)
 {
 
-    for (Module::iterator I = M.begin(), E = M.end();
+    pMod     = &m;
+    pContext = &(pMod->getContext());
+
+    for (Module::iterator I = pMod->begin(), E = pMod->end();
          I != E; ++I) {
         if (I->isDeclaration())
             continue;
@@ -663,14 +566,7 @@ bool ClamBCLowering::runOnModule(Module &M)
         }
     }
 
-    return true;
+    return PreservedAnalyses::none();
 }
-} // namespace
 
-static RegisterPass<ClamBCLoweringNF> X("clambc-lowering-notfinal", "ClamBC Lowering Pass",
-                                        false /* Only looks at CFG */,
-                                        false /* Analysis Pass */);
-
-static RegisterPass<ClamBCLoweringF> XX("clambc-lowering-final", "ClamBC Lowering Pass",
-                                        false /* Only looks at CFG */,
-                                        false /* Analysis Pass */);
+} // namespace ClamBCLowering
