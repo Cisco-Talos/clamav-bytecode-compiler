@@ -20,7 +20,7 @@ string(TIMESTAMP TODAY "%Y%m%d")
 set(VERSION_SUFFIX "")
 
 project( ClamBCC
-         VERSION "0.105.0"
+         VERSION "1.3.0"
          DESCRIPTION "ClamAV Bytecode Compiler." )
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -106,7 +106,7 @@ if(ENABLE_TESTS)
     find_package(ClamAV REQUIRED)
 endif()
 
-find_package(LLVM 8 REQUIRED)
+find_package(LLVM 16 REQUIRED)
 
 # Do not disable assertions based on CMAKE_BUILD_TYPE.
 foreach(_build_type "Release" "MinSizeRel" "RelWithDebInfo")

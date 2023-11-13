@@ -44,7 +44,6 @@ elseif(NOT LLVM_CONFIG_EXECUTABLE)
   foreach(i RANGE 0 9)
     list(APPEND LLVM_FIND_VERSION_CONCAT llvm-config${LLVM_FIND_VERSION_CONCAT_PREFIX}${i})
   endforeach()
-  message("llvm-config list: ${LLVM_FIND_VERSION_CONCAT}")
 
   find_program(LLVM_CONFIG_EXECUTABLE NAMES llvm-config-${LLVM_FIND_VERSION} ${LLVM_FIND_VERSION_CONCAT} llvm-config DOC "llvm-config executable")
 
@@ -133,7 +132,7 @@ if(LLVM_FOUND)
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
 
-  if(NOT ${LLVM_VERSION} VERSION_LESS "3.8.0")
+  if(NOT ${LLVM_VERSION} VERSION_LESS "16")
     execute_process(
         COMMAND ${LLVM_CONFIG_EXECUTABLE} --shared-mode
         OUTPUT_VARIABLE _LLVM_SHARED_MODE
@@ -148,16 +147,6 @@ if(LLVM_FOUND)
     set(LLVM_SHARED_MODE OFF)
   endif()
 
-  # potentially add include dir from binary dir for non-installed LLVM
-  execute_process(
-    COMMAND ${LLVM_CONFIG_EXECUTABLE} --src-root
-    OUTPUT_VARIABLE _llvmSourceRoot
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  string(FIND "${LLVM_INCLUDE_DIRS}" "${_llvmSourceRoot}" _llvmIsInstalled)
-  if(NOT _llvmIsInstalled)
-    list(APPEND LLVM_INCLUDE_DIRS "${LLVM_INSTALL_PREFIX}/include")
-  endif()
 endif()
 
 if(LLVM_FIND_REQUIRED AND NOT LLVM_FOUND)

@@ -1,4 +1,4 @@
-name: clang-format
+name: clang-format-16
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -28,6 +28,6 @@ jobs:
       - name: Run clang-format style check for C/C++ programs.
         uses: jidicula/clang-format-action@v4.4.1
         with:
-          clang-format-version: "11"
+          clang-format-version: "16"
           check-path: ${{ matrix.path['check'] }}
           exclude-regex: ${{ matrix.path['exclude'] }}

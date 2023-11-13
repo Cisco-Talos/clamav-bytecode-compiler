@@ -11,13 +11,11 @@ from typing import Union
 
 
 #These are the list of supported versions
-#consider changing this to start at 8 and go up to 99.  That will cover us
-#from having to update this when new versions come out.
-CLANG_LLVM_KNOWN_VERSIONS = [8, 9, 10, 11, 12]
+CLANG_LLVM_KNOWN_VERSIONS = [16]
 
 #This is the min clang/llvm version this has been tested with.
-MIN_CLANG_LLVM_VERSION = 8
-PREFERRED_CLANG_LLVM_VERSION = 8
+MIN_CLANG_LLVM_VERSION = 16
+PREFERRED_CLANG_LLVM_VERSION = 16
 
 CLANG_NAME = "clang"
 LLVM_NAME = "opt"
@@ -31,28 +29,28 @@ OPTIMIZED_BYTECODE_FILE_EXTENSION = "optimized.ll"
 OPEN_SOURCE_GENERATED_EXTENSION = "generated.c"
 OPTIMIZED_TMP_BYTECODE_FILE_EXTENSION = "optimized.tmp.ll"
 
-
-COMMON_WARNING_OPTIONS = "-Wno-backslash-newline-escape \
-  -Wno-pointer-sign \
-  -Wno-return-type \
-  -Wno-incompatible-pointer-types \
-  -Wno-unused-value \
-  -Wno-shift-negative-value \
-  -Wno-implicit-function-declaration \
-  -Wno-incompatible-library-redeclaration \
-  -Wno-implicit-int \
-  -Wno-constant-conversion \
-"
+COMMON_WARNING_OPTIONS = [
+        "-Wno-backslash-newline-escape"
+      , "-Wno-pointer-sign"
+      , "-Wno-return-type"
+      , "-Wno-incompatible-pointer-types"
+      , "-Wno-unused-value"
+      , "-Wno-shift-negative-value"
+      , "-Wno-implicit-function-declaration"
+      , "-Wno-incompatible-library-redeclaration"
+      , "-Wno-implicit-int"
+      , "-Wno-constant-conversion"
+      ]
 
 TMPDIR=".__clambc_tmp"
 
-INCDIR = Path(__file__).parent / '..' / 'include'
+INCDIR = str(Path(__file__).parent / '..' / 'include')
 
 # Check for libclambcc.so at a location relative to this script first.
 FOUND_SHARED_OBJ = False
 
 SHARED_OBJ_DIR = Path(__file__).parent / '..' / 'lib'
-if (SHARED_OBJ_DIR / 'libclambcc.so').exists():
+if (SHARED_OBJ_DIR / 'libclambccommon.so').exists():
     SHARED_OBJ_FILE = SHARED_OBJ_DIR / 'libclambcc.so'
     FOUND_SHARED_OBJ = True
 
@@ -109,10 +107,18 @@ class ClangLLVM():
         return True
 
 
-def run(cmd: str) -> int:
+def run(cmd: list) -> int:
+    cmd = ' '.join(cmd)
     if VERBOSE:
         print(cmd)
-    return os.system(cmd)
+
+    ret = os.system(cmd)
+    if ret:
+        print (cmd)
+        print (ret)
+        sys.exit(1)
+
+    return ret
 
 
 def die(msg: str, exitStatus: int) -> None:
@@ -170,42 +176,40 @@ def compileFile(clangLLVM: ClangLLVM, fileName: str, debugBuild: bool, standardC
 
     outFile = getIrFile(fileName, debugBuild)
 
-    includePaths = ""
+    cmd = []
+    cmd.append(clangLLVM.getClang())
+    #cmd.append("-m32") #TODO: Put this back and resolve issues with it.
+    cmd.append("-S")
+    cmd.append("-fno-discard-value-names")
+    cmd.append("-Wno-implicit-function-declaration")
+    cmd.append("-fno-vectorize")
+    cmd.append("--language=c")
+    cmd.append("-emit-llvm")
+    cmd.append("-Werror=unused-command-line-argument")
+    cmd.append("-Xclang")
+    cmd.append("-disable-O0-optnone")
+    cmd.append("-Xclang -no-opaque-pointers")
+    cmd.append(fileName)
+    cmd.append("-o")
+    cmd.append(outFile)
+    cmd.append("-I")
+    cmd.append(INCDIR)
+    cmd.append("-include")
+    cmd.append("bytecode.h")
+    cmd.append("-D__CLAMBC__")
+
     if options.includes:
         for i in options.includes:
-            includePaths += f"-I{i} "
+            cmd.append("-I")
+            cmd.append(i)
 
-    defines = ""
     if options.defines:
         for d in options.defines:
-            defines += f"-D{d} "
-
-    cmd = f"{clangLLVM.getClang()} \
-            -S \
-            -fno-discard-value-names \
-            --language=c \
-            -emit-llvm \
-            -Werror=unused-command-line-argument \
-            -Xclang \
-            -disable-O0-optnone \
-            -o {outFile} \
-            {fileName} \
-            "
-
-    cmd += f" \
-            {includePaths} \
-            {defines} \
-            "
+            cmd.append('-D')
+            cmd.append(d)
 
     if debugBuild:
-        cmd += " -g \
-                "
-
-    if (not standardCompiler):
-        cmd += f" -I {INCDIR} \
-                 -include bytecode.h \
-                 -D__CLAMBC__ \
-                 "
+        cmd.append('-g')
 
     if options.disableCommonWarnings:
         cmd += COMMON_WARNING_OPTIONS
@@ -260,8 +264,17 @@ def linkIRFiles(clangLLVM: ClangLLVM, linkedFile: str, irFiles: list) -> int:
     Given an output file name and list of IR files, link the IR files.
     Returns the exit status code for the call to `llvm-link`.
     '''
-    inFiles = " ".join(irFiles)
-    cmd = f"{clangLLVM.getLLVMLink()} -S -o {linkedFile} {inFiles}"
+    cmd = []
+    cmd.append(clangLLVM.getLLVMLink())
+    cmd.append("-S")
+    cmd.append("-o")
+    cmd.append(linkedFile)
+    cmd += irFiles
+
+    #TODO: Remove this in a future version, since it is a depracated option
+    #      that will no longer be supported.  For a detailed explanation, see
+    #      https://llvm.org/docs/OpaquePointers.html
+    cmd.append("-opaque-pointers=0")
 
     return run(cmd)
 
@@ -444,13 +457,14 @@ def getOutputString(linked: IRFile, ignore: IRFile) -> str:
 def createOptimizedTmpFile(clangLLVM: ClangLLVM, linkedFile: str) -> str:
     name = getOptimizedTmpFileName(linkedFile)
 
-    cmd = f"{clangLLVM.getOpt()} \
-            -S \
-            {linkedFile} \
-            -o {name} \
-            -internalize -internalize-public-api-list=entrypoint \
-            -globalopt \
-            "
+    cmd = []
+    cmd.append(clangLLVM.getOpt())
+    cmd.append("-S")
+    cmd.append(linkedFile)
+    cmd.append("-o")
+    cmd.append(name)
+    cmd.append("-internalize-public-api-list=entrypoint")
+    cmd.append('--passes="internalize,globalopt"')
 
     ret = run(cmd)
     if None == ret:
@@ -491,109 +505,156 @@ def createInputSourceFile(clangLLVM: ClangLLVM, name: str, args: list, options: 
     return res
 
 
+INTERNALIZE_API_LIST=[ "_Z10entrypointv"
+        , "entrypoint"
+        , "__clambc_kind"
+        , "__clambc_virusname_prefix"
+        , "__clambc_virusnames"
+        , "__clambc_filesize"
+        , "__clambc_match_counts"
+        , "__clambc_match_offsets"
+        , "__clambc_pedata"
+        , "__Copyright" 
+        ]
+
+OPTIMIZE_OPTIONS = ["-S"
+        , "--disable-loop-unrolling"
+        , " --disable-i2p-p2i-opt"
+        , " --disable-loop-unrolling"
+        , " --disable-promote-alloca-to-lds"
+        , " --disable-promote-alloca-to-vector"
+        , " --disable-simplify-libcalls"
+        , " --disable-tail-calls"
+        , " --vectorize-slp=false"
+        , " --vectorize-loops=false"
+        , " -internalize-public-api-list=\"%s\"" % ','.join(INTERNALIZE_API_LIST)
+        ]
+
+#TODO: Remove this when we properly handle opaque pointers.
+OPTIMIZE_OPTIONS.append("-opaque-pointers=0")
+
+OPTIMIZE_PASSES = ["function(mem2reg)"
+        , 'verify'
+#        , 'clambc-remove-undefs' #TODO: This was added because the optimizer in llvm-8 was replacing unused
+                                  #      parameters with 'undef' values in the IR.  This was causing issues in
+                                  #      the writer, not knowing what value to put in the signature.  The llvm-16
+                                  #      optimizer no longer does this, so this value does not appear to still be
+                                  #      needed.  I have already done work upgrading the pass to the new
+                                  #      pass manager, so I want to leave it in place throughout the -rc phase
+                                  #      in case someone comes up with a testcase that re-introduces this bug.
+#        , 'verify'
+        , 'clambc-preserve-abis'
+        , 'verify'
+        , 'default<O3>'
+        , 'globalopt'
+        , 'clambc-preserve-abis' #remove fake function calls because O3 has already run
+        , 'verify'
+        , 'clambc-remove-unsupported-icmp-intrinsics'
+        , 'verify'
+        , 'clambc-remove-usub'
+        , 'verify'
+        , 'clambc-remove-fshl'
+        , 'verify'
+        , 'clambc-lowering-notfinal' # perform lowering pass
+        , 'verify'
+        , 'lowerswitch'
+        , 'verify'
+        , 'clambc-remove-icmp-sle'
+        , 'verify'
+        , 'function(clambc-verifier)'
+        , 'verify'
+        , 'clambc-remove-freeze-insts'
+        , 'verify'
+        , 'clambc-lowering-notfinal'  # perform lowering pass
+        , 'verify'
+        , 'clambc-lcompiler-helper' #compile the logical_trigger function to a
+        , 'verify'
+        , 'clambc-lcompiler' #compile the logical_trigger function to a
+        , 'verify'
+        , 'internalize'
+        , 'verify'
+        , 'clambc-rebuild'
+        , 'verify'
+        , 'clambc-trace'
+        , 'verify'
+        , 'clambc-outline-endianness-calls'
+        , 'verify'
+#        , 'clambc-change-malloc-arg-size' #TODO: This was added because the legacy llvm runtime
+                                           #      had issues with 32-bit phi nodes being used in
+                                           #      calls to malloc.  I already did the work to
+                                           #      update it to the new pass manager, but it appears
+                                           #      to no longer be necessary.  I will remove it
+                                           #      after the -rc phase if nobody has a testcase
+                                           #      that requires it.
+#        , 'verify'
+        , 'clambc-extend-phis-to-64-bit'
+        , 'verify'
+        , 'clambc-convert-intrinsics-to-32Bit'
+        , 'verify'
+        , 'globalopt'
+        , 'clambc-prepare-geps-for-writer'
+        , 'verify'
+        , 'clambc-writer'
+        , 'verify'
+]
+
+OPTIMIZE_LOADS=[ f"--load {SHARED_OBJ_DIR}/libclambccommon.so"
+#        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveundefs.so"          #Not needed, since clambc-remove-undefs is not being used.
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcpreserveabis.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveunsupportedicmpintrinsics.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveusub.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremovefshl.so"
+#        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremovepointerphis.so"    #Not needed, since clambc-remove-pointer-phis is not being used.
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcloweringnf.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveicmpsle.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcverifier.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremovefreezeinsts.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcloweringf.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambclogicalcompilerhelper.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambclogicalcompiler.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcrebuild.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambctrace.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcoutlineendiannesscalls.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcchangemallocargsize.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcextendphisto64bit.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcconvertintrinsicsto32bit.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcpreparegepsforwriter.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcanalyzer.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcregalloc.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcwriter.so"
+]
+
+
+
 def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inputSourceFile: str, standardCompiler: bool) -> int:
 
-    internalizeAPIList = "_Z10entrypointv,entrypoint,__clambc_kind,__clambc_virusname_prefix,__clambc_virusnames,__clambc_filesize,__clambc_match_counts,__clambc_match_offsets,__clambc_pedata,__Copyright"
-    if standardCompiler:
-        internalizeAPIList += ",main"
+    cmd = []
+    cmd.append(clangLLVM.getOpt())
+    cmd.append(inFile)
+    cmd.append('-o')
+    cmd.append(outFile)
+    cmd += OPTIMIZE_OPTIONS
+    cmd += OPTIMIZE_LOADS
 
-    #TODO: Modify ClamBCRemoveUndefs to not require mem2reg to be run before it.
-    cmd = (f'{clangLLVM.getOpt()} '
-          f' -S'
-          f' -verify-each'
-          f' -load "{SHARED_OBJ_FILE}"'
-          f' {inFile}'
-          f' -o {outFile}'
-          f' -mem2reg'
-          f' -clambc-remove-undefs' #add pointer bounds checking.
-          f' -clambc-preserve-abis' #add fake function calls that use all of
-                                   #the arguments so that O3 doesn't change
-                                   #the argument lists
-          f' -O3'
-          f' -clambc-preserve-abis' #remove fake function calls because O3 has already run
-          f' -clambc-remove-pointer-phis'
-          f' -dce'
-          f' -disable-loop-unrolling'
-          f' -disable-loop-vectorization'
-          f' -disable-slp-vectorization'
-          f' -globaldce'
-          f' -strip-dead-prototypes'
-          f' -constmerge'
-          f' -mem2reg'
-          f' -always-inline'
-          f' -globalopt'
-          f' -lowerswitch'
-          f' -lowerinvoke'
-          f' -globalopt'
-          f' -simplifycfg'
-          f' -indvars'
-          f' -constprop'
-          f' -clambc-lowering-notfinal' # perform lowering pass
-          f' -lowerswitch'
-          f' -clambc-verifier'
-          f' -clambc-lowering-notfinal'  # perform lowering pass
-          f' -dce'
-          f' -simplifycfg'
-          f' -mem2reg'
-          f' -clambc-lcompiler' #compile the logical_trigger function to a
-                               #logical signature.
-          f' -internalize -internalize-public-api-list="{internalizeAPIList}"'
-          f' -globaldce'
-          f' -instcombine'
-          f' -clambc-rebuild'
-          f' -verify'
-          f' -simplifycfg'
-          f' -dce'
-          f' -lowerswitch'
-          f' -clambc-verifier'
-          f' -verify'
-          f' -strip-debug-declare'
-          f' -clambc-lowering-final'
-          f' -clambc-trace'
-          f' -dce'
-          f' -clambc-module'
-          f' -verify'
-          f' -globalopt'
-          f' -remove-selects'
-          f' -clambc-outline-endianness-calls' #outline the endianness calls
-                                              #because otherwise the call
-                                              #is replaced with a constant
-                                              #that is based on where the
-                                              #signature was compiled, and
-                                              #won't always be accurate.
-          f' -clambc-change-malloc-arg-size'   #make sure we always use the
-                                              #64-bit malloc.
-          f' -globalopt'
-          f' -clambc-extend-phis-to-64bit' #make all integer phi nodes 64-bit
-                                          #because the llvm runtime inserts a
-                                          #cast after phi nodes without
-                                          #verifying that there is not
-                                          #another phi node after it.
-          f' -clambc-prepare-geps-for-writer' #format gep indexes to not not
-                                             #have more than 2, because
-                                             #otherwise the writer gets
-                                             #unhappy.
-          f' -globalopt'
-          f' -clambc-convert-intrinsics'   #convert all memset intrinsics to
-                                          #the 32-bit instead of the 64-bit
-                                          #intrinsic
-          f' -clambc-writer'               #write the bytecode
-          f' -clambc-writer-input-source={inputSourceFile}'
-          f' -clambc-sigfile={sigFile}'
-          )
+    s = '--passes="'
+    first = True
+    for v in OPTIMIZE_PASSES:
+        if first:
+            first = False
+        else:
+            s += ','
+        s += v
+    s += '"'
+    cmd.append(s)
 
-    if standardCompiler:
-        cmd += f" -clambc-standard-compiler"
+
+    cmd.append(f'-clambc-writer-input-source={inputSourceFile}')
+    cmd.append(f'-clambc-sigfile={sigFile}')
 
     return run(cmd)
 
 
-def genExe(clangLLVM: ClangLLVM, optimizedFile: str, outputFile: str) -> int:
-    cmd = f"{clangLLVM.getClang} {optimizedFile} -o {outputFile}"
-    return run(cmd)
-
-
-#This is definitely hacky, but I *think* it's the only change I need to make for
+#This is definitely hacky, but it's the only change I need to make for
 #this to work
 def fixFileSize(optimizedFile: str) -> None:
     f = open(optimizedFile)
@@ -779,16 +840,11 @@ def main():
     parser.add_option(CLANG_BINARY_ARG, dest="clangBinary", help="Path to clang binary")
     parser.add_option(OPT_BINARY_ARG, dest="optBinary", help="Path to opt binary")
 
-#    parser.add_option("--generate-exe", dest="genexe", action="store_true",
-#            default=False, help="This is if you want to build a correctly formatted bytecode \
-#                    signature as an executable for debugging (NOT IMPLEMENTED)")
     parser.add_option("-I", action="append", dest="includes", default=None)
     parser.add_option("-D", action="append", dest="defines", default=None)
     parser.add_option("--disable-common-warnings", dest="disableCommonWarnings",
-            action="store_true", default=False,
-            help=f"{COMMON_WARNING_OPTIONS} (Found in some bytecode signatures).")
-#    parser.add_option("--standard-compiler", dest="standardCompiler", action="store_true", default=False,
-#            help="This is if you want to build a normal c program as an executable to test the compiler.")
+            action="store_true", default=True,
+            help="{%s} (Found in some bytecode signatures)." % (' '.join(COMMON_WARNING_OPTIONS)))
     (options, args) = parser.parse_args()
 
     if options.version:
@@ -800,10 +856,7 @@ def main():
     if None == clangLLVM:
         sys.exit(1)
 
-    options.genexe = False
-    options.standardCompiler = False
-
-    options.passthroughOptions = " ".join(parser.getPassthrough())
+    options.passthroughOptions = parser.getPassthrough()
 
     if not FOUND_SHARED_OBJ:
         die(f"libclambcc.so not found.  See instructions for building", 2)
@@ -817,26 +870,14 @@ def main():
     outFile = getOutfile(options, args)
     outFile = os.path.basename(outFile)
     saveFiles = options.save
-    bCompiler = options.standardCompiler
-    buildExecutable = bCompiler or options.genexe
 
     createdDir = False
-
-    #Add the compiled bytecode file extension, so that all the get<Blahblahblah>Name functions can find it
-    if bCompiler:
-        idx = outFile.find(COMPILED_BYTECODE_FILE_EXTENSION)
-        if -1 == idx:
-            outFile += f".{COMPILED_BYTECODE_FILE_EXTENSION}"
 
     if not os.path.isdir(TMPDIR):
         os.makedirs(TMPDIR)
         createdDir = True
 
-#    if options.genexe:
-#        inFile = os.path.join(os.path.dirname(__file__), 'clambc-compiler-main.c')
-#        args.append(inFile)
-#
-    res = compileFiles(clangLLVM, args, False, bCompiler, options)
+    res = compileFiles(clangLLVM, args, False, False, options)
 
     if not res:
         linkedFile = getLinkedFileName(outFile)
@@ -844,40 +885,12 @@ def main():
 
     if not res:
         inputSourceFile = getInputSourceFileName(outFile)
-        if bCompiler:
-            f = open(inputSourceFile, "w")
-            f.close()
-        else:
-            res = createInputSourceFile(clangLLVM, inputSourceFile, args, options)
+        res = createInputSourceFile(clangLLVM, inputSourceFile, args, options)
 
     if not res:
         optimizedFile = getOptimizedFileName(outFile)
         outFile = getOutfile(options, args)
-        res = optimize(clangLLVM, linkedFile, optimizedFile, outFile, inputSourceFile, bCompiler)
-
-    if not res:
-        if options.genexe:
-
-            #Add the 'main' and all the stuff that clam provides (TODO: make this configurable by the user)
-            mainFile = os.path.join(os.path.dirname(__file__), 'clambc-compiler-main.c')
-            res = compileFile(clangLLVM, mainFile, False, False, options)
-            if res:
-                print("Build FAILED")
-                import pdb ; pdb.set_trace()
-
-            if not res:
-                mainIRFile = getIrFile(mainFile, False)
-
-                fixFileSize(optimizedFile)
-                fixFileSize(mainIRFile)
-
-                res = linkIRFiles(clangLLVM, optimizedFile, [optimizedFile, mainIRFile])
-
-            bCompiler = True
-
-    if not res:
-        if bCompiler:
-            res = genExe(clangLLVM, optimizedFile, outFile)
+        res = optimize(clangLLVM, linkedFile, optimizedFile, outFile, inputSourceFile, False)
 
     if ((not saveFiles) and createdDir):
         shutil.rmtree(TMPDIR)
@@ -891,3 +904,6 @@ def main():
 if '__main__' == __name__:
 
     main()
+
+
+

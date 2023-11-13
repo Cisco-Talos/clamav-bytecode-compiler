@@ -26,7 +26,7 @@ find_program(clambc_EXECUTABLE
     HINTS "${ClamAV_HOME}"
     PATH_SUFFIXES "bin"
 )
-if(NOT clambc_EXECUTABLE_EXECUTABLE AND NOT ClamAV_FIND_QUIETLY)
+if(NOT clambc_EXECUTABLE AND NOT ClamAV_FIND_QUIETLY)
     message("Unable to find clambc")
 endif()
 

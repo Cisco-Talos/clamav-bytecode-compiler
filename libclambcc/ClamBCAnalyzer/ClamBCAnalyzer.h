@@ -22,30 +22,26 @@
 #ifndef CLAMBC_ANALYZER_H_
 #define CLAMBC_ANALYZER_H_
 
-#include "Common/clambc.h"
+#include "clambc.h"
 
-#include <cstddef>
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/Twine.h"
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/ADT/Twine.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/IRBuilder.h>
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/raw_ostream.h>
+
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Passes/PassBuilder.h>
+
+#include <cstddef>
 #include <vector>
 #include <map>
 
-//TODO list
-//1.  Add checks for either source code or copyright clause.
-//2.  Take a look at the way CEMap is used.  It is checking for uses of some types of ConstantExpr's,
-//    and creating globals to go with them.  I don't fully understand why that is being done.
-//3.  Move validation of entrypoint somewhere.  This is an analyzer pass, and should not fail the build.
-//4.  Migrate all the printing from 'printGlobals' to the module.
-//5.  Cannot see where banMap has any functions inserted.  Do we need it?
-//6.  Evaluate the TODO in runOnModule.
-
-class ClamBCAnalyzer : public llvm::ModulePass
+class ClamBCAnalysis
 {
   protected:
     typedef llvm::DenseMap<const llvm::Type *, unsigned> TypeMapTy;
@@ -102,8 +98,7 @@ class ClamBCAnalyzer : public llvm::ModulePass
 
   public:
     static char ID;
-    explicit ClamBCAnalyzer()
-        : ModulePass(ID)
+    explicit ClamBCAnalysis()
     {
 
         populateAPIMap();
@@ -117,14 +112,17 @@ class ClamBCAnalyzer : public llvm::ModulePass
         globalsMap["__clambc_match_offsets"] = GLOBAL_MATCH_OFFSETS;
     }
 
-    ~ClamBCAnalyzer() {}
-    virtual bool runOnModule(llvm::Module &m) override;
-
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override;
+    ~ClamBCAnalysis() {}
+    virtual void run(llvm::Module &m);
 
     virtual uint32_t getTypeID(const llvm::Type *const t)
     {
         TypeMapTy::iterator I = typeIDs.find(t);
+        if (I == typeIDs.end()) {
+            DEBUG_NONPOINTER("BAD VALUE");
+            DEBUG_VALUE(t);
+        }
+
         assert((I != typeIDs.end()) && "Type ID requested for unknown type");
         return I->second;
     }
@@ -242,6 +240,29 @@ class ClamBCAnalyzer : public llvm::ModulePass
     virtual const std::string &getVirusnames() const
     {
         return virusnames;
+    }
+};
+
+class ClamBCAnalyzer : public llvm::AnalysisInfoMixin<ClamBCAnalyzer>
+{
+  protected:
+    ClamBCAnalysis clamBCAnalysis;
+
+  public:
+    friend llvm::AnalysisInfoMixin<ClamBCAnalyzer>;
+    static llvm::AnalysisKey Key;
+
+    ClamBCAnalyzer()
+        : clamBCAnalysis() {}
+    virtual ~ClamBCAnalyzer() {}
+
+    typedef ClamBCAnalysis Result;
+
+    ClamBCAnalysis &run(llvm::Module &mod, llvm::ModuleAnalysisManager &mam)
+    {
+        clamBCAnalysis.run(mod);
+
+        return clamBCAnalysis;
     }
 };
 

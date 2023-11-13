@@ -19,11 +19,13 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
-#include "../Common/bytecode_api.h"
+#include "bytecode_api.h"
 #include "clambc.h"
 #include "ClamBCModule.h"
+#include "ClamBCUtilities.h"
+
 #include "ClamBCAnalyzer/ClamBCAnalyzer.h"
-#include "Common/ClamBCUtilities.h"
+#include "ClamBCRegAlloc/ClamBCRegAlloc.h"
 
 #include <llvm/Support/DataTypes.h>
 #include <llvm/ADT/STLExtras.h>
@@ -45,6 +47,8 @@
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/InstIterator.h>
@@ -71,10 +75,6 @@ static cl::opt<std::string> MapFile("clambc-map", cl::desc("Write compilation ma
 static cl::opt<bool>
     DumpDI("clambc-dumpdi", cl::Hidden, cl::init(false),
            cl::desc("Dump LLVM IR with debug info to standard output"));
-
-cl::opt<bool>
-    WriteDI("clambc-dbg", cl::Hidden, cl::init(false),
-            cl::desc("Write debug information into output bytecode"));
 
 static cl::opt<std::string> outFile("clambc-sigfile", cl::desc("Name of output file"),
                                     cl::value_desc("Name of output file"),
@@ -105,7 +105,7 @@ class ClamBCOutputWriter
   public:
     static ClamBCOutputWriter *createClamBCOutputWriter(llvm::StringRef srFileName,
                                                         llvm::Module *pMod,
-                                                        ClamBCAnalyzer *pAnalyzer)
+                                                        ClamBCAnalysis *pAnalyzer)
     {
         std::error_code ec;
         raw_fd_ostream *rfo        = new raw_fd_ostream(srFileName, ec);
@@ -123,7 +123,7 @@ class ClamBCOutputWriter
         return ret;
     }
 
-    ClamBCOutputWriter(llvm::formatted_raw_ostream &outStream, llvm::Module *pMod, ClamBCAnalyzer *pAnalyzer)
+    ClamBCOutputWriter(llvm::formatted_raw_ostream &outStream, llvm::Module *pMod, ClamBCAnalysis *pAnalyzer)
         : Out(lineBuffer), OutReal(outStream), maxLineLength(0), lastLinePos(0), pMod(pMod), pAnalyzer(pAnalyzer)
     {
         printGlobals(pMod, pAnalyzer);
@@ -162,7 +162,7 @@ class ClamBCOutputWriter
         printFixedNumber(Out, n, fixed);
     }
 
-    void printModuleHeader(Module &M, ClamBCAnalyzer *pAnalyzer, unsigned maxLine)
+    void printModuleHeader(Module &M, ClamBCAnalysis *pAnalyzer, unsigned maxLine)
     {
         NamedMDNode *MinFunc = M.getNamedMetadata("clambc.funcmin");
         NamedMDNode *MaxFunc = M.getNamedMetadata("clambc.funcmax");
@@ -251,7 +251,7 @@ class ClamBCOutputWriter
         assert((OutReal.tell() < 8192) && "OutReal too big");
     }
 
-    void describeType(llvm::raw_ostream &Out, const Type *Ty, Module *M, ClamBCAnalyzer *pAnalyzer)
+    void describeType(llvm::raw_ostream &Out, const Type *Ty, Module *M, ClamBCAnalysis *pAnalyzer)
     {
         if (const FunctionType *FTy = dyn_cast<FunctionType>(Ty)) {
             printFixedNumber(Out, 1, 1);
@@ -310,7 +310,7 @@ class ClamBCOutputWriter
 
         if (const PointerType *PTy = dyn_cast<PointerType>(Ty)) {
             printFixedNumber(Out, 5, 1);
-            const Type *ETy = PTy->getElementType();
+            const Type *ETy = PTy->getPointerElementType();
             // pointers to opaque types are treated as i8*
             int id = -1;
             if (llvm::isa<StructType>(ETy)) {
@@ -402,7 +402,7 @@ class ClamBCOutputWriter
         ClamBCStop("Unsupported constant type", &M);
     }
 
-    void printGlobals(llvm::Module *pMod, ClamBCAnalyzer *pAnalyzer)
+    void printGlobals(llvm::Module *pMod, ClamBCAnalysis *pAnalyzer)
     {
         const std::string &ls = pAnalyzer->getLogicalSignature();
         if (ls.empty()) {
@@ -441,7 +441,7 @@ class ClamBCOutputWriter
             // function prototype
             printNumber(Out, pAnalyzer->getTypeID(F->getFunctionType()), false);
             // function name
-            std::string Name = F->getName();
+            std::string Name(F->getName());
             printConstData(Out, (const unsigned char *)Name.c_str(), Name.size() + 1);
         }
 
@@ -533,7 +533,7 @@ class ClamBCOutputWriter
         }
     }
 
-    void finished(llvm::Module *pMod, ClamBCAnalyzer *pAnalyzer)
+    void finished(llvm::Module *pMod, ClamBCAnalysis *pAnalyzer)
     {
 
         //maxline+1, 1 more for \0
@@ -617,7 +617,7 @@ class ClamBCOutputWriter
     int maxLineLength         = 0;
     int lastLinePos           = 0;
     llvm::Module *pMod        = nullptr;
-    ClamBCAnalyzer *pAnalyzer = nullptr;
+    ClamBCAnalysis *pAnalyzer = nullptr;
 
     void printFixedNumber(raw_ostream &Out, unsigned n, unsigned fixed)
     {
@@ -684,31 +684,31 @@ class ClamBCOutputWriter
     }
 };
 
-class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
+class ClamBCWriter : public PassInfoMixin<ClamBCWriter>, public InstVisitor<ClamBCWriter>
 {
     typedef DenseMap<const BasicBlock *, unsigned> BBIDMap;
     BBIDMap BBMap;
 
     const Module *TheModule = nullptr;
     unsigned opcodecvt[Instruction::OtherOpsEnd];
-    raw_ostream *MapOut  = nullptr;
-    FunctionPass *Dumper = nullptr;
-    ClamBCRegAlloc *RA   = nullptr;
+    raw_ostream *MapOut        = nullptr;
+    FunctionPass *Dumper       = nullptr;
+    ClamBCRegAllocAnalysis *RA = nullptr;
     unsigned fid, minflvl;
     MetadataContext *TheMetadata = nullptr;
     unsigned MDDbgKind;
     std::vector<unsigned> dbgInfo;
     bool anyDbg;
 
-    llvm::Module *pMod                = nullptr;
-    ClamBCOutputWriter *pOutputWriter = nullptr;
-    ClamBCAnalyzer *pAnalyzer         = nullptr;
+    llvm::Module *pMod                            = nullptr;
+    ClamBCOutputWriter *pOutputWriter             = nullptr;
+    ClamBCAnalysis *pAnalyzer                     = nullptr;
+    ModuleAnalysisManager *pModuleAnalysisManager = nullptr;
 
   public:
     static char ID;
     explicit ClamBCWriter()
-        : ModulePass(ID),
-          TheModule(0), MapOut(0), Dumper(0)
+        : TheModule(0), MapOut(0), Dumper(0)
     {
         if (!MapFile.empty()) {
             std::error_code ec;
@@ -735,18 +735,20 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
     void getAnalysisUsage(AnalysisUsage &AU) const
     {
         AU.addRequired<ClamBCRegAlloc>();
-        AU.addRequired<ClamBCAnalyzer>();
         AU.setPreservesAll();
     }
 
     virtual bool doInitialization(Module &M);
 
-    bool runOnModule(Module &m)
+    PreservedAnalyses run(Module &m, ModuleAnalysisManager &mam)
     {
+        doInitialization(m);
+        pMod                   = &m;
+        pModuleAnalysisManager = &mam;
 
-        pMod          = &m;
-        pAnalyzer     = &getAnalysis<ClamBCAnalyzer>();
-        pOutputWriter = ClamBCOutputWriter::createClamBCOutputWriter(outFile, pMod, pAnalyzer);
+        ClamBCAnalysis &analysis = mam.getResult<ClamBCAnalyzer>(m);
+        pAnalyzer                = &analysis;
+        pOutputWriter            = ClamBCOutputWriter::createClamBCOutputWriter(outFile, pMod, pAnalyzer);
 
         for (auto i = pMod->begin(), e = pMod->end(); i != e; i++) {
             if (llvm::isa<Function>(i)) {
@@ -757,7 +759,8 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
             }
         }
 
-        return false;
+        doFinalization(m);
+        return PreservedAnalyses::all();
     }
 
     void gatherGEPs(BasicBlock *pBB, std::vector<GetElementPtrInst *> &geps)
@@ -821,7 +824,11 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
             GetElementPtrInst *pNew = nullptr;
 
             if (pGep->isInBounds()) {
-                pNew = GetElementPtrInst::Create(nullptr, ci, newIndex, "ClamBCWriter_fixGEPs", pGep);
+                Type *pt = ci->getType();
+                if (llvm::isa<PointerType>(pt)) {
+                    pt = pt->getPointerElementType();
+                }
+                pNew = GetElementPtrInst::Create(pt, ci, newIndex, "ClamBCWriter_fixGEPs", pGep);
             } else {
                 assert(0 && "DON'T THINK THIS CAN HAPPEN");
             }
@@ -837,12 +844,8 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
 
     bool runOnFunction(Function &F)
     {
-        //TODO: Move this to another pass once the Analyzer no longer
-        //makes changes to the code.
         fixGEPs(&F);
 
-        //Don't think I need this anymore.
-        //If anything, move it to a verifier.
         if ("" == F.getName()) {
             assert(0 && "Function created by ClamBCRebuild is not being deleted");
         }
@@ -857,10 +860,13 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
             return false;
         }
         fid++;
-        //Removed, see note about getFunctionID at the top of the file.
-        assert(pAnalyzer->getFunctionID(&F) == fid);
 
-        RA = &getAnalysis<ClamBCRegAlloc>(F);
+        //Removed, see note about getFunctionID at the top of the file.
+        assert(pAnalyzer->getFunctionID(&F) == fid && "Function IDs don't match");
+
+        FunctionAnalysisManager &fam = pModuleAnalysisManager->getResult<FunctionAnalysisManagerModuleProxy>(*pMod).getManager();
+
+        RA = &fam.getResult<ClamBCRegAllocAnalyzer>(F);
         printFunction(F);
         if (Dumper) {
             Dumper->runOnFunction(F);
@@ -976,7 +982,7 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
                         if (ConstantInt *CI = dyn_cast<ConstantInt>(GEP.getOperand(1))) {
                             if (!CI->isZero()) {
                                 const PointerType *Ty = cast<PointerType>(GEP.getPointerOperand()->getType());
-                                const ArrayType *ATy  = dyn_cast<ArrayType>(Ty->getElementType());
+                                const ArrayType *ATy  = dyn_cast<ArrayType>(Ty->getPointerElementType());
                                 if (ATy) {
                                     ClamBCStop("ATy", &GEP);
                                 }
@@ -1387,10 +1393,6 @@ class ClamBCWriter : public ModulePass, public InstVisitor<ClamBCWriter>
         stop("ClamAV bytecode backend does not know about ", &I);
     }
 };
-char ClamBCWriter::ID = 0;
-static RegisterPass<ClamBCWriter> X("clambc-writer", "ClamBCWriter Pass",
-                                    false /* Only looks at CFG */,
-                                    false /* Analysis Pass */);
 
 bool ClamBCWriter::doInitialization(Module &M)
 {
@@ -1423,8 +1425,7 @@ bool ClamBCWriter::doInitialization(Module &M)
         //TODO: Get debug info working.
         //Dumper = createDbgInfoPrinterPass();
     }
-    fid = 0;
-    //OModule->writeGlobalMap(MapOut);
+    fid       = 0;
     MDDbgKind = M.getContext().getMDKindID("dbg");
 
     return false;
@@ -1608,7 +1609,21 @@ void ClamBCWriter::printBasicBlock(BasicBlock *BB)
     }
 }
 
-llvm::ModulePass *createClamBCWriter()
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
 {
-    return new ClamBCWriter();
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCWriter", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-writer") {
+                        FPM.addPass(ClamBCWriter());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
 }

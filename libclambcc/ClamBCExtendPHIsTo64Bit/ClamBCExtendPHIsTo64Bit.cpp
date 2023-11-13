@@ -19,14 +19,11 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
-#include "../Common/bytecode_api.h"
+#include "bytecode_api.h"
 #include "clambc.h"
-#include "ClamBCModule.h"
-#include "ClamBCAnalyzer/ClamBCAnalyzer.h"
-#include "Common/ClamBCUtilities.h"
+#include "ClamBCUtilities.h"
 
 #include <llvm/Support/DataTypes.h>
-//#include "ClamBCTargetMachine.h"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/DebugInfo.h>
@@ -37,7 +34,6 @@
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
-//#include "llvm/Config/config.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Instructions.h>
@@ -50,12 +46,16 @@
 
 #include <llvm/Analysis/ValueTracking.h>
 
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/PassPlugin.h>
+
 using namespace llvm;
 
-class ClamBCExtendPHIsTo64Bit : public ModulePass
+class ClamBCExtendPHIsTo64Bit : public PassInfoMixin<ClamBCExtendPHIsTo64Bit>
 {
   protected:
     llvm::Module *pMod = nullptr;
+    bool bChanged      = false;
 
     virtual void convertPHIs(Function *pFunc)
     {
@@ -115,17 +115,17 @@ class ClamBCExtendPHIsTo64Bit : public ModulePass
         Instruction *cast = CastInst::CreateIntegerCast(newNode, origType, true, "ClamBCConvertPHINodes_", insPt);
         pn->replaceAllUsesWith(cast);
         pn->eraseFromParent();
+        bChanged = true;
     }
 
   public:
     static char ID;
 
-    explicit ClamBCExtendPHIsTo64Bit()
-        : ModulePass(ID) {}
+    explicit ClamBCExtendPHIsTo64Bit() {}
 
     virtual ~ClamBCExtendPHIsTo64Bit() {}
 
-    virtual bool runOnModule(Module &m)
+    virtual PreservedAnalyses run(Module &m, ModuleAnalysisManager &MAM)
     {
 
         pMod = &m;
@@ -135,16 +135,33 @@ class ClamBCExtendPHIsTo64Bit : public ModulePass
             convertPHIs(pFunc);
         }
 
-        return true;
+        if (bChanged) {
+            /* Since we changed the IR here invalidate all the previous analysis.
+             * We only want to invalidate the analysis when we change something,
+             * since it is expensive to compute.
+             */
+            return PreservedAnalyses::none();
+        }
+        /*We didn't change anything, so keep the previous analysis.*/
+        return PreservedAnalyses::all();
     }
 };
 
-char ClamBCExtendPHIsTo64Bit::ID = 0;
-static RegisterPass<ClamBCExtendPHIsTo64Bit> X("clambc-extend-phis-to-64bit", "ClamBCExtendPHIsTo64Bit Pass",
-                                               false /* Only looks at CFG */,
-                                               false /* Analysis Pass */);
-
-llvm::ModulePass *createClamBCExtendPHIsTo64Bit()
+// This part is the new way of registering your pass
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo()
 {
-    return new ClamBCExtendPHIsTo64Bit();
+    return {
+        LLVM_PLUGIN_API_VERSION, "ClamBCExtendPHIsTo64Bit", "v0.1",
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "clambc-extend-phis-to-64-bit") {
+                        FPM.addPass(ClamBCExtendPHIsTo64Bit());
+                        return true;
+                    }
+                    return false;
+                });
+        }};
 }

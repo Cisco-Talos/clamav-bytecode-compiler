@@ -30,7 +30,7 @@
 
 #=============================================================================
 
-set(KNOWN_VERSIONS 11 10 9 8 7 6.0 5.0 4.0 3.9 3.8)
+set(KNOWN_VERSIONS 16)
 
 foreach(version ${KNOWN_VERSIONS})
     if(DEFINED Clang_FIND_VERSION AND Clang_FIND_VERSION VERSION_EQUAL version)
