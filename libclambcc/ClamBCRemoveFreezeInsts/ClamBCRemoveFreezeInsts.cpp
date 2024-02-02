@@ -38,10 +38,10 @@ using namespace std;
 namespace
 {
 /*
-     * Freeze Instructions are to guarantee sane behaviour in the case of undefs or poison values. The interpreter 
-     * has no notion of freeze instructions, so we are removing them.  The verifier will fail if there are undef or
-     * poison values in the IR, so this is safe to do.
-     */
+ * Freeze Instructions are to guarantee sane behaviour in the case of undefs or poison values. The interpreter 
+ * has no notion of freeze instructions, so we are removing them.  The verifier will fail if there are undef or
+ * poison values in the IR, so this is safe to do.
+ */
 struct ClamBCRemoveFreezeInsts : public PassInfoMixin<ClamBCRemoveFreezeInsts> {
   protected:
     Module *pMod  = nullptr;
