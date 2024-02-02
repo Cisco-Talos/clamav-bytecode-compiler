@@ -20,9 +20,6 @@
  *  MA 02110-1301, USA.
  */
 
-//#include "Common/clambc.h"
-//#include "Common/ClamBCUtilities.h"
-
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
