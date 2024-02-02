@@ -13,24 +13,24 @@
 //#include "Common/clambc.h"
 using namespace llvm;
 
-namespace {
+namespace
+{
 struct Hello : public FunctionPass {
-  static char ID;
-  Hello() : FunctionPass(ID) {}
+    static char ID;
+    Hello()
+        : FunctionPass(ID) {}
 
-  bool runOnFunction(Function &F) override {
-    errs() << "Hello: ";
-    errs().write_escaped(F.getName()) << '\n';
-    return false;
-  }
+    bool runOnFunction(Function &F) override
+    {
+        errs() << "Hello: ";
+        errs().write_escaped(F.getName()) << '\n';
+        return false;
+    }
 }; // end of struct Hello
 
-}  // end of anonymous namespace
+} // end of anonymous namespace
 
 char Hello::ID = 0;
 static RegisterPass<Hello> X("hello", "Hello World Pass",
                              false /* Only looks at CFG */,
                              false /* Analysis Pass */);
-
-
-

@@ -41,89 +41,88 @@ using namespace std;
 namespace
 {
 
-    class AnalysisResult {
-        public:
-            AnalysisResult(){
-                llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">" << "<END>\n";
-            }
+class AnalysisResult
+{
+  public:
+    AnalysisResult()
+    {
+        llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">"
+                     << "<END>\n";
+    }
+};
 
-    };
+class ExampleAnalysis : public AnalysisInfoMixin<ExampleAnalysis>
+{
 
-    class ExampleAnalysis : public AnalysisInfoMixin<ExampleAnalysis > 
+  public:
+    friend AnalysisInfoMixin<ExampleAnalysis>;
+    static AnalysisKey Key;
+
+    ExampleAnalysis()
+    {
+    }
+
+    typedef AnalysisResult Result;
+
+    AnalysisResult run(llvm::Module &F, llvm::ModuleAnalysisManager &fam)
     {
 
-        public: 
+        llvm::errs() << "<"
+                     << "Analysis::" << __LINE__ << ">"
+                     << "<END>\n";
+        return AnalysisResult();
+    }
+};
 
-        friend AnalysisInfoMixin<ExampleAnalysis > ;
-            static AnalysisKey Key;
+AnalysisKey ExampleAnalysis::Key;
 
+struct ExamplePass : public PassInfoMixin<ExamplePass> {
+  protected:
+    Module *pMod  = nullptr;
+    bool bChanged = false;
 
-        ExampleAnalysis(){
-        }
+  public:
+    virtual ~ExamplePass() {}
 
-        typedef AnalysisResult Result;
-
-        AnalysisResult run(llvm::Module & F, llvm::ModuleAnalysisManager & fam){
-            
-            llvm::errs() << "<" << "Analysis::" << __LINE__ << ">" << "<END>\n";
-            return AnalysisResult();
-
-        }
-
-    };
-
-    AnalysisKey ExampleAnalysis::Key;
-
-    struct ExamplePass : public PassInfoMixin<ExamplePass > 
+    PreservedAnalyses run(Module &m, ModuleAnalysisManager &MAM)
     {
-        protected:
-            Module *pMod = nullptr;
-            bool bChanged = false;
+        pMod = &m;
+        llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">"
+                     << "Transform Pass"
+                     << "<END>\n";
 
-        public:
+        MAM.getResult<ExampleAnalysis>(m);
 
-            virtual ~ExamplePass() {}
+        llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">"
+                     << "Transform Pass (leaving)"
+                     << "<END>\n";
 
-            PreservedAnalyses run(Module & m, ModuleAnalysisManager & MAM)
-            {
-                pMod = &m;
-                llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">" << "Transform Pass" << "<END>\n";
-
-                MAM.getResult<ExampleAnalysis>(m);
-
-                llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">" << "Transform Pass (leaving)" << "<END>\n";
-
-                return PreservedAnalyses::all();
-            }
-    }; // end of struct ExamplePass
+        return PreservedAnalyses::all();
+    }
+}; // end of struct ExamplePass
 
 } // end of anonymous namespace
 
 // This part is the new way of registering your pass
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-llvmGetPassPluginInfo() {
+llvmGetPassPluginInfo()
+{
     return {
         LLVM_PLUGIN_API_VERSION, "ExamplePass", "v0.1",
-            [](PassBuilder &PB) {
-                PB.registerPipelineParsingCallback(
-                        [](StringRef Name, ModulePassManager &FPM,
-                            ArrayRef<PassBuilder::PipelineElement>) {
-                        if(Name == "example-pass-with-analysis"){
+        [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                    if (Name == "example-pass-with-analysis") {
                         FPM.addPass(ExamplePass());
                         return true;
-                        }
-                        return false;
-                        }
-                        );
+                    }
+                    return false;
+                });
 
-                PB.registerAnalysisRegistrationCallback(
-                        [](ModuleAnalysisManager &mam) {
-                            mam.registerPass([] () { return ExampleAnalysis(); } );
-                        }
-                        );
-            }
-    };
+            PB.registerAnalysisRegistrationCallback(
+                [](ModuleAnalysisManager &mam) {
+                    mam.registerPass([]() { return ExampleAnalysis(); });
+                });
+        }};
 }
-
-
-
