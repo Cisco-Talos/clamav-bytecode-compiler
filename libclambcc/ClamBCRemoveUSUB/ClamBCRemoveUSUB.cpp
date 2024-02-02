@@ -38,8 +38,8 @@ using namespace std;
 namespace
 {
 /*
-     * Remove usub intrinsic because it's not supported by our runtime.
-     */
+ * Remove usub intrinsic because it's not supported by our runtime.
+ */
 struct ClamBCRemoveUSUB : public PassInfoMixin<ClamBCRemoveUSUB> {
   protected:
     Module *pMod                = nullptr;
