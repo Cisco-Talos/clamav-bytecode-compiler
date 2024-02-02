@@ -37,7 +37,6 @@
 #include <map>
 #include <cstddef>
 
-
 class ClamBCWriter;
 class ClamBCRegAlloc;
 
