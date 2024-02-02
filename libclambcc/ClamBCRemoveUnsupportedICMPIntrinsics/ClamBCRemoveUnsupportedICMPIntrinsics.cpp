@@ -38,8 +38,8 @@ using namespace std;
 namespace
 {
 /*
-     * Remove smin intrinsic because it's not supported by our runtime.
-     */
+ * Remove smin intrinsic because it's not supported by our runtime.
+ */
 struct ClamBCRemoveUnsupportedICMPIntrinsics : public PassInfoMixin<ClamBCRemoveUnsupportedICMPIntrinsics> {
   protected:
     Module *pMod = nullptr;
