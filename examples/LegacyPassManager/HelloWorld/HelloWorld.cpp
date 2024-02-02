@@ -10,7 +10,6 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
-//#include "Common/clambc.h"
 using namespace llvm;
 
 namespace
