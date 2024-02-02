@@ -40,30 +40,6 @@ target_link_libraries(analysisplugin PUBLIC ${LLVM_LIBS})
 
 if(WIN32)
     install(TARGETS analysisplugin DESTINATION .)
-
-    # Also install shared library (DLL) dependencies
-    install(CODE [[
-        file(GET_RUNTIME_DEPENDENCIES
-            LIBRARIES
-                $<TARGET_FILE:analysisplugin>
-            RESOLVED_DEPENDENCIES_VAR _r_deps
-            UNRESOLVED_DEPENDENCIES_VAR _u_deps
-            DIRECTORIES
-                ${LLVM_LIBRARY_DIRS}
-        )
-        foreach(_file ${_r_deps})
-            string(TOLOWER ${_file} _file_lower)
-            if(NOT ${_file_lower} MATCHES "c:[\\/]windows[\\/]system32.*")
-                file(INSTALL
-                    DESTINATION "${CMAKE_INSTALL_PREFIX}"
-                    TYPE SHARED_LIBRARY
-                    FOLLOW_SYMLINK_CHAIN
-                    FILES "${_file}"
-                )
-            endif()
-        endforeach()
-        #message("UNRESOLVED_DEPENDENCIES_VAR: ${_u_deps}")
-    ]])
 else()
     install(TARGETS analysisplugin DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
