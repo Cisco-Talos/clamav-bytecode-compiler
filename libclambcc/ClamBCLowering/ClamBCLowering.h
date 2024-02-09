@@ -19,7 +19,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA 02110-1301, USA.
  */
-//#define DEBUG_TYPE "bclowering"
+// #define DEBUG_TYPE "bclowering"
 
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>

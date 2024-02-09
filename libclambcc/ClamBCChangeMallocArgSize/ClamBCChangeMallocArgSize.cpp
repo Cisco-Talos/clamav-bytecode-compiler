@@ -65,7 +65,7 @@ class ChangeMallocArgSize : public PassInfoMixin<ChangeMallocArgSize>
         }
     }
 
-    /* Yes, I know there is a "getTerminator" function, but I have come across blocks 
+    /* Yes, I know there is a "getTerminator" function, but I have come across blocks
      * that have more than one branch instruction (I think it is a bug in the runtime), but
      * until that is resolved, I want to use this function.
      */

@@ -181,7 +181,7 @@ static void printMsg(const Twine &Msg, const llvm::Module *M,
         errs().resetColor();
     if (I) {
         errs() << "\t at : " << *I << "\n";
-        //DEBUG(I->getParent()->dump());
+        // DEBUG(I->getParent()->dump());
         DEBUGERR << *(I->getParent()) << "<END>\n";
         ;
     }

@@ -77,9 +77,9 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
 
         if (1 != vals.size()) {
             /*
-                     * This may not be an issue, but want to investigate it.
-                     * This would be due to the phi node not being the same base pointer with a different index.
-                     */
+             * This may not be an issue, but want to investigate it.
+             * This would be due to the phi node not being the same base pointer with a different index.
+             */
 
             return nullptr;
         } else {
@@ -197,15 +197,15 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
         for (size_t i = 0; i < pn->getNumIncomingValues(); i++) {
             Value *incoming = getOrigValue(pn->getIncomingValue(i));
 
-            //If this value is dependent on the phi node, then it cannot
-            //be what the PHINode was initialized to the first time the
-            //block was entered, which is what we are looking for.
+            // If this value is dependent on the phi node, then it cannot
+            // be what the PHINode was initialized to the first time the
+            // block was entered, which is what we are looking for.
             if (not(phiIsDependent(incoming, pn))) {
                 continue;
             }
 
             if (GetElementPtrInst *p = llvm::dyn_cast<GetElementPtrInst>(pn->getIncomingValue(i))) {
-                //Replace initValue with the index operand of the GetElementPtrInst here.
+                // Replace initValue with the index operand of the GetElementPtrInst here.
                 for (auto idx = p->idx_begin(), idxe = p->idx_end(); idx != idxe; idx++) {
                     initValue = llvm::cast<Value>(idx);
                 }

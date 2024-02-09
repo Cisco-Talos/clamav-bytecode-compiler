@@ -206,8 +206,8 @@ class LogicalNode : public FoldingSetNode
         if (Node->kind == LOG_ADD) {
             ConstantRange Cmp(APInt(32, value));
             // a + c < b -> a+c in [0, b) -> a in [0-c, b-c)
-            /*TODO: Determine if makeSatisfyingICmpRegin is better than makeAllowedICmpRegion, 
-                     * If this is changed, check the rest.*/
+            /*TODO: Determine if makeSatisfyingICmpRegin is better than makeAllowedICmpRegion,
+             * If this is changed, check the rest.*/
             ConstantRange ltRange = ConstantRange::makeSatisfyingICmpRegion(CmpInst::ICMP_ULT, Cmp);
 
             ltRange      = ltRange.subtract(APInt(32, Node->op0));
@@ -328,9 +328,9 @@ class LogicalNode : public FoldingSetNode
     }
 
     /*
-             * aragusa: All this is doing is checking for duplicates in whatever collection begin and end reference.  
-             * Why are we putting them in another local?
-             * */
+     * aragusa: All this is doing is checking for duplicates in whatever collection begin and end reference.
+     * Why are we putting them in another local?
+     * */
     bool checkUniq()
     {
         LogicalSet nodes;
@@ -604,7 +604,7 @@ class LogicalCompiler
             }
             CI = cast<ConstantInt>(CE->getOperand(2));
         } else {
-            /* In this case, we are directly loading the global, 
+            /* In this case, we are directly loading the global,
              * instead of using a getelementptr.
              * It is likely that this would have been changed by O3.
              */
@@ -756,8 +756,8 @@ class LogicalCompiler
 
         if (BranchInst *bi = llvm::dyn_cast<BranchInst>(curr->getTerminator())) {
             if (bi->isConditional()) {
-                //copy the route, so that there are separate paths for the true
-                //and false condition.
+                // copy the route, so that there are separate paths for the true
+                // and false condition.
                 std::vector<LogicalPHIHelper *> route;
                 for (size_t i = 0; i < routes[idx].size(); i++) {
                     route.push_back(new LogicalPHIHelper(routes[idx][i]));
@@ -896,7 +896,7 @@ class LogicalCompiler
             for (size_t j = 0; j < idxs.size(); j++) {
                 size_t idx       = idxs[j];
                 LogicalNode *tmp = getLogicalNode(routes[idx]);
-                if (nullptr == pci) { //Then this isn't a constant
+                if (nullptr == pci) { // Then this isn't a constant
                     LogicalNode *l = Map.find(vIncoming)->second;
                     tmp            = LogicalNode::getAnd(tmp, l);
                 }
@@ -976,7 +976,7 @@ class LogicalCompiler
                      *
                      * We are going to handle these cases by only adding an 'and' or an 'or' if there is
                      * an actual logical operation, not for constants.
-                     *   
+                     *
 
                     entry:
                       %0 = load i32, ptr @__clambc_match_counts, align 16
@@ -1391,7 +1391,7 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned 
         ref.find("VI") != StringRef::npos) {
         min_required = FUNC_LEVEL_096_dev;
         msgreq       = "Logical signature use of VI/macros requires minimum "
-                 "functionality level of FUNC_LEVEL_096_dev";
+                       "functionality level of FUNC_LEVEL_096_dev";
     }
 
     if (kind >= BC_PDF) {
@@ -1411,21 +1411,21 @@ static bool checkMinimum(llvm::Module *M, std::string s, unsigned min, unsigned 
             pos < ref.size() && ref[pos] != '0') {
             min_recommended = FUNC_LEVEL_096_2;
             msgrec          = "Logical signature use of count comparison "
-                     "requires minimum functionality level of FUNC_LEVEL_096_2 (bb #2053)";
+                              "requires minimum functionality level of FUNC_LEVEL_096_2 (bb #2053)";
             break;
         }
     }
     if (min_recommended < FUNC_LEVEL_096_4) {
         min_recommended = FUNC_LEVEL_096_4;
         msgrec          = "FUNC_LEVEL_096_4 is minimum recommended engine version. Older "
-                 "versions have quadratic load time";
+                          "versions have quadratic load time";
     }
 
     /*JSON CHECK*/
     if (hasJSONUsage(M)) {
         min_required = FUNC_LEVEL_098_5;
         msgreq       = "JSON reading API requires minimum functionality level "
-                 "of FUNC_LEVEL_098_5";
+                       "of FUNC_LEVEL_098_5";
     }
     /*JSON CHECK*/
 
@@ -1546,11 +1546,11 @@ bool ClamBCLogicalCompiler::compileLogicalSignature(Function &F, unsigned target
     if (min || max || !icon1.empty() || !icon2.empty()) {
         if (!max)
             max = 255; /* for now it should be enough, we can always increase it later
-                */
+                        */
         if (!min)
             min = FUNC_LEVEL_096_4;
         /* 0.96 is first to have bytecode support, but <0.96.4 has quadratic load
-             * time */
+         * time */
         LogicalSignature = LogicalSignature +
                            (";Engine:" + Twine(min) + "-" + Twine(max) + ",").str();
     } else

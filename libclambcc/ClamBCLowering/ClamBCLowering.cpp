@@ -95,7 +95,7 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
                             if (VSz < 32) {
                                 // needs zext, never sext (as index cannot be negative)
                                 V2 = Builder.CreateZExtOrBitCast(V, Type::getInt32Ty(C));
-                            } else if (VSz == 32) { //possible through CastInst path
+                            } else if (VSz == 32) { // possible through CastInst path
                                 // pass-through
                                 V2 = V;
                             } else { // VSz > 32
@@ -125,7 +125,7 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
                 GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(PI->getOperand(0));
                 if (GEP && GEP->getNumOperands() == 2) {
                     Value *V1 = GEP->getOperand(1);
-                    //if (GEP->getType()->getElementType() == Type::getInt8Ty(F.getContext())) {
+                    // if (GEP->getType()->getElementType() == Type::getInt8Ty(F.getContext())) {
                     if (GEP->getSourceElementType() == Type::getInt8Ty(F.getContext())) {
                         Value *P0 = Builder.CreatePtrToInt(GEP->getOperand(0),
                                                            V1->getType());
@@ -316,7 +316,7 @@ static bool replaceIntrinsicCalls(llvm::MemIntrinsic *pMemIntrinsic, std::pair<l
     llvm::Function *pCalled = pMemIntrinsic->getCalledFunction();
     {
         if (rep.first == pCalled) {
-            //llvm::CallSite CS(MI);
+            // llvm::CallSite CS(MI);
             Value *Len          = pMemIntrinsic->getArgOperand(2);
             llvm::Value *newLen = getReplacementSizeOperand(pMemIntrinsic, Len);
 
@@ -334,7 +334,7 @@ static bool replaceIntrinsicCalls(llvm::MemIntrinsic *pMemIntrinsic, std::pair<l
     return false;
 }
 
-//The following is probably not necessary, since we can just build with i386 target triple, but probably still a good idea.
+// The following is probably not necessary, since we can just build with i386 target triple, but probably still a good idea.
 void ClamBCLowering::downsizeIntrinsics(Function &F)
 {
 
@@ -361,8 +361,8 @@ void ClamBCLowering::downsizeIntrinsics(Function &F)
     }
 }
 
-//There is no guarantee that the alloca's will all be at the beginning of the block
-// so don't stop when we see a non-alloca
+// There is no guarantee that the alloca's will all be at the beginning of the block
+//  so don't stop when we see a non-alloca
 static void gatherAllocasWithBitcasts(llvm::BasicBlock *bb, std::vector<llvm::AllocaInst *> &allocas)
 {
     for (auto i = bb->begin(), e = bb->end(); i != e; i++) {
@@ -384,10 +384,10 @@ static void gatherAllocasWithBitcasts(llvm::BasicBlock *bb, std::vector<llvm::Al
  *
  * AFTER
  *   %0 = alloca [264 x i8]                          ; <[264 x i8]*> [#uses=1]
- *   %base_gepz = getelementptr [264 x i8]* %0, i32 0, i32 0 ; <i8*> [#uses=3] 
+ *   %base_gepz = getelementptr [264 x i8]* %0, i32 0, i32 0 ; <i8*> [#uses=3]
  *   %bcastrr = bitcast i8* %base_gepz to [264 x i8]* ; <[264 x i8]*> [#uses=2]
  *   ...
- *   %18 = bitcast [264 x i8]* %bcastrr to i8*       ; <i8*> [#uses=0] 
+ *   %18 = bitcast [264 x i8]* %bcastrr to i8*       ; <i8*> [#uses=0]
  *   %call133 = call i32 @rc4_stream_setup(i8* %base_gepz, i32 264, i8* %base_gepz22, i32 32) ; <i32> [#uses=1]
  *
  */
@@ -498,7 +498,7 @@ void ClamBCLowering::fixupPtrToInts(Function &F)
     for (std::vector<PtrToIntInst *>::iterator I = insts.begin(), E = insts.end();
          I != E; ++I) {
         PtrToIntInst *PI = *I;
-        //Builder.SetInsertPoint(PI->getParent(), PI);
+        // Builder.SetInsertPoint(PI->getParent(), PI);
         Builder.SetInsertPoint(PI);
         Value *PI2 = Builder.CreatePtrToInt(PI->getOperand(0), I64Ty);
         Value *R   = Builder.CreateTrunc(PI2, I32Ty);

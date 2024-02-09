@@ -66,16 +66,16 @@ struct ClamBCRemoveUSUB : public PassInfoMixin<ClamBCRemoveUSUB> {
         BasicBlock *pRHS      = BasicBlock::Create(pMod->getContext(), "right", usub);
         BasicBlock *pRetBlock = BasicBlock::Create(pMod->getContext(), "ret", usub);
 
-        //entry  block
+        // entry  block
         AllocaInst *retVar = new AllocaInst(functionArgType, addressSpace, "ret", pEntry);
         ICmpInst *cmp      = new ICmpInst(*pEntry, CmpInst::ICMP_UGT, pLeft, pRight, "icmp");
         BranchInst::Create(pLHS, pRHS, cmp, pEntry);
 
-        //left > right
+        // left > right
         new StoreInst(BinaryOperator::Create(Instruction::Sub, pLeft, pRight, "ClamBCRemoveUSUB_", pLHS), retVar, pLHS);
         BranchInst::Create(pRetBlock, pLHS);
 
-        //right >= left
+        // right >= left
         new StoreInst(ConstantInt::get(functionArgType, 0), retVar, pRHS);
         BranchInst::Create(pRetBlock, pRHS);
 

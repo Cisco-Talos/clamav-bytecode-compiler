@@ -134,7 +134,7 @@ enum bc_global {
 
 #ifndef DEBUGERR
 #define DEBUGERR llvm::errs() << "<" << __FILE__ << "::" << __FUNCTION__ << "::" << __LINE__ << ">"
-#endif //DEBUGERR
+#endif // DEBUGERR
 
 #ifndef DEBUG_WHERE
 #define DEBUG_WHERE llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << "><END>\n"

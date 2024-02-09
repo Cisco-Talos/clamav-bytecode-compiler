@@ -1,11 +1,11 @@
 #!/bin/bash
 
-clang-format-12 -style='{ Language: Cpp, UseTab: Never, IndentWidth: 4, AlignTrailingComments: true, AlignConsecutiveAssignments: true, AlignAfterOpenBracket: true, AlignEscapedNewlines: Left, AlignOperands: true, AllowShortFunctionsOnASingleLine: Empty, AllowShortIfStatementsOnASingleLine: true, AllowShortLoopsOnASingleLine: true, BreakBeforeBraces: Linux, BreakBeforeTernaryOperators: true, ColumnLimit: 0, FixNamespaceComments: true, SortIncludes: false, MaxEmptyLinesToKeep: 1, SpaceBeforeParens: ControlStatements, IndentCaseLabels: true, DerivePointerAlignment: true }' -dump-config > .clang-format
+clang-format-16 -style='{ Language: Cpp, UseTab: Never, IndentWidth: 4, AlignTrailingComments: true, AlignConsecutiveAssignments: true, AlignAfterOpenBracket: true, AlignEscapedNewlines: Left, AlignOperands: true, AllowShortFunctionsOnASingleLine: Empty, AllowShortIfStatementsOnASingleLine: true, AllowShortLoopsOnASingleLine: true, BreakBeforeBraces: Linux, BreakBeforeTernaryOperators: true, ColumnLimit: 0, FixNamespaceComments: true, SortIncludes: false, MaxEmptyLinesToKeep: 1, SpaceBeforeParens: ControlStatements, IndentCaseLabels: true, DerivePointerAlignment: true }' -dump-config > .clang-format
 
-clang-format-12 -i -verbose `find libclambcc -name "*.cpp"`
-clang-format-12 -i -verbose `find libclambcc -name "*.h"`
-clang-format-12 -i -verbose `find libclambcc -name "*.c"`
+clang-format-16 -i -verbose `find libclambcc -name "*.cpp"`
+clang-format-16 -i -verbose `find libclambcc -name "*.h"`
+clang-format-16 -i -verbose `find libclambcc -name "*.c"`
 
-clang-format-12 -i -verbose `find examples -name "*.cpp"`
-clang-format-12 -i -verbose `find examples -name "*.h"`
-clang-format-12 -i -verbose `find examples -name "*.c"`
+clang-format-16 -i -verbose `find examples -name "*.cpp"`
+clang-format-16 -i -verbose `find examples -name "*.h"`
+clang-format-16 -i -verbose `find examples -name "*.c"`
