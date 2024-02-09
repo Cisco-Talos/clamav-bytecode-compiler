@@ -51,16 +51,18 @@ FOUND_SHARED_OBJ = False
 
 SHARED_OBJ_DIR = Path(__file__).parent / '..' / 'lib'
 if (SHARED_OBJ_DIR / 'libclambccommon.so').exists():
-    SHARED_OBJ_FILE = SHARED_OBJ_DIR / 'libclambcc.so'
+    #SHARED_OBJ_FILE = SHARED_OBJ_DIR / 'libclambcc.so'
     FOUND_SHARED_OBJ = True
 
 elif 'LD_LIBRARY_PATH' in os.environ:
     # Use LD_LIBRARY_PATH to try to find it.
     ld_library_paths = os.environ['LD_LIBRARY_PATH'].strip(' :').split(':')
     for lib_path in ld_library_paths:
-        if (Path(lib_path) / 'libclambcc.so').exists():
-            SHARED_OBJ_FILE = Path(lib_path) / 'libclambcc.so'
+        if (Path(lib_path) / 'libclambcccommon.so').exists():
+            #SHARED_OBJ_FILE = Path(lib_path) / 'libclambcccommon.so'
+            SHARED_OBJ_DIR = Path(lib_path)
             FOUND_SHARED_OBJ = True
+
             break
 
 VERBOSE=False
@@ -859,7 +861,7 @@ def main():
     options.passthroughOptions = parser.getPassthrough()
 
     if not FOUND_SHARED_OBJ:
-        die(f"libclambcc.so not found.  See instructions for building", 2)
+        die(f"Shared objects not found.  See instructions for building", 2)
 
     if 0 == len(args):
         dieNoInputFile()
