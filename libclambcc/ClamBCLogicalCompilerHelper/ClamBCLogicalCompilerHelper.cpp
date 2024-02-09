@@ -58,7 +58,7 @@
  * we are going to undo the PHI nodes added by O3 that would have to
  *
  *
- * Consider the code 
+ * Consider the code
 
  return.sink.split:                                ; preds = %if.end39, %for.end
  %.str.1.sink = phi ptr [ @.str, %for.end ], [ @.str.1, %if.end39 ]
@@ -119,9 +119,9 @@ size_t ClamBCLogicalCompilerHelper::getBranchIdx(llvm::BranchInst *pBranch, llvm
 }
 
 /*
-     * Add calls to setvirusname for each constant string, rather allowing a phinode to
-     * choose the string.  This is a requirement for ClamBCLogicalCompiler.
-     */
+ * Add calls to setvirusname for each constant string, rather allowing a phinode to
+ * choose the string.  This is a requirement for ClamBCLogicalCompiler.
+ */
 void ClamBCLogicalCompilerHelper::processPHI(PHINode *phi, Function *pCalledFunction, std::vector<Value *> &args)
 {
 
@@ -135,7 +135,7 @@ void ClamBCLogicalCompilerHelper::processPHI(PHINode *phi, Function *pCalledFunc
                                                                           it is a predecessor block to
                                                                           my phi node, so no need for
                                                                           a dyn_cast*/
-        size_t branchIdx    = getBranchIdx(pBranch, phi->getParent());
+        size_t branchIdx = getBranchIdx(pBranch, phi->getParent());
 
         BasicBlock *pNew = BasicBlock::Create(pMod->getContext(),
                                               "ClamBCLogicalCompilerHelper_call_SetVirusName_", phi->getParent()->getParent(), phi->getParent());
@@ -149,9 +149,9 @@ void ClamBCLogicalCompilerHelper::processPHI(PHINode *phi, Function *pCalledFunc
 }
 
 /*
-     * Find all calls to setvirusname, and make sure they aren't loading the
-     * first argument from a variable.
-     */
+ * Find all calls to setvirusname, and make sure they aren't loading the
+ * first argument from a variable.
+ */
 void ClamBCLogicalCompilerHelper::fixupSetVirusNameCalls()
 {
 

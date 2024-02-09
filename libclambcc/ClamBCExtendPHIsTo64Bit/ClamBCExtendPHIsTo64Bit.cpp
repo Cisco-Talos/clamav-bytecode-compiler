@@ -103,7 +103,7 @@ class ClamBCExtendPHIsTo64Bit : public PassInfoMixin<ClamBCExtendPHIsTo64Bit>
                 continue;
             }
 
-            //Not allowed in bytecode sigs, but no reason not to support it.
+            // Not allowed in bytecode sigs, but no reason not to support it.
             if (llvm::isa<LandingPadInst>(i)) {
                 continue;
             }

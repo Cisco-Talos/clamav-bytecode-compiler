@@ -139,7 +139,7 @@ PreservedAnalyses ClamBCTrace::run(Module &M, ModuleAnalysisManager &MAM)
                 DILocation *Loc = II->getDebugLoc();
                 StringRef file  = Loc->getFilename();
                 Value *File     = builder.CreateGlobalStringPtr(file.str().c_str());
-                /*just getting this to compile, so i can iterate the MDNode's in the Instruction, 
+                /*just getting this to compile, so i can iterate the MDNode's in the Instruction,
                  * and see which one i want.
                  */
                 MDNode *NewScope = nullptr;
@@ -154,19 +154,19 @@ PreservedAnalyses ClamBCTrace::run(Module &M, ModuleAnalysisManager &MAM)
                     DIScope *scope = Loc->getScope();
                     while (llvm::isa<DILexicalBlock>(scope)) {
                         DILexicalBlock *lex = llvm::cast<DILexicalBlock>(scope);
-                        //scope = lex->getContext();
+                        // scope = lex->getContext();
                         scope = lex->getScope();
                     }
 
                     Value *Scope = 0;
                     if (llvm::isa<DISubprogram>(scope)) {
                         DISubprogram *sub = llvm::cast<DISubprogram>(scope);
-                        //StringRef name = sub->getDisplayName();
-                        //if (name.empty()) name = sub->getName();
+                        // StringRef name = sub->getDisplayName();
+                        // if (name.empty()) name = sub->getName();
                         StringRef name = sub->getName();
                         Scope          = builder.CreateGlobalStringPtr(name.str().c_str());
                     } else {
-                        //assert(scope->isCompileUnit());
+                        // assert(scope->isCompileUnit());
                         assert(llvm::isa<DICompileUnit>(scope) && "Not a DICompileUnit");
                         DICompileUnit *unit = llvm::cast<DICompileUnit>(scope);
                         Scope =
@@ -197,7 +197,7 @@ PreservedAnalyses ClamBCTrace::run(Module &M, ModuleAnalysisManager &MAM)
                         if (isa<IntegerType>(AI->getType())) {
                         } else if (isa<PointerType>(AI->getType())) {
                             Value *V                  = builder.CreatePointerCast(AI,
-                                                                 PointerType::getUnqual(Type::getInt8Ty(M.getContext())));
+                                                                                  PointerType::getUnqual(Type::getInt8Ty(M.getContext())));
                             std::vector<Value *> args = {
                                 V, ConstantInt::get(Type::getInt32Ty(M.getContext()), 0)};
                             builder.CreateCall(trace_ptr, args, "ClamBCTrace_trace_ptr");

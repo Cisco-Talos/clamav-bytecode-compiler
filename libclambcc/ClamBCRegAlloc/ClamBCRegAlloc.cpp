@@ -57,7 +57,7 @@ void ClamBCRegAllocAnalysis::handlePHI(PHINode *PN)
     BasicBlock *pEntry  = llvm::cast<BasicBlock>(pFunc->begin());
     Instruction *pFirst = llvm::cast<Instruction>(pEntry->begin());
     AllocaInst *AI      = new AllocaInst(PN->getType(), pFunc->getAddressSpace(), ".phi",
-                                    pFirst);
+                                         pFirst);
     llvm::IRBuilder<> builder(PN->getContext());
     unsigned MDDbgKind = PN->getContext().getMDKindID("dbg");
     if (MDDbgKind) {
@@ -194,9 +194,9 @@ bool ClamBCRegAllocAnalysis::runOnFunction(Function &F)
         }
         ++id;
     }
-    //TODO: reduce the number of virtual registers used, by using
-    // an algorithms that walks the dominatortree and does value liveness
-    // analysis.
+    // TODO: reduce the number of virtual registers used, by using
+    //  an algorithms that walks the dominatortree and does value liveness
+    //  analysis.
     return Changed;
 }
 

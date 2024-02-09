@@ -38,8 +38,8 @@ using namespace std;
 namespace
 {
 /*
-     * Remove fshl intrinsic because it's not supported by our runtime.
-     */
+ * Remove fshl intrinsic because it's not supported by our runtime.
+ */
 struct ClamBCRemoveFSHL : public PassInfoMixin<ClamBCRemoveFSHL> {
   protected:
     Module *pMod = nullptr;

@@ -21,10 +21,10 @@ using namespace llvm;
 namespace
 {
 /*
-     * This pass requires -mem2reg before it (TEMPORARILY) 
-     * and must be run before -O3.  
+     * This pass requires -mem2reg before it (TEMPORARILY)
+     * and must be run before -O3.
      *
-     * This will remove storing parameters in stack variables and loading from there.  
+     * This will remove storing parameters in stack variables and loading from there.
      *
      * ; Function Attrs: noinline nounwind uwtable
        define dso_local i32 @decrypt_config(i32 %config_location, %struct._state* %state, i32 %sizeof_state) #0 {

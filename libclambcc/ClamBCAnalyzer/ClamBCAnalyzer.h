@@ -76,24 +76,24 @@ class ClamBCAnalysis
     virtual void printGlobals(uint16_t stid);
 
     /* TODO
-         *
-         * bytecode_api_decl.c.h
-         *
-         * Temporarily did this to populate the api map of the clamav functions that are allowed.  Previously,
-         * there was c++ code that would parse the header file and read in the api's.  I am planning on having them
-         * compiled into the module.
-         *
-         * bytecode_api_decl.c.h includes 5 potentially problematic files.
-         * clamav-types.h => stored in the clamav build directory
-         * type_desc.h => stored in clamav_checkout/libclamav
-         * bytecode_api.h => stored in clamav install directory somewhere
-         * bytecode_api_impl.h => stored in clamav_checkout/libclamav
-         * bytecode_priv.h => stored in clamav_checkout/libclamav
-         *
-         * For NOW, we are just going to hardcode the api map.
-         *
-         * Eventually we will have clamav install api headers as part of the build, and just read those.
-         */
+     *
+     * bytecode_api_decl.c.h
+     *
+     * Temporarily did this to populate the api map of the clamav functions that are allowed.  Previously,
+     * there was c++ code that would parse the header file and read in the api's.  I am planning on having them
+     * compiled into the module.
+     *
+     * bytecode_api_decl.c.h includes 5 potentially problematic files.
+     * clamav-types.h => stored in the clamav build directory
+     * type_desc.h => stored in clamav_checkout/libclamav
+     * bytecode_api.h => stored in clamav install directory somewhere
+     * bytecode_api_impl.h => stored in clamav_checkout/libclamav
+     * bytecode_priv.h => stored in clamav_checkout/libclamav
+     *
+     * For NOW, we are just going to hardcode the api map.
+     *
+     * Eventually we will have clamav install api headers as part of the build, and just read those.
+     */
     virtual void populateAPIMap();
 
   public:
@@ -266,4 +266,4 @@ class ClamBCAnalyzer : public llvm::AnalysisInfoMixin<ClamBCAnalyzer>
     }
 };
 
-#endif //CLAMBC_ANALYZER_H_
+#endif // CLAMBC_ANALYZER_H_

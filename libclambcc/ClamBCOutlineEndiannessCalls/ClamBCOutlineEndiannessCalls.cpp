@@ -73,8 +73,8 @@ class ClamBCOutlineEndiannessCalls : public PassInfoMixin<ClamBCOutlineEndiannes
         pNew->addFnAttr(Attribute::OptimizeNone);
         pNew->addFnAttr(Attribute::NoInline);
 
-        //TODO: Test with NoInline, but not OptimizeNone (Hopefully I can have the function return 1 or 0, and
-        //not have to actually call the function.
+        // TODO: Test with NoInline, but not OptimizeNone (Hopefully I can have the function return 1 or 0, and
+        // not have to actually call the function.
 
         return pNew;
     }

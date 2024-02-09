@@ -43,7 +43,7 @@ namespace
 struct ClamBCRemoveUnsupportedICMPIntrinsics : public PassInfoMixin<ClamBCRemoveUnsupportedICMPIntrinsics> {
   protected:
     Module *pMod = nullptr;
-    //const char * const UnsupportedICMPIntrinsics_NAME = ".smin";
+    // const char * const UnsupportedICMPIntrinsics_NAME = ".smin";
 
     FunctionType *sminType = nullptr;
 
@@ -69,16 +69,16 @@ struct ClamBCRemoveUnsupportedICMPIntrinsics : public PassInfoMixin<ClamBCRemove
         BasicBlock *pRHS      = BasicBlock::Create(pMod->getContext(), "right", smin);
         BasicBlock *pRetBlock = BasicBlock::Create(pMod->getContext(), "ret", smin);
 
-        //entry  block
+        // entry  block
         AllocaInst *retVar = new AllocaInst(functionArgType, addressSpace, "ret", pEntry);
         ICmpInst *cmp      = new ICmpInst(*pEntry, predicate, pLeft, pRight, "icmp");
         BranchInst::Create(pLHS, pRHS, cmp, pEntry);
 
-        //left > right
+        // left > right
         new StoreInst(pLeft, retVar, pLHS);
         BranchInst::Create(pRetBlock, pLHS);
 
-        //right >= left
+        // right >= left
         new StoreInst(pRight, retVar, pRHS);
         BranchInst::Create(pRetBlock, pRHS);
 

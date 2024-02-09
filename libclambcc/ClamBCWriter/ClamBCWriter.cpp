@@ -64,8 +64,8 @@
 
 extern "C" const char *clambc_getversion(void);
 
-//There were some things that were in the previous Module, that may or may not be needed at this time.  There
-//are ways to share data between passes, will do that if it is necessary.
+// There were some things that were in the previous Module, that may or may not be needed at this time.  There
+// are ways to share data between passes, will do that if it is necessary.
 
 using namespace llvm;
 
@@ -113,12 +113,12 @@ class ClamBCOutputWriter
 
         if (nullptr == fro) {
             assert(0 && "FIGURE OUT THE CORRECT WAY TO DIE");
-            //ClamBCStop();
+            // ClamBCStop();
         }
         ClamBCOutputWriter *ret = new ClamBCOutputWriter(*fro, pMod, pAnalyzer);
         if (nullptr == ret) {
             assert(0 && "FIGURE OUT THE CORRECT WAY TO DIE");
-            //ClamBCStop();
+            // ClamBCStop();
         }
         return ret;
     }
@@ -206,7 +206,7 @@ class ClamBCOutputWriter
         // Bytecode compile timestamp
         time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-        //printNumber(now, false); //IT APPEARS THAT I NEED THIS???
+        // printNumber(now, false); //IT APPEARS THAT I NEED THIS???
         printNumber(OutReal, now, false);
 
         const char *user = getenv("SIGNDUSER");
@@ -272,7 +272,7 @@ class ClamBCOutputWriter
                 Type *Ty = STy->getTypeAtIndex(i);
                 if (isa<PointerType>(Ty)) {
 
-                    //WriteTypeSymbolic(errs(), STy, M);
+                    // WriteTypeSymbolic(errs(), STy, M);
                     assert(0 && "Find replacement for WriteTypeSymbolic");
 
                     STy->dump();
@@ -378,7 +378,7 @@ class ClamBCOutputWriter
             }
             return;
         }
-        //TODO: better diagnostics here
+        // TODO: better diagnostics here
         if (isa<ConstantFP>(C)) {
             ClamBCStop("Floating point constants are not supported!", &M);
         }
@@ -416,7 +416,7 @@ class ClamBCOutputWriter
         unsigned tid                                = pAnalyzer->getStartTID();
         const std::vector<const Type *> &extraTypes = pAnalyzer->getExtraTypes();
         for (auto I = extraTypes.begin(), E = extraTypes.end(); I != E; ++I) {
-            //assert(typeIDs[*I] == tid && "internal type ID mismatch");
+            // assert(typeIDs[*I] == tid && "internal type ID mismatch");
             assert(pAnalyzer->getTypeID(*I) == tid && "internal type ID mismatch");
             describeType(Out, *I, pMod, pAnalyzer);
             tid++;
@@ -536,11 +536,11 @@ class ClamBCOutputWriter
     void finished(llvm::Module *pMod, ClamBCAnalysis *pAnalyzer)
     {
 
-        //maxline+1, 1 more for \0
+        // maxline+1, 1 more for \0
         printModuleHeader(*pMod, pAnalyzer, maxLineLength + 1);
         OutReal << Out.str();
 
-        //MemoryBuffer *MB  = nullptr;
+        // MemoryBuffer *MB  = nullptr;
         const char *start     = NULL;
         std::string copyright = pAnalyzer->getCopyright();
         if (copyright.length()) {
@@ -551,17 +551,17 @@ class ClamBCOutputWriter
                 SrcFile = pMod->getSourceFileName();
             }
             if (!SrcFile.empty()) {
-                //std::string ErrStr;
-                //MB = MemoryBuffer::getFile(SrcFile, &ErrStr);
+                // std::string ErrStr;
+                // MB = MemoryBuffer::getFile(SrcFile, &ErrStr);
                 ErrorOr<std::unique_ptr<MemoryBuffer>> mbOrErr = MemoryBuffer::getFile(SrcFile);
                 if (std::error_code ec = mbOrErr.getError()) {
                     ClamBCStop("Unable to (re)open input file: " + SrcFile, pMod);
                 }
-                //MB = mbOrErr.get();
+                // MB = mbOrErr.get();
                 LLVMMemoryBufferRef mbr = wrap(mbOrErr.get().release());
                 // mapped file is \0 terminated by getFile()
                 start = unwrap(mbr)->getBufferStart();
-                //start = MB->getBufferStart();
+                // start = MB->getBufferStart();
             }
         }
         if (!start) {
@@ -576,7 +576,7 @@ class ClamBCOutputWriter
                 c = *start++;
             } while (c == ' ' || c == '\t');
             while (c != '\n' && c) {
-                //char b[3] = {0x60 | (c & 0xf), 0x60 | ((c >> 4) & 0xf), '\0'};
+                // char b[3] = {0x60 | (c & 0xf), 0x60 | ((c >> 4) & 0xf), '\0'};
                 char b[3];
                 b[0] = 0x60 | (c & 0xf);
                 b[1] = 0x60 | ((c >> 4) & 0xf);
@@ -635,7 +635,7 @@ class ClamBCOutputWriter
 
     static void printNumber(raw_ostream &Out, uint64_t n, bool constant)
     {
-        //llvm::errs() << "printNumber" << "::" << n << "::" << constant << "::";
+        // llvm::errs() << "printNumber" << "::" << n << "::" << constant << "::";
         char number[32];
         unsigned i = 0;
         while (n > 0) {
@@ -648,7 +648,7 @@ class ClamBCOutputWriter
             number[0] = 0x40 | i;
         }
         number[++i] = '\0';
-        //llvm::errs() << number << "<END>\n";
+        // llvm::errs() << number << "<END>\n";
         Out << number;
     }
 
@@ -674,7 +674,7 @@ class ClamBCOutputWriter
         Out << "|";
         printNumber(Out, len, false);
         for (i = 0; i < len; i++) {
-            //char b[3] = {0x60 | (s[i] & 0xf), 0x60 | ((s[i] >> 4) & 0xf), '\0'};
+            // char b[3] = {0x60 | (s[i] & 0xf), 0x60 | ((s[i] >> 4) & 0xf), '\0'};
             char b[3];
             b[0] = 0x60 | (s[i] & 0xf);
             b[1] = 0x60 | ((s[i] >> 4) & 0xf);
@@ -861,7 +861,7 @@ class ClamBCWriter : public PassInfoMixin<ClamBCWriter>, public InstVisitor<Clam
         }
         fid++;
 
-        //Removed, see note about getFunctionID at the top of the file.
+        // Removed, see note about getFunctionID at the top of the file.
         assert(pAnalyzer->getFunctionID(&F) == fid && "Function IDs don't match");
 
         FunctionAnalysisManager &fam = pModuleAnalysisManager->getResult<FunctionAnalysisManagerModuleProxy>(*pMod).getManager();
@@ -964,7 +964,7 @@ class ClamBCWriter : public PassInfoMixin<ClamBCWriter>, public InstVisitor<Clam
                         DEBUGERR << *(GEP.getPointerOperand()) << "<END>\n";
                         DEBUGERR << *(GEP.getPointerOperand()->getType()) << "<END>\n";
                         DEBUGERR << iid << "<END>\n";
-                        //stop("gep1 with type > 65 won't work on interpreter", &GEP);
+                        // stop("gep1 with type > 65 won't work on interpreter", &GEP);
                         assert(0 && "gep1 with type > 65 won't work on interpreter");
                     }
                 }
@@ -1156,7 +1156,7 @@ class ClamBCWriter : public PassInfoMixin<ClamBCWriter>, public InstVisitor<Clam
         assert(!isa<PointerType>(I.getType()));
         if (I.getOpcode() == Instruction::Sub) {
             // sub ptrtoint, ptrtoint
-            //TODO: push ptrtoinst through phi nodes!
+            // TODO: push ptrtoinst through phi nodes!
             LLVMContext &C  = I.getContext();
             Instruction *LI = dyn_cast<Instruction>(I.getOperand(0));
             Instruction *RI = dyn_cast<Instruction>(I.getOperand(1));
@@ -1272,7 +1272,7 @@ class ClamBCWriter : public PassInfoMixin<ClamBCWriter>, public InstVisitor<Clam
                 break;
             default:
                 stop("Unsupported icmp predicate", &I);
-                return; //Removes uninitialized opc warning.
+                return; // Removes uninitialized opc warning.
         }
         printFixedNumber(opc, 2);
         printType(I.getOperand(0)->getType());
@@ -1422,8 +1422,8 @@ bool ClamBCWriter::doInitialization(Module &M)
     TheModule                      = &M;
 
     if (DumpDI) {
-        //TODO: Get debug info working.
-        //Dumper = createDbgInfoPrinterPass();
+        // TODO: Get debug info working.
+        // Dumper = createDbgInfoPrinterPass();
     }
     fid       = 0;
     MDDbgKind = M.getContext().getMDKindID("dbg");

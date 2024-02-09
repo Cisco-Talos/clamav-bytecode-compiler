@@ -109,4 +109,4 @@ class ClamBCRegAllocAnalyzer : public llvm::AnalysisInfoMixin<ClamBCRegAllocAnal
     }
 };
 
-#endif //CLAMBC_REGALLOC_H
+#endif // CLAMBC_REGALLOC_H

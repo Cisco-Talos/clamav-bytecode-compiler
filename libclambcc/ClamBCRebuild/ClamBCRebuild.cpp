@@ -95,7 +95,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
             runOnBasicBlock(bb);
         }
 
-        //phase 2: map PHI operands now
+        // phase 2: map PHI operands now
         for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
             if (PHINode *N = dyn_cast<PHINode>(&*I)) {
                 PHINode *PN = dyn_cast<PHINode>(VMap[N]);
@@ -264,7 +264,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
         Type *Ty   = rebuildType(AI.getAllocatedType(), true);
         if (const ArrayType *ATy = dyn_cast<ArrayType>(Ty)) {
             Ty = ATy->getElementType();
-            //TODO: check for overflow
+            // TODO: check for overflow
             n *= ATy->getNumElements();
         }
         if (n != 1)
@@ -275,7 +275,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
 
     Constant *mapConstant(Constant *C)
     {
-        //TODO: compute any gep exprs here
+        // TODO: compute any gep exprs here
         return C;
     }
 
@@ -320,7 +320,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
             BasicBlock::iterator thisP = Builder->GetInsertPoint();
             BasicBlock *targetBB       = I->getParent();
             if (thisBB != targetBB) {
-                //BasicBlock::iterator IP = I;
+                // BasicBlock::iterator IP = I;
                 BasicBlock::iterator IP(I);
                 ++IP;
                 while (isa<AllocaInst>(IP)) ++IP;
@@ -397,10 +397,10 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
         Value *op1 = mapValue(I.getOperand(1));
 
         /*
-       * bb#11515: Structure pointers are translated to uint8_t* pointers
-       * but constants are kept to their original type so a type
-       * conversion may be necessary on a icmp inst with a constant
-       */
+         * bb#11515: Structure pointers are translated to uint8_t* pointers
+         * but constants are kept to their original type so a type
+         * conversion may be necessary on a icmp inst with a constant
+         */
         if (op0->getType() != op1->getType()) {
             if (isa<Constant>(op0))
                 op0 = makeCast(op0, op1->getType());
@@ -431,7 +431,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
     void visitGetElementPtrInst(GetElementPtrInst &II)
     {
         if (II.hasAllZeroIndices()) {
-            //just a bitcast
+            // just a bitcast
             VMap[&II] = mapPointer(II.getOperand(0), rebuildType(II.getType()));
             return;
         }
@@ -450,10 +450,10 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
         }
 
         if (II.isInBounds()) {
-            //P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
+            // P = Builder->CreateInBoundsGEP(P, idxs.begin(), idxs.end());
             P = Builder->CreateInBoundsGEP(pt, P, idxs, "clambcRebuildInboundsGEP");
         } else {
-            //P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
+            // P = Builder->CreateGEP(P, idxs.begin(), idxs.end());
             P = Builder->CreateGEP(pt, P, idxs, "clambcRebuildGEP");
         }
         VMap[&II] = makeCast(P, rebuildType(II.getType()));
@@ -476,7 +476,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
     void visitPHINode(PHINode &I)
     {
         VMap[&I] = Builder->CreatePHI(I.getType(), 0, "ClamBCRebuild_phi_visitPHINode_");
-        //2nd phase will map the operands
+        // 2nd phase will map the operands
     }
 
     void visitCastInst(CastInst &I)

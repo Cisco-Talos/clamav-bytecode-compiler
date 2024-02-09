@@ -21,7 +21,7 @@
  */
 
 /*
- * aragusa: 
+ * aragusa:
  * I haven't looked into everything this pass does, but one thing I have found is that it inserts run-time bounds
  * checking for pointers.  What it does is look at the access to a pointer, and insert a check for if that will
  * access too much memory.  If it would, it jumps to an "AbortBB", a basic block that calls abort.  One potential
@@ -139,7 +139,7 @@ class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier>,
     }
 
     /*
-     * FreezeInst's are used to guarantee a value being set to something fixed 
+     * FreezeInst's are used to guarantee a value being set to something fixed
      * if it is undef or a poison value.  They are a noop otherwise, so we will allow
      * them in the verifier, and remove them in a pass to be run after the verifier.
      * (a 'verifier' shouldn't be changing the IR).
@@ -367,7 +367,7 @@ class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier>,
         AU.setPreservesAll();
     }
 };
-//char ClamBCVerifier::ID = 0;
+// char ClamBCVerifier::ID = 0;
 
 } // namespace ClamBCVerifier
 
