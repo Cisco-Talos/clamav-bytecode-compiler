@@ -130,16 +130,21 @@ jobs:
   #       run: ctest -C ${{ env.BUILD_TYPE }} -V
 
   build-ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v1
 
       - name: Update package listings
-        run: sudo apt-get update
+        run:
+          sudo apt-get update
 
       - name: Install Dependencies
-        run: sudo apt-get install -y llvm-16-dev clang-16 clamav # TODO: use just 'llvm-dev' when we can support any recent LLVM version.
+        run:
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 16
+          sudo apt-get install -y clamav
 
       - name: Install pytest for easier to read test results
         run: python3 -m pip install pytest
@@ -160,8 +165,7 @@ jobs:
         # and build directories, but this is only available with CMake 3.13 and higher.
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
         run:
-          cmake ${{runner.workspace}}/clamav-bytecode-compiler -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-          -DENABLE_EXAMPLES=ON
+          cmake ${{runner.workspace}}/clamav-bytecode-compiler -D CMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -D ENABLE_EXAMPLES=ON
 
       - name: Build
         shell: bash
