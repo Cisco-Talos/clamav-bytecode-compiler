@@ -50,19 +50,16 @@ INCDIR = str(Path(__file__).parent / '..' / 'include')
 FOUND_SHARED_OBJ = False
 
 SHARED_OBJ_DIR = Path(__file__).parent / '..' / 'lib'
-if (SHARED_OBJ_DIR / 'libclambccommon.so').exists():
-    #SHARED_OBJ_FILE = SHARED_OBJ_DIR / 'libclambcc.so'
+if (SHARED_OBJ_DIR / 'libClamBCCommon.so').exists():
     FOUND_SHARED_OBJ = True
 
 elif 'LD_LIBRARY_PATH' in os.environ:
     # Use LD_LIBRARY_PATH to try to find it.
     ld_library_paths = os.environ['LD_LIBRARY_PATH'].strip(' :').split(':')
     for lib_path in ld_library_paths:
-        if (Path(lib_path) / 'libclambcccommon.so').exists():
-            #SHARED_OBJ_FILE = Path(lib_path) / 'libclambcccommon.so'
+        if (Path(lib_path) / 'libClamBCCommon.so').exists():
             SHARED_OBJ_DIR = Path(lib_path)
             FOUND_SHARED_OBJ = True
-
             break
 
 VERBOSE=False
@@ -516,7 +513,7 @@ INTERNALIZE_API_LIST=[ "_Z10entrypointv"
         , "__clambc_match_counts"
         , "__clambc_match_offsets"
         , "__clambc_pedata"
-        , "__Copyright" 
+        , "__Copyright"
         ]
 
 OPTIMIZE_OPTIONS = ["-S"
@@ -600,33 +597,31 @@ OPTIMIZE_PASSES = ["function(mem2reg)"
         , 'verify'
 ]
 
-OPTIMIZE_LOADS=[ f"--load {SHARED_OBJ_DIR}/libclambccommon.so"
+OPTIMIZE_LOADS=[ f"--load {SHARED_OBJ_DIR}/libClamBCCommon.so"
 #        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveundefs.so"          #Not needed, since clambc-remove-undefs is not being used.
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcpreserveabis.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveunsupportedicmpintrinsics.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveusub.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremovefshl.so"
-#        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremovepointerphis.so"    #Not needed, since clambc-remove-pointer-phis is not being used.
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcloweringnf.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveicmpsle.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcverifier.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremovefreezeinsts.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcloweringf.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambclogicalcompilerhelper.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambclogicalcompiler.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcrebuild.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambctrace.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcoutlineendiannesscalls.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcchangemallocargsize.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcextendphisto64bit.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcconvertintrinsicsto32bit.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcpreparegepsforwriter.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcanalyzer.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcregalloc.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcwriter.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPreserveABIs.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUnsupportedICMPIntrinsics.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUSUB.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFSHL.so"
+#        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemovePointerPHIs.so"    #Not needed, since clambc-remove-pointer-phis is not being used.
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringNF.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveICMPSLE.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCVerifier.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFreezeInsts.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringF.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLogicalCompilerHelper.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLogicalCompiler.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRebuild.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCTrace.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCOutlineEndiannessCalls.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCChangeMallocArgSize.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCExtendPHIsTo64Bit.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCConvertIntrinsicsTo32Bit.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPrepareGEPsForWriter.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCAnalyzer.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRegAlloc.so"
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCWriter.so"
 ]
-
-
 
 def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inputSourceFile: str, standardCompiler: bool) -> int:
 
