@@ -24,7 +24,7 @@
 #include "ClamBCModule.h"
 #include "ClamBCUtilities.h"
 
-#include "ClamBCAnalyzer/ClamBCAnalyzer.h"
+#include "ClamBCAnalyzer.h"
 
 #include <llvm/Support/DataTypes.h>
 #include <llvm/ADT/STLExtras.h>

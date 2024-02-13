@@ -14,7 +14,7 @@ if(WIN32)
     file(TO_NATIVE_PATH ${sigtool_EXECUTABLE} SIGTOOL)
     file(TO_NATIVE_PATH ${clambc_headers_DIRECTORY} HEADERS)
 else()
-    set(LD_LIBRARY_PATH    $<TARGET_FILE_DIR:clambccommon>:$ENV{LD_LIBRARY_PATH})
+    set(LD_LIBRARY_PATH    $<TARGET_FILE_DIR:ClamBCCommon>:$ENV{LD_LIBRARY_PATH})
 
     set(SOURCE             ${CMAKE_SOURCE_DIR})
     set(BUILD              ${CMAKE_BINARY_DIR})
