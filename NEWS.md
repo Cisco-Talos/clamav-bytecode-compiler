@@ -20,6 +20,21 @@ For example:
 > - [bytecode_api.h](headers/bytecode_api.h)
 > - [bytecode_local.h](headers/bytecode_local.h)
 
+## `1.3.0-rc`
+
+➕ Upgrade bytecode compiler project to LLVM 16.
+  - The bytecode compiler project now builds multiple shared object files,
+    instead of just one with all of the passes.  This is due to running with
+    the "new" pass manager, instead of running with the legacy pass manager,
+    as before.
+  - The bytecode compiler currently uses (deprecated) non-opaque pointers.
+    Updating to all opaque pointers will be required for the next release.
+    See https://llvm.org/docs/OpaquePointers.html for more information.
+
+🌌 New Requirements:
+  - LLVM 16
+  - Clang 16
+
 ## `0.105.0`
 
 ➕ Complete overhaul of the bytecode compiler project.
