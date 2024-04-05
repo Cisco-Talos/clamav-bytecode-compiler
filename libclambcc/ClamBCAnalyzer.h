@@ -118,11 +118,6 @@ class ClamBCAnalysis
     virtual uint32_t getTypeID(const llvm::Type *const t)
     {
         TypeMapTy::iterator I = typeIDs.find(t);
-        if (I == typeIDs.end()) {
-            DEBUG_NONPOINTER("BAD VALUE");
-            DEBUG_VALUE(t);
-        }
-
         assert((I != typeIDs.end()) && "Type ID requested for unknown type");
         return I->second;
     }

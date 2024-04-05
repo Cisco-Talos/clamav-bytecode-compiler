@@ -206,8 +206,6 @@ class LogicalNode : public FoldingSetNode
         if (Node->kind == LOG_ADD) {
             ConstantRange Cmp(APInt(32, value));
             // a + c < b -> a+c in [0, b) -> a in [0-c, b-c)
-            /*TODO: Determine if makeSatisfyingICmpRegin is better than makeAllowedICmpRegion,
-             * If this is changed, check the rest.*/
             ConstantRange ltRange = ConstantRange::makeSatisfyingICmpRegion(CmpInst::ICMP_ULT, Cmp);
 
             ltRange      = ltRange.subtract(APInt(32, Node->op0));
@@ -327,10 +325,7 @@ class LogicalNode : public FoldingSetNode
         return getNode(M);
     }
 
-    /*
-     * aragusa: All this is doing is checking for duplicates in whatever collection begin and end reference.
-     * Why are we putting them in another local?
-     * */
+    /*Test for duplicates*/
     bool checkUniq()
     {
         LogicalSet nodes;
@@ -1731,8 +1726,6 @@ bool ClamBCLogicalCompiler::compileVirusNames(Module &M, unsigned kind)
 
         if (F != pCallInst->getCalledFunction()) {
 
-            llvm::errs() << "<" << __FUNCTION__ << "::" << __LINE__ << ">NOT SURE HOW THIS IS POSSIBLE<END>\n";
-
             /*Not sure how this is possible, either*/
             printDiagnostic("setvirusname can only be directly called",
                             pCallInst);
@@ -1811,7 +1804,6 @@ PreservedAnalyses ClamBCLogicalCompiler::run(Module &M, ModuleAnalysisManager &M
     }
     if (!compileVirusNames(M, kind)) {
         if (!kind || kind == BC_STARTUP) {
-            //    return true;
             return PreservedAnalyses::all();
         }
         Valid = false;

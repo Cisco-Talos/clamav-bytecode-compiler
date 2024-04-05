@@ -19,6 +19,10 @@ using namespace llvm;
 
 #include <set>
 
+/*
+ * This Pass is only needed for 0.103 on Windows, so when we no longer need to support 0.103, it can be removed.
+ */
+
 namespace
 {
 class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
@@ -226,6 +230,10 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
         std::vector<Instruction *> newInsts;
         Instruction *insPt = findFirstNonPHI(pn->getParent());
 
+        if (pBasePtr->getType() != pn->getType()) {
+            pBasePtr = CastInst::CreatePointerCast(pBasePtr, pn->getType(), "ClamBCRemovePointerPHIs_cast_", insPt);
+        }
+
         PointerType *pt = llvm::dyn_cast<PointerType>(pBasePtr->getType());
         if (nullptr == pt) {
             assert(0 && "This pass is only for pointer phis, how did we get here???");
@@ -247,6 +255,10 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
                     assert(2 == pgepi->getNumOperands() && "Handle the case of more than 2 operands");
 
                     Value *incVal = pgepi->getOperand(1);
+
+                    if (incVal->getType() != pType) {
+                        incVal = CastInst::CreateIntegerCast(incVal, pType, false, "ClamBCRemovePointerPHIs_cast_", pgepi);
+                    }
 
                     Instruction *add = BinaryOperator::Create(Instruction::Add, idxNode, incVal, "ClamBCRemovePointerPHIs_add_", pgepi);
                     BasicBlock *pred = findPredecessor(idxNode->getParent(), pgepi->getParent(), omitNodes);
@@ -288,17 +300,67 @@ class ClamBCRemovePointerPHIs : public PassInfoMixin<ClamBCRemovePointerPHIs>
         return true;
     }
 
+    /*The idea here is that we get the insertion point for where our calculated value
+     * will be saved.  pInst is the value we want to save, so it will have to be*/
+    Instruction *getInsertionPoint(Instruction *pInst)
+    {
+        BasicBlock *pBB   = pInst->getParent();
+        bool canBreak     = false;
+        Instruction *pRet = nullptr;
+        for (auto i = pBB->begin(), e = pBB->end(); i != e; i++) {
+            pRet = llvm::cast<Instruction>(i);
+            if (canBreak && (not llvm::isa<PHINode>(pRet))) {
+                break;
+            }
+            if (pRet == pInst) {
+                canBreak = true;
+            }
+        }
+        return pRet;
+    }
+
+    /* Load the value from our AllocaInst, and
+     * replace the PHINode everywhere it is used.*/
+    virtual void replaceUses(PHINode *pn, AllocaInst *pai)
+    {
+        std::vector<Instruction *> users;
+        for (auto i = pn->user_begin(), e = pn->user_end(); i != e; i++) {
+            if (Instruction *pUser = llvm::dyn_cast<Instruction>(*i)) {
+                users.push_back(pUser);
+            }
+        }
+
+        for (size_t i = 0; i < users.size(); i++) {
+            Instruction *pUser = users[i];
+            Instruction *insPt = nullptr;
+
+            if (PHINode *pnUser = llvm::dyn_cast<PHINode>(pUser)) {
+                for (size_t j = 0; j < pnUser->getNumIncomingValues(); j++) {
+                    if (pn == pnUser->getIncomingValue(j)) {
+                        insPt = pnUser->getIncomingBlock(j)->getTerminator();
+                        break;
+                    }
+                }
+            } else {
+                insPt = pUser;
+            }
+
+            LoadInst *pli = new LoadInst(pn->getType(), pai, "ClamBCRemovePointerPHIs_load_", insPt);
+            for (size_t j = 0; j < pUser->getNumOperands(); j++) {
+                if (pn == pUser->getOperand(j)) {
+                    pUser->setOperand(j, pli);
+                    break;
+                }
+            }
+        }
+    }
+
   public:
     ClamBCRemovePointerPHIs() {}
 
+    /*This is only necessary for 0.103 on windows.*/
     virtual PreservedAnalyses run(Module &m, ModuleAnalysisManager &mam)
     {
-
-        /*Currently unused.  Will remove after the RC phase.*/
-        DEBUGERR << "TODO: EVALUATE WHETHER OR NOT I NEED THIS"
-                 << "<END>\n";
-        return PreservedAnalyses::all();
-
         pMod     = &m;
         bool ret = false;
 

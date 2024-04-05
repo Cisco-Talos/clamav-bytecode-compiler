@@ -177,6 +177,7 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
         }
     }
 
+    /*MAIN*/
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM)
     {
         pMod = &M;
@@ -304,8 +305,34 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
         return NV;
     }
 
+    /* findDuplicateType looks through all the casts of a value to find if it
+     * is ultimately being casted to a type that it is already casted from.
+     * If that is the case, it just returns the original, instead of creating
+     * another cast.
+     *
+     * In addition to being inefficient, the excessive casting was causing
+     * issues in 0.103 and 0.105.
+     */
+    Value *findDuplicateType(Value *v, Type *t)
+    {
+        if (BitCastInst *bci = llvm::dyn_cast<BitCastInst>(v)) {
+            if (bci->getSrcTy() == t) {
+                return bci->getOperand(0);
+            }
+
+            return findDuplicateType(bci->getOperand(0), t);
+        }
+        return nullptr;
+    }
+
     Value *makeCast(Value *V, Type *Ty)
     {
+
+        Value *v = findDuplicateType(V, Ty);
+        if (v) {
+            return v;
+        }
+
         if (V->getType() == Ty) {
             return V;
         }
@@ -513,6 +540,12 @@ class ClamBCRebuild : public PassInfoMixin<ClamBCRebuild>, public InstVisitor<Cl
                 if (Ty->isIntegerTy()) {
                     V = Builder->CreateBitCast(V, Ty, "ClamBCRebuild_cast");
                 } else if (Ty->isPointerTy()) { // A CompositeType
+
+                    /*This appears to be necessary for 0.103 on windows.*/
+                    if (Ty != i8pTy) {
+                        V = Builder->CreatePointerCast(V, i8pTy, "ClamBCRebuild");
+                    }
+
                     V = Builder->CreatePointerCast(V, Ty, "ClamBCRebuild");
                 } else {
                     stop("Type conversion unhandled in ClamAV Bytecode Backend Rebuilder", &I);

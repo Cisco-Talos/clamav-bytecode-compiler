@@ -145,9 +145,7 @@ class ChangeMallocArgSize : public PassInfoMixin<ChangeMallocArgSize>
 
     virtual PreservedAnalyses run(Module& m, ModuleAnalysisManager& MAM)
     {
-        pMod = &m;
-        DEBUGERR << "TODO: Evaluate whether or not we still need this."
-                 << "<END>\n";
+        pMod    = &m;
         dstType = Type::getInt64Ty(pMod->getContext());
 
         findSizes();
