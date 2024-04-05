@@ -277,21 +277,21 @@ target_link_directories(ClamBCRemoveICMPSLE PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(ClamBCRemoveICMPSLE PUBLIC ${LLVM_LIBS})
 install(TARGETS ClamBCRemoveICMPSLE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-# #
-# # The ClamBCRemovePointerPHIs shared library.
-# #
-# add_library(ClamBCRemovePointerPHIs SHARED
-# ClamBCRemovePointerPHIs.cpp)
-# target_include_directories(ClamBCRemovePointerPHIs PRIVATE
-# ${LLVM_INCLUDE_DIRS})
-# set_target_properties(ClamBCRemovePointerPHIs PROPERTIES
-# COMPILE_FLAGS "${WARNCXXFLAGS}"
-# VERSION ${LIBCLAMBC_VERSION}
-# SOVERSION ${LIBCLAMBC_SOVERSION})
-# #target_compile_definitions(ClamBCRemovePointerPHIs -DLOG_BEFORE_AFTER=1) # For testing
-# target_link_directories(ClamBCRemovePointerPHIs PRIVATE ${LLVM_LIBRARY_DIRS})
-# target_link_libraries(ClamBCRemovePointerPHIs PUBLIC ${LLVM_LIBS})
-# install(TARGETS ClamBCRemovePointerPHIs DESTINATION ${CMAKE_INSTALL_LIBDIR})
+#
+# The ClamBCRemovePointerPHIs shared library.
+#
+add_library(ClamBCRemovePointerPHIs SHARED
+ClamBCRemovePointerPHIs.cpp)
+target_include_directories(ClamBCRemovePointerPHIs PRIVATE
+${LLVM_INCLUDE_DIRS})
+set_target_properties(ClamBCRemovePointerPHIs PROPERTIES
+COMPILE_FLAGS "${WARNCXXFLAGS}"
+VERSION ${LIBCLAMBC_VERSION}
+SOVERSION ${LIBCLAMBC_SOVERSION})
+#target_compile_definitions(ClamBCRemovePointerPHIs -DLOG_BEFORE_AFTER=1) # For testing
+target_link_directories(ClamBCRemovePointerPHIs PRIVATE ${LLVM_LIBRARY_DIRS})
+target_link_libraries(ClamBCRemovePointerPHIs PUBLIC ${LLVM_LIBS})
+install(TARGETS ClamBCRemovePointerPHIs DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # #
 # # The ClamBCRemoveUndefs shared library.

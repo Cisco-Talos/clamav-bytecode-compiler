@@ -125,7 +125,6 @@ void ClamBCLowering::lowerIntrinsics(IntrinsicLowering *IL, Function &F)
                 GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(PI->getOperand(0));
                 if (GEP && GEP->getNumOperands() == 2) {
                     Value *V1 = GEP->getOperand(1);
-                    // if (GEP->getType()->getElementType() == Type::getInt8Ty(F.getContext())) {
                     if (GEP->getSourceElementType() == Type::getInt8Ty(F.getContext())) {
                         Value *P0 = Builder.CreatePtrToInt(GEP->getOperand(0),
                                                            V1->getType());

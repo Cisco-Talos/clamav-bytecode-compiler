@@ -288,7 +288,7 @@ void gatherCallsToIntrinsic(Function *pFunc, const char *const functionName, std
         for (auto bi = pBB->begin(), be = pBB->end(); bi != be; bi++) {
             if (CallInst *pci = llvm::dyn_cast<CallInst>(bi)) {
                 Function *pCalled = pci->getCalledFunction();
-                if (pCalled->isIntrinsic()) {
+                if (pCalled && pCalled->isIntrinsic()) {
                     if (functionName == pCalled->getName()) {
                         calls.push_back(pci);
                     }

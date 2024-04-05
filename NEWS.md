@@ -26,7 +26,8 @@ For example:
   - The bytecode compiler project now builds multiple shared object files,
     instead of just one with all of the passes.  This is due to running with
     the "new" pass manager, instead of running with the legacy pass manager,
-    as before.
+    as before.  See https://llvm.org/docs/NewPassManager.html and
+    https://blog.llvm.org/posts/2021-03-26-the-new-pass-manager/ for more details.
   - The bytecode compiler currently uses (deprecated) non-opaque pointers.
     Updating to all opaque pointers will be required for the next release.
     See https://llvm.org/docs/OpaquePointers.html for more information.

@@ -254,7 +254,7 @@ def getInputSourceFileName(outputFileName: str) -> str:
 def getOptimizedTmpFileName(linkedFile: str) -> str:
     idx = linkedFile.find(LINKED_BYTECODE_FILE_EXTENSION)
     if -1 == idx:
-        die("getLinkedFileName called with invalid input", 2)
+        die("getOptimizedTmpFileName called with invalid input", 2)
 
     return f"{linkedFile[0:idx]}{OPTIMIZED_TMP_BYTECODE_FILE_EXTENSION}"
 
@@ -548,6 +548,8 @@ OPTIMIZE_PASSES = ["function(mem2reg)"
         , 'globalopt'
         , 'clambc-preserve-abis' #remove fake function calls because O3 has already run
         , 'verify'
+#        , 'clambc-remove-pointer-phis'
+#        , 'verify'
         , 'clambc-remove-unsupported-icmp-intrinsics'
         , 'verify'
         , 'clambc-remove-usub'
@@ -573,6 +575,8 @@ OPTIMIZE_PASSES = ["function(mem2reg)"
         , 'internalize'
         , 'verify'
         , 'clambc-rebuild'
+        , 'verify'
+        , 'clambc-remove-pointer-phis'
         , 'verify'
         , 'clambc-trace'
         , 'verify'
@@ -603,7 +607,7 @@ OPTIMIZE_LOADS=[ f"--load {SHARED_OBJ_DIR}/libClamBCCommon.so"
         , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUnsupportedICMPIntrinsics.so"
         , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUSUB.so"
         , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFSHL.so"
-#        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemovePointerPHIs.so"    #Not needed, since clambc-remove-pointer-phis is not being used.
+        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemovePointerPHIs.so"    #Not needed, since clambc-remove-pointer-phis is not being used.
         , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringNF.so"
         , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveICMPSLE.so"
         , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCVerifier.so"

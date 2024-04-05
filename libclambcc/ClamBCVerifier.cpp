@@ -162,17 +162,17 @@ class ClamBCVerifier : public PassInfoMixin<ClamBCVerifier>,
 
     Function *getCalledFunctionFromCallInst(CallInst *pci)
     {
-        Function *ret = pci->getCalledFunction();
+
+        Value *pCalledOperand = pci->getCalledOperand();
+        Function *ret         = llvm::dyn_cast<Function>(pCalledOperand);
         if (nullptr == ret) {
-            Value *v = pci->getOperand(0); /*This is the called operand.*/
-            if (nullptr == v) {
-                llvm::errs() << "<" << __LINE__ << ">" << *pci << "<END>\n";
-                llvm::errs() << "<" << __LINE__ << ">" << *(pci->getOperand(0)) << "<END>\n";
-                assert(0 && "How do I handle function pointers?");
-            }
-            if (BitCastOperator *bco = llvm::dyn_cast<BitCastOperator>(v)) {
+            if (BitCastOperator *bco = llvm::dyn_cast<BitCastOperator>(pCalledOperand)) {
                 ret = llvm::dyn_cast<Function>(bco->getOperand(0));
             }
+        }
+
+        if (nullptr == ret) {
+            ClamBCStop("Verifier unable to get called function from call instruction", pci);
         }
 
         return ret;
