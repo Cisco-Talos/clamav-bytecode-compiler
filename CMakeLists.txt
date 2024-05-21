@@ -20,7 +20,7 @@ string(TIMESTAMP TODAY "%Y%m%d")
 set(VERSION_SUFFIX "")
 
 project( ClamBCC
-         VERSION "1.3.0"
+         VERSION "1.4.0"
          DESCRIPTION "ClamAV Bytecode Compiler." )
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
