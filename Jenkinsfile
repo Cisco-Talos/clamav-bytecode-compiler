@@ -24,7 +24,7 @@ properties(
                        defaultValue: 'master',
                        description: 'tests-jenkins-shared-libraries branch'),
                 string(name: 'TEST_PIPELINE_PATH',
-                       defaultValue: 'bcc/test_bcc/',
+                       defaultValue: 'ClamBCC/test_bcc/',
                        description: 'path for test pipelines'),
 
             ]
