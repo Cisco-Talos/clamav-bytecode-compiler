@@ -20,7 +20,7 @@ For example:
 > - [bytecode_api.h](headers/bytecode_api.h)
 > - [bytecode_local.h](headers/bytecode_local.h)
 
-## `1.3.0-rc`
+## `1.4.0`
 
 ➕ Upgrade bytecode compiler project to LLVM 16.
   - The bytecode compiler project now builds multiple shared object files,
