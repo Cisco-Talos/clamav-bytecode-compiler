@@ -35,7 +35,7 @@ properties(
 def buildResult_build_job
 def buildResult_test_job
 
-node('master') {
+node('default') {
 
     cleanWs()
 
