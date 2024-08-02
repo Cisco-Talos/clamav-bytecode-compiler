@@ -30,17 +30,17 @@ OPEN_SOURCE_GENERATED_EXTENSION = "generated.c"
 OPTIMIZED_TMP_BYTECODE_FILE_EXTENSION = "optimized.tmp.ll"
 
 COMMON_WARNING_OPTIONS = [
-        "-Wno-backslash-newline-escape"
-      , "-Wno-pointer-sign"
-      , "-Wno-return-type"
-      , "-Wno-incompatible-pointer-types"
-      , "-Wno-unused-value"
-      , "-Wno-shift-negative-value"
-      , "-Wno-implicit-function-declaration"
-      , "-Wno-incompatible-library-redeclaration"
-      , "-Wno-implicit-int"
-      , "-Wno-constant-conversion"
-      ]
+    "-Wno-backslash-newline-escape",
+    "-Wno-pointer-sign",
+    "-Wno-return-type",
+    "-Wno-incompatible-pointer-types",
+    "-Wno-unused-value",
+    "-Wno-shift-negative-value",
+    "-Wno-implicit-function-declaration",
+    "-Wno-incompatible-library-redeclaration",
+    "-Wno-implicit-int",
+    "-Wno-constant-conversion",
+]
 
 TMPDIR=".__clambc_tmp"
 
@@ -177,7 +177,7 @@ def compileFile(clangLLVM: ClangLLVM, fileName: str, debugBuild: bool, standardC
 
     cmd = []
     cmd.append(clangLLVM.getClang())
-    #cmd.append("-m32") #TODO: Put this back and resolve issues with it.
+    #cmd.append("-m32") # TODO: Put this back and resolve issues with it.
     cmd.append("-S")
     cmd.append("-fno-discard-value-names")
     cmd.append("-Wno-implicit-function-declaration")
@@ -270,9 +270,18 @@ def linkIRFiles(clangLLVM: ClangLLVM, linkedFile: str, irFiles: list) -> int:
     cmd.append(linkedFile)
     cmd += irFiles
 
-    #TODO: Remove this in a future version, since it is a depracated option
-    #      that will no longer be supported.  For a detailed explanation, see
-    #      https://llvm.org/docs/OpaquePointers.html
+    # Allow pointers that are not opaque.
+    #
+    # LLVM has decided to make all pointers opaque.
+    # With this, pointers will not have an associated type. So to get the type, users will have to find where a pointer
+    # is allocated, and what is assigned to it, or look at the instructions where it is used.
+    #
+    # TODO: LLVM 16 has this flag to use the old behavior, but it will be removed in LLVM 18.
+    # The next upgrade will need to remove this option, and to deal with converting to opaque pointers.
+    #
+    # For more information, see
+    # - https://llvm.org/docs/OpaquePointers.html
+    # - https://llvm.org/devmtg/2022-04-03/slides/keynote.Opaque.Pointers.Are.Coming.pdf
     cmd.append("-opaque-pointers=0")
 
     return run(cmd)
@@ -503,128 +512,314 @@ def createInputSourceFile(clangLLVM: ClangLLVM, name: str, args: list, options: 
 
     return res
 
-
-INTERNALIZE_API_LIST=[ "_Z10entrypointv"
-        , "entrypoint"
-        , "__clambc_kind"
-        , "__clambc_virusname_prefix"
-        , "__clambc_virusnames"
-        , "__clambc_filesize"
-        , "__clambc_match_counts"
-        , "__clambc_match_offsets"
-        , "__clambc_pedata"
-        , "__Copyright"
-        ]
-
-OPTIMIZE_OPTIONS = ["-S"
-        , "--disable-loop-unrolling"
-        , " --disable-i2p-p2i-opt"
-        , " --disable-loop-unrolling"
-        , " --disable-promote-alloca-to-lds"
-        , " --disable-promote-alloca-to-vector"
-        , " --disable-simplify-libcalls"
-        , " --disable-tail-calls"
-        , " --vectorize-slp=false"
-        , " --vectorize-loops=false"
-        , " -internalize-public-api-list=\"%s\"" % ','.join(INTERNALIZE_API_LIST)
-        ]
-
-#TODO: Remove this when we properly handle opaque pointers.
-OPTIMIZE_OPTIONS.append("-opaque-pointers=0")
-
-OPTIMIZE_PASSES = ["function(mem2reg)"
-        , 'verify'
-#        , 'clambc-remove-undefs' #TODO: This was added because the optimizer in llvm-8 was replacing unused
-                                  #      parameters with 'undef' values in the IR.  This was causing issues in
-                                  #      the writer, not knowing what value to put in the signature.  The llvm-16
-                                  #      optimizer no longer does this, so this value does not appear to still be
-                                  #      needed.  I have already done work upgrading the pass to the new
-                                  #      pass manager, so I want to leave it in place throughout the -rc phase
-                                  #      in case someone comes up with a testcase that re-introduces this bug.
-#        , 'verify'
-        , 'clambc-preserve-abis'
-        , 'verify'
-        , 'default<O3>'
-        , 'globalopt'
-        , 'clambc-preserve-abis' #remove fake function calls because O3 has already run
-        , 'verify'
-#        , 'clambc-remove-pointer-phis'
-#        , 'verify'
-        , 'clambc-remove-unsupported-icmp-intrinsics'
-        , 'verify'
-        , 'clambc-remove-usub'
-        , 'verify'
-        , 'clambc-remove-fshl'
-        , 'verify'
-        , 'clambc-lowering-notfinal' # perform lowering pass
-        , 'verify'
-        , 'lowerswitch'
-        , 'verify'
-        , 'clambc-remove-icmp-sle'
-        , 'verify'
-        , 'function(clambc-verifier)'
-        , 'verify'
-        , 'clambc-remove-freeze-insts'
-        , 'verify'
-        , 'clambc-lowering-notfinal'  # perform lowering pass
-        , 'verify'
-        , 'clambc-lcompiler-helper' #compile the logical_trigger function to a
-        , 'verify'
-        , 'clambc-lcompiler' #compile the logical_trigger function to a
-        , 'verify'
-        , 'internalize'
-        , 'verify'
-        , 'clambc-rebuild'
-        , 'verify'
-        , 'clambc-remove-pointer-phis'
-        , 'verify'
-        , 'clambc-trace'
-        , 'verify'
-        , 'clambc-outline-endianness-calls'
-        , 'verify'
-#        , 'clambc-change-malloc-arg-size' #TODO: This was added because the legacy llvm runtime
-                                           #      had issues with 32-bit phi nodes being used in
-                                           #      calls to malloc.  I already did the work to
-                                           #      update it to the new pass manager, but it appears
-                                           #      to no longer be necessary.  I will remove it
-                                           #      after the -rc phase if nobody has a testcase
-                                           #      that requires it.
-#        , 'verify'
-        , 'clambc-extend-phis-to-64-bit'
-        , 'verify'
-        , 'clambc-convert-intrinsics-to-32Bit'
-        , 'verify'
-        , 'globalopt'
-        , 'clambc-prepare-geps-for-writer'
-        , 'verify'
-        , 'clambc-writer'
-        , 'verify'
+# These are a list of functions that we don't want to internalize, or else it will rip these out.
+# We internalize everything else.
+INTERNALIZE_API_LIST=[
+    "_Z10entrypointv",
+    "entrypoint",
+    "__clambc_kind",
+    "__clambc_virusname_prefix",
+    "__clambc_virusnames",
+    "__clambc_filesize",
+    "__clambc_match_counts",
+    "__clambc_match_offsets",
+    "__clambc_pedata",
+    "__Copyright",
 ]
 
-OPTIMIZE_LOADS=[ f"--load {SHARED_OBJ_DIR}/libClamBCCommon.so"
-#        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libclambcremoveundefs.so"          #Not needed, since clambc-remove-undefs is not being used.
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPreserveABIs.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUnsupportedICMPIntrinsics.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUSUB.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFSHL.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemovePointerPHIs.so"    #Not needed, since clambc-remove-pointer-phis is not being used.
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringNF.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveICMPSLE.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCVerifier.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFreezeInsts.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringF.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLogicalCompilerHelper.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLogicalCompiler.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRebuild.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCTrace.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCOutlineEndiannessCalls.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCChangeMallocArgSize.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCExtendPHIsTo64Bit.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCConvertIntrinsicsTo32Bit.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPrepareGEPsForWriter.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCAnalyzer.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRegAlloc.so"
-        , f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCWriter.so"
+OPTIMIZE_OPTIONS = [
+    "-S",
+    "--disable-loop-unrolling",
+    "--disable-i2p-p2i-opt",
+    "--disable-loop-unrolling",
+    "--disable-promote-alloca-to-lds",
+    "--disable-promote-alloca-to-vector",
+    "--disable-simplify-libcalls",
+    "--disable-tail-calls",
+    "--vectorize-slp=false",
+    "--vectorize-loops=false",
+    "-internalize-public-api-list=\"%s\"" % ','.join(INTERNALIZE_API_LIST),
+]
+
+# TODO: Remove this when we properly handle opaque pointers.
+OPTIMIZE_OPTIONS.append("-opaque-pointers=0")
+
+OPTIMIZE_PASSES = [
+    # Convert function parameters to use registers as much as possible.
+    'function(mem2reg)',
+    'verify',
+
+    # Remove 'undef' values.
+    #
+    # The optimizer in llvm-8 was replacing unused parameters with 'undef' values in the IR.
+    # This was causing issues in the writer, not knowing what value to put in the signature.
+    # The llvm-16 optimizer no longer does this.
+    #
+    # TODO: This pass may be removed in a future release.
+    # 'clambc-remove-undefs',
+    # 'verify',
+
+    # Prevent undefined or poison values from being inserted into the function calls by the 'O3' pass.
+    # This pass should probably be renamed, since the ABI is not really changed.
+    # Undefined values cause issues with the ClamBCWriter, and with ClamAV's runtime.
+    #
+    # The first call to preserve 'clambc-preserve-abis' adds fake function calls using all parameters so that 'O3' does
+    # not optimize out unused functions or parameters. After the 'O3' pass, we undo it.
+    'clambc-preserve-abis',
+    'verify',
+
+    # Run Clang's '-O3' optimizations.
+    'default<O3>',
+
+    # Removes unused globals and unused variables.
+    'globalopt',
+
+    # Remove the fake function calls tha we added with the first call to 'clambc-preserve-abis'.
+    'clambc-preserve-abis',
+    'verify',
+
+    # This pass removes pointer phis, and replaces them with an index calculation to get the same offset.
+    #
+    # We will call this later, instead of here.
+    #
+    # Note: This is only needed for 0.103 on Windows where we're using an older vendored version of LLVM for the runtime.
+    #       This can be removed when 0.103 support is no longer required.
+    # 'clambc-remove-pointer-phis',
+    # 'verify',
+
+    # Remove calls to smin intrinsics.
+    # Smin intrinsics are not supported by the ClamAV runtime, so this pass creates it's own smin functions, and replaces
+    # calls to intrinsics with calls to the newly created functions.
+    #
+    # For more on smin intrinsics, see https://llvm.org/docs/LangRef.html#llvm-smin-intrinsic.
+    'clambc-remove-unsupported-icmp-intrinsics',
+    'verify',
+
+    # Remove calls to llvm.usub.sat.i32 because they are not supported by our runtime.
+    # Removal is handled by creating our own function with the same behavior.
+    # Currently, this pass only removes i32, which may be an oversight.
+    #
+    # Developer note: I don't remember if I was unable to get clang to generate other intrinsics, or I just forgot to add them.
+    # In either case, it would not be difficult to add by duplicating the code, and changing types from 32-bit to whatever
+    # bitwidth is needed.
+    #
+    # For more information, see https://llvm.org/docs/LangRef.html#llvm-usub-sat-intrinsics.
+    'clambc-remove-usub',
+    'verify',
+
+    # Remove llvm.fshl.i32, llvm.fshl.i16, and llvm.fshl.i8 because they are not handled by our runtime.
+    # Removal is handled by creating our own function with the same behavior.
+    #
+    # Developer Note: 64-bit was omitted because I could not find a testcase that would have used it.
+    # There is an outline in the code for how it would be added.
+    #
+    # For more on fshl intrinsics, see https://llvm.org/docs/LangRef.html#llvm-fshl-intrinsic.
+    'clambc-remove-fshl',
+    'verify',
+
+    # Perform lowering pass.
+    # In practice, this lowering pass changes index sizes from 64bit to 32bit in `GetElementPtr` instructions.
+    # There are some other lowering pass cases that are not run, either with our current signature set or because of prior passes. 
+    # For example, one of them lowers all `PtrToInt` instructions to point have a type of `i8`. 
+    # However, `PtrToIntInst` is not allowed, so this code never executes.
+    # It's possible some of these lowering pass cases were works-in-progress that were solved another way.
+    'clambc-lowering-notfinal',
+    'verify',
+
+    # This is an LLVM built-in pass that converts switch operations to a series of branches (ifs).
+    # This allows our runtime to get away with not implementing the switch instruction.
+    # See: https://llvm.org/docs/Passes.html#lower-switch-lower-switchinsts-to-branches
+    'lowerswitch',
+    'verify',
+
+    # Remove icmp (Integer Compare) sle (Signed Less than or Equal) instructions because they are not supported by our runtime.
+    # Very simple pass to swap the operands of the icmp sle instructions and replace them with sge (Signed Greater than or Equal).
+    #
+    # For more information about icmp instructions, see https://llvm.org/docs/LangRef.html#icmp-instruction.
+    'clambc-remove-icmp-sle',
+    'verify',
+
+    # Verify that all functions in an IR signature don't break any of the rules for the llvm runtime.
+    # Rules include:
+    # - no variadic functions
+    # - no calls through function pointers
+    # - no undefs or poison values
+    'function(clambc-verifier)',
+    'verify',
+
+    # Remove freeze instructions because they are not handled by our runtime.
+    # This pass replaces the freeze instructions with what it was passed, since the freeze instruction is to give a
+    # guaranteed value for a specific type, which may otherwise return an undef or poison value.
+    #
+    # For more information on freeze instructions, see https://llvm.org/docs/LangRef.html#freeze-instruction.
+    'clambc-remove-freeze-insts',
+    'verify',
+
+    # Perform lowering pass, again.
+    'clambc-lowering-notfinal',
+    'verify',
+
+    # The ClamBCLogicalCompiler pass requires that 'setvirusname' is called with a string constant.
+    # One of the passes in '-O3' creates a pointer, sets the value of the pointer to different constants based on the code,
+    # and calls 'setvirusname' with that.
+    # This pass moves the calls to 'setvirusname' to the blocks where the pointer would be set.
+    'clambc-lcompiler-helper',
+    'verify',
+
+    # Replaces the 'logical_trigger' function with a logical expression signature.
+    # For more information on the 'logical_trigger' function, see the documentation for writing bytecode signatures.
+    'clambc-lcompiler',
+    'verify',
+
+    # This pass loops over all of the functions in the input module, looking for a main function. 
+    # If a main function is found, all other functions and all global variables with initializers are marked as internal.
+    #
+    # We maintain a list of public API functions to NOT internalize. See `INTERNALIZE_API_LIST`, above.
+    #
+    # See: https://llvm.org/docs/Passes.html#internalize-internalize-global-symbols
+    'internalize',
+    'verify',
+
+    # Create new functions that replace all pointer types with 'i8' pointer types.
+    # This requires recalculating all offsets, as well as handling structure types.
+    'clambc-rebuild',
+    'verify',
+
+    # This pass removes pointer phis, and replaces them with an index calculation to get the same offset.
+    #
+    # Note: This is only needed for 0.103 on Windows where we're using an older vendored version of LLVM for the runtime.
+    #       This can be removed when 0.103 support is no longer required.
+    'clambc-remove-pointer-phis',
+    'verify',
+
+    # Tracing is not currently working, and the option is hidden.
+    #
+    # Developer Note: It should really be removed from the driver until it is tested.
+    # It was an option in the original version, and never finished in the upgrade.
+    # I don't know how well it worked (or if it worked) in the first place.
+    'clambc-trace',
+    'verify',
+
+    # Outlines endianness calls (i.e. the opposite of inlining).
+    #
+    # Developer Note: At one point, the big endian calls were being replaced with a constant, or inlined, and was causing
+    # issues with one of the signatures in testing. I don't remember which signature was the problem, but I believe the
+    # platform was Windows.
+    # This was added as part of 0.105.
+    #
+    # TODO: The next time we upgrade, we should evaluate if this is still necessary.
+    'clambc-outline-endianness-calls',
+    'verify',
+
+    # Change malloc argument size.
+    #
+    # TODO: This was added because the legacy llvm runtime had issues with 32-bit phi nodes being used in calls to malloc.
+    #       It appears that this is no longer necessary.
+    # 'clambc-change-malloc-arg-size',
+    # 'verify',
+
+    # Extends all integer phi nodes to use 64-bit values.
+    #
+    # TODO: I don't remember what the reason was that I needed to add this. It should be re-evaluated for the next release.
+    'clambc-extend-phis-to-64-bit',
+    'verify',
+
+    # Converts intrinsic calls to use the 32-bit version, instead of the 64-bit version.
+    # This is due to the 32-bit intrinsics being hard-coded in `libclamav/c++/bytecode2llvm.cpp`.
+    'clambc-convert-intrinsics-to-32Bit',
+    'verify',
+
+    # Removes unused globals and unused variables (again).
+    # One of the passes above may have created new unused globals or variables.
+    # Rather than find out which one and clean it up manually, we run this.
+    'globalopt',
+
+    # Converts structure and array 'GetElementPtrInst' to arrays of i8 pointers.
+    # See:
+    # - https://llvm.org/docs/LangRef.html#getelementptr-instruction
+    # - https://llvm.org/docs/GetElementPtr.html
+    #
+    # Some of these are missed by ClamBCRebuild, and are handled here.
+    # Additionally, the writer does not support 'GetElementPtrInst' instructions with more than 2 operands.
+    # See visitGetElementPtrInst() in ClamBCWriter.cpp, currently on line 943.
+    'clambc-prepare-geps-for-writer',
+    'verify',
+
+    # Convert the modified llvm bitcode to a ClamAV signature.
+    'clambc-writer',
+    'verify',
+]
+
+OPTIMIZE_LOADS=[
+    f"--load {SHARED_OBJ_DIR}/libClamBCCommon.so",
+
+    # libClamBCRemoveUndefs.so is no longer being run.
+    #
+    # This was added because the optimizer in llvm-8 was replacing unused parameters with 'undef' values in the IR.
+    # This was causing issues in the writer, not knowing what value to put in the signature.
+    # The llvm-16 optimizer no longer does this.
+    #
+    # TODO: This pass may be removed in a future release.
+    # f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUndefs.so",
+
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPreserveABIs.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUnsupportedICMPIntrinsics.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUSUB.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFSHL.so",
+
+    # TODO: libClamBCRemovePointerPHIs.so is required for ClamAV 0.103 support, but may be removed eventually.
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemovePointerPHIs.so",
+
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringNF.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveICMPSLE.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCVerifier.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveFreezeInsts.so",
+
+    # libClamBCLoweringF.so is no longer being run. The NF (non-final) version is used twice, instead.
+    # The F (final) version was left in due to an oversight.
+    #
+    # TODO: May be removed in the future.
+    # f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLoweringF.so",
+
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLogicalCompilerHelper.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCLogicalCompiler.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRebuild.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCTrace.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCOutlineEndiannessCalls.so",
+
+    # libClamBCChangeMallocArgSize.so is no longer being run.
+    # At one time, the legacy llvm runtime had issues with 32-bit phi nodes being used in calls to malloc.
+    # It appears as though this change is no longer necessary.
+    #
+    # TODO: May be removed in the future.
+    # f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCChangeMallocArgSize.so",
+
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCExtendPHIsTo64Bit.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCConvertIntrinsicsTo32Bit.so",
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPrepareGEPsForWriter.so",
+
+    # This is an Analysis pass, used by 'clambc-writer'. There is no option to invoke is directly.
+    #
+    # This pass gathers all information about the signature. This pass:
+    # 1. Does some validation (Developer Note: I know, shouldn't be done in an analysis pass).
+    # 2. Generates maps of all global values (functions, global variables, constant expressions used to initialize
+    #    global variables).
+    # 3. Sorts functions in the file.
+    # 4. Stores API Map of available functions that bytecode signatures can call in clamav.
+    #    If functions are added to bytecode_api_decl.c.h, they also MUST be added to 'ClamBCAnalysis::populateAPIMap()'.
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCAnalyzer.so",
+
+    # This is an Analysis pass, used by 'clambc-writer'. There is no option to invoke is directly.
+    #
+    # This pass...
+    # 1. Removes all PHI nodes.
+    #    There are other places we change PHI nodes around, we should really consolidate them.
+    #    Part of the reason for having to do it again, is because they could potentially be re-added by llvm passes that
+    #    are run after previous clamav passes.
+    # 2. Stores values in map to be used by the ClamBCWriter.
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRegAlloc.so",
+
+    f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCWriter.so",
 ]
 
 def optimize(clangLLVM: ClangLLVM, inFile: str, outFile: str, sigFile: str, inputSourceFile: str, standardCompiler: bool) -> int:

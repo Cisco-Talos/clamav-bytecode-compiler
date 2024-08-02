@@ -53,7 +53,7 @@ struct ClamBCRemoveFSHL : public PassInfoMixin<ClamBCRemoveFSHL> {
 
     virtual llvm::Function *addFunction64(IntegerType *functionArgType, const char *const functionName)
     {
-        /*Will determine if this is necessary during the rc phase.*/
+        /* TODO: Determine if this is necessary.*/
         /*
                 This is an example function, needs to be converted to IR
                 static uint8_t fshl8_noshifts(uint8_t left, uint8_t right, uint8_t shift){
@@ -80,15 +80,14 @@ struct ClamBCRemoveFSHL : public PassInfoMixin<ClamBCRemoveFSHL> {
     }
 
     /*
-             * addFunction was based on this.
-             * static uint8_t fshl8_shifts(uint8_t left, uint8_t right, uint8_t shift){
-             *      uint16_t tmp = (left << 8) | right;
-             *      tmp <<= (shift % 8);
-             *      tmp = (tmp & 0xff00) >> 8;
-             *      return (uint8_t) (tmp & 0xff);
-             * }
-
-             */
+     * addFunction was based on this.
+     * static uint8_t fshl8_shifts(uint8_t left, uint8_t right, uint8_t shift){
+     *      uint16_t tmp = (left << 8) | right;
+     *      tmp <<= (shift % 8);
+     *      tmp = (tmp & 0xff00) >> 8;
+     *      return (uint8_t) (tmp & 0xff);
+     * }
+     */
     virtual llvm::Function *addFunction(IntegerType *functionArgType, const char *const functionName)
     {
 

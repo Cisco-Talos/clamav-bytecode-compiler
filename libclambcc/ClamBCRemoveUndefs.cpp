@@ -16,26 +16,26 @@
 
 using namespace llvm;
 
-/* THIS APPEARS TO NO LONGER BE NEEDED.  LEAVING IN PLACE DURING THE RC PHASE, JUST IN CASE.  */
+/* TODO: THIS APPEARS TO NO LONGER BE NEEDED. */
 
 namespace
 {
 /*
-     * This pass requires -mem2reg before it (TEMPORARILY)
-     * and must be run before -O3.
-     *
-     * This will remove storing parameters in stack variables and loading from there.
-     *
-     * ; Function Attrs: noinline nounwind uwtable
-       define dso_local i32 @decrypt_config(i32 %config_location, %struct._state* %state, i32 %sizeof_state) #0 {
-        entry:
-           ...
-           %state.addr = alloca %struct._state*, align 8
-           %sizeof_state.addr = alloca i32, align 4
-           ...
-           store %struct._state* %state, %struct._state** %state.addr, align 8
-           store i32 %sizeof_state, i32* %sizeof_state.addr, align 4
-     */
+ * This pass requires -mem2reg before it (TEMPORARILY)
+ * and must be run before -O3.
+ *
+ * This will remove storing parameters in stack variables and loading from there.
+ *
+ * ; Function Attrs: noinline nounwind uwtable
+   define dso_local i32 @decrypt_config(i32 %config_location, %struct._state* %state, i32 %sizeof_state) #0 {
+    entry:
+       ...
+       %state.addr = alloca %struct._state*, align 8
+       %sizeof_state.addr = alloca i32, align 4
+       ...
+       store %struct._state* %state, %struct._state** %state.addr, align 8
+       store i32 %sizeof_state, i32* %sizeof_state.addr, align 4
+ */
 struct ClamBCRemoveUndefs : public PassInfoMixin<ClamBCRemoveUndefs> {
   protected:
     llvm::Module *pMod = nullptr;
@@ -225,7 +225,7 @@ struct ClamBCRemoveUndefs : public PassInfoMixin<ClamBCRemoveUndefs> {
 
     PreservedAnalyses run(Module &m, ModuleAnalysisManager &MAM)
     {
-        /*This no longer appears to be needed.  Will keep it during the -rc phase and then remove.*/
+        /* TODO: This no longer appears to be needed. Remove it? */
         return PreservedAnalyses::all();
 
         pMod = &m;
