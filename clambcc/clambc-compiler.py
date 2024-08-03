@@ -549,16 +549,6 @@ OPTIMIZE_PASSES = [
     'function(mem2reg)',
     'verify',
 
-    # Remove 'undef' values.
-    #
-    # The optimizer in llvm-8 was replacing unused parameters with 'undef' values in the IR.
-    # This was causing issues in the writer, not knowing what value to put in the signature.
-    # The llvm-16 optimizer no longer does this.
-    #
-    # TODO: This pass may be removed in a future release.
-    # 'clambc-remove-undefs',
-    # 'verify',
-
     # Prevent undefined or poison values from being inserted into the function calls by the 'O3' pass.
     # This pass should probably be renamed, since the ABI is not really changed.
     # Undefined values cause issues with the ClamBCWriter, and with ClamAV's runtime.
@@ -577,15 +567,6 @@ OPTIMIZE_PASSES = [
     # Remove the fake function calls tha we added with the first call to 'clambc-preserve-abis'.
     'clambc-preserve-abis',
     'verify',
-
-    # This pass removes pointer phis, and replaces them with an index calculation to get the same offset.
-    #
-    # We will call this later, instead of here.
-    #
-    # Note: This is only needed for 0.103 on Windows where we're using an older vendored version of LLVM for the runtime.
-    #       This can be removed when 0.103 support is no longer required.
-    # 'clambc-remove-pointer-phis',
-    # 'verify',
 
     # Remove calls to smin intrinsics.
     # Smin intrinsics are not supported by the ClamAV runtime, so this pass creates it's own smin functions, and replaces
@@ -711,13 +692,6 @@ OPTIMIZE_PASSES = [
     'clambc-outline-endianness-calls',
     'verify',
 
-    # Change malloc argument size.
-    #
-    # TODO: This was added because the legacy llvm runtime had issues with 32-bit phi nodes being used in calls to malloc.
-    #       It appears that this is no longer necessary.
-    # 'clambc-change-malloc-arg-size',
-    # 'verify',
-
     # Extends all integer phi nodes to use 64-bit values.
     #
     # TODO: I don't remember what the reason was that I needed to add this. It should be re-evaluated for the next release.
@@ -753,15 +727,6 @@ OPTIMIZE_PASSES = [
 OPTIMIZE_LOADS=[
     f"--load {SHARED_OBJ_DIR}/libClamBCCommon.so",
 
-    # libClamBCRemoveUndefs.so is no longer being run.
-    #
-    # This was added because the optimizer in llvm-8 was replacing unused parameters with 'undef' values in the IR.
-    # This was causing issues in the writer, not knowing what value to put in the signature.
-    # The llvm-16 optimizer no longer does this.
-    #
-    # TODO: This pass may be removed in a future release.
-    # f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUndefs.so",
-
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPreserveABIs.so",
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUnsupportedICMPIntrinsics.so",
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRemoveUSUB.so",
@@ -786,14 +751,6 @@ OPTIMIZE_LOADS=[
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCRebuild.so",
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCTrace.so",
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCOutlineEndiannessCalls.so",
-
-    # libClamBCChangeMallocArgSize.so is no longer being run.
-    # At one time, the legacy llvm runtime had issues with 32-bit phi nodes being used in calls to malloc.
-    # It appears as though this change is no longer necessary.
-    #
-    # TODO: May be removed in the future.
-    # f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCChangeMallocArgSize.so",
-
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCExtendPHIsTo64Bit.so",
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCConvertIntrinsicsTo32Bit.so",
     f"--load-pass-plugin {SHARED_OBJ_DIR}/libClamBCPrepareGEPsForWriter.so",

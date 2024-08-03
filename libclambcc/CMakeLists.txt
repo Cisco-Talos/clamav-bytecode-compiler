@@ -36,22 +36,6 @@ target_link_libraries(ClamBCAnalyzer PUBLIC ${LLVM_LIBS})
 install(TARGETS ClamBCAnalyzer DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 #
-# The ClamBCChangeMallocArgSize shared library.
-#
-add_library(ClamBCChangeMallocArgSize SHARED
-    ClamBCChangeMallocArgSize.cpp)
-target_include_directories(ClamBCChangeMallocArgSize PRIVATE
-    ${LLVM_INCLUDE_DIRS})
-set_target_properties(ClamBCChangeMallocArgSize PROPERTIES
-    COMPILE_FLAGS "${WARNCXXFLAGS}"
-    VERSION ${LIBCLAMBC_VERSION}
-    SOVERSION ${LIBCLAMBC_SOVERSION})
-#target_compile_definitions(ClamBCChangeMallocArgSize -DLOG_BEFORE_AFTER=1) # For testing
-target_link_directories(ClamBCChangeMallocArgSize PRIVATE ${LLVM_LIBRARY_DIRS})
-target_link_libraries(ClamBCChangeMallocArgSize PUBLIC ${LLVM_LIBS})
-install(TARGETS ClamBCChangeMallocArgSize DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-#
 # The ClamBCConvertIntrinsicsTo32Bit shared library.
 #
 add_library(ClamBCConvertIntrinsicsTo32Bit SHARED
@@ -292,22 +276,6 @@ SOVERSION ${LIBCLAMBC_SOVERSION})
 target_link_directories(ClamBCRemovePointerPHIs PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(ClamBCRemovePointerPHIs PUBLIC ${LLVM_LIBS})
 install(TARGETS ClamBCRemovePointerPHIs DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-# #
-# # The ClamBCRemoveUndefs shared library.
-# #
-# add_library(ClamBCRemoveUndefs SHARED
-# ClamBCRemoveUndefs.cpp)
-# target_include_directories(ClamBCRemoveUndefs PRIVATE
-# ${LLVM_INCLUDE_DIRS})
-# set_target_properties(ClamBCRemoveUndefs PROPERTIES
-# COMPILE_FLAGS "${WARNCXXFLAGS}"
-# VERSION ${LIBCLAMBC_VERSION}
-# SOVERSION ${LIBCLAMBC_SOVERSION})
-# #target_compile_definitions(ClamBCRemoveUndefs -DLOG_BEFORE_AFTER=1) # For testing
-# target_link_directories(ClamBCRemoveUndefs PRIVATE ${LLVM_LIBRARY_DIRS})
-# target_link_libraries(ClamBCRemoveUndefs PUBLIC ${LLVM_LIBS})
-# install(TARGETS ClamBCRemoveUndefs DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 #
 # The ClamBCRemoveUnsupportedICMPIntrinsics shared library.
